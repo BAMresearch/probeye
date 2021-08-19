@@ -5,7 +5,7 @@ import copy as cp
 import numpy as np
 
 # local imports
-from probeye.jacobian import delta_x
+from probeye.subroutines import delta_x
 from probeye.subroutines import len_or_one
 from probeye.subroutines import list2dict
 

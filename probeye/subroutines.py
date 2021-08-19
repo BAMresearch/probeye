@@ -20,6 +20,35 @@ def len_or_one(obj):
         length = 1
     return length
 
+
+def delta_x(x0, delta=None):
+    """
+    Returns a good choice for the step size for numeric differentiation around
+    x0 when using a simple two-point approximation, see also the value h in
+    https://en.wikipedia.org/wiki/Numerical_differentiation.
+
+    Parameters
+    ----------
+    x0 : float
+        Point where the derivative should be evaluated.
+    delta : float, optional
+        This parameter can be used when a specific fixed value should be
+        returned; might be used for debugging.
+
+    Returns
+    -------
+    dx : float
+        Computed step size for numeric differentiation.
+    """
+    # use the delta-value if delta is specified
+    if delta is not None:
+        return delta
+    eps = 1e-7  # approx sqrt(machine precision)
+    dx = x0 * eps + eps  # TODO: clarify if the '+ eps' part is correct
+    if dx == 0:
+        dx = eps
+    return dx
+
 def underlined_string(string, symbol="=", n_empty_start=1, n_empty_end=1):
     """
     Adds a line made of 'symbol'-characters under a given string and returns it.
