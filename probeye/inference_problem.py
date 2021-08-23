@@ -5,7 +5,7 @@ from copy import deepcopy as dc
 import numpy as np
 
 # local imports
-from probeye.parameter import Parameters, Parameter
+from probeye.parameter import Parameters, ParameterProperties
 from probeye.priors import PriorNormal
 from probeye.priors import PriorLognormal
 from probeye.priors import PriorUniform
@@ -284,13 +284,13 @@ class InferenceProblem:
             prm_value = const
 
         # add the parameter to the central parameter dictionary
-        self._parameters[prm_name] = Parameter({'index': prm_index,
-                                                'type': prm_type,
-                                                'role': prm_role,
-                                                'prior': prm_prior,
-                                                'value': prm_value,
-                                                'info': info,
-                                                'tex': tex})
+        self._parameters[prm_name] = ParameterProperties({'index': prm_index,
+                                                          'type': prm_type,
+                                                          'role': prm_role,
+                                                          'prior': prm_prior,
+                                                          'value': prm_value,
+                                                          'info': info,
+                                                          'tex': tex})
 
     def check_if_parameter_exists(self, prm_name):
         """

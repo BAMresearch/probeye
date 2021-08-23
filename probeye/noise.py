@@ -53,7 +53,7 @@ class NormalNoiseZeroMean(NoiseTemplate):
     """
     def __init__(self, prms_def):
         super().__init__(prms_def)
-        if len(self.prms_def) > 1:
+        if self.prms_dim > 1:
             raise RuntimeError(
                 f"NormalNoise allows to define exactly one parameter (the"
                 f"standard deviation), which must be given as a list with one"

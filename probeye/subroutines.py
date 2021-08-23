@@ -150,6 +150,10 @@ def list2dict(list_):
         Strings are mapped to themselves, while one-element dictionaries are
         simply added to this result dictionary.
     """
+    if type(list_) != list:
+        raise TypeError(
+            f"Input argument must be of type 'list', found '{type(list_)}'."
+        )
     dict_ = {}
     for element in list_:
         element_type = type(element)

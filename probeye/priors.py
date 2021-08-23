@@ -133,7 +133,7 @@ class PriorLognormal(PriorTemplate):
         scale = prms[f"scale_{self.ref_prm}"]
         return getattr(stats.lognorm, method)(x, loc, scale)
 
-    def generate_samples(self, prms, size, seed=None):
+    def generate_samples(self, prms, size, seed=None, shape=1):
         """
         Randomly draws samples from this prior distribution. This method is used
         to create initial samples for MCMC-based algorithms.
@@ -146,6 +146,9 @@ class PriorLognormal(PriorTemplate):
             Number of samples to generate.
         seed : int or None, optional
             Used for the random state of the random number generation.
+        shape : float or int, optional
+            Scipy uses a shape parameter. For the common lognormal distribution
+            this shape parameter is one.
 
         Returns
         -------
@@ -154,7 +157,8 @@ class PriorLognormal(PriorTemplate):
         """
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return stats.lognorm.rvs(loc=loc, scale=scale, size=size,
+
+        return stats.lognorm.rvs(shape, loc=loc, scale=scale, size=size,
                                  random_state=seed)
 
 
