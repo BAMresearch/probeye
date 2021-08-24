@@ -20,7 +20,7 @@ class InputSensor:
         Parameters
         ----------
         name : string
-            The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
+            The name of the sensor, e.g. 'Time'.
         """
         self.name = name
 

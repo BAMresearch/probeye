@@ -10,7 +10,7 @@ from probeye.forward_model import ModelTemplate
 from probeye.forward_model import InputSensor, OutputSensor
 from probeye.noise import NormalNoiseZeroMean
 from probeye.inference_problem import InferenceProblem
-from probeye.solver import taralli_solver
+from probeye.solver.taralli import taralli_solver
 
 
 class TestProblem(unittest.TestCase):

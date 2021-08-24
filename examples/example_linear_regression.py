@@ -18,7 +18,7 @@ from probeye.forward_model import ModelTemplate
 from probeye.forward_model import InputSensor, OutputSensor
 from probeye.noise import NormalNoiseZeroMean
 from probeye.inference_problem import InferenceProblem
-from probeye.solver import taralli_solver
+from probeye.solver.taralli import taralli_solver
 
 # ============================================================================ #
 #                              Set numeric values                              #
@@ -54,18 +54,28 @@ n_steps = 1000
 class LinearModel(ModelTemplate):
     def response(self, inp, sensor):
         x = inp['x']
-        a = inp['m']
+        m = inp['m']
         b = inp['b']
-        return a * x + b
+        return m * x + b
 
 # ============================================================================ #
 #                         Define the Inference Problem                         #
 # ============================================================================ #
 
-# initialize the inference problem with a useful name
+# initialize the inference problem with a useful name; note that the name will
+# only be stored as an attribute of the InferenceProblem and is not important
+# for the problem itself; can be useful when dealing with multiple problems
 problem = InferenceProblem("Linear regression with normal noise")
 
-# add all parameters to the problem
+# add all parameters to the problem; the first argument states the parameter's
+# global name (here: 'a', 'b' and 'sigma'); the second argument defines the
+# parameter type (three options: 'model' for parameter's of the forward model,
+# 'prior' for prior parameters and 'noise' for parameters of the noise model);
+# the 'info'-argument is a short description string used for logging, and the
+# tex-argument gives a tex-string of the parameter used for plotting; finally,
+# the prior-argument specifies the parameter's prior; note that this definition
+# of a prior will result in the initialization of constant parameters of type
+# 'prior' in the background
 problem.add_parameter('a', 'model',
                       info="Slope of the graph", tex="$a$",
                       prior=('normal', {'loc': loc_a, 'scale': scale_a}))
@@ -76,11 +86,23 @@ problem.add_parameter('sigma', 'noise',
                       info="Std. dev, of 0-mean noise model", tex=r"$\sigma$",
                       prior=('uniform', {'low': low_sigma, 'high': high_sigma}))
 
-# add the forward model to the problem
+# add the forward model to the problem; note that the argument [{'a': 'm'}, 'b']
+# passed to LinearModel defines the forward model's parameters by name via a
+# list with elements like {<global parameter name>: <local parameter name>};
+# a global name is a name introduced by problem.add_parameter, while a local
+# name is a name used in the response-method of the forward model class (see
+# the definition of the class LinearModel above); note that the use of the
+# local parameter name 'm' for the global parameter 'a' is added here only to
+# highlight the possibility of this feature; it is not necessary at all here;
+# whenever forward model's parameter has a similar local and global name (which
+# should be the case most of the times), one doesn't have to use the verbose
+# notation {<global parameter name>: <local parameter name>} but can instead
+# just write the parameter's (global=local) name, like it is done with the
+# forward model's parameter 'b' below
 inp_1 = InputSensor("x")
 out_1 = OutputSensor("y")
-problem.add_forward_model("LinearModel",
-                          LinearModel([{'a': 'm'}, 'b'], [inp_1], [out_1]))
+linear_model = LinearModel([{'a': 'm'}, 'b'], [inp_1], [out_1])
+problem.add_forward_model("LinearModel", linear_model)
 
 # add the noise model to the problem
 problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))

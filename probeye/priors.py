@@ -8,8 +8,8 @@ from probeye.subroutines import list2dict
 class PriorTemplate:
     """
     Template class for prior definitions. Note that the main motivation of how
-    this class is defined is to avoid storing any numeric values for any of the
-    priors parameters within the prior object.
+    this class is implemented was to avoid storing any numeric values for any of
+    the priors parameters within the prior object.
     """
     def __init__(self, ref_prm, prms_def, name, prior_type):
         """
