@@ -70,11 +70,14 @@ class PositionSensor(OutputSensor):
         self.position = position
 
 class LinearModel(ModelTemplate):
-    def response(self, inp, sensor):
+    def __call__(self, inp):
         t = inp['time']
         A = inp['A']
         B = inp['B']
-        return A * sensor.position + B * t
+        response_dict = dict()
+        for os in self.output_sensors:
+            response_dict[os.name] = A * os.position + B * t
+        return response_dict
 
 # ============================================================================ #
 #                         Define the Inference Problem                         #
@@ -130,8 +133,8 @@ sd_dict = {out_1.name: sd_S1_true,
 
 def generate_data(n_time_steps, n=None):
     time_steps = np.linspace(0, 1, n_time_steps)
-    prms = {'A': A_true, 'B': B_true}
-    sensors = linear_model({'time': time_steps}, prms)
+    inp = {'A': A_true, 'B': B_true, 'time': time_steps}
+    sensors = linear_model(inp)
     for key, val in sensors.items():
         sensors[key] = val +\
                        np.random.normal(0.0, sd_dict[key], size=n_time_steps)

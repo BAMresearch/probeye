@@ -19,11 +19,11 @@ class TestProblem(unittest.TestCase):
 
         # define the forward model
         class LinRe(ModelTemplate):
-            def response(self, inp, sensor):
+            def __call__(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
-                return a * x + b
+                return {'y': a * x + b}
 
         # set up the problem
         problem = InferenceProblem("Linear regression")

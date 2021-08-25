@@ -60,18 +60,18 @@ n_steps = 1000
 # ============================================================================ #
 
 class LinearModel(ModelTemplate):
-    def response(self, inp, sensor):
+    def __call__(self, inp):
         x = inp['x']
         a = inp['a']
         b = inp['b']
-        return a * x + b
+        return {'y': a * x + b}
 
 class QuadraticModel(ModelTemplate):
-    def response(self, inp, sensor):
+    def __call__(self, inp):
         x = inp['x']
         alpha = inp['alpha']
         beta = inp['beta']
-        return alpha * x**2 + beta
+        return {'y': alpha * x ** 2 + beta}
 
 # ============================================================================ #
 #                         Define the Inference Problem                         #
@@ -120,10 +120,10 @@ problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
 # data-generation process; normal noise with constant variance around each point
 np.random.seed(seed)
 x_test = np.linspace(0.0, 1.0, n_tests)
-y_linear_true = linear_model({'x': x_test}, {'a': a_true, 'b': b_true})['y']
+y_linear_true = linear_model({'x': x_test, 'a': a_true, 'b': b_true})['y']
 y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
 y_quadratic_true = quadratic_model(
-    {'x': x_test}, {'alpha': alpha_true, 'beta': b_true})['y']
+    {'x': x_test, 'alpha': alpha_true, 'beta': b_true})['y']
 y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
 
 # add the experimental data

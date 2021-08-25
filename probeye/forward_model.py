@@ -88,43 +88,23 @@ class ModelTemplate:
         self.input_sensors = input_sensors
         self.output_sensors = output_sensors
 
-    def __call__(self, exp_inp, prms):
+    def __call__(self, inp):
         """
-        Evaluates the model response for each output sensor and returns the
-        response dictionary.
-
-        Parameters
-        ----------
-        exp_inp : dict
-            The experimental input data of the model. The keys are names of the
-            experiment's input sensors, and the values are their numeric values.
-        prms : dict
-            The calibration parameters with their local names as keys and their
-            numeric values as values.
-
-        Returns
-        -------
-        response_dict : dict
-            Contains the model response (value) for each output sensor,
-            referenced by the output sensor's name (key).
-        """
-        inp = {**exp_inp, **prms}  # adds the two dictionaries
-        response_dict = {output_sensor.name: self.response(inp, output_sensor)
-                         for output_sensor in self.output_sensors}
-        return response_dict
-
-    def response(self, inp, sensor):
-        """
-        Evaluates the model for the given sensor. This method has to be
-        overwritten by the user's response method.
+        Evaluates the model response and provides computed results for all of
+        the model's output sensors. This method has to be overwritten by the
+        user.
 
         Parameters
         ----------
         inp : dict
             Contains both the exp. input data and the  model's parameters. The
             keys are the names, and the values are their numeric values.
-        sensor : object
-            The output sensor the response should be evaluated for.
+
+        Returns
+        -------
+        response_dict : dict
+            Contains the model response (value) for each output sensor,
+            referenced by the output sensor's name (key).
         """
         raise NotImplementedError(
             "Your model does not have a proper response-method yet. You need " +
@@ -159,11 +139,11 @@ class ModelTemplate:
             h = delta_x(prm_value)
             prms_left = cp.copy(prms)
             prms_left[prm_name] = prm_value - h
-            left = self(exp_inp, prms_left)
+            left = self({**exp_inp, **prms_left})
             # evaluate the model at prms_i + h
             prms_right = cp.copy(prms)
             prms_right[prm_name] = prm_value + h
-            right = self(exp_inp, prms_right)
+            right = self({**exp_inp, **prms_right})
             # evaluate the symmetric difference scheme
             jac[prm_name] = {}
             for sensor_name in left.keys():
@@ -171,46 +151,35 @@ class ModelTemplate:
                     (right[sensor_name] - left[sensor_name]) / (2 * h)
         return jac
 
-    def error_function(self, exp_inp, prms, output_sensor, ye):
+    def error_function(self, ym_dict, ye_dict):
         """
         Evaluates the model error for a single experiment. This function can be
         overwritten if another definition of the model error should be applied.
 
         Parameters
         ----------
-        exp_inp : dict
-            The experimental input data of the model. The keys are names of the
-            model's input sensors, and the values are their numeric values
-            measured in the experiment.
-        prms : dict
-            The calibration parameters with their local names as keys and their
-            numeric values as values.
-        output_sensor : obj[OutputSensor]
-            One of the model's output sensors the error should be evaluated for.
-        ye : float
-            The experimental output value for the given output_sensor.
+        ym_dict : dict
+            The computed values for the model's output sensors.
+        ye_dict : dict
+            The measured values for the model's output sensors.
 
         Returns
         -------
-        error : float
-            The computed model error for the given output sensor.
+        error_dict : dict
+            The computed model error for the model's output sensors.
         """
-
-        # compute the model prediction for the given sensor
-        ym = self(exp_inp, prms)[output_sensor.name]
-
-        # compute the error according to the defined error metric
-        if output_sensor.error_metric == 'abs':
-            error = ym - ye
-        elif output_sensor.error_metric == 'rel':
-            error = 1.0 - ym / ye
-        else:
-            raise ValueError(
-                f"Output sensor '{output_sensor.name}' has an unknown error "
-                f"metric: '{output_sensor.error_metric}'."
-            )
-
-        return error
+        # for each sensor, its own error metric is used to compute the error
+        error_dict = dict()
+        for os in self.output_sensors:
+            if os.error_metric == 'abs':
+                error_dict[os.name] = ym_dict[os.name] - ye_dict[os.name]
+            elif os.error_metric == 'rel':
+                error_dict[os.name] = 1.0 - ym_dict[os.name] / ye_dict[os.name]
+            else:
+                raise ValueError(
+                    f"Output sensor '{os.name}' has an unknown error "
+                    f"metric: '{os.error_metric}'.")
+        return error_dict
 
     def error(self, prms, experiments):
         """
@@ -234,18 +203,20 @@ class ModelTemplate:
             of numbers representing the model errors as values.
         """
         # prepare the dictionary keys
-        model_error_dict = {output_sensor.name: np.array([])
-                            for output_sensor in self.output_sensors}
+        model_error_dict = {os.name: np.array([]) for os in self.output_sensors}
 
         # fill the dictionary with model error vectors
-        for output_sensor in self.output_sensors:
-            for exp_dict in experiments.values():
-                # prepare the model input values from the experimental data
-                exp_inp = {input_sensor.name: exp_dict[input_sensor.name]
-                           for input_sensor in self.input_sensors}
-                ye = exp_dict[output_sensor.name]
-                me = self.error_function(exp_inp, prms, output_sensor, ye)
-                model_error_dict[output_sensor.name] = np.append(
-                    model_error_dict[output_sensor.name], me)
+        for exp_dict in experiments.values():
+            # prepare the model input values from the experimental data
+            exp_inp = {input_sensor.name: exp_dict[input_sensor.name]
+                       for input_sensor in self.input_sensors}
+            inp = {**exp_inp, **prms}  # adds the two dictionaries
+            ym_dict = self(inp)
+            ye_dict = {output_sensor.name: exp_dict[output_sensor.name]
+                       for output_sensor in self.output_sensors}
+            me_dict = self.error_function(ym_dict, ye_dict)
+            model_error_dict =\
+                {os.name: np.append(model_error_dict[os.name], me_dict[os.name])
+                 for os in self.output_sensors}
 
         return model_error_dict

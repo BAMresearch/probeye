@@ -11,17 +11,17 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ModelTemplate
         class ForwardModel(ModelTemplate):
-            def response(self, inp, sensor):
+            def __call__(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
-                return a * x**2 + b
+                return {'y': a * x ** 2 + b}
 
         # check the __call__-method
         forward_model = ForwardModel(
             ['a', 'b'], [InputSensor('x')], [OutputSensor('y')])
         prms = {'a': 1, 'b': 2}
-        computed_result = forward_model({'x': 1.0}, prms)
+        computed_result = forward_model({**{'x': 1.0}, **prms})
         expected_result = {'y': 3.0}
         self.assertEqual(computed_result, expected_result)
 
@@ -57,19 +57,22 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ModelTemplate
         class ForwardModel(ModelTemplate):
-            def response(self, inp, sensor):
+            def __call__(self, inp):
                 x1 = inp['x1']
                 x2 = inp['x2']
                 a = inp['a']
                 b = inp['b']
-                return a * x1**2 + b * x2 + sensor.offset
+                response_dict = dict()
+                for os in self.output_sensors:
+                    response_dict[os.name] = a * x1**2 + b * x2 + os.offset
+                return response_dict
 
         # check the __call__-method
         is1, is2 = InputSensor('x1'), InputSensor('x2')
         os1, os2 = OutputSensorOffset('y1', 0.1), OutputSensorOffset('y2', -0.2)
         forward_model = ForwardModel(['a', 'b'], [is1, is2], [os1, os2])
         prms = {'a': 1, 'b': 2}
-        computed_result = forward_model({'x1': 2.0, 'x2': 3.0}, prms)
+        computed_result = forward_model({**{'x1': 2.0, 'x2': 3.0}, **prms})
         expected_result = {'y1': 10.1, 'y2': 9.8}
         self.assertEqual(computed_result, expected_result)
 

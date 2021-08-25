@@ -52,11 +52,11 @@ n_steps = 1000
 # ============================================================================ #
 
 class LinearModel(ModelTemplate):
-    def response(self, inp, sensor):
+    def __call__(self, inp):
         x = inp['x']
         m = inp['m']
         b = inp['b']
-        return m * x + b
+        return {'y': m * x + b}
 
 # ============================================================================ #
 #                         Define the Inference Problem                         #
@@ -114,7 +114,7 @@ problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
 # data-generation process; normal noise with constant variance around each point
 np.random.seed(seed)
 x_test = np.linspace(0.0, 1.0, n_tests)
-y_true = linear_model({'x': x_test}, {'m': a_true, 'b': b_true})['y']
+y_true = linear_model({'x': x_test, 'm': a_true, 'b': b_true})['y']
 y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
 # add the experimental data
