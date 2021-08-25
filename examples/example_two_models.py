@@ -105,11 +105,10 @@ problem.add_parameter('sigma', 'noise',
 # add the forward model to the problem
 inp_1 = InputSensor("x")
 out_1 = OutputSensor("y")
-problem.add_forward_model(
-    "LinearModel", LinearModel(['a', 'b'], [inp_1], [out_1]))
-problem.add_forward_model(
-    "QuadraticModel", QuadraticModel(['alpha', {'b': 'beta'}],
-                                     [inp_1], [out_1]))
+linear_model = LinearModel(['a', 'b'], [inp_1], [out_1])
+problem.add_forward_model("LinearModel", linear_model)
+quadratic_model = QuadraticModel(['alpha', {'b': 'beta'}], [inp_1], [out_1])
+problem.add_forward_model("QuadraticModel", quadratic_model)
 
 # add the noise model to the problem
 problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
@@ -121,14 +120,11 @@ problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
 # data-generation process; normal noise with constant variance around each point
 np.random.seed(seed)
 x_test = np.linspace(0.0, 1.0, n_tests)
-y_linear_true = a_true * x_test + b_true
-y_quadratic_true = alpha_true * x_test**2 + b_true
-y_test_linear = np.zeros(n_tests)
-y_test_quadratic = np.zeros(n_tests)
-for i in range(n_tests):
-    y_test_linear[i] = np.random.normal(loc=y_linear_true[i], scale=sigma_true)
-    y_test_quadratic[i] = np.random.normal(loc=y_quadratic_true[i],
-                                           scale=sigma_true)
+y_linear_true = linear_model({'x': x_test}, {'a': a_true, 'b': b_true})['y']
+y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
+y_quadratic_true = quadratic_model(
+    {'x': x_test}, {'alpha': alpha_true, 'beta': b_true})['y']
+y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
 
 # add the experimental data
 problem.add_experiment(f'TestSeries_linear',

@@ -90,8 +90,8 @@ problem.change_parameter_role('loc_a', new_tex=r"$\mu_a^\mathrm{prior}$",
 # add the forward model to the problem
 inp_1 = InputSensor("x")
 out_1 = OutputSensor("y")
-problem.add_forward_model(
-    "LinearModel", LinearModel(['a', 'b'], [inp_1], [out_1]))
+linear_model = LinearModel(['a', 'b'], [inp_1], [out_1])
+problem.add_forward_model("LinearModel", linear_model)
 
 # add the noise model to the problem
 problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
@@ -103,10 +103,8 @@ problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
 # data-generation process; normal noise with constant variance around each point
 np.random.seed(seed)
 x_test = np.linspace(0.0, 1.0, n_tests)
-y_true = a_true * x_test + b_true
-y_test = np.zeros(n_tests)
-for i in range(n_tests):
-    y_test[i] = np.random.normal(loc=y_true[i], scale=sigma_noise)
+y_true = linear_model({'x': x_test}, {'a': a_true, 'b': b_true})['y']
+y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
 # add the experimental data
 problem.add_experiment(f'TestSeries_1', sensors={'x': x_test, 'y': y_test},

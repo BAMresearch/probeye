@@ -5,3 +5,5 @@ sphinx
 sphinx_rtd_theme
 matplotlib
 taralli@git+https://gitlab.com/tno-bim/taralli.git@master#egg=taralli
+tabulate
+setuptools

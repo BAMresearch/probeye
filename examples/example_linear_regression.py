@@ -114,10 +114,8 @@ problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
 # data-generation process; normal noise with constant variance around each point
 np.random.seed(seed)
 x_test = np.linspace(0.0, 1.0, n_tests)
-y_true = a_true * x_test + b_true
-y_test = np.zeros(n_tests)
-for i in range(n_tests):
-    y_test[i] = np.random.normal(loc=y_true[i], scale=sigma_noise)
+y_true = linear_model({'x': x_test}, {'m': a_true, 'b': b_true})['y']
+y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
 # add the experimental data
 problem.add_experiment(f'TestSeries_1', sensors={'x': x_test, 'y': y_test},

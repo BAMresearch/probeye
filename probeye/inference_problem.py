@@ -1,8 +1,9 @@
 # standard library imports
-from copy import deepcopy as dc
+import copy
 
 # third party imports
 import numpy as np
+from tabulate import tabulate
 
 # local imports
 from probeye.parameter import Parameters, ParameterProperties
@@ -10,7 +11,9 @@ from probeye.priors import PriorNormal
 from probeye.priors import PriorLognormal
 from probeye.priors import PriorUniform
 from probeye.priors import PriorWeibull
-from probeye.subroutines import underlined_string, tcs
+from probeye.subroutines import underlined_string, titled_table
+from probeye.subroutines import simplified_list_string, simplified_dict_string
+from probeye.subroutines import unvectorize_dict_values
 
 
 class InferenceProblem:
@@ -98,7 +101,7 @@ class InferenceProblem:
         """Provides n_constant_prms attribute."""
         return self._parameters.n_constant_prms
 
-    def info(self, print_it=True, include_experiments=False):
+    def info(self, print_it=True, include_experiments=False, tablefmt="presto"):
         """
         Either prints the problem definition to the console (print_it=True) or
         just returns the generated string without printing it (print_it=False).
@@ -113,6 +116,9 @@ class InferenceProblem:
             will be included in the printout. Depending on the number of defined
             experiments, this might result in a long additional printout, which
             is why this is set to False (no experiment printout) by default.
+        tablefmt : string
+            An argument for the tabulate function defining the style of the
+            generated table. Check out tabulate's documentation for more info.
 
         Returns
         -------
@@ -124,41 +130,25 @@ class InferenceProblem:
         title_string = underlined_string(self.name, n_empty_start=2)
 
         # list the forward models that have been defined within the problem
-        fwd_string = underlined_string("Forward models", symbol="-")
-        w = len(max(self._forward_models.keys(), key=len)) + 2
-        for name, fwd_model in self._forward_models.items():
-            fwd_string += tcs(name, f"{fwd_model.prms_def}", col_width=w)
-
-        # provide a parameter overview sorted by their roles and types
-        n_prms = len(self._parameters.keys())
-        prms_string = underlined_string("Parameter overview", symbol="-")
-        prms_string += f"Number of parameters:   {n_prms}\n"
-        prms_roles_types = {'model': [], 'prior': [], 'noise': [],
-                            'calibration': [], 'const': []}
-        for prm_name, parameter in self._parameters.items():
-            prms_roles_types[parameter.role].append(prm_name)
-            prms_roles_types[parameter.type].append(prm_name)
-        for group, prms in prms_roles_types.items():
-            prms_string += tcs(f'{group.capitalize()} parameters', prms)
-
-        # provide an overview over the 'const'-parameter's values
-        const_prms_str = underlined_string("Constant parameters", symbol="-")
-        w = len(max(prms_roles_types['const'], key=len)) + 2
-        for prm_name in prms_roles_types['const']:
-            prm_value = self._parameters[prm_name].value
-            const_prms_str += tcs(prm_name, f"{prm_value:.2f}", col_width=w)
-
-        # additional information on the problem's parameters
-        prms_info_str = underlined_string("Parameter explanations", symbol="-")
-        w = len(max(self._parameters.keys(), key=len)) + 2
-        for prm_name, parameter in self._parameters.items():
-            prms_info_str += tcs(prm_name, f"{parameter.info}", col_width=w)
+        rows = [(name, simplified_list_string([*model.prms_def.keys()]),
+                simplified_list_string([*model.prms_def.values()]))
+                for name, model in self._forward_models.items()]
+        headers = ["Model name", "Global parameters", "Local parameters"]
+        fwd_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        fwd_string = titled_table('Forward models', fwd_table)
 
         # include information on the defined priors
-        prior_str = underlined_string("Priors defined", symbol="-")
-        w = len(max(self._priors.keys(), key=len)) + 2
-        for prior_name, prior_obj in self._priors.items():
-            prior_str += tcs(prior_name, str(prior_obj), col_width=w)
+        rows = [(name, simplified_list_string([*prior.prms_def.keys()]),
+                 simplified_list_string([*prior.prms_def.values()]))
+                for name, prior in self._priors.items()]
+        headers = ["Prior name", "Global parameters", "Local parameters"]
+        prior_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        prior_str = titled_table('Priors', prior_table)
+
+        # provide various information on the problem's parameters
+        prm_string = self._parameters.parameter_overview(tablefmt=tablefmt)
+        prm_string += self._parameters.parameter_explanations(tablefmt=tablefmt)
+        prm_string += self._parameters.const_parameter_values(tablefmt=tablefmt)
 
         # include the information on the theta interpretation
         theta_string = "\nTheta interpretation"
@@ -166,16 +156,20 @@ class InferenceProblem:
 
         # print information on added experiments if requested
         if include_experiments:
-            w = len(max(self._experiments.keys(), key=len)) + 2
-            exp_str = underlined_string("Added experiments", symbol="-")
-            for exp_name, exp_dict in self._experiments.items():
-                exp_str += tcs(exp_name, str(exp_dict), col_width=w)
+            rows = []
+            for name, exp_dict in self._experiments.items():
+                dict_atoms = unvectorize_dict_values(exp_dict['sensors'])
+                for dict_atom in dict_atoms:
+                    rows.append((name, simplified_dict_string(dict_atom)))
+            headers = ["Name", "Sensor values"]
+            exp_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+            exp_str = titled_table('Added experiments', exp_table)
         else:
             exp_str = ""
 
         # concatenate the string and return it
-        full_string = title_string + fwd_string + prms_string + const_prms_str
-        full_string += prms_info_str + prior_str + theta_string + exp_str
+        full_string = title_string + fwd_string + prior_str + prm_string
+        full_string += theta_string + exp_str
 
         # either print or return the string
         if print_it:
@@ -471,7 +465,7 @@ class InferenceProblem:
             prior dictionary self._priors.
         """
         prior_class = self._prior_classes[prior_type]
-        self._priors[name] = dc(prior_class(ref_prm, prms_def, name))
+        self._priors[name] = copy.deepcopy(prior_class(ref_prm, prms_def, name))
         return self._priors[name]
 
     def add_prior_class(self, name, prior_class):

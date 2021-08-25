@@ -78,7 +78,7 @@ class PriorNormal(PriorTemplate):
         x = prms[self.ref_prm]
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return getattr(stats.norm, method)(x, loc, scale)
+        return getattr(stats.norm, method)(x, loc=loc, scale=scale)
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -111,7 +111,7 @@ class PriorLognormal(PriorTemplate):
         """Check out the explanations for PriorTemplate given above."""
         super().__init__(ref_prm, prms_def, name, "log-normal distribution")
 
-    def __call__(self, prms, method):
+    def __call__(self, prms, method, shape=1):
         """
         Evaluates stats.lognorm.<method>(x, loc, scale). This function is mostly
         used with method='logpdf' during the sampling procedure.
@@ -122,6 +122,10 @@ class PriorLognormal(PriorTemplate):
             Contains the prior's parameters as keys and their values as values.
         method : string
             The method of stats.lognorm to be evaluated (e.g. 'pdf', 'logpdf').
+        shape : float or int
+            Scipy uses this shape parameter, which is not considered as a prior
+            parameter here. So, it is set to 1, which results in the standard
+            version of the lognormal distribution.
 
         Returns
         -------
@@ -131,7 +135,7 @@ class PriorLognormal(PriorTemplate):
         x = prms[self.ref_prm]
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return getattr(stats.lognorm, method)(x, loc, scale)
+        return getattr(stats.lognorm, method)(x, shape, loc=loc, scale=scale)
 
     def generate_samples(self, prms, size, seed=None, shape=1):
         """
