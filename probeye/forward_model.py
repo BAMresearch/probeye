@@ -29,26 +29,18 @@ class OutputSensor:
     """
     Base class for an output sensor of the forward model. Each model response
     of the forward model needs to be associated with an output sensor. At least
-    such an object must have a name and an error_metric, but can also have
-    additional attributes such as its position or its temperature. In these
-    cases the user has to define his own output sensor class, which should be
-    derived from this one.
+    such an object must have a name, but can also have additional attributes
+    such as its position or its temperature. In these cases the user has to
+    define his own output sensor class, which should be derived from this one.
     """
-    def __init__(self, name, error_metric='abs'):
+    def __init__(self, name):
         """
         Parameters
         ----------
         name : string
             The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
-        error_metric : string, optional
-            Either 'abs' (absolute) or 'rel' (relative). Defines if the model
-            error with respect to this sensor should be measured in absolute or
-            relative terms. In the former case ('abs'), the error is defined as
-            (model prediction - measured value). In the latter case ('rel') the
-            error is defined as (1 - (model prediction / measured value)).
         """
         self.name = name
-        self.error_metric = error_metric
 
 
 class ModelTemplate:
@@ -153,8 +145,12 @@ class ModelTemplate:
 
     def error_function(self, ym_dict, ye_dict):
         """
-        Evaluates the model error for a single experiment. This function can be
-        overwritten if another definition of the model error should be applied.
+        Evaluates the model error (a metric for the deviation of the forward
+        model's computed result with respect to the measured data from the
+        experiments) for one experiment. The default metric reflected below is a
+        simple sensor-by-sensor computation of an additive model error. This
+        function should be overwritten if another definition of the model error
+        should be applied.
 
         Parameters
         ----------
@@ -169,16 +165,8 @@ class ModelTemplate:
             The computed model error for the model's output sensors.
         """
         # for each sensor, its own error metric is used to compute the error
-        error_dict = dict()
-        for os in self.output_sensors:
-            if os.error_metric == 'abs':
-                error_dict[os.name] = ym_dict[os.name] - ye_dict[os.name]
-            elif os.error_metric == 'rel':
-                error_dict[os.name] = 1.0 - ym_dict[os.name] / ye_dict[os.name]
-            else:
-                raise ValueError(
-                    f"Output sensor '{os.name}' has an unknown error "
-                    f"metric: '{os.error_metric}'.")
+        error_dict = {os.name: ym_dict[os.name] - ye_dict[os.name]
+                      for os in self.output_sensors}
         return error_dict
 
     def error(self, prms, experiments):
