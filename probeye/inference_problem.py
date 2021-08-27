@@ -2,7 +2,6 @@
 import copy
 
 # third party imports
-import numpy as np
 from tabulate import tabulate
 
 # local imports
@@ -100,6 +99,21 @@ class InferenceProblem:
     def n_constant_prms(self):
         """Provides n_constant_prms attribute."""
         return self._parameters.n_constant_prms
+
+    @property
+    def parameters(self):
+        """Access self._parameters from outside via self.parameters."""
+        return self._parameters
+
+    @property
+    def priors(self):
+        """Access self._priors from outside via self.priors."""
+        return self._priors
+
+    @property
+    def noise_models(self):
+        """Access self._noise_models from outside via self.noise_models."""
+        return self._noise_models
 
     def info(self, print_it=True, include_experiments=False, tablefmt="presto"):
         """
@@ -839,90 +853,3 @@ class InferenceProblem:
         # add the given noise model to the internal noise model dictionary under
         # the given name of the output sensor(s)
         self._noise_models[output_sensor_name] = noise_model
-
-    def logprior(self, theta):
-        """
-        Evaluates the log-prior function of the problem at theta.
-
-        Parameters
-        ----------
-        theta : array_like
-            A numeric vector for which the log-likelihood function should be
-            evaluated. Which parameters these numbers refer to can be checked
-            by calling self.theta_explanation() once the problem is set up.
-
-        Returns
-        -------
-        lp : float
-            The evaluated log-prior function for the given theta-vector.
-        """
-        lp = 0.0
-        for prior in self._priors.values():
-            prms = self.get_parameters(theta, prior.prms_def)
-            lp += prior(prms, 'logpdf')
-        return lp
-
-    def sample_from_prior(self, prm_name, size):
-        """
-        Generates random samples from a parameter's prior distribution and
-        returns the generated samples.
-
-        Parameters
-        ----------
-        prm_name : string
-            The name of the parameter the prior is associated with.
-        size : int
-            The number of random samples to be drawn.
-
-        Returns
-        -------
-        numpy.ndarray
-            The generated samples.
-        """
-        prior = self._priors[self._parameters[prm_name].prior.name]
-        # check for prior-priors; if a prior parameter is a calibration
-        # parameter and not a constant, one first samples from the prior
-        # parameter's prior distribution, and then takes the mean of those
-        # samples to sample from the first prior distribution; this procedure
-        # is recursive, so that (in principle) one could also define priors of
-        # the prior's prior parameters and so forth
-        theta_aux = [0] * self._parameters.n_calibration_prms
-        for prior_prm_name in prior.prms_def_no_ref.keys():
-            if self._parameters[prior_prm_name].role == 'calibration':
-                samples = self.sample_from_prior(prior_prm_name, size)
-                theta_aux[self._parameters[prior_prm_name].index] =\
-                    np.mean(samples)
-        prms = self.get_parameters(theta_aux, prior.prms_def_no_ref)
-        return prior.generate_samples(prms, size)
-
-    def loglike(self, theta):
-        """
-        Evaluates the log-likelihood function of the problem at theta.
-
-        Parameters
-        ----------
-        theta : array_like
-            A numeric vector for which the log-likelihood function should be
-            evaluated. Which parameters these numbers refer to can be checked
-            by calling self.theta_explanation() once the problem is set up.
-
-        Returns
-        -------
-        ll : float
-            The evaluated log-likelihood function for the given theta-vector.
-        """
-
-        # evaluate the model error for each defined forward model and each
-        # output sensor in this/those forward model(s)
-        model_error_dict = self.evaluate_model_error(theta)
-
-        # compute the contribution to the log-likelihood function for the
-        # model error of forward model and output sensor, and sum it all up
-        ll = 0.0
-        for me_dict in model_error_dict.values():
-            for sensor, me_vector in me_dict.items():
-                noise_model = self._noise_models[sensor]
-                prms_noise = self.get_parameters(theta, noise_model.prms_def)
-                ll += noise_model.loglike_contribution(me_vector, prms_noise)
-
-        return ll
