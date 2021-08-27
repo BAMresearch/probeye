@@ -89,7 +89,7 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
         theta_aux = [0] * problem.parameters.n_calibration_prms
         for prior_prm_name in prior.prms_def_no_ref.keys():
             if problem.parameters[prior_prm_name].role == 'calibration':
-                samples = problem.sample_from_prior(prior_prm_name, size)
+                samples = sample_from_prior(prior_prm_name, size)
                 theta_aux[problem.parameters[prior_prm_name].index] =\
                     np.mean(samples)
         prms = problem.get_parameters(theta_aux, prior.prms_def_no_ref)
