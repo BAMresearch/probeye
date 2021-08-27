@@ -3,11 +3,11 @@ import unittest
 from scipy import stats
 
 # local imports
-from probeye.priors import PriorTemplate
-from probeye.priors import PriorNormal
-from probeye.priors import PriorLognormal
-from probeye.priors import PriorUniform
-from probeye.priors import PriorWeibull
+from probeye.definition.prior import PriorTemplate
+from probeye.definition.prior import PriorNormal
+from probeye.definition.prior import PriorLognormal
+from probeye.definition.prior import PriorUniform
+from probeye.definition.prior import PriorWeibull
 
 
 class TestProblem(unittest.TestCase):

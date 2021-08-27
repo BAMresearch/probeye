@@ -18,11 +18,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # local imports
-from probeye.forward_model import ModelTemplate
-from probeye.forward_model import Sensor
-from probeye.noise import NormalNoiseZeroMean
-from probeye.inference_problem import InferenceProblem
-from probeye.solver.taralli import taralli_solver
+from probeye.definition.forward_model import ModelTemplate
+from probeye.definition.forward_model import Sensor
+from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.noise_model import NormalNoiseZeroMean
+from probeye.inference.taralli_.solver import taralli_solver
 
 
 class TestProblem(unittest.TestCase):

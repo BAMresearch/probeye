@@ -2,8 +2,8 @@
 import unittest
 
 # local imports
-from probeye.parameter import Parameters
-from probeye.parameter import ParameterProperties
+from probeye.definition.parameter import Parameters
+from probeye.definition.parameter import ParameterProperties
 
 
 class TestProblem(unittest.TestCase):

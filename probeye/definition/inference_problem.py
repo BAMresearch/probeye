@@ -5,11 +5,11 @@ import copy
 from tabulate import tabulate
 
 # local imports
-from probeye.parameter import Parameters, ParameterProperties
-from probeye.priors import PriorNormal
-from probeye.priors import PriorLognormal
-from probeye.priors import PriorUniform
-from probeye.priors import PriorWeibull
+from probeye.definition.parameter import Parameters, ParameterProperties
+from probeye.definition.prior import PriorNormal
+from probeye.definition.prior import PriorLognormal
+from probeye.definition.prior import PriorUniform
+from probeye.definition.prior import PriorWeibull
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values

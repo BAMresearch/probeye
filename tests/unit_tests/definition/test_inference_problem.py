@@ -2,7 +2,7 @@
 import unittest
 
 # local imports
-from probeye.inference_problem import InferenceProblem
+from probeye.definition.inference_problem import InferenceProblem
 
 
 class TestProblem(unittest.TestCase):

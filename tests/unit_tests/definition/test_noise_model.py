@@ -4,8 +4,8 @@ import numpy as np
 from math import log, pi
 
 # local imports
-from probeye.noise import NoiseTemplate
-from probeye.noise import NormalNoiseZeroMean
+from probeye.definition.noise_model import NoiseTemplate
+from probeye.definition.noise_model import NormalNoiseZeroMean
 
 
 class TestProblem(unittest.TestCase):

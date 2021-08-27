@@ -1,2 +1,3 @@
 # subpackage imports
-from probeye import solver
+from probeye import definition
+from probeye import inference
