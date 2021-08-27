@@ -158,7 +158,7 @@ class InferenceProblem:
         if include_experiments:
             rows = []
             for name, exp_dict in self._experiments.items():
-                dict_atoms = unvectorize_dict_values(exp_dict['sensors'])
+                dict_atoms = unvectorize_dict_values(exp_dict['sensor_values'])
                 for dict_atom in dict_atoms:
                     rows.append((name, simplified_dict_string(dict_atom)))
             headers = ["Name", "Sensor values"]
@@ -548,7 +548,7 @@ class InferenceProblem:
         assert len(idx_list) == self._parameters.n_calibration_prms
         assert sorted(idx_list) == list(range(len(idx_list)))
 
-    def add_experiment(self, exp_name, sensors=None, fwd_model_name=None):
+    def add_experiment(self, exp_name, sensor_values=None, fwd_model_name=None):
         """
         Adds a single experiment to the inference problem. Here, an experiment
         is defined as one or more sensors (note that the experiment does not
@@ -562,16 +562,16 @@ class InferenceProblem:
             The name of the experiment, e.g. "Exp_20May.12". If an experiment
             with a similar name has already been added, it will be overwritten
             and a warning will be thrown.
-        sensors : dict
+        sensor_values : dict
             The keys are the sensor's names, the values are the measured values.
         fwd_model_name : string
             Name of the forward model this experiment refers to.
         """
 
         # check all keyword arguments are given
-        if sensors is None:
+        if sensor_values is None:
             raise RuntimeError(
-                f"No sensors given!"
+                f"No sensor_values given!"
             )
         if fwd_model_name is None:
             raise RuntimeError(
@@ -591,7 +591,7 @@ class InferenceProblem:
                   f" and will be overwritten!")
 
         # add the experiment to the central dictionary
-        self._experiments[exp_name] = {'sensors': sensors,
+        self._experiments[exp_name] = {'sensor_values': sensor_values,
                                        'forward_model': fwd_model_name}
 
     def get_parameters(self, theta, prm_def):
@@ -647,8 +647,8 @@ class InferenceProblem:
         Returns
         -------
         relevant_experiments : dict
-            The keys are the experiment names, and the values are the 'sensors'
-            dictionaries as defined by self.add_experiment.
+            The keys are the experiment names, and the values are the
+            'sensor_values' dictionaries as defined by self.add_experiment.
         """
 
         # if experiments is not further specified it is assumed that all given
@@ -660,7 +660,7 @@ class InferenceProblem:
         relevant_experiments = {}
         for exp_name, experiment in experiments.items():
             if experiment['forward_model'] == forward_model_name:
-                relevant_experiments[exp_name] = experiment['sensors']
+                relevant_experiments[exp_name] = experiment['sensor_values']
 
         return relevant_experiments
 

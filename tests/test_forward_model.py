@@ -3,7 +3,7 @@ import unittest
 
 # local imports
 from probeye.forward_model import ModelTemplate
-from probeye.forward_model import InputSensor, OutputSensor
+from probeye.forward_model import Sensor
 
 class TestProblem(unittest.TestCase):
 
@@ -19,7 +19,7 @@ class TestProblem(unittest.TestCase):
 
         # check the __call__-method
         forward_model = ForwardModel(
-            ['a', 'b'], [InputSensor('x')], [OutputSensor('y')])
+            ['a', 'b'], [Sensor('x')], [Sensor('y')])
         prms = {'a': 1, 'b': 2}
         computed_result = forward_model({**{'x': 1.0}, **prms})
         expected_result = {'y': 3.0}
@@ -27,7 +27,7 @@ class TestProblem(unittest.TestCase):
 
         # check the jacobian-method
         forward_model = ForwardModel(
-            ['a', 'b'], [InputSensor('x')], [OutputSensor('y')])
+            ['a', 'b'], [Sensor('x')], [Sensor('y')])
         prms = {'a': 1, 'b': 2}
         computed_result = forward_model.jacobian({'x': 3}, prms)
         expected_result = {'a': {'y': 9}, 'b': {'y': 1}}
@@ -37,7 +37,7 @@ class TestProblem(unittest.TestCase):
 
         # check the error/error_function-method
         forward_model = ForwardModel(
-            ['a', 'b'], [InputSensor('x')], [OutputSensor('y')])
+            ['a', 'b'], [Sensor('x')], [Sensor('y')])
         prms = {'a': 1, 'b': 2}
         experiments = {'Experiment_1': {'x': 1, 'y': 3.1},
                        'Experiment_2': {'x': 2, 'y': 5.8}}
@@ -50,7 +50,7 @@ class TestProblem(unittest.TestCase):
     def test_model_template_multiple_sensors(self):
 
         # define an output sensor with an offset attribute
-        class OutputSensorOffset(OutputSensor):
+        class OutputSensorOffset(Sensor):
             def __init__(self, name, offset):
                 super().__init__(name)
                 self.offset = offset
@@ -68,7 +68,7 @@ class TestProblem(unittest.TestCase):
                 return response_dict
 
         # check the __call__-method
-        is1, is2 = InputSensor('x1'), InputSensor('x2')
+        is1, is2 = Sensor('x1'), Sensor('x2')
         os1, os2 = OutputSensorOffset('y1', 0.1), OutputSensorOffset('y2', -0.2)
         forward_model = ForwardModel(['a', 'b'], [is1, is2], [os1, os2])
         prms = {'a': 1, 'b': 2}
@@ -77,7 +77,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(computed_result, expected_result)
 
         # check the jacobian-method
-        is1, is2 = InputSensor('x1'), InputSensor('x2')
+        is1, is2 = Sensor('x1'), Sensor('x2')
         os1, os2 = OutputSensorOffset('y1', 0.1), OutputSensorOffset('y2', -0.2)
         forward_model = ForwardModel(['a', 'b'], [is1, is2], [os1, os2])
         prms = {'a': 1, 'b': 2}
@@ -89,7 +89,7 @@ class TestProblem(unittest.TestCase):
                                        expected_result[prm_name][os_name])
 
         # check the error/error_function-method
-        is1, is2 = InputSensor('x1'), InputSensor('x2')
+        is1, is2 = Sensor('x1'), Sensor('x2')
         os1, os2 = OutputSensorOffset('y1', 0.1), OutputSensorOffset('y2', -0.2)
         forward_model = ForwardModel(['a', 'b'], [is1, is2], [os1, os2])
         prms = {'a': 1, 'b': 2}

@@ -10,28 +10,11 @@ from probeye.subroutines import len_or_one
 from probeye.subroutines import list2dict
 
 
-class InputSensor:
+class Sensor:
     """
-    Base class for an input sensor of the forward model. Essentially just a
-    class with a 'name' attribute.
-    """
-    def __init__(self, name):
-        """
-        Parameters
-        ----------
-        name : string
-            The name of the sensor, e.g. 'Time'.
-        """
-        self.name = name
-
-
-class OutputSensor:
-    """
-    Base class for an output sensor of the forward model. Each model response
-    of the forward model needs to be associated with an output sensor. At least
-    such an object must have a name, but can also have additional attributes
-    such as its position or its temperature. In these cases the user has to
-    define his own output sensor class, which should be derived from this one.
+    Base class for a sensor of the forward model. Essentially just a class with
+    a 'name' attribute. Additional attributes (such as sensor position, its
+    local temperature, etc.) can be added by the user.
     """
     def __init__(self, name):
         """
@@ -155,14 +138,14 @@ class ModelTemplate:
         Parameters
         ----------
         ym_dict : dict
-            The computed values for the model's output sensors.
+            The computed values for the model's output sensor_values.
         ye_dict : dict
-            The measured values for the model's output sensors.
+            The measured values for the model's output sensor_values.
 
         Returns
         -------
         error_dict : dict
-            The computed model error for the model's output sensors.
+            The computed model error for the model's output sensor_values.
         """
         # for each sensor, its own error metric is used to compute the error
         error_dict = {os.name: ym_dict[os.name] - ye_dict[os.name]
@@ -172,7 +155,7 @@ class ModelTemplate:
     def error(self, prms, experiments):
         """
         Computes the model error for all given experiments and returns them in
-        a dictionary that is sorted by output sensors.
+        a dictionary that is sorted by output sensor_values.
 
         Parameters
         ----------

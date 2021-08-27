@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 
 # local imports
 from probeye.forward_model import ModelTemplate
-from probeye.forward_model import InputSensor, OutputSensor
+from probeye.forward_model import Sensor
 from probeye.noise import NormalNoiseZeroMean
 from probeye.inference_problem import InferenceProblem
 from probeye.solver.taralli import taralli_solver
@@ -103,8 +103,8 @@ problem.add_parameter('sigma', 'noise',
                                          'high': high_sigma}))
 
 # add the forward model to the problem
-inp_1 = InputSensor("x")
-out_1 = OutputSensor("y")
+inp_1 = Sensor("x")
+out_1 = Sensor("y")
 linear_model = LinearModel(['a', 'b'], [inp_1], [out_1])
 problem.add_forward_model("LinearModel", linear_model)
 quadratic_model = QuadraticModel(['alpha', {'b': 'beta'}], [inp_1], [out_1])
@@ -128,10 +128,10 @@ y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
 
 # add the experimental data
 problem.add_experiment(f'TestSeries_linear',
-                       sensors={'x': x_test, 'y': y_test_linear},
+                       sensor_values={'x': x_test, 'y': y_test_linear},
                        fwd_model_name="LinearModel")
 problem.add_experiment(f'TestSeries_quadratic',
-                       sensors={'x': x_test, 'y': y_test_quadratic},
+                       sensor_values={'x': x_test, 'y': y_test_quadratic},
                        fwd_model_name="QuadraticModel")
 
 # give problem overview

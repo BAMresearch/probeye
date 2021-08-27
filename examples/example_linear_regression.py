@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 
 # local imports
 from probeye.forward_model import ModelTemplate
-from probeye.forward_model import InputSensor, OutputSensor
+from probeye.forward_model import Sensor
 from probeye.noise import NormalNoiseZeroMean
 from probeye.inference_problem import InferenceProblem
 from probeye.solver.taralli import taralli_solver
@@ -99,8 +99,8 @@ problem.add_parameter('sigma', 'noise',
 # notation {<global parameter name>: <local parameter name>} but can instead
 # just write the parameter's (global=local) name, like it is done with the
 # forward model's parameter 'b' below
-inp_1 = InputSensor("x")
-out_1 = OutputSensor("y")
+inp_1 = Sensor("x")
+out_1 = Sensor("y")
 linear_model = LinearModel([{'a': 'm'}, 'b'], [inp_1], [out_1])
 problem.add_forward_model("LinearModel", linear_model)
 
@@ -118,8 +118,8 @@ y_true = linear_model({'x': x_test, 'm': a_true, 'b': b_true})['y']
 y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
 # add the experimental data
-problem.add_experiment(f'TestSeries_1', sensors={'x': x_test, 'y': y_test},
-                       fwd_model_name="LinearModel")
+problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
+                       sensor_values={'x': x_test, 'y': y_test})
 
 # give problem overview
 problem.info()

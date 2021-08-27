@@ -17,7 +17,7 @@ import numpy as np
 
 # local imports
 from probeye.forward_model import ModelTemplate
-from probeye.forward_model import InputSensor, OutputSensor
+from probeye.forward_model import Sensor
 from probeye.inference_problem import InferenceProblem
 from probeye.noise import NormalNoiseZeroMean
 from probeye.solver.taralli import taralli_solver
@@ -64,7 +64,7 @@ n_steps = 2000
 #                           Define the Forward Model                           #
 # ============================================================================ #
 
-class PositionSensor(OutputSensor):
+class PositionSensor(Sensor):
     def __init__(self, name, position):
         super().__init__(name)
         self.position = position
@@ -109,7 +109,7 @@ problem.add_parameter('sigma_3', 'noise',
                       tex=r"$\sigma_3$")
 
 # add the forward model to the problem
-inp_1 = InputSensor("time")
+inp_1 = Sensor("time")
 out_1 = PositionSensor("S1", pos_s1)
 out_2 = PositionSensor("S2", pos_s2)
 out_3 = PositionSensor("S3", pos_s3)
@@ -140,7 +140,7 @@ def generate_data(n_time_steps, n=None):
                        np.random.normal(0.0, sd_dict[key], size=n_time_steps)
     sensors['time'] = time_steps
     problem.add_experiment(f'TestSeries_{n}',
-                           sensors=sensors,
+                           sensor_values=sensors,
                            fwd_model_name='LinearModel')
 for n_exp, n_t in enumerate([101, 51]):
     generate_data(n_t, n=n_exp)
