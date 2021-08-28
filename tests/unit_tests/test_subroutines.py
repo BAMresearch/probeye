@@ -40,6 +40,7 @@ class TestProblem(unittest.TestCase):
                          {'a': 'm', 'b': 'c'})
         # the input cannot be a dictionary
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             list2dict({'a': 'm', 'b': 'c'})
         # only one-element dictionaries are valid
         with self.assertRaises(ValueError):

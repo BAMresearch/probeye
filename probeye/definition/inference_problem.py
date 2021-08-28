@@ -1,15 +1,9 @@
-# standard library imports
-import copy
-
 # third party imports
 from tabulate import tabulate
 
 # local imports
 from probeye.definition.parameter import Parameters, ParameterProperties
-from probeye.definition.prior import PriorNormal
-from probeye.definition.prior import PriorLognormal
-from probeye.definition.prior import PriorUniform
-from probeye.definition.prior import PriorWeibull
+from probeye.definition.prior import PriorTemplate
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values
@@ -58,14 +52,6 @@ class InferenceProblem:
         # experiments (see self.add_experiment); this dict is managed
         # internally and should not be edited directly
         self._experiments = {}
-
-        # here, the available prior classes are stored; additional ones can be
-        # added via self.add_prior_class; see also priors.py; this dictionary is
-        # managed internally and should not be edited directly
-        self._prior_classes = {'normal': PriorNormal,
-                               'lognormal': PriorLognormal,
-                               'uniform': PriorUniform,
-                               'weibull': PriorWeibull}
 
         # dictionary of the problem's priors; the items will have the structure
         # <prior name> : <prior object>; this dict is managed internally and
@@ -455,8 +441,12 @@ class InferenceProblem:
 
     def _add_prior(self, name, prior_type, prms_def, ref_prm):
         """
-        Adds a prior-object of a calibration parameter to the internal prior
-        dictionary.
+        Adds a PriorTemplate-object, generally representing a prior of a
+        calibration parameter to the internal prior dictionary. In the inference
+        step, after defining the problem, this template object has to be
+        translated into a prior-object of the user's choice, that is able to
+        evaluate functions like the logpdf. The PriorTemplate does not have this
+        capabilities, it merely describes the prior-type, its parameters, etc.
 
         Parameters
         ----------
@@ -464,8 +454,7 @@ class InferenceProblem:
             Unique name of the prior. Usually this name has the structure
             <ref_prm>_<prior_type>.
         prior_type : string
-            Defines the prior type. Must appear in the keys of the internal
-            dictionary self._prior_classes.
+            Defines the prior type, e.g. 'normal' or 'uniform'.
         prms_def : list[str]
             States the prior's parameter names.
         ref_prm : string
@@ -475,33 +464,11 @@ class InferenceProblem:
         Returns
         -------
         obj[PriorTemplate]
-            The instantiated prior-object which is also written to the internal
-            prior dictionary self._priors.
+            The instantiated PriorTemplate-object which is also written to the
+            internal prior dictionary self._priors.
         """
-        prior_class = self._prior_classes[prior_type]
-        self._priors[name] = copy.deepcopy(prior_class(ref_prm, prms_def, name))
+        self._priors[name] = PriorTemplate(ref_prm, prms_def, name, prior_type)
         return self._priors[name]
-
-    def add_prior_class(self, name, prior_class):
-        """
-        This method allows to add a user-defined prior-class to the problem, so
-        it can be used in the parameter definitions.
-
-        Parameters
-        ----------
-        name : string
-            Name of the prior class to be added.
-        prior_class : class
-            The user-defined prior-class. See priors.py for examples.
-        """
-        # add the class to the internal prior-class dictionary if the given
-        # name has not been used for one of the existing classes
-        if name in self._prior_classes.keys():
-            raise RuntimeError(
-                f"A prior class with name '{name}' already exists. " +
-                f"Please choose another name."
-            )
-        self._prior_classes[name] = prior_class
 
     def check_problem_consistency(self):
         """

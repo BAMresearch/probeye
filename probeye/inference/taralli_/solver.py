@@ -3,10 +3,13 @@
 # ============================================================================ #
 
 # third party imports
+import copy
+
 import numpy as np
 import matplotlib.pyplot as plt
 
 # local imports
+from probeye.inference.taralli_.priors import translate_prior_template
 from taralli.parameter_estimation.base import EmceeParameterEstimator
 
 # ============================================================================ #
@@ -40,6 +43,11 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
         Contains the results of the sampling procedure.
     """
 
+    # translate the prior definitions to objects with computing capabilities
+    priors = copy.deepcopy(problem.priors)
+    for prior_name, prior_template in problem.priors.items():
+        priors[prior_name] = translate_prior_template(prior_template)
+
     def logprior(theta):
         """
         Evaluates the log-prior function of the problem at theta.
@@ -57,7 +65,7 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
             The evaluated log-prior function for the given theta-vector.
         """
         lp = 0.0
-        for prior in problem.priors.values():
+        for prior in priors.values():
             prms = problem.get_parameters(theta, prior.prms_def)
             lp += prior(prms, 'logpdf')
         return lp
@@ -79,7 +87,7 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
         numpy.ndarray
             The generated samples.
         """
-        prior = problem.priors[problem.parameters[prm_name].prior.name]
+        prior = priors[problem.parameters[prm_name].prior.name]
         # check for prior-priors; if a prior parameter is a calibration
         # parameter and not a constant, one first samples from the prior
         # parameter's prior distribution, and then takes the mean of those
