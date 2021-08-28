@@ -21,6 +21,7 @@ from probeye.definition.forward_model import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoiseZeroMean
 from probeye.inference.taralli_.solver import taralli_solver
+from probeye.inference.taralli_.postprocessing import taralli_postprocessing
 
 
 class TestProblem(unittest.TestCase):
@@ -158,8 +159,11 @@ class TestProblem(unittest.TestCase):
 
         # run the taralli solver with deactivated output
         logging.root.disabled = True
-        taralli_solver(problem, n_walkers=n_walkers, n_steps=n_steps,
-                       plot=plot, summary=verbose)
+        emcee_model = taralli_solver(
+            problem, n_walkers=n_walkers, n_steps=n_steps)
+        if plot or verbose:
+            taralli_postprocessing(
+                problem, emcee_model, plot=plot, summary=verbose)
 
 if __name__ == "__main__":
     unittest.main()

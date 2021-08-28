@@ -4,9 +4,7 @@
 
 # third party imports
 import copy
-
 import numpy as np
-import matplotlib.pyplot as plt
 
 # local imports
 from probeye.inference.taralli_.priors import translate_prior_template
@@ -16,8 +14,7 @@ from taralli.parameter_estimation.base import EmceeParameterEstimator
 #                           Taralli sampling solver                            #
 # ============================================================================ #
 
-def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
-                   summary=True):
+def taralli_solver(problem, n_walkers=20, n_steps=1000):
     """
     Solves an inference problem described in problem via taralli's Markov chain
     Monte Carlo method from EmceeParameterEstimator.
@@ -30,12 +27,6 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
         Number of walkers used by the estimator.
     n_steps : int, optional
         Number of steps to run.
-    plot : bool, optional
-        If True, the posterior's 1D and 2D marginal distributions are plotted in
-        a triangular plot. If False, no plot will be created.
-    summary : bool, optional
-        If True, a summary of the posterior distribution is printed to the
-        console. If False, no summary will be printed.
 
     Returns
     -------
@@ -153,15 +144,5 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000, plot=True,
 
     # perform the sampling
     emcee_model.estimate_parameters()
-
-    # plot the results
-    if plot:
-        tex_labels = problem.get_theta_names(tex=True)
-        emcee_model.plot_posterior(dim_labels=tex_labels)
-        plt.show(block=True)
-
-    # prints a summary to the console
-    if summary:
-        emcee_model.summary()
 
     return emcee_model

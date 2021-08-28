@@ -47,8 +47,7 @@ class TestProblem(unittest.TestCase):
 
         # run the taralli solver with deactivated output
         logging.root.disabled = True
-        taralli_solver(problem, n_walkers=20, n_steps=100,
-                       plot=False, summary=False)
+        taralli_solver(problem, n_walkers=20, n_steps=100)
 
 if __name__ == "__main__":
     unittest.main()
