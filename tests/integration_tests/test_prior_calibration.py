@@ -52,7 +52,6 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of a, and its normal prior parameters
         a_true = 2.5
-        loc_a = 2.0
         scale_a = 1.0
 
         # uniform prior-parameters of 'loc_a'
@@ -93,10 +92,15 @@ class TestProblem(unittest.TestCase):
             "Linear model with normal noise and prior-prior")
 
         # add all parameters to the problem
+        problem.add_parameter('loc_a', 'prior',
+                              info="Location parameter of normal prior for 'a'",
+                              tex=r"$\mu_a^\mathrm{prior}$",
+                              prior=('uniform', {'low': low_loc_a,
+                                                 'high': high_loc_a}))
         problem.add_parameter('a', 'model',
                               info="Slope of the graph",
                               tex="$a$",
-                              prior=('normal', {'loc': loc_a,
+                              prior=('normal', {'loc': 'loc_a',
                                                 'scale': scale_a}))
         problem.add_parameter('b', 'model',
                               info="Intersection of graph with y-axis",
@@ -108,12 +112,6 @@ class TestProblem(unittest.TestCase):
                               tex=r"$\sigma$",
                               prior=('uniform', {'low': low_sigma,
                                                  'high': high_sigma}))
-
-        # this makes the prior-parameter 'loc_a' a calibration parameter
-        problem.change_parameter_role(
-            'loc_a', new_tex=r"$\mu_a^\mathrm{prior}$",
-            new_info="Std. deviation of normal prior for 'a'",
-            prior=('uniform', {'low': low_loc_a, 'high': high_loc_a}))
 
         # add the forward model to the problem
         inp_1 = Sensor("x")
@@ -157,11 +155,11 @@ class TestProblem(unittest.TestCase):
         #                      Solve problem with Taralli                      #
         # ==================================================================== #
 
-        # run the taralli solver with deactivated output
-        logging.root.disabled = True
+        # run the taralli solver and postprocessing
+        logging.root.disabled = not verbose
         emcee_model = run_taralli_solver(
             problem, n_walkers=n_walkers, n_steps=n_steps,
-            show_sampling_progress=False)
+            show_sampling_progress=verbose)
         if plot or verbose:
             run_taralli_postprocessing(
                 problem, emcee_model, plot=plot, summary=verbose)

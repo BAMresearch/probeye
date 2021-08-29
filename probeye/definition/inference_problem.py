@@ -195,18 +195,17 @@ class InferenceProblem:
             The name of the parameter which should be added to the problem.
         prm_type : string
             Either 'model' (for a model parameter), 'prior' (for a prior
-            parameter) or 'noise' (for a noise parameter). Note that 'prior'
-            parameter do not have to be added by hand. They are added
-            internally when 'calibration'-parameters are added.
+            parameter) or 'noise' (for a noise parameter).
         const : float or None, optional
             If the added parameter is a 'const'-parameter, the corresponding
             value has to be specified by this argument.
         prior : tuple of two elements or None, optional
             If the added parameter is a 'calibration'-parameter, this argument
             has to be given as a 2-tuple. The first element (a string) defines
-            the prior-type (must be a key of self._prior_classes). The second
+            the prior-type (will be referenced in inference routines). The 2nd
             element must be a dictionary stating the prior's parameters as keys
-            and their numeric values as values. An example for a normal prior:
+            and their numeric values as values or the name of a pre-defined
+            parameter within the problem scope. An example for a normal prior:
             ('normal', {'loc': 0.0, 'scale': 1.0}). In order to define the
             prior's parameters, check out the prior definitions in priors.py.
         info : string, optional
@@ -261,12 +260,24 @@ class InferenceProblem:
                 # create unique name for this prior parameter
                 new_name = f"{prior_parameter_name}_{prm_name}"
                 prior_parameter_names.append(new_name)
-                # the prior parameter is considered a 'const'-parameter and
-                # added to the problem accordingly here
-                default_info = f"{prior_type.capitalize()} prior's parameter "
-                default_info += f"for calibration-parameter '{prm_name}'"
-                self.add_parameter(new_name, 'prior', const=value,
-                                   info=default_info)  # recursive call
+                if type(value) in {float, int}:
+                    # in this case, the prior-parameter is considered a 'const'-
+                    # parameter and added to the problem accordingly here
+                    default_info = f"{prior_type.capitalize()} "
+                    default_info += f"prior's parameter "
+                    default_info += f"for calibration-parameter '{prm_name}'"
+                    self.add_parameter(new_name, 'prior', const=value,
+                                       info=default_info)  # recursive call
+                elif type(value) is str:
+                    # in this case the prior-parameter is defined as an already
+                    # defined parameter with the name stated in value
+                    self.check_if_parameter_exists(value)
+                else:
+                    raise TypeError(
+                        f"The prior-parameter {new_name} is not assigned a "
+                        f"float, int or str, but something of type "
+                        f"{type(value)}."
+                    )
             prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
             prm_prior = self._add_prior(prior_name, prior_type,
                                         prior_parameter_names, prm_name)
@@ -350,14 +361,14 @@ class InferenceProblem:
             If the new role is 'const', the corresponding value has to be
             specified by this argument.
         prior : tuple of two elements or None, optional
-            If a 'const'-parameter should be changed to a 'calibration'
-            parameter, this argument has to be given as a 2-tuple. The first
-            element (a string) defines the prior-type (must be a key of
-            self._prior_classes). The second element must be a dictionary
-            stating the prior's parameters as keys and their values as values.
-            For example: ('normal', {'loc': 0.0, 'scale': 1.0}). In order to
-            define the prior's parameters, check out the prior definitions in
-            the script priors.py.
+            If the added parameter is a 'calibration'-parameter, this argument
+            has to be given as a 2-tuple. The first element (a string) defines
+            the prior-type (will be referenced in inference routines). The 2nd
+            element must be a dictionary stating the prior's parameters as keys
+            and their numeric values as values or the name of a pre-defined
+            parameter within the problem scope. An example for a normal prior:
+            ('normal', {'loc': 0.0, 'scale': 1.0}). In order to define the
+            prior's parameters, check out the prior definitions in priors.py.
         new_info : string or None, optional
             The new string for the explanation of parameter prm_name.
         new_tex : string or None, optional

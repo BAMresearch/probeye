@@ -179,11 +179,11 @@ class TestProblem(unittest.TestCase):
         #                      Solve problem with Taralli                      #
         # ==================================================================== #
 
-        # run the taralli solver with deactivated output
-        logging.root.disabled = True
+        # run the taralli solver and postprocessing
+        logging.root.disabled = not verbose
         emcee_model = run_taralli_solver(
             problem, n_walkers=n_walkers, n_steps=n_steps,
-            show_sampling_progress=False)
+            show_sampling_progress=verbose)
         if plot or verbose:
             run_taralli_postprocessing(
                 problem, emcee_model, plot=plot, summary=verbose)
