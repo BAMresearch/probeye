@@ -14,7 +14,7 @@ from taralli.parameter_estimation.base import EmceeParameterEstimator
 #                           Taralli sampling solver                            #
 # ============================================================================ #
 
-def taralli_solver(problem, n_walkers=20, n_steps=1000):
+def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
     """
     Solves an inference problem described in problem via taralli's Markov chain
     Monte Carlo method from EmceeParameterEstimator.
@@ -27,6 +27,8 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000):
         Number of walkers used by the estimator.
     n_steps : int, optional
         Number of steps to run.
+    **kwargs : optional
+        Additional key-word arguments channeled to EmceeParameterEstimator.
 
     Returns
     -------
@@ -139,7 +141,8 @@ def taralli_solver(problem, n_walkers=20, n_steps=1000):
         ndim=problem.n_calibration_prms,
         nwalkers=n_walkers,
         sampling_initial_positions=init_array,
-        nsteps=n_steps
+        nsteps=n_steps,
+        **kwargs
     )
 
     # perform the sampling

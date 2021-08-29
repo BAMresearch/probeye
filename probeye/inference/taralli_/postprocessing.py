@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 #                           Taralli sampling solver                            #
 # ============================================================================ #
 
-def taralli_postprocessing(problem, emcee_model, plot=True, summary=True):
+def run_taralli_postprocessing(problem, emcee_model, plot=True, summary=True):
     """
     Solves an inference problem described in problem via taralli's Markov chain
     Monte Carlo method from EmceeParameterEstimator.

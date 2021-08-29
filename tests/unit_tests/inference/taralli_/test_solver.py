@@ -10,7 +10,7 @@ from probeye.definition.forward_model import ModelTemplate
 from probeye.definition.forward_model import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoiseZeroMean
-from probeye.inference.taralli_.solver import taralli_solver
+from probeye.inference.taralli_.solver import run_taralli_solver
 
 
 class TestProblem(unittest.TestCase):
@@ -47,7 +47,8 @@ class TestProblem(unittest.TestCase):
 
         # run the taralli solver with deactivated output
         logging.root.disabled = True
-        taralli_solver(problem, n_walkers=20, n_steps=100)
+        run_taralli_solver(problem, n_walkers=20, n_steps=100,
+                           show_sampling_progress=False)
 
 if __name__ == "__main__":
     unittest.main()
