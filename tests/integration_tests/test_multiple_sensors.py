@@ -17,10 +17,10 @@ import unittest
 import numpy as np
 
 # local imports
-from probeye.definition.forward_model import ModelTemplate
+from probeye.definition.forward_model import ForwardModelTemplate
 from probeye.definition.forward_model import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseZeroMean
+from probeye.inference.taralli_.noise_models import NormalNoise
 from probeye.inference.taralli_.solver import run_taralli_solver
 from probeye.inference.taralli_.postprocessing import run_taralli_postprocessing
 
@@ -90,7 +90,7 @@ class TestProblem(unittest.TestCase):
                 super().__init__(name)
                 self.position = position
 
-        class LinearModel(ModelTemplate):
+        class LinearModel(ForwardModelTemplate):
             def __call__(self, inp):
                 t = inp['time']
                 A = inp['A']
@@ -136,16 +136,16 @@ class TestProblem(unittest.TestCase):
 
         # add the forward model to the problem
         inp_1 = Sensor("time")
-        out_1 = PositionSensor("S1", pos_s1)
-        out_2 = PositionSensor("S2", pos_s2)
-        out_3 = PositionSensor("S3", pos_s3)
+        out_1 = PositionSensor("y1", pos_s1)
+        out_2 = PositionSensor("y2", pos_s2)
+        out_3 = PositionSensor("y3", pos_s3)
         linear_model = LinearModel(['A', 'B'], [inp_1], [out_1, out_2, out_3])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma_1']))
-        problem.add_noise_model(out_2.name, NormalNoiseZeroMean(['sigma_2']))
-        problem.add_noise_model(out_3.name, NormalNoiseZeroMean(['sigma_3']))
+        problem.add_noise_model(NormalNoise('sigma_1', sensors='y1'))
+        problem.add_noise_model(NormalNoise('sigma_2', sensors='y2'))
+        problem.add_noise_model(NormalNoise('sigma_3', sensors='y3'))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #

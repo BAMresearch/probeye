@@ -1,5 +1,13 @@
+# ============================================================================ #
+#                                   Imports                                    #
+# ============================================================================ #
+
 # standard library imports
 from copy import copy
+
+# ============================================================================ #
+#                                 Subroutines                                  #
+# ============================================================================ #
 
 def len_or_one(obj):
     """
@@ -23,34 +31,29 @@ def len_or_one(obj):
         length = 1
     return length
 
-
-def delta_x(x0, delta=None):
+def make_list(arg):
     """
-    Returns a good choice for the step size for numeric differentiation around
-    x0 when using a simple two-point approximation, see also the value h in
-    https://en.wikipedia.org/wiki/Numerical_differentiation.
+    Converts a given argument into a list, if it is not a list or tuple. The
+    typical use case for this method is to convert a single string into a list
+    with this string as its only element, e.g. make_list('sigma') = ['sigma'].
 
     Parameters
     ----------
-    x0 : float
-        Point where the derivative should be evaluated.
-    delta : float, optional
-        This parameter can be used when a specific fixed value should be
-        returned; might be used for debugging.
+    arg : obj
+        Essentially anything. Most of the time this might be a string or a list
+        of strings or a tuple of strings.
 
     Returns
     -------
-    dx : float
-        Computed step size for numeric differentiation.
+    new_arg : list[obj]
+        Either arg if it is of type list or tuple, or a list with arg as its
+        only element if arg is not of type list or tuple.
     """
-    # use the delta-value if delta is specified
-    if delta is not None:
-        return delta
-    eps = 1e-7  # approx sqrt(machine precision)
-    dx = x0 * eps + eps  # TODO: clarify if the '+ eps' part is correct
-    if dx == 0:
-        dx = eps
-    return dx
+    if type(arg) in [list, tuple]:
+        new_arg = arg
+    else:
+        new_arg = [copy(arg)]
+    return new_arg
 
 def underlined_string(string, symbol="═", n_empty_start=1, n_empty_end=1):
     """
@@ -59,19 +62,19 @@ def underlined_string(string, symbol="═", n_empty_start=1, n_empty_end=1):
     Parameters
     ----------
     string : string
-        The string that should be underlined
+        The string that should be underlined.
     symbol : string
-        A single character the line should be 'made' of
+        A single character the line should be 'made' of.
     n_empty_start : int, optional
-        Number of empty lines added before the underlined string
+        Number of empty lines added before the underlined string.
     n_empty_end : int, optional
-        Number of empty lines added after the underlined string
+        Number of empty lines added after the underlined string.
 
     Returns
     -------
     result_string : string
         The generated string representing an underlined string, possibly with
-        empty lines added before/after
+        empty lines added before/after.
     """
     n_chars = len(string)
     underline_string = n_chars * symbol
@@ -248,13 +251,39 @@ def sub_when_empty(string, empty_str="-"):
         Either the given string (when 'string' is not empty) or the empty_str
         (when 'string' is empty)
     """
+    if type(string) is not str:
+        raise TypeError(
+            f"Input must be of type string. Found: type '{type(string)}'")
     if len(string) > 0:
         result_string = string
     else:
         result_string = empty_str
     return result_string
 
-def list2dict(list_):
+def dict2list(dict_):
+    """
+    Converts a dict into a list of key-value dictionaries and returns it.
+
+    Parameters
+    ----------
+    dict_ : dict
+        Some dictionary to be converted.
+
+    Returns
+    -------
+    list_ : list
+        Each element is a dict with one key-value pair. These key-value pairs
+        are those contained in dict_.
+    """
+    if type(dict_) != dict:
+        raise TypeError(
+            f"Input argument must be of type 'dict', found '{type(dict_)}'.")
+    list_ = []
+    for key, value in dict_.items():
+        list_.append({key: value})
+    return list_
+
+def list2dict(list_dict):
     """
     Converts a list into a specific dictionary. The list may only contain
     strings or one-element dictionaries. For example [{'a': 'm'}, 'b'] will be
@@ -262,8 +291,8 @@ def list2dict(list_):
 
     Parameters
     ----------
-    list_ : list
-        May only contain strings or one-element dictionaries.
+    list_dict : list or dict
+        If it's a list it may only contain strings or one-element dictionaries.
 
     Returns
     -------
@@ -271,10 +300,18 @@ def list2dict(list_):
         Strings are mapped to themselves, while one-element dictionaries are
         simply added to this result dictionary.
     """
-    if type(list_) != list:
+    # check the given input
+    if type(list_dict) not in [list, dict]:
         raise TypeError(
-            f"Input argument must be of type 'list', found '{type(list_)}'."
+            f"The input argument must be of type 'list' or 'dict'. Found type "
+            f"'{type(list_dict)}' however."
         )
+    if type(list_dict) is dict:
+        # convert the dict to a list, so it can be checked by this function
+        list_ = dict2list(copy(list_dict))
+    else:
+        list_ = copy(list_dict)
+    # convert the list to a dictionary
     dict_ = {}
     for element in list_:
         element_type = type(element)

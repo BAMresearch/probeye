@@ -18,10 +18,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # local imports
-from probeye.definition.forward_model import ModelTemplate
+from probeye.definition.forward_model import ForwardModelTemplate
 from probeye.definition.forward_model import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseZeroMean
+from probeye.inference.taralli_.noise_models import NormalNoise
 from probeye.inference.taralli_.solver import run_taralli_solver
 from probeye.inference.taralli_.postprocessing import run_taralli_postprocessing
 
@@ -72,7 +72,7 @@ class TestProblem(unittest.TestCase):
         low_sigma = 0.1
         high_sigma = 2.0
 
-        # the number of generated experiments and seed for random numbers
+        # the number of generated experiment_names and seed for random numbers
         n_tests = 100
         seed = 1
 
@@ -80,19 +80,19 @@ class TestProblem(unittest.TestCase):
         #                      Define the Forward Models                       #
         # ==================================================================== #
 
-        class LinearModel(ModelTemplate):
+        class LinearModel(ForwardModelTemplate):
             def __call__(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
-                return {'y': a * x + b}
+                return {'y_linear': a * x + b}
 
-        class QuadraticModel(ModelTemplate):
+        class QuadraticModel(ForwardModelTemplate):
             def __call__(self, inp):
                 x = inp['x']
                 alpha = inp['alpha']
                 beta = inp['beta']
-                return {'y': alpha * x ** 2 + beta}
+                return {'y_quadratic': alpha * x ** 2 + beta}
 
         # ==================================================================== #
         #                     Define the Inference Problem                     #
@@ -126,15 +126,17 @@ class TestProblem(unittest.TestCase):
 
         # add the forward model to the problem
         inp_1 = Sensor("x")
-        out_1 = Sensor("y")
-        linear_model = LinearModel(['a', 'b'], [inp_1], [out_1])
+        out_linear = Sensor("y_linear")
+        out_quadratic = Sensor("y_quadratic")
+        linear_model = LinearModel(['a', 'b'], [inp_1], [out_linear])
         problem.add_forward_model("LinearModel", linear_model)
         quadratic_model = QuadraticModel(['alpha', {'b': 'beta'}],
-                                         [inp_1], [out_1])
+                                         [inp_1], [out_quadratic])
         problem.add_forward_model("QuadraticModel", quadratic_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
+        problem.add_noise_model(NormalNoise('sigma', sensors='y_linear'))
+        problem.add_noise_model(NormalNoise('sigma', sensors='y_quadratic'))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -144,21 +146,21 @@ class TestProblem(unittest.TestCase):
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_linear_true = linear_model(
-            {'x': x_test, 'a': a_true, 'b': b_true})['y']
+            {'x': x_test, 'a': a_true, 'b': b_true})['y_linear']
         y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
         y_quadratic_true = quadratic_model(
-            {'x': x_test, 'alpha': alpha_true, 'beta': b_true})['y']
+            {'x': x_test, 'alpha': alpha_true, 'beta': b_true})['y_quadratic']
         y_test_quadratic = np.random.normal(loc=y_quadratic_true,
                                             scale=sigma_true)
 
         # add the experimental data
         problem.add_experiment(f'TestSeries_linear',
                                sensor_values={'x': x_test,
-                                              'y': y_test_linear},
+                                              'y_linear': y_test_linear},
                                fwd_model_name="LinearModel")
         problem.add_experiment(f'TestSeries_quadratic',
                                sensor_values={'x': x_test,
-                                              'y': y_test_quadratic},
+                                              'y_quadratic': y_test_quadratic},
                                fwd_model_name="QuadraticModel")
 
         # give problem overview

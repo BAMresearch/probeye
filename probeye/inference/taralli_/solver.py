@@ -41,6 +41,9 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
     for prior_name, prior_template in problem.priors.items():
         priors[prior_name] = translate_prior_template(prior_template)
 
+    # each noise model must be connected to the relevant experiment_names
+    problem.assign_experiments_to_noise_models()
+
     def logprior(theta):
         """
         Evaluates the log-prior function of the problem at theta.
@@ -112,20 +115,18 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
         ll : float
             The evaluated log-likelihood function for the given theta-vector.
         """
-
-        # evaluate the model error for each defined forward model and each
-        # output sensor in this/those forward model(s)
-        model_error_dict = problem.evaluate_model_error(theta)
-
-        # compute the contribution to the log-likelihood function for the
-        # model error of forward model and output sensor, and sum it all up
+        # compute the contribution to the log-likelihood function for each noise
+        # model and sum it all up
         ll = 0.0
-        for me_dict in model_error_dict.values():
-            for sensor, me_vector in me_dict.items():
-                noise_model = problem.noise_models[sensor]
-                prms_noise = problem.get_parameters(theta, noise_model.prms_def)
-                ll += noise_model.loglike_contribution(me_vector, prms_noise)
-
+        for noise_model in problem.noise_models.values():
+            # compute the model response for the noise model's experiment_names
+            model_response = problem.evaluate_model_response(
+                theta, noise_model.experiment_names)
+            # get the parameter values for the noise model's parameters
+            prms_noise = problem.get_parameters(theta, noise_model.prms_def)
+            # evaluate the loglike-contribution for the noise model
+            ll += noise_model.loglike_contribution(model_response, prms_noise,
+                                                   problem.experiments)
         return ll
 
     # draw initial samples from the parameter's priors
@@ -142,8 +143,7 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
         nwalkers=n_walkers,
         sampling_initial_positions=init_array,
         nsteps=n_steps,
-        **kwargs
-    )
+        **kwargs)
 
     # perform the sampling
     emcee_model.estimate_parameters()

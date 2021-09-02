@@ -15,10 +15,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # local imports
-from probeye.definition.forward_model import ModelTemplate
+from probeye.definition.forward_model import ForwardModelTemplate
 from probeye.definition.forward_model import Sensor
-from probeye.definition.noise_model import NormalNoiseZeroMean
 from probeye.definition.inference_problem import InferenceProblem
+from probeye.inference.taralli_.noise_models import NormalNoise
 from probeye.inference.taralli_.solver import run_taralli_solver
 from probeye.inference.taralli_.postprocessing import run_taralli_postprocessing
 
@@ -64,7 +64,7 @@ class TestProblem(unittest.TestCase):
         low_sigma = 0.1
         high_sigma = 0.8
 
-        # the number of generated experiments and seed for random numbers
+        # the number of generated experiment_names and seed for random numbers
         n_tests = 50
         seed = 1
 
@@ -72,7 +72,7 @@ class TestProblem(unittest.TestCase):
         #                       Define the Forward Model                       #
         # ==================================================================== #
 
-        class LinearModel(ModelTemplate):
+        class LinearModel(ForwardModelTemplate):
             def __call__(self, inp):
                 x = inp['x']
                 m = inp['m']
@@ -135,7 +135,7 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(out_1.name, NormalNoiseZeroMean(['sigma']))
+        problem.add_noise_model(NormalNoise('sigma', sensors='y'))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
