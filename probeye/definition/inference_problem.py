@@ -639,7 +639,7 @@ class InferenceProblem:
         assert len(idx_list) == self._parameters.n_calibration_prms
         assert sorted(idx_list) == list(range(len(idx_list)))
 
-    def add_experiment(self, exp_name, sensor_values=None, fwd_model_name=None):
+    def add_experiment(self, exp_name, sensor_values, fwd_model_name):
         """
         Adds a single experiment to the inference problem. Here, an experiment
         is defined as one or more sensors (note that the experiment does not
@@ -660,13 +660,15 @@ class InferenceProblem:
         """
 
         # check all keyword arguments are given
-        if sensor_values is None:
-            raise RuntimeError(
-                f"No sensor_values given!"
+        if type(sensor_values) is not dict:
+            raise TypeError(
+                f"The sensor_values must be given as a dictionary. However, "
+                f"found type '{type(sensor_values)}'."
             )
-        if fwd_model_name is None:
-            raise RuntimeError(
-                f"No forward-model name given!"
+        if type(fwd_model_name) is not str:
+            raise TypeError(
+                f"The fwd_model_name must be given as a string. However, "
+                f"found type '{type(fwd_model_name)}'."
             )
 
         # check if the given forward model exists

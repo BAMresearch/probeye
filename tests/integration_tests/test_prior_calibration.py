@@ -81,7 +81,10 @@ class TestProblem(unittest.TestCase):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
-                return {'y': a * x + b}
+                response = {}
+                for os in self.output_sensors:
+                    response[os.name] = a * x + b
+                return response
 
         # ==================================================================== #
         #                     Define the Inference Problem                     #
@@ -114,13 +117,13 @@ class TestProblem(unittest.TestCase):
                                                  'high': high_sigma}))
 
         # add the forward model to the problem
-        inp_1 = Sensor("x")
-        out_1 = Sensor("y")
-        linear_model = LinearModel(['a', 'b'], [inp_1], [out_1])
+        isensor = Sensor("x")
+        osensor = Sensor("y")
+        linear_model = LinearModel(['a', 'b'], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoise('sigma', sensors='y'))
+        problem.add_noise_model(NormalNoise('sigma', sensors=osensor.name))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -129,12 +132,14 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal noise with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model({'x': x_test, 'a': a_true, 'b': b_true})['y']
+        y_true = linear_model(
+            {isensor.name: x_test, 'a': a_true, 'b': b_true})[osensor.name]
         y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
         # add the experimental data
         problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
-                               sensor_values={'x': x_test, 'y': y_test})
+                               sensor_values={isensor.name: x_test,
+                                              osensor.name: y_test})
 
         # give problem overview
         if verbose:
@@ -145,8 +150,8 @@ class TestProblem(unittest.TestCase):
             plt.scatter(x_test, y_test, label='measured data',
                         s=10, c="red", zorder=10)
             plt.plot(x_test, y_true, label='true', c="black")
-            plt.xlabel('x')
-            plt.ylabel('y')
+            plt.xlabel(isensor.name)
+            plt.ylabel(osensor.name)
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution

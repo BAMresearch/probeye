@@ -327,12 +327,16 @@ class TestProblem(unittest.TestCase):
         x_in_p = p.experiments['Experiment_2']['sensor_values']['x']
         self.assertEqual(type(x_in_p), type(1))
         # check invalid input arguments
-        with self.assertRaises(RuntimeError):
-            # not sensor_values given
-            p.add_experiment('Experiment_3', fwd_model_name='TestModel')
-        with self.assertRaises(RuntimeError):
-            # no fwd_model_name given
-            p.add_experiment('Experiment_3', sensor_values={'x': 1, 'y': 1})
+        with self.assertRaises(TypeError):
+            # wrong sensor_values type
+            # noinspection PyTypeChecker
+            p.add_experiment('Experiment_3', sensor_values=[('x', 1), ('y', 2)],
+                             fwd_model_name='TestModel')
+        with self.assertRaises(TypeError):
+            # wrong fwd_model_name type
+            # noinspection PyTypeChecker
+            p.add_experiment('Experiment_3', sensor_values={'x': 1, 'y': 1},
+                             fwd_model_name=1.2)
         with self.assertRaises(RuntimeError):
             # referencing non-existing forward model
             p.add_experiment('Experiment_3', sensor_values={'x': 1, 'y': 1},

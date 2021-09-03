@@ -95,10 +95,10 @@ class TestProblem(unittest.TestCase):
                 t = inp['time']
                 A = inp['A']
                 B = inp['B']
-                response_dict = dict()
+                response = dict()
                 for os in self.output_sensors:
-                    response_dict[os.name] = A * os.position + B * t
-                return response_dict
+                    response[os.name] = A * os.position + B * t
+                return response
 
         # ==================================================================== #
         #                     Define the Inference Problem                     #
@@ -135,17 +135,18 @@ class TestProblem(unittest.TestCase):
                               tex=r"$\sigma_3$")
 
         # add the forward model to the problem
-        inp_1 = Sensor("time")
-        out_1 = PositionSensor("y1", pos_s1)
-        out_2 = PositionSensor("y2", pos_s2)
-        out_3 = PositionSensor("y3", pos_s3)
-        linear_model = LinearModel(['A', 'B'], [inp_1], [out_1, out_2, out_3])
+        isensor = Sensor("time")
+        osensor1 = PositionSensor("y1", pos_s1)
+        osensor2 = PositionSensor("y2", pos_s2)
+        osensor3 = PositionSensor("y3", pos_s3)
+        linear_model = LinearModel(
+            ['A', 'B'], [isensor], [osensor1, osensor2, osensor3])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoise('sigma_1', sensors='y1'))
-        problem.add_noise_model(NormalNoise('sigma_2', sensors='y2'))
-        problem.add_noise_model(NormalNoise('sigma_3', sensors='y3'))
+        problem.add_noise_model(NormalNoise('sigma_1', sensors=osensor1.name))
+        problem.add_noise_model(NormalNoise('sigma_2', sensors=osensor2.name))
+        problem.add_noise_model(NormalNoise('sigma_3', sensors=osensor3.name))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -153,9 +154,9 @@ class TestProblem(unittest.TestCase):
 
         # add the experimental data
         np.random.seed(1)
-        sd_dict = {out_1.name: sd_S1_true,
-                   out_2.name: sd_S2_true,
-                   out_3.name: sd_S3_true}
+        sd_dict = {osensor1.name: sd_S1_true,
+                   osensor2.name: sd_S2_true,
+                   osensor3.name: sd_S3_true}
 
         def generate_data(n_time_steps, n=None):
             time_steps = np.linspace(0, 1, n_time_steps)
@@ -164,7 +165,7 @@ class TestProblem(unittest.TestCase):
             for key, val in sensors.items():
                 sensors[key] = val + np.random.normal(0.0, sd_dict[key],
                                                       size=n_time_steps)
-            sensors['time'] = time_steps
+            sensors[isensor.name] = time_steps
             problem.add_experiment(f'TestSeries_{n}',
                                    sensor_values=sensors,
                                    fwd_model_name='LinearModel')
