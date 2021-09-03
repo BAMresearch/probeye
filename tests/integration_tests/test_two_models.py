@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 # local imports
 from probeye.definition.forward_model import ForwardModelTemplate
-from probeye.definition.forward_model import Sensor
+from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.inference.taralli_.noise_models import NormalNoise
 from probeye.inference.taralli_.solver import run_taralli_solver

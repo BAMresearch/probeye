@@ -4,22 +4,6 @@ from probeye.subroutines import list2dict
 from probeye.subroutines import make_list
 
 
-class Sensor:
-    """
-    Base class for a sensor of the forward model. Essentially just a class with
-    a 'name' attribute. Additional attributes (such as sensor position, its
-    local temperature, etc.) can be added by the user.
-    """
-    def __init__(self, name):
-        """
-        Parameters
-        ----------
-        name : string
-            The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
-        """
-        self.name = name
-
-
 class ForwardModelTemplate:
     """
     This class serves as a base class for any forward model. When you want to

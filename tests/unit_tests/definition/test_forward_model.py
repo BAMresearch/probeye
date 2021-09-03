@@ -3,7 +3,7 @@ import unittest
 
 # local imports
 from probeye.definition.forward_model import ForwardModelTemplate
-from probeye.definition.forward_model import Sensor
+from probeye.definition.sensor import Sensor
 
 class TestProblem(unittest.TestCase):
 
