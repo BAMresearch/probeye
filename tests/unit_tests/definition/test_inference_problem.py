@@ -1,7 +1,6 @@
 # standard library
-# import io
-# import sys
-# from copy import copy
+import io
+import sys
 
 # third party imports
 import unittest
@@ -50,8 +49,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a', 'model', const=1.0)
         p.add_parameter('b', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
-        # stdout_obj = copy(sys.stdout)  # for resetting after printing
-        # sys.stdout = io.StringIO()
+        sys.stdout = io.StringIO()
         # try out different options
         p.info(print_it=True, include_experiments=False, tablefmt="presto",
                check_consistency=False)
@@ -61,7 +59,7 @@ class TestProblem(unittest.TestCase):
                check_consistency=False)
         p.info(print_it=True, include_experiments=True, tablefmt="plain",
                check_consistency=False)
-        # sys.stdout = stdout_obj  # reset printout to console
+        sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
             # the problem is not consistent yet (e.g. no forward model defined
             # yet), so the consistency_check will raise an error
@@ -73,12 +71,11 @@ class TestProblem(unittest.TestCase):
         p.add_noise_model(NoiseModelTemplate('s', sensors='y'))
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
-        # stdout_obj = copy(sys.stdout)  # for resetting after printing
-        # sys.stdout = io.StringIO()
+        sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
         p.info(print_it=True, include_experiments=True, tablefmt="presto",
                check_consistency=True)
-        # sys.stdout = stdout_obj  # reset printout to console
+        sys.stdout = sys.__stdout__  # reset printout to console
 
     def test_str(self):
         # set up a consistent problem and print it
@@ -91,10 +88,9 @@ class TestProblem(unittest.TestCase):
         p.add_noise_model(NoiseModelTemplate('s', sensors='y'))
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
-        # stdout_obj = copy(sys.stdout)  # for resetting after printing
-        # sys.stdout = io.StringIO()  # redirect output to console
+        sys.stdout = io.StringIO()  # redirect output to console
         print(p)
-        # sys.stdout = stdout_obj  # reset printout to console
+        sys.stdout = sys.__stdout__  # reset printout to console
 
     def test_add_parameter(self):
         p = InferenceProblem("TestProblem")
@@ -362,15 +358,14 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(type(y_in_p), np.ndarray)
         # check adding the same experiment again; note that this results in a
         # warning that is printed; this printout is redirected below
-        # stdout_obj = copy(sys.stdout)  # for resetting after printing
-        # capturedOutput = io.StringIO()
-        # sys.stdout = capturedOutput
-        # p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
-        #                  fwd_model_name='TestModel')
-        # sys.stdout = stdout_obj  # reset printout to console
-        # warning = capturedOutput.getvalue()
-        # self.assertEqual(warning, "WARNING - Experiment 'Experiment_1' is "
-        #                          "already defined and will be overwritten!\n")
+        capturedOutput = io.StringIO()
+        sys.stdout = capturedOutput
+        p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
+                         fwd_model_name='TestModel')
+        sys.stdout = sys.__stdout__  # reset printout to console
+        warning = capturedOutput.getvalue()
+        self.assertEqual(warning, "WARNING - Experiment 'Experiment_1' is "
+                                 "already defined and will be overwritten!\n")
 
     def test_get_parameters(self):
         # check a simple use case
@@ -479,12 +474,11 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a', 'model', const=1.0)
         p.add_parameter('b', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
-        # stdout_obj = copy(sys.stdout)  # for resetting after printing
-        # sys.stdout = io.StringIO()
+        sys.stdout = io.StringIO()
         # try out different options
         p.theta_explanation(print_it=True, check_consistency=False)
         _ = p.theta_explanation(print_it=False, check_consistency=False)
-        # sys.stdout = stdout_obj  # reset printout to console
+        sys.stdout = sys.__stdout__  # reset printout to console
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
             # the model is not consistent
