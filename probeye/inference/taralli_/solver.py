@@ -125,8 +125,7 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
             # get the parameter values for the noise model's parameters
             prms_noise = problem.get_parameters(theta, noise_model.prms_def)
             # evaluate the loglike-contribution for the noise model
-            ll += noise_model.loglike_contribution(model_response, prms_noise,
-                                                   problem.experiments)
+            ll += noise_model.loglike_contribution(model_response, prms_noise)
         return ll
 
     # draw initial samples from the parameter's priors

@@ -36,24 +36,25 @@ class TestProblem(unittest.TestCase):
                                         'forward_model': 'TestModel'},
                                'Exp6': {'sensor_values': {'x': 7, 'y': 8},
                                         'forward_model': 'OtherModel'}}
+        # the following is usually done automatically when adding the noise
+        # model to the inference problem
+        noise_template.problem_experiments = problem_experiments
         # perform some simple tests for valid usage
-        noise_template.add_experiment_names('Exp1', problem_experiments)
+        noise_template.add_experiment_names('Exp1')
         self.assertEqual(noise_template.experiment_names, ['Exp1'])
-        noise_template.add_experiment_names(['Exp2', 'Exp3'],
-                                            problem_experiments)
+        noise_template.add_experiment_names(['Exp2', 'Exp3'])
         self.assertEqual(noise_template.experiment_names,
                          ['Exp1', 'Exp2', 'Exp3'])
         # now check some invalid input arguments
         with self.assertRaises(RuntimeError):
             # add an experiment, that does not have the noise model's sensors
-            noise_template.add_experiment_names('Exp4', problem_experiments)
+            noise_template.add_experiment_names('Exp4')
         with self.assertRaises(RuntimeError):
             # add experiments that refer to more than one forward model
-            noise_template.add_experiment_names(['Exp5', 'Exp6'],
-                                                problem_experiments)
+            noise_template.add_experiment_names(['Exp5', 'Exp6'])
         with self.assertRaises(RuntimeError):
             # adding the same experiment again
-            noise_template.add_experiment_names('Exp1', problem_experiments)
+            noise_template.add_experiment_names('Exp1')
 
     def test_error(self):
         # prepare the setup for the tests
@@ -78,11 +79,12 @@ class TestProblem(unittest.TestCase):
                                                           'y1': 6,
                                                           'y2': -6},
                                         'forward_model': 'TestModel'}}
-        noise_template.add_experiment_names(['Exp1', 'Exp2', 'Exp3'],
-                                            problem_experiments)
+        # the following is usually done automatically when adding the noise
+        # model to the inference problem
+        noise_template.problem_experiments = problem_experiments
+        noise_template.add_experiment_names(['Exp1', 'Exp2', 'Exp3'] )
         # now we can call the error-method
-        computed_value = noise_template.error(model_response_dict,
-                                              problem_experiments)
+        computed_value = noise_template.error(model_response_dict)
         expected_value = {'y1': np.array([1., 2., 3.]),
                           'y2': np.array([-1., -2., -3.])}
         # due to the numpy arrays we have to loop over everything to compare

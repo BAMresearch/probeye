@@ -29,8 +29,11 @@ class NoiseModelTemplate:
         # call InferenceProblem.assign_experiments_to_noise_models() to fill
         # this list with the corresponding names
         self.experiment_names = []
+        # as soon as defined, this attribute will be a pointer to the inference
+        # problems experiments (it will be used for consistency checks)
+        self.problem_experiments = {}
 
-    def add_experiment_names(self, experiment_names_, problem_experiments):
+    def add_experiment_names(self, experiment_names_):
         """
         Adds experiment names to the noise model. When the noise model is
         evaluated it will only be evaluated for those experiments added here.
@@ -40,16 +43,13 @@ class NoiseModelTemplate:
         experiment_names_ : str, list[str]
             Names (strings) of experiments from the InferenceProblem that should
             be added to the noise model.
-        problem_experiments : dict
-            The experiments defined in the InferenceProblem, that is
-            InferenceProblem.experiments.
         """
         # check if the given experiments are compatible with the noise model
         # with respect to the sensors
         experiment_names = make_list(experiment_names_)
         forward_models = set()
         for exp_name in experiment_names:
-            exp_dict = problem_experiments[exp_name]
+            exp_dict = self.problem_experiments[exp_name]
             forward_models.add(exp_dict['forward_model'])
             sensor_names_exp = [*exp_dict['sensor_values'].keys()]
             for sensor_name in self.sensors:
@@ -70,7 +70,7 @@ class NoiseModelTemplate:
                     f"this noise model. Something might be wrong here.")
         self.experiment_names += experiment_names
 
-    def error(self, model_response_dict, problem_experiments):
+    def error(self, model_response_dict):
         """
         Computes the model error for all of the noise model's experiments and
         returns them in a dictionary that is sorted by output sensor_values.
@@ -81,9 +81,6 @@ class NoiseModelTemplate:
             The first key is the name of the experiment. The values are dicts
             which contain the forward model's output sensor's names as keys
             have the corresponding model responses as values.
-        problem_experiments : dict
-            The experiments defined in the InferenceProblem, that is
-            InferenceProblem.experiments.
 
         Returns
         -------
@@ -96,7 +93,7 @@ class NoiseModelTemplate:
 
         # fill the dictionary with model error vectors
         for exp_name in self.experiment_names:
-            exp_dict = problem_experiments[exp_name]
+            exp_dict = self.problem_experiments[exp_name]
             ym_dict = model_response_dict[exp_name]
             ye_dict = exp_dict['sensor_values']
             me_dict = self.error_function(ym_dict, ye_dict)
@@ -126,8 +123,7 @@ class NoiseModelTemplate:
             "Your model does not have a error_function-method yet. If you " +
             "want to use it, you need to implement it first.")
 
-    def loglike_contribution(self, model_response_dict, prms,
-                             problem_experiments):
+    def loglike_contribution(self, model_response_dict, prms):
         """
         Evaluates the log-likelihood function for the given model error and
         the given noise parameter vector. This method has to be overwritten.
@@ -140,9 +136,6 @@ class NoiseModelTemplate:
             have the corresponding model responses as values.
         prms : ParameterList-object
             Dictionary-like object containing parameter name:value pairs.
-        problem_experiments : dict
-            The experiments defined in the InferenceProblem, that is
-            InferenceProblem.experiments.
 
         Returns
         -------

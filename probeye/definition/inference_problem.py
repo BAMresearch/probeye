@@ -1024,6 +1024,10 @@ class InferenceProblem:
             raise RuntimeError(
                 f"A noise model with the sensors {sensors} has already been "
                 f"defined in this problem!")
+        # add the problem's experiments to the noise model (this is just a
+        # pointer!) for noise_model-internal checks
+        noise_model.problem_experiments = self._experiments
+        # finally, add the noise_model to the internal dict
         self._noise_models[noise_model_name] = noise_model
 
     def assign_experiments_to_noise_models(self):
@@ -1040,8 +1044,7 @@ class InferenceProblem:
                 sensor_names=noise_model.sensors)
             n_experiments_noise += len(experiment_names)
             # add the relevant experiment names to the noise model
-            noise_model.add_experiment_names(experiment_names,
-                                             self._experiments)
+            noise_model.add_experiment_names(experiment_names)
 
         # check if there is the same number of experiments over all noise models
         # as defined for the inference problem

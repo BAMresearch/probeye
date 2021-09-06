@@ -81,12 +81,14 @@ class TestProblem(unittest.TestCase):
                                         'forward_model': 'TestModel'},
                                'Exp3': {'sensor_values': {'x': 5, 'y': 9},
                                         'forward_model': 'TestModel'}}
-        noise_model.add_experiment_names(['Exp1', 'Exp2', 'Exp3'],
-                                            problem_experiments)
+        # the following is usually done automatically when adding the noise
+        # model to the inference problem
+        noise_model.problem_experiments = problem_experiments
+        noise_model.add_experiment_names(['Exp1', 'Exp2', 'Exp3'])
         sigma = 2.1
         prms = {'sigma': sigma}
         computed_result = noise_model.loglike_contribution(
-            model_response_dict, prms, problem_experiments)
+            model_response_dict, prms)
         expected_result = 3 * (-log(sigma) - 1 / 2 * log(2 * pi))
         self.assertAlmostEqual(computed_result, expected_result)
 
@@ -101,12 +103,14 @@ class TestProblem(unittest.TestCase):
                                         'forward_model': 'TestModel'},
                                'Exp3': {'sensor_values': {'x': 5, 'y': 7},
                                         'forward_model': 'TestModel'}}
-        noise_model.add_experiment_names(['Exp1', 'Exp2', 'Exp3'],
-                                         problem_experiments)
+        # the following is usually done automatically when adding the noise
+        # model to the inference problem
+        noise_model.problem_experiments = problem_experiments
+        noise_model.add_experiment_names(['Exp1', 'Exp2', 'Exp3'])
         sigma = 1.1
         prms = {'sigma': sigma}
         computed_result = noise_model.loglike_contribution(
-            model_response_dict, prms, problem_experiments)
+            model_response_dict, prms)
         expected_error = {'y': np.array([-1, -2, 2])}
         expected_result = 3 * (-log(sigma) - 1 / 2 * log(2 * pi)) - 1 / 2 \
                           * np.sum(np.square(expected_error['y'] / sigma))

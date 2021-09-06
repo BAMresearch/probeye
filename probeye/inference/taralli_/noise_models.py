@@ -88,14 +88,13 @@ class NormalNoise(NoiseModelTemplate):
                       for name in self.sensors}
         return error_dict
 
-    def loglike_contribution(self, model_response, prms, problem_experiments):
+    def loglike_contribution(self, model_response, prms):
         """
         This method overwrites the corresponding method of the parent class.
         Check out the docstring there for additional information.
         """
         # compute the model error; note that this mode has exactly one sensor
-        model_error_vector = self.error(
-            model_response, problem_experiments)[self.sensors[0]]
+        model_error_vector = self.error(model_response)[self.sensors[0]]
         # the precision 'prec' is defined as the inverse of the variance, hence
         # prec = 1 / sigma**2 where sigma denotes the standard deviation
         sigma = prms[self.sigma_name]
