@@ -8,10 +8,11 @@ with open("requirements.txt") as f:
 
 setuptools.setup(
     name="probeye",
-    version="0.1.0",
+    version="1.0.0",
     author="Federal Institute for Materials Research and Testing (BAM)",
     author_email="alexander.klawonn@bam.de",
-    description="A general framework for setting up statistical inference problems.",
+    description="A general framework for setting up statistical "
+                "inference problems.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     install_requires=requirements,

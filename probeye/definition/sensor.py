@@ -1,3 +1,7 @@
+# third party imports
+import numpy as np
+
+
 class Sensor:
     """
     Base class for a sensor of the forward model. Essentially just a class with
@@ -36,3 +40,4 @@ class PositionSensor(Sensor):
         self.x = x
         self.y = y
         self.z = z
+        self.xyz = np.array([x, y, z])
