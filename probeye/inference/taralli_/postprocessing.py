@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 def run_taralli_postprocessing(problem, emcee_model, plot=True, summary=True):
     """
     Solves an inference problem described in problem via taralli's Markov chain
-    Monte Carlo method from EmceeParameterEstimator.
+    Monte Carlo method from EmceeParameterEstimator. Note that postprocessing
+    routines should be made inference-engine-independent in the future.
 
     Parameters
     ----------
