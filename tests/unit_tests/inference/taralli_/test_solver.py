@@ -6,10 +6,10 @@ import unittest
 import numpy as np
 
 # local imports
-from probeye.definition.forward_model import ForwardModelTemplate
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.inference.taralli_.noise_models import NormalNoise
+from probeye.definition.noise_model import NormalNoise
 from probeye.inference.taralli_.solver import run_taralli_solver
 
 
@@ -18,7 +18,7 @@ class TestProblem(unittest.TestCase):
     def test_taralli_solver(self):
 
         # define the forward model
-        class LinRe(ForwardModelTemplate):
+        class LinRe(ForwardModelBase):
             def __call__(self, inp):
                 x = inp['x']
                 a = inp['a']

@@ -8,9 +8,9 @@ import numpy as np
 
 # local imports
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.forward_model import ForwardModelTemplate
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NoiseModelTemplate
+from probeye.definition.noise_model import NoiseModelBase
 
 
 class TestProblem(unittest.TestCase):
@@ -66,9 +66,9 @@ class TestProblem(unittest.TestCase):
             p.info(print_it=True, include_experiments=True, tablefmt="presto",
                    check_consistency=True)
         # now add the remaining stuff to make to problem consistent
-        test_model = ForwardModelTemplate('b', Sensor('x'), Sensor('y'))
+        test_model = ForwardModelBase('b', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
-        p.add_noise_model(NoiseModelTemplate('s', sensors='y'))
+        p.add_noise_model(NoiseModelBase('s', sensors='y'))
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
         sys.stdout = io.StringIO()
@@ -83,9 +83,9 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a', 'model', const=1.0)
         p.add_parameter('b', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
-        test_model = ForwardModelTemplate('b', Sensor('x'), Sensor('y'))
+        test_model = ForwardModelBase('b', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
-        p.add_noise_model(NoiseModelTemplate('s', sensors='y'))
+        p.add_noise_model(NoiseModelBase('s', sensors='y'))
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
         sys.stdout = io.StringIO()  # redirect output to console
@@ -294,14 +294,14 @@ class TestProblem(unittest.TestCase):
             # no forward models defined yet
             p.check_problem_consistency()
         # add a forward model
-        test_model = ForwardModelTemplate('a', Sensor('x'), Sensor('y'))
+        test_model = ForwardModelBase('a', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
         with self.assertRaises(AssertionError):
             # no noise models defined yet
             p.check_problem_consistency()
         # add a noise model
         p.add_parameter('s', 'noise', const=1.0)
-        noise_model = NoiseModelTemplate('s', sensors=['y'])
+        noise_model = NoiseModelBase('s', sensors=['y'])
         p.add_noise_model(noise_model)
         with self.assertRaises(AssertionError):
             # no experiment_names defined yet
@@ -316,7 +316,7 @@ class TestProblem(unittest.TestCase):
         # check correct use
         p = InferenceProblem("TestProblem")
         p.add_parameter('a', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-        test_model = ForwardModelTemplate('a', Sensor('x'), Sensor('y'))
+        test_model = ForwardModelBase('a', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
@@ -388,10 +388,10 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter('a', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         # define two forward models
-        test_model_1 = ForwardModelTemplate('a', Sensor('x'),
-                                            [Sensor('y1'), Sensor('y2')])
-        test_model_2 = ForwardModelTemplate('a', Sensor('x'),
-                                            [Sensor('z1'), Sensor('z2')])
+        test_model_1 = ForwardModelBase('a', Sensor('x'),
+                                        [Sensor('y1'), Sensor('y2')])
+        test_model_2 = ForwardModelBase('a', Sensor('x'),
+                                        [Sensor('z1'), Sensor('z2')])
         p.add_forward_model('TestModel_1', test_model_1)
         p.add_forward_model('TestModel_2', test_model_2)
         # define experiment_names to each forward model
@@ -492,19 +492,19 @@ class TestProblem(unittest.TestCase):
         # check correct use
         p = InferenceProblem("TestProblem")
         p.add_parameter('a', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-        test_model = ForwardModelTemplate('a', Sensor('x'), Sensor('y'))
+        test_model = ForwardModelBase('a', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
         # check for invalid input arguments
         with self.assertRaises(RuntimeError):
             # a given parameter of the forward model has not been added yet
-            test_model_2 = ForwardModelTemplate('b', Sensor('x'), Sensor('y'))
+            test_model_2 = ForwardModelBase('b', Sensor('x'), Sensor('y'))
             p.add_forward_model('TestModel_2', test_model_2)
         with self.assertRaises(RuntimeError):
             # add a forward model with the same name
             p.add_forward_model('TestModel', test_model)
         with self.assertRaises(RuntimeError):
             # add a forward model with already used output sensor name
-            test_model_2 = ForwardModelTemplate('a', Sensor('x'), Sensor('y'))
+            test_model_2 = ForwardModelBase('a', Sensor('x'), Sensor('y'))
             p.add_forward_model('TestModel_2', test_model_2)
 
     def test_evaluate_model_response(self):
@@ -514,7 +514,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a1', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('a2', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
 
-        class FwdModel(ForwardModelTemplate):
+        class FwdModel(ForwardModelBase):
             def __call__(self, inp):
                 x = inp['x']
                 a0 = inp['a0']
@@ -563,23 +563,23 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('s1', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s2', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s3', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
-        test_model = ForwardModelTemplate('a', Sensor('x'),
-                                          [Sensor('y1'), Sensor('y2')])
+        test_model = ForwardModelBase('a', Sensor('x'),
+                                      [Sensor('y1'), Sensor('y2')])
         p.add_forward_model('TestModel', test_model)
-        noise_model1 = NoiseModelTemplate('s1', sensors=['y1', 'y2'])
-        noise_model2 = NoiseModelTemplate(['s2'], sensors=['y2'])
-        noise_model3 = NoiseModelTemplate(['s1', 's2', 's3'], sensors=['y1'])
+        noise_model1 = NoiseModelBase('s1', sensors=['y1', 'y2'])
+        noise_model2 = NoiseModelBase(['s2'], sensors=['y2'])
+        noise_model3 = NoiseModelBase(['s1', 's2', 's3'], sensors=['y1'])
         p.add_noise_model(noise_model1)
         p.add_noise_model(noise_model2)
         p.add_noise_model(noise_model3)
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # the given noise model parameter has not been defined
-            p.add_noise_model(NoiseModelTemplate('not_existing_parameter',
-                                                 sensors=['y1', 'y2']))
+            p.add_noise_model(NoiseModelBase('not_existing_parameter',
+                                             sensors=['y1', 'y2']))
         with self.assertRaises(RuntimeError):
             # adding a noise model with the same sensors as another one
-            p.add_noise_model(NoiseModelTemplate('s1', sensors=['y1', 'y2']))
+            p.add_noise_model(NoiseModelBase('s1', sensors=['y1', 'y2']))
 
     def test_assign_experiments_to_noise_models(self):
         # some preparations before performing the actual tests
@@ -590,17 +590,17 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('s2', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s3', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         # add some dummy forward models (only the output sensors are important)
-        test_model_y1 = ForwardModelTemplate('a', Sensor('x'), Sensor('y1'))
-        test_model_y2 = ForwardModelTemplate('a', Sensor('x'), Sensor('y2'))
-        test_model_z1z2 = ForwardModelTemplate('a', Sensor('x'),
-                                               [Sensor('z1'), Sensor('z2')])
+        test_model_y1 = ForwardModelBase('a', Sensor('x'), Sensor('y1'))
+        test_model_y2 = ForwardModelBase('a', Sensor('x'), Sensor('y2'))
+        test_model_z1z2 = ForwardModelBase('a', Sensor('x'),
+                                           [Sensor('z1'), Sensor('z2')])
         p.add_forward_model('TestModel_y1', test_model_y1)
         p.add_forward_model('TestModel_y2', test_model_y2)
         p.add_forward_model('TestModel_z1z2', test_model_z1z2)
         # add some noise models
-        noise_model_y1 = NoiseModelTemplate(['s1', 's2', 's3'], sensors=['y1'])
-        noise_model_y2 = NoiseModelTemplate(['s2'], sensors=['y2'])
-        noise_model_y1y2 = NoiseModelTemplate('s1', sensors=['z1', 'z2'])
+        noise_model_y1 = NoiseModelBase(['s1', 's2', 's3'], sensors=['y1'])
+        noise_model_y2 = NoiseModelBase(['s2'], sensors=['y2'])
+        noise_model_y1y2 = NoiseModelBase('s1', sensors=['z1', 'z2'])
         p.add_noise_model(noise_model_y1)
         p.add_noise_model(noise_model_y2)
         p.add_noise_model(noise_model_y1y2)

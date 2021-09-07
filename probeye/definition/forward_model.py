@@ -4,7 +4,7 @@ from probeye.subroutines import list2dict
 from probeye.subroutines import make_list
 
 
-class ForwardModelTemplate:
+class ForwardModelBase:
     """
     This class serves as a base class for any forward model. When you want to
     define a specific forward model, you need to derive your own class from this

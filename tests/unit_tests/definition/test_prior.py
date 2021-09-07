@@ -2,13 +2,13 @@
 import unittest
 
 # local imports
-from probeye.definition.prior import PriorTemplate
+from probeye.definition.prior import PriorBase
 
 
 class TestProblem(unittest.TestCase):
 
     def test_prior_template(self):
-        prior_template = PriorTemplate('a', ['loc_a', 'scale_a'],
+        prior_template = PriorBase('a', ['loc_a', 'scale_a'],
                                        'a_normal', 'normal distribution')
         # check that the attributes are wired correctly
         self.assertEqual(prior_template.ref_prm, 'a')

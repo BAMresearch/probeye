@@ -2,7 +2,7 @@
 from probeye.subroutines import list2dict
 
 
-class PriorTemplate:
+class PriorBase:
     """
     Template class for prior definitions. Note that the main motivation of how
     this class is implemented was to avoid storing any numeric values for any of

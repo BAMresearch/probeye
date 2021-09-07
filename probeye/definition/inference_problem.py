@@ -7,7 +7,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.parameter import Parameters, ParameterProperties
-from probeye.definition.prior import PriorTemplate
+from probeye.definition.prior import PriorBase
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
@@ -540,11 +540,11 @@ class InferenceProblem:
 
     def _add_prior(self, name, prior_type, prms_def, ref_prm):
         """
-        Adds a PriorTemplate-object, generally representing a prior of a
+        Adds a PriorBase-object, generally representing a prior of a
         calibration parameter to the internal prior dictionary. In the inference
         step, after defining the problem, this template object has to be
         translated into a prior-object of the user's choice, that is able to
-        evaluate functions like the logpdf. The PriorTemplate does not have this
+        evaluate functions like the logpdf. The PriorBase does not have this
         capabilities, it merely describes the prior-type, its parameters, etc.
 
         Parameters
@@ -562,8 +562,8 @@ class InferenceProblem:
 
         Returns
         -------
-        obj[PriorTemplate]
-            The instantiated PriorTemplate-object which is also written to the
+        obj[PriorBase]
+            The instantiated PriorBase-object which is also written to the
             internal prior dictionary self._priors.
         """
         # check if the prior parameters exist (a prior cannot be defined before
@@ -577,7 +577,7 @@ class InferenceProblem:
                 f"A prior with the name '{name}' already exists!")
 
         # add the prior to the internal dictionary
-        self._priors[name] = PriorTemplate(ref_prm, prms_def, name, prior_type)
+        self._priors[name] = PriorBase(ref_prm, prms_def, name, prior_type)
         return self._priors[name]
 
     def check_problem_consistency(self):
@@ -901,7 +901,7 @@ class InferenceProblem:
         ----------
         name : str
             The name of the forward model to be added.
-        forward_model : obj[ForwardModelTemplate]
+        forward_model : obj[ForwardModelBase]
             Defines the forward model. Check out forward_model.py to see a
             template for the forward model definition. The user will then have
             to derive his own forward model from that base class.
@@ -999,7 +999,7 @@ class InferenceProblem:
 
         Parameters
         ----------
-        noise_model : obj[NoiseModelTemplate]
+        noise_model : obj[NoiseModelBase]
             The noise model object, e.g. from NormalNoise. Check out noise.py to
             see some noise model classes.
         """

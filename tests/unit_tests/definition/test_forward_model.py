@@ -2,15 +2,15 @@
 import unittest
 
 # local imports
-from probeye.definition.forward_model import ForwardModelTemplate
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 
 class TestProblem(unittest.TestCase):
 
     def test_model_template_one_sensor(self):
 
-        # define a simple model using ForwardModelTemplate
-        class ForwardModel(ForwardModelTemplate):
+        # define a simple model using ForwardModelBase
+        class ForwardModel(ForwardModelBase):
             def __call__(self, inp):
                 x = inp['x']
                 a = inp['a']
@@ -33,8 +33,8 @@ class TestProblem(unittest.TestCase):
                 super().__init__(name)
                 self.offset = offset
 
-        # define a simple model using ForwardModelTemplate
-        class ForwardModel(ForwardModelTemplate):
+        # define a simple model using ForwardModelBase
+        class ForwardModel(ForwardModelBase):
             def __call__(self, inp):
                 x1 = inp['x1']
                 x2 = inp['x2']

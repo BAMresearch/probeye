@@ -2,10 +2,10 @@
 from scipy import stats
 
 # local imports
-from probeye.definition.prior import PriorTemplate
+from probeye.definition.prior import PriorBase
 
 
-class PriorNormal(PriorTemplate):
+class PriorNormal(PriorBase):
     """Prior class for a normal distribution."""
     def __init__(self, ref_prm, prms_def, name):
         """
@@ -67,7 +67,7 @@ class PriorNormal(PriorTemplate):
                               random_state=seed)
 
 
-class PriorLognormal(PriorTemplate):
+class PriorLognormal(PriorBase):
     """Prior class for a log-normal distribution."""
     def __init__(self, ref_prm, prms_def, name):
         """
@@ -137,7 +137,7 @@ class PriorLognormal(PriorTemplate):
                                  random_state=seed)
 
 
-class PriorUniform(PriorTemplate):
+class PriorUniform(PriorBase):
     """Prior class for a uniform distribution."""
     def __init__(self, ref_prm, prms_def, name):
         """
@@ -199,7 +199,7 @@ class PriorUniform(PriorTemplate):
                                  random_state=seed)
 
 
-class PriorWeibull(PriorTemplate):
+class PriorWeibull(PriorBase):
     """Prior class for a three-parameter Weibull distribution."""
     def __init__(self, ref_prm, prms_def, name):
         """
@@ -266,14 +266,14 @@ class PriorWeibull(PriorTemplate):
 
 def translate_prior_template(prior_template, prior_classes=None):
     """
-    Translate a given instance of PriorTemplate (which is essentially just a
+    Translate a given instance of PriorBase (which is essentially just a
     description of the prior without compute-methods) to a specific prior object
     which does contain compute-methods (e.g. compute the logpdf).
 
     Parameters
     ----------
-    prior_template : obj[PriorTemplate]
-        An instance of PriorTemplate which contains basic information on the
+    prior_template : obj[PriorBase]
+        An instance of PriorBase which contains basic information on the
         prior but no computing-methods.
     prior_classes : dict, None
         If None, the prior classes of defined in this file are used to translate
@@ -283,7 +283,7 @@ def translate_prior_template(prior_template, prior_classes=None):
 
     Returns
     -------
-    prior_object : obj[PriorTemplate]
+    prior_object : obj[PriorBase]
         An instance of a specific prior class with computing capabilities.
         Examples for such classes are given above in this file.
     """
@@ -303,7 +303,7 @@ def translate_prior_template(prior_template, prior_classes=None):
 
     # prepare the corresponding prior object; the following translation is
     # necessary, because prms_def must be given in form of a list, but was
-    # already translated to a dictionary when instantiating the PriorTemplate
+    # already translated to a dictionary when instantiating the PriorBase
     # objects; hence prior_template.prms_def is a dictionary
     prms_def = [{key: value} for key, value in prior_template.prms_def.items()
                 if key != prior_template.ref_prm]
