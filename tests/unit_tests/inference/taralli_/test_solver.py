@@ -17,6 +17,8 @@ class TestProblem(unittest.TestCase):
 
     def test_taralli_solver(self):
 
+        np.random.seed(6174)
+
         # define the forward model
         class LinRe(ForwardModelBase):
             def __call__(self, inp):
@@ -38,17 +40,21 @@ class TestProblem(unittest.TestCase):
         problem.add_noise_model(NormalNoise('sigma', sensors='y'))
 
         # generate and add some simple test data
-        n_tests, a_true, b_true, sigma_true = 30, 0.5, -0.5, 0.5
-        x_test = np.linspace(0.0, 1.0, 30)
-        y_true = a_true * x_test - b_true
+        n_tests, a_true, b_true, sigma_true = 5000, 0.3, -0.2, 0.1
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true = a_true * x_test + b_true
         y_test = np.random.normal(loc=y_true, scale=sigma_true)
         problem.add_experiment(f'Tests', fwd_model_name="LinRe",
                                sensor_values={'x': x_test, 'y': y_test})
 
         # run the taralli solver with deactivated output
         logging.root.disabled = True
-        run_taralli_solver(problem, n_walkers=20, n_steps=100,
-                           show_sampling_progress=False)
+        model = run_taralli_solver(problem, n_walkers=20, n_steps=200,
+                           show_sampling_progress=False, seed=6174)
+        model.summary()
+        for mean, mean_true in zip(model.summary_output["mean"], 
+                [a_true, b_true, sigma_true]):
+            self.assertAlmostEqual(mean, mean_true, delta = 0.01)
 
 if __name__ == "__main__":
     unittest.main()
