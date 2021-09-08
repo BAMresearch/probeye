@@ -12,7 +12,7 @@ class PriorNormal(PriorBase):
         Parameters
         ----------
         ref_prm : string
-            The name of the calibration-parameter the prior refers to.
+            The name of the latent parameter the prior refers to.
         prms_def : list
             A list of strings defining the prior's parameter names.
         name : string
@@ -74,7 +74,7 @@ class PriorLognormal(PriorBase):
         Parameters
         ----------
         ref_prm : string
-            The name of the calibration-parameter the prior refers to.
+            The name of the latent parameter the prior refers to.
         prms_def : list
             A list of strings defining the prior's parameter names.
         name : string
@@ -144,7 +144,7 @@ class PriorUniform(PriorBase):
         Parameters
         ----------
         ref_prm : string
-            The name of the calibration-parameter the prior refers to.
+            The name of the latent parameter the prior refers to.
         prms_def : list
             A list of strings defining the prior's parameter names.
         name : string
@@ -206,7 +206,7 @@ class PriorWeibull(PriorBase):
         Parameters
         ----------
         ref_prm : string
-            The name of the calibration-parameter the prior refers to.
+            The name of the latent parameter the prior refers to.
         prms_def : list
             A list of strings defining the prior's parameter names.
         name : string

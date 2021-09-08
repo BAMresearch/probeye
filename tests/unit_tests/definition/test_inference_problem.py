@@ -17,20 +17,20 @@ class TestProblem(unittest.TestCase):
 
     def test_properties(self):
         p = InferenceProblem("TestProblem")
-        # add first calibration parameter; n_calibration_prms should be 1
+        # add first latent parameter; n_latent_prms should be 1
         p.add_parameter('a', 'model',
                         prior=('normal', {'loc': 0.0, 'scale': 1.0}))
-        self.assertEqual(p.n_calibration_prms, 1)
-        # add second calibration parameter; n_calibration_prms should be 2
+        self.assertEqual(p.n_latent_prms, 1)
+        # add second latent parameter; n_latent_prms should be 2
         p.add_parameter('b', 'noise',
                         prior=('normal', {'loc': 0.0, 'scale': 1.0}))
-        self.assertEqual(p.n_calibration_prms, 2)
+        self.assertEqual(p.n_latent_prms, 2)
         # check the different properties
         self.assertEqual(p.n_prms, 6)
         self.assertEqual(
             set(p.prms), {'loc_a', 'scale_a', 'a', 'loc_b', 'scale_b', 'b'})
-        self.assertEqual(p.n_calibration_prms, 2)
-        self.assertEqual(set(p.calibration_prms), {'a', 'b'})
+        self.assertEqual(p.n_latent_prms, 2)
+        self.assertEqual(set(p.latent_prms), {'a', 'b'})
         self.assertEqual(p.n_constant_prms, 4)
         self.assertEqual(set(p.constant_prms),
                          {'loc_a', 'scale_a', 'loc_b', 'scale_b'})
@@ -101,7 +101,7 @@ class TestProblem(unittest.TestCase):
                         info='info', tex=r'$loc_a$')
         p.add_parameter('sigma_1', 'noise', const=1.0,
                         info='info', tex=r'$\sigma_1$')
-        # check valid use cases for calibration parameters
+        # check valid use cases for latent parameters
         p.add_parameter('b', 'model', prior=('normal', {'loc': 0, 'scale': 1}),
                         info='info', tex='$b$')
         p.add_parameter('scale_a', 'prior', info='info', tex='$b$',
@@ -173,16 +173,16 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(
             set(p.constant_prms), {'loc_a', 's', 'low_scale_a', 'high_scale_a',
                                    'low_sigma', 'high_sigma'})
-        # check removing a calibration parameter; note that removing a
-        # calibration parameter leads to the removal of all its prior parameters
-        self.assertEqual(set(p.calibration_prms), {'scale_a', 'sigma', 'a'})
+        # check removing a latent parameter; note that removing a latent
+        # parameter leads to the removal of all its prior parameters
+        self.assertEqual(set(p.latent_prms), {'scale_a', 'sigma', 'a'})
         # check that indexes are as expected
         self.assertEqual(p.parameters['scale_a'].index, 0)
         self.assertEqual(p.parameters['sigma'].index, 1)
         self.assertEqual(p.parameters['a'].index, 2)
         p.remove_parameter('a')  # <-- this is where the removal happens
-        # check that all calibration-parameters associated with 'a' are gone
-        self.assertEqual(set(p.calibration_prms), {'sigma'})
+        # check that all latent parameters associated with 'a' are gone
+        self.assertEqual(set(p.latent_prms), {'sigma'})
         # check if the re-indexing worked
         self.assertEqual(p.parameters['sigma'].index, 0)
         # check that all constant prior-parameters associated with 'a' are gone
@@ -202,18 +202,18 @@ class TestProblem(unittest.TestCase):
 
     def test_change_parameter_role(self):
         p = InferenceProblem("TestProblem")
-        # check change of role from calibration to constant parameter
+        # check change of role from latent to constant parameter
         p.add_parameter('a', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-        self.assertEqual(set(p.calibration_prms), {'a'})
+        self.assertEqual(set(p.latent_prms), {'a'})
         self.assertEqual(set(p.constant_prms), {'loc_a', 'scale_a'})
         self.assertEqual(set(p.prms), {'a', 'loc_a', 'scale_a'})
         p.change_parameter_role('a', const=1.0)  # <-- here the role changes
-        self.assertEqual(set(p.calibration_prms), set())
+        self.assertEqual(set(p.latent_prms), set())
         self.assertEqual(set(p.constant_prms), {'a'})
         self.assertEqual(set(p.prms), {'a'})
-        # check change of role from calibration to constant parameter
+        # check change of role from latent to constant parameter
         p.change_parameter_role('a', prior=('normal', {'loc': 0, 'scale': 1}))
-        self.assertEqual(set(p.calibration_prms), {'a'})
+        self.assertEqual(set(p.latent_prms), {'a'})
         self.assertEqual(set(p.constant_prms), {'loc_a', 'scale_a'})
         self.assertEqual(set(p.prms), {'a', 'loc_a', 'scale_a'})
         # check invalid input arguments
@@ -287,7 +287,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(AssertionError):
             # no priors defined yet
             p.check_problem_consistency()
-        # add a prior by defining a calibration parameter
+        # add a prior by defining a latent parameter
         p.add_parameter('a', 'model', info='Some model parameter', tex='$a$',
                         prior=('normal', {'loc': 'loc_a', 'scale': 'scale_a'}))
         with self.assertRaises(AssertionError):

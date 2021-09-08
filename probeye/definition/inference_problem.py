@@ -34,20 +34,20 @@ class InferenceProblem:
 
         # this is the central parameter dictionary of the problem (the used
         # Parameters-class is derived from the dict-class); it contains all
-        # defined parameters ('const' and 'calibration' ones); the keys of this
+        # defined parameters ('const' and 'latent' ones); the keys of this
         # dictionary are the parameter names; note that each parameter must have
         # a unique name in the problem; the values of this dictionary are
         # Parameter-objects (see parameter.py) with the following attributes:
         # .index  int or None (the index in the theta-vector (see self.loglike)
-        #         for 'calibration'-parameter; None for 'const'-parameters)
+        #         for 'latent'-parameter; None for 'const'-parameters)
         # .type   string (either 'model', 'prior' or 'noise' depending on where
         #         the parameter appears)
         # .role   string (either 'const' for a constant parameter or
-        #         'calibration' for a calibration parameter)
-        # .prior  object or None (the prior-object of the 'calibration'-
+        #         'latent' for a latent parameter)
+        # .prior  object or None (the prior-object of the 'latent'-
         #         parameter; None for 'const'-parameters)
         # .value  float or None (defines the value for 'const'-parameters;
-        #         None for 'calibration'-parameters)
+        #         None for 'latent'-parameters)
         # .info   string (a short explanation of the parameter)
         # .tex:   string or None (the TeX version of the parameter's name, for
         #         example r'$\alpha$' for a parameter named 'alpha')
@@ -86,14 +86,14 @@ class InferenceProblem:
         return self._parameters.prms
 
     @property
-    def n_calibration_prms(self):
-        """Provides n_calibration_prms attribute."""
-        return self._parameters.n_calibration_prms
+    def n_latent_prms(self):
+        """Provides n_latent_prms attribute."""
+        return self._parameters.n_latent_prms
 
     @property
-    def calibration_prms(self):
-        """Provides calibration_prms attribute."""
-        return self._parameters.calibration_prms
+    def latent_prms(self):
+        """Provides latent_prms attribute."""
+        return self._parameters.latent_prms
 
     @property
     def n_constant_prms(self):
@@ -246,7 +246,7 @@ class InferenceProblem:
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
         """
-        Adds a parameter ('const' or 'calibration') to the inference problem.
+        Adds a parameter ('const' or 'latent') to the inference problem.
 
         Parameters
         ----------
@@ -259,7 +259,7 @@ class InferenceProblem:
             If the added parameter is a 'const'-parameter, the corresponding
             value has to be specified by this argument.
         prior : tuple or list of two elements or None, optional
-            If the added parameter is a 'calibration'-parameter, this argument
+            If the added parameter is a 'latent'-parameter, this argument
             has to be given as a 2-tuple. The first element (a string) defines
             the prior-type (will be referenced in inference routines). The 2nd
             element must be a dictionary stating the prior's parameters as keys
@@ -302,16 +302,16 @@ class InferenceProblem:
             )
 
         # add the parameter to the central parameter dictionary
-        prm_role = 'calibration' if const is None else 'const'
-        if const is None:  # in this case we are adding a 'calibration'-param.
+        prm_role = 'latent' if const is None else 'const'
+        if const is None:  # in this case we are adding a 'latent'-param.
             # first, define the index of this parameter in the numeric vector
             # theta, which is given to self.loglike and self.logprior
-            prm_index = self._parameters.n_calibration_prms
+            prm_index = self._parameters.n_latent_prms
             # the prm_value is reserved for 'const'-parameter; hence, it is set
-            # to None in this case, where we are adding a 'calibration'-param.
+            # to None in this case, where we are adding a 'latent'-param.
             prm_value = None
             # the remaining code in this if-branch defines the prior that is
-            # associated with this 'calibration'-parameter
+            # associated with this 'latent'-parameter
             if type(prior) not in [list, tuple]:
                 raise TypeError(
                     f"The given prior is of type {type(prior)} but must be "
@@ -342,7 +342,7 @@ class InferenceProblem:
                     # parameter and added to the problem accordingly here
                     default_info = f"{prior_type.capitalize()} "
                     default_info += f"prior's parameter "
-                    default_info += f"for calibration-parameter '{prm_name}'"
+                    default_info += f"for latent parameter '{prm_name}'"
                     self.add_parameter(new_name, 'prior', const=value,
                                        info=default_info)  # recursive call
                 elif type(value) is str:
@@ -376,7 +376,7 @@ class InferenceProblem:
 
     def remove_parameter(self, prm_name):
         """
-        Removes a parameter ('const' or 'calibration') from inference problem.
+        Removes a parameter ('const' or 'latent') from inference problem.
 
         Parameters
         ----------
@@ -387,21 +387,21 @@ class InferenceProblem:
         self.check_if_parameter_exists(prm_name)
 
         # different steps must be taken depending on whether the parameter which
-        # should be removed is a 'const'- or a 'calibration'-parameter
+        # should be removed is a 'const'- or a 'latent'-parameter
         if self._parameters[prm_name].index is None:
             # in this case prm_name refers to a constant parameter; hence, we
             # can simply remove this parameter without side effects
             del self._parameters[prm_name]
         else:
-            # in this case prm_name refers to a calibration parameter; hence we
-            # need to remove the prior-parameter and the prior-object; also, we
-            # have to correct the index values of the remaining calibration prms
+            # in this case prm_name refers to a latent parameter; hence we need
+            # to remove the prior-parameter and the prior-object; also, we have
+            # to correct the index values of the remaining latent parameters
             for prior_prm in self._parameters[prm_name].prior.\
                     prms_def_no_ref.keys():
                 self.remove_parameter(prior_prm)  # recursive call
             del self._priors[self._parameters[prm_name].prior.name]
             del self._parameters[prm_name]
-            # correct the indices of the remaining 'calibration'-parameters
+            # correct the indices of the remaining 'latent'-parameters
             idx = 0
             for name, parameter in self._parameters.items():
                 if parameter.index is not None:
@@ -428,7 +428,7 @@ class InferenceProblem:
         """
         Performs the necessary tasks to change a parameter's role in the problem
         definition. A parameter's role can either be changed from 'const' to
-        'calibration' or from 'calibration' to 'const'.
+        'latent' or from 'latent' to 'const'.
 
         Parameters
         ----------
@@ -438,7 +438,7 @@ class InferenceProblem:
             If the new role is 'const', the corresponding value has to be
             specified by this argument.
         prior : tuple of two elements or None, optional
-            If the added parameter is a 'calibration'-parameter, this argument
+            If the added parameter is a 'latent'-parameter, this argument
             has to be given as a 2-tuple. The first element (a string) defines
             the prior-type (will be referenced in inference routines). The 2nd
             element must be a dictionary stating the prior's parameters as keys
@@ -471,10 +471,10 @@ class InferenceProblem:
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as constant."
             )
-        if (current_role == 'calibration') and (const is None):
+        if (current_role == 'latent') and (const is None):
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as a "
-                f"calibration parameter."
+                f"latent parameter."
             )
         # the parameter's role is changed by first removing it from the problem,
         # and then adding it again in its new role; the role-change does not
@@ -540,12 +540,12 @@ class InferenceProblem:
 
     def _add_prior(self, name, prior_type, prms_def, ref_prm):
         """
-        Adds a PriorBase-object, generally representing a prior of a
-        calibration parameter to the internal prior dictionary. In the inference
-        step, after defining the problem, this template object has to be
-        translated into a prior-object of the user's choice, that is able to
-        evaluate functions like the logpdf. The PriorBase does not have this
-        capabilities, it merely describes the prior-type, its parameters, etc.
+        Adds a PriorBase-object, generally representing a prior of a latent
+        parameter to the internal prior dictionary. In the inference step, after
+        defining the problem, this template object has to be translated into a
+        prior-object of the user's choice, that is able to evaluate functions
+        like the logpdf. The PriorBase does not have this capabilities, it
+        merely describes the prior-type, its parameters, etc.
 
         Parameters
         ----------
@@ -557,8 +557,8 @@ class InferenceProblem:
         prms_def : list[str]
             States the prior's parameter names.
         ref_prm : str
-            The name of the problem's calibration parameter the prior refers to
-            (a prior is always defined for a specific calibration parameter).
+            The name of the problem's latent parameter the prior refers to
+            (a prior is always defined for a specific latent parameter).
 
         Returns
         -------
@@ -617,26 +617,26 @@ class InferenceProblem:
 
         # check if all prior objects in self._priors are consistent in terms of
         # their parameters; each one of them must appear in self._parameters
-        assert len(self._priors) == self._parameters.n_calibration_prms
+        assert len(self._priors) == self._parameters.n_latent_prms
         for prior_obj in self._priors.values():
             for prior_prm in prior_obj.prms_def_no_ref.keys():
                 assert prior_prm in self._parameters.keys()
                 assert self._parameters[prior_prm].type == 'prior'
 
-        # check if the prior-parameters of each calibration parameter exist in
+        # check if the prior-parameters of each latent parameter exist in
         # the problem's parameter dictionary
         for prm_name, parameter in self._parameters.items():
-            if parameter.role == 'calibration':
+            if parameter.role == 'latent':
                 for prior_prm in parameter.prior.prms_def_no_ref.keys():
                     assert prior_prm in self._parameters.keys()
                     assert self._parameters[prior_prm].type == 'prior'
 
-        # check the indices of the calibration parameters
+        # check the indices of the latent parameters
         idx_list = []
         for prm_name, parameter in self._parameters.items():
-            if parameter.role == 'calibration':
+            if parameter.role == 'latent':
                 idx_list.append(parameter.index)
-        assert len(idx_list) == self._parameters.n_calibration_prms
+        assert len(idx_list) == self._parameters.n_latent_prms
         assert sorted(idx_list) == list(range(len(idx_list)))
 
     def add_experiment(self, exp_name, sensor_values, fwd_model_name):
@@ -752,7 +752,7 @@ class InferenceProblem:
                 # from theta, but from the internal library
                 prms[local_name] = self._parameters[global_name].value
             else:
-                # in this case, the parameter is a calibration parameter, and
+                # in this case, the parameter is a latent parameter, and
                 # its value is read from theta
                 prms[local_name] = theta[idx]
         return prms

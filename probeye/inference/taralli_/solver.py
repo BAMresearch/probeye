@@ -84,15 +84,15 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
             The generated samples.
         """
         prior = priors[problem.parameters[prm_name].prior.name]
-        # check for prior-priors; if a prior parameter is a calibration
+        # check for prior-priors; if a prior parameter is a latent
         # parameter and not a constant, one first samples from the prior
         # parameter's prior distribution, and then takes the mean of those
         # samples to sample from the first prior distribution; this procedure
         # is recursive, so that (in principle) one could also define priors of
         # the prior's prior parameters and so forth
-        theta_aux = [0] * problem.parameters.n_calibration_prms
+        theta_aux = [0] * problem.parameters.n_latent_prms
         for prior_prm_name in prior.prms_def_no_ref.keys():
-            if problem.parameters[prior_prm_name].role == 'calibration':
+            if problem.parameters[prior_prm_name].role == 'latent':
                 samples = sample_from_prior(prior_prm_name, size)
                 theta_aux[problem.parameters[prior_prm_name].index] =\
                     np.mean(samples)
@@ -129,7 +129,7 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
         return ll
 
     # draw initial samples from the parameter's priors
-    init_array = np.zeros((n_walkers, problem.n_calibration_prms))
+    init_array = np.zeros((n_walkers, problem.n_latent_prms))
     theta_names = problem.get_theta_names()
     for i, parameter_name in enumerate(theta_names):
         init_array[:, i] = sample_from_prior(parameter_name, n_walkers)
@@ -138,7 +138,7 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
     emcee_model = EmceeParameterEstimator(
         log_likelihood=loglike,
         log_prior=logprior,
-        ndim=problem.n_calibration_prms,
+        ndim=problem.n_latent_prms,
         nwalkers=n_walkers,
         sampling_initial_positions=init_array,
         nsteps=n_steps,

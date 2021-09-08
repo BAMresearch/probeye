@@ -5,7 +5,7 @@ The model equation is y = A * x + B * t with A, B being the model parameters,
 while x and t represent position and time respectively. Measurements are made
 at three different positions (x-values) each of which is associated with an own
 zero-mean, uncorrelated normal noise model with the std. deviations to infer.
-This results in five calibration parameters (parameters to infer). The problem
+This results in five latent parameters (parameters to infer). The problem
 is solved via sampling by means of taralli.
 """
 

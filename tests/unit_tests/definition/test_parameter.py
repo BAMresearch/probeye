@@ -27,20 +27,20 @@ class TestProblem(unittest.TestCase):
                                                'tex': r"$b$"})
         parameters['c'] = ParameterProperties({'index': 2,
                                                'type': 'model',
-                                               'role': 'calibration',
+                                               'role': 'latent',
                                                'prior': (),
                                                'value': None,
                                                'info': "...",
                                                'tex': r"$c$"})
         # check for the parameter-role bookkeeping
-        self.assertEqual(parameters.n_calibration_prms, 1)
+        self.assertEqual(parameters.n_latent_prms, 1)
         self.assertEqual(parameters.n_constant_prms, 2)
         self.assertEqual(parameters.n_prms, 3)
         # you cannot add the parameter's properties as a dictionary
         with self.assertRaises(ValueError):
             parameters['d'] = {'index': 3,
                                'type': 'model',
-                               'role': 'calibration',
+                               'role': 'latent',
                                'prior': (),
                                'value': None,
                                'info': "...",

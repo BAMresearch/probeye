@@ -1,9 +1,9 @@
 """
-Linear regression example where a prior parameter is a calibration parameter
+Linear regression example where a prior parameter is a latent parameter
 --------------------------------------------------------------------------------
 The model equation is y = a * x + b with a, b being the model parameters and the
 noise model is a normal zero-mean distribution with the std. deviation to infer.
-Additionally, the location parameter of a's prior is considered a calibration
+Additionally, the location parameter of a's prior is considered a latent
 parameter.The problem is solved via sampling using taralli.
 """
 

@@ -16,12 +16,12 @@ class ForwardModelBase:
         Parameters
         ----------
         prms_def_ : str, list, dict
-            Contains the model's calibration parameter names. The list may only
+            Contains the model's latent parameter names. The list may only
             contain strings or one-element dictionaries. It could look, for
             example, like [{'a': 'm'}, 'b']. The one-element dictionaries
-            account for the possibility to define a local name for a calibration
+            account for the possibility to define a local name for a latent
             parameter that is different from the global name. In the example
-            above, the calibration parameter with the global name 'a' will be
+            above, the latent parameter with the global name 'a' will be
             referred to as 'm' within the model. So, the one-element dicts have
             the meaning {<global name>: <local name>}. String-elements are
             interpreted as having similar local and global names. Note that the

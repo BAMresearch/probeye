@@ -34,14 +34,14 @@ class Parameters(dict):
         return len(self)
 
     @property
-    def calibration_prms(self):
-        """Access the names of all 'calibration'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.role == "calibration"]
+    def latent_prms(self):
+        """Access the names of all 'latent'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.role == "latent"]
 
     @property
-    def n_calibration_prms(self):
-        """Access the number of all 'calibration'-parameters as an attribute."""
-        return len(self.calibration_prms)
+    def n_latent_prms(self):
+        """Access the number of all 'latent'-parameters as an attribute."""
+        return len(self.latent_prms)
 
     @property
     def constant_prms(self):
@@ -112,9 +112,9 @@ class Parameters(dict):
                 ('Const parameters',
                 simplified_list_string(self.constant_prms),
                 self.n_constant_prms),
-                ('Calibration parameters',
-                simplified_list_string(self.calibration_prms),
-                self.n_calibration_prms)]
+                ('Latent parameters',
+                simplified_list_string(self.latent_prms),
+                self.n_latent_prms)]
         # these are the strings appearing in the column headers
         headers = ["Parameter type/role", "Parameter names", "Count"]
         prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
@@ -168,7 +168,7 @@ class Parameters(dict):
 
 class ParameterProperties:
     """
-    Describes relevant properties of a ('calibration' or 'const') parameter.
+    Describes relevant properties of a ('latent' or 'const') parameter.
     Objects from this class are associated with the parameter's name in the
     dictionary class 'Parameters', see above. The use of this class as opposed
     to a standard dictionary allows convenient auto-completion while coding.

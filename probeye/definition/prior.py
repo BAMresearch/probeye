@@ -13,7 +13,7 @@ class PriorBase:
         Parameters
         ----------
         ref_prm : string
-            The name of the calibration-parameter the prior refers to.
+            The name of the latent parameter the prior refers to.
         prms_def : list
             A list of strings, or list of one-element-dicts defining the prior's
             parameter names. E.g. ['loc_a', 'scale_a'] or {'loc_a': 'loc_a',
