@@ -577,9 +577,6 @@ class TestProblem(unittest.TestCase):
             # the given noise model parameter has not been defined
             p.add_noise_model(NoiseModelBase('not_existing_parameter',
                                              sensors=['y1', 'y2']))
-        with self.assertRaises(RuntimeError):
-            # adding a noise model with the same sensors as another one
-            p.add_noise_model(NoiseModelBase('s1', sensors=['y1', 'y2']))
 
     def test_assign_experiments_to_noise_models(self):
         # some preparations before performing the actual tests
@@ -617,11 +614,11 @@ class TestProblem(unittest.TestCase):
         p.assign_experiments_to_noise_models()
         # now check if all experiments have been assigned correctly
         self.assertEqual(
-            p.noise_models['y1'].experiment_names, ['Exp_y1'])
+            p.noise_models[0].experiment_names, ['Exp_y1'])
         self.assertEqual(
-            p.noise_models['y2'].experiment_names,  ['Exp_y2_1', 'Exp_y2_2'])
+            p.noise_models[1].experiment_names,  ['Exp_y2_1', 'Exp_y2_2'])
         self.assertEqual(
-            p.noise_models['z1_z2'].experiment_names, ['Exp_z1z2'])
+            p.noise_models[2].experiment_names, ['Exp_z1z2'])
 
 if __name__ == "__main__":
     unittest.main()

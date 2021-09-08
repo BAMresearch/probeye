@@ -118,7 +118,7 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
         # compute the contribution to the log-likelihood function for each noise
         # model and sum it all up
         ll = 0.0
-        for noise_model in problem.noise_models.values():
+        for noise_model in problem.noise_models:
             # compute the model response for the noise model's experiment_names
             model_response = problem.evaluate_model_response(
                 theta, noise_model.experiment_names)

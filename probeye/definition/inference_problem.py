@@ -1,5 +1,6 @@
 # standard library
 from copy import copy
+import logging
 
 # third party imports
 from tabulate import tabulate
@@ -69,11 +70,10 @@ class InferenceProblem:
         # be edited directly
         self._forward_models = {}
 
-        # a dictionary for the problem's noise models; note that noise models
-        # are defined sensor-specific, so the items of this dict are of the
-        # structure <sensor name> : <noise model object>; this dict is managed
-        # internally and should not be edited directly
-        self._noise_models = {}
+        # a list for the problem's noise models (it's not a dict like the other
+        # attributes from above as the noise models don't need to have names);
+        # this list is managed internally and should not be edited directly
+        self._noise_models = list()
 
     @property
     def n_prms(self):
@@ -610,7 +610,7 @@ class InferenceProblem:
 
         # check if all parameters of the noise model appear in self._parameters
         # and if they have the correct type
-        for noise_model in self._noise_models.values():
+        for noise_model in self._noise_models:
             for noise_prm in noise_model.prms_def.keys():
                 assert noise_prm in self._parameters.keys()
                 assert self._parameters[noise_prm].type == "noise"
@@ -1016,19 +1016,20 @@ class InferenceProblem:
                     f"this purpose."
                 )
 
-        # add the given noise model to the internal noise model dictionary under
-        # a name derived from the noise model's sensor names
-        noise_model_name = '_'.join(make_list(noise_model.sensors))
-        if noise_model_name in [*self._noise_models.keys()]:
-            sensors = simplified_list_string(noise_model.sensors)
-            raise RuntimeError(
-                f"A noise model with the sensors {sensors} has already been "
-                f"defined in this problem!")
+        # check if the given noise model has the same sensors as one of the
+        # existing noise models (this does not make the problem inconsistent
+        # but I don't know an example where this would make sense)
+        for existing_noise_model in self._noise_models:
+            if set(existing_noise_model.sensors) == set(noise_model.sensors):
+                logging.warning(f"A noise model with an identical sensor "
+                                f"interface {noise_model.sensors} has already "
+                                f"been defined in this problem!")
+
         # add the problem's experiments to the noise model (this is just a
         # pointer!) for noise_model-internal checks
         noise_model.problem_experiments = self._experiments
         # finally, add the noise_model to the internal dict
-        self._noise_models[noise_model_name] = noise_model
+        self._noise_models.append(noise_model)
 
     def assign_experiments_to_noise_models(self):
         """
@@ -1040,7 +1041,7 @@ class InferenceProblem:
         """
         n_experiments_defined = len(self._experiments)
         n_experiments_noise = 0
-        for noise_model in self._noise_models.values():
+        for noise_model in self._noise_models:
             # get the experiments that contain all of the noise model's sensors
             experiment_names = self.get_experiment_names(
                 sensor_names=noise_model.sensors)
@@ -1061,7 +1062,7 @@ class InferenceProblem:
         for exp_name in self._experiments.keys():
             found_it = False
             if not found_it:
-                for noise_model in self._noise_models.values():
+                for noise_model in self._noise_models:
                     if not found_it:
                         for exp_name_noise in noise_model.experiment_names:
                             if exp_name == exp_name_noise:
