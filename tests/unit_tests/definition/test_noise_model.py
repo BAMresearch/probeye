@@ -44,21 +44,21 @@ class TestProblem(unittest.TestCase):
         # model to the inference problem
         noise_template.problem_experiments = problem_experiments
         # perform some simple tests for valid usage
-        noise_template.add_experiment_names('Exp1')
+        noise_template.add_experiments('Exp1')
         self.assertEqual(noise_template.experiment_names, ['Exp1'])
-        noise_template.add_experiment_names(['Exp2', 'Exp3'])
+        noise_template.add_experiments(['Exp2', 'Exp3'])
         self.assertEqual(noise_template.experiment_names,
                          ['Exp1', 'Exp2', 'Exp3'])
         # now check some invalid input arguments
         with self.assertRaises(RuntimeError):
             # add an experiment, that does not have the noise model's sensors
-            noise_template.add_experiment_names('Exp4')
+            noise_template.add_experiments('Exp4')
         with self.assertRaises(RuntimeError):
             # add experiments that refer to more than one forward model
-            noise_template.add_experiment_names(['Exp5', 'Exp6'])
+            noise_template.add_experiments(['Exp5', 'Exp6'])
         with self.assertRaises(RuntimeError):
             # adding the same experiment again
-            noise_template.add_experiment_names('Exp1')
+            noise_template.add_experiments('Exp1')
 
     def test_error(self):
         # prepare the setup for the tests
@@ -86,7 +86,7 @@ class TestProblem(unittest.TestCase):
         # the following is usually done automatically when adding the noise
         # model to the inference problem
         noise_template.problem_experiments = problem_experiments
-        noise_template.add_experiment_names(['Exp1', 'Exp2', 'Exp3'])
+        noise_template.add_experiments(['Exp1', 'Exp2', 'Exp3'])
         # now we can call the error-method
         computed_value = noise_template.error(model_response_dict)
         expected_value = {'y1': np.array([1., 2., 3.]),
@@ -169,7 +169,7 @@ class TestProblem(unittest.TestCase):
         # the following is usually done automatically when adding the noise
         # model to the inference problem
         noise_model.problem_experiments = problem_experiments
-        noise_model.add_experiment_names(['Exp1', 'Exp2', 'Exp3'])
+        noise_model.add_experiments(['Exp1', 'Exp2', 'Exp3'])
         sigma = 2.1
         prms = {'sigma': sigma}
         computed_result = noise_model.loglike_contribution(
@@ -191,7 +191,7 @@ class TestProblem(unittest.TestCase):
         # the following is usually done automatically when adding the noise
         # model to the inference problem
         noise_model.problem_experiments = problem_experiments
-        noise_model.add_experiment_names(['Exp1', 'Exp2', 'Exp3'])
+        noise_model.add_experiments(['Exp1', 'Exp2', 'Exp3'])
         sigma = 1.1
         prms = {'sigma': sigma}
         computed_result = noise_model.loglike_contribution(

@@ -1035,6 +1035,8 @@ class InferenceProblem:
         Assigns each noise model the corresponding experiment names, based on
         the sensor names, that are defined for each noise model. This function
         is intended to be called after the problem was fully defined.
+        Alternatively, you can assign the experiments 'by hand', by using the
+        NoiseModelBase's 'add_experiments' method.
         """
         n_experiments_defined = len(self._experiments)
         n_experiments_noise = 0
@@ -1044,7 +1046,7 @@ class InferenceProblem:
                 sensor_names=noise_model.sensors)
             n_experiments_noise += len(experiment_names)
             # add the relevant experiment names to the noise model
-            noise_model.add_experiment_names(experiment_names)
+            noise_model.add_experiments(experiment_names)
 
         # check if there is the same number of experiments over all noise models
         # as defined for the inference problem

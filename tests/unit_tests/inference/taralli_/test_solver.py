@@ -50,11 +50,11 @@ class TestProblem(unittest.TestCase):
         # run the taralli solver with deactivated output
         logging.root.disabled = True
         model = run_taralli_solver(problem, n_walkers=20, n_steps=200,
-                           show_sampling_progress=False, seed=6174)
+                                   show_sampling_progress=False, seed=6174)
         model.summary()
         for mean, mean_true in zip(model.summary_output["mean"], 
-                [a_true, b_true, sigma_true]):
-            self.assertAlmostEqual(mean, mean_true, delta = 0.01)
+                                   [a_true, b_true, sigma_true]):
+            self.assertAlmostEqual(mean, mean_true, delta=0.01)
 
 if __name__ == "__main__":
     unittest.main()

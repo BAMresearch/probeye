@@ -36,7 +36,7 @@ class NoiseModelBase:
         # problems experiments (it will be used for consistency checks)
         self.problem_experiments = {}
 
-    def add_experiment_names(self, experiment_names_):
+    def add_experiments(self, experiment_names_):
         """
         Adds experiment names to the noise model. When the noise model is
         evaluated it will only be evaluated for those experiments added here.
