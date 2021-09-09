@@ -84,22 +84,22 @@ jobs:
           color: ${{ env.COVERAGE_COL }}
 
   # Release to GitHub and PyPi [only for `main`]
-  #release:
-  #  name: Semantic Release
-  #  runs-on: ubuntu-latest
-  #  if: github.ref == 'refs/heads/main' && github.repository == 'BAMresearch/probeye'
-  #  concurrency: release
-  #  needs: [ lint_and_type_check, test ]
+  release:
+    name: Semantic Release
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.repository == 'BAMresearch/probeye'
+    concurrency: release
+    needs: [ lint_and_type_check, test ]
 
-  #  steps:
-  #    - uses: actions/checkout@v2
-  #      with:
-  #        fetch-depth: 0
-  #    - name: Fetch main
-  #      run: |
-  #        git fetch --prune origin +refs/heads/main:refs/remotes/origin/main
-  #    - name: Python semantic release
-  #      uses: relekang/python-semantic-release@master
-  #      with:
-  #        github_token: ${{ secrets.GITHUB_TOKEN }}
-  #        pypi_token: ${{ secrets.PYPI_TOKEN }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Fetch main
+        run: |
+          git fetch --prune origin +refs/heads/main:refs/remotes/origin/main
+      - name: Python semantic release
+        uses: relekang/python-semantic-release@master
+        with:
+          github_token: ${{ secrets.TOKEN_GITHUB }}
+          pypi_token: ${{ secrets.PYPI_TOKEN }}
