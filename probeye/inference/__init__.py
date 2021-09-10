@@ -1,2 +1,2 @@
 # subpackage imports
-from probeye.inference import taralli_
+from probeye.inference import emcee_

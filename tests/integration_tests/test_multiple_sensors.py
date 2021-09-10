@@ -21,8 +21,8 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor, PositionSensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoise
-from probeye.inference.taralli_.solver import run_taralli_solver
-from probeye.inference.taralli_.postprocessing import run_taralli_postprocessing
+from probeye.inference.emcee_.solver import run_emcee_solver
+from probeye.inference.emcee_.postprocessing import run_emcee_postprocessing
 
 
 class TestProblem(unittest.TestCase):
@@ -177,12 +177,11 @@ class TestProblem(unittest.TestCase):
 
         # run the taralli solver and postprocessing
         logging.root.disabled = not verbose
-        emcee_model = run_taralli_solver(
-            problem, n_walkers=n_walkers, n_steps=n_steps,
-            show_sampling_progress=verbose)
+        emcee_model = run_emcee_solver(
+            problem, n_walkers=n_walkers, n_steps=n_steps, verbose=verbose)
         if plot or verbose:
-            run_taralli_postprocessing(
-                problem, emcee_model, plot=plot, summary=verbose)
+            run_emcee_postprocessing(
+                problem, emcee_model, verbose=verbose)
 
 if __name__ == "__main__":
     unittest.main()

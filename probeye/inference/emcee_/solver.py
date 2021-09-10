@@ -2,19 +2,26 @@
 #                                   Imports                                    #
 # ============================================================================ #
 
+# standard library imports
+import time
+import logging
+import random
+
 # third party imports
 import copy
 import numpy as np
+import emcee
 
 # local imports
-from probeye.inference.taralli_.priors import translate_prior_template
-from taralli.parameter_estimation.base import EmceeParameterEstimator
+from probeye.subroutines import pretty_time_delta
+from probeye.inference.emcee_.priors import translate_prior_template
 
 # ============================================================================ #
 #                           Taralli sampling solver                            #
 # ============================================================================ #
 
-def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
+def run_emcee_solver(problem, n_walkers=20, n_steps=1000, n_initial_steps=100,
+                     seed=1, verbose=True, **kwargs):
     """
     Solves an inference problem described in problem via taralli's Markov chain
     Monte Carlo method from EmceeParameterEstimator.
@@ -27,12 +34,18 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
         Number of walkers used by the estimator.
     n_steps : int, optional
         Number of steps to run.
+    n_initial_steps : int, optional
+        Number of steps for initial (burn-in) sampling.
+    seed : int, optional
+        Random state used for random number generation.
+    verbose : bool, optional
+        No logging output when False. More logging information when True.
     **kwargs : optional
-        Additional key-word arguments channeled to EmceeParameterEstimator.
+        Additional key-word arguments channeled to emcee.EnsembleSampler.
 
     Returns
     -------
-    emcee_model : obj[EmceeParameterEstimator]
+    sampler : obj[emcee.EnsembleSample]
         Contains the results of the sampling procedure.
     """
 
@@ -129,22 +142,69 @@ def run_taralli_solver(problem, n_walkers=20, n_steps=1000, **kwargs):
         return ll
 
     # draw initial samples from the parameter's priors
-    init_array = np.zeros((n_walkers, problem.n_latent_prms))
+    sampling_initial_positions = np.zeros((n_walkers, problem.n_latent_prms))
     theta_names = problem.get_theta_names()
     for i, parameter_name in enumerate(theta_names):
-        init_array[:, i] = sample_from_prior(parameter_name, n_walkers)
+        sampling_initial_positions[:, i] = sample_from_prior(
+            parameter_name, n_walkers)
 
-    # define the sampling task
-    emcee_model = EmceeParameterEstimator(
-        log_likelihood=loglike,
-        log_prior=logprior,
-        ndim=problem.n_latent_prms,
+    # The following code is based on taralli: https://gitlab.com/tno-bim/taralli
+    # and merely adjusted to the variables in the probeye setup
+
+    # ........................................................................ #
+    #                               Pre-process                                #
+    # ........................................................................ #
+
+    if sampling_initial_positions.shape[1] != problem.n_latent_prms:
+        raise ValueError(
+            f"`sampling_initial_positions` should have {problem.n_latent_prms} "
+            f"columns (one for each parameter of interest), but "
+            f"{sampling_initial_positions.shape[1]} are provided.")
+
+    if sampling_initial_positions.shape[0] != n_walkers:
+        raise ValueError(
+            f"`sampling_initial_positions` should have {n_walkers} rows (one "
+            f"for each walker), but"
+            f"{sampling_initial_positions.shape[0]} are provided.")
+
+    random.seed(seed)
+    np.random.seed(seed)
+    rstate = np.random.mtrand.RandomState(seed)
+
+    sampler = emcee.EnsembleSampler(
         nwalkers=n_walkers,
-        sampling_initial_positions=init_array,
-        nsteps=n_steps,
+        ndim=problem.n_latent_prms,
+        log_prob_fn=lambda x: logprior(x) + loglike(x),
         **kwargs)
 
-    # perform the sampling
-    emcee_model.estimate_parameters()
+    sampler.random_state = rstate
 
-    return emcee_model
+    # ........................................................................ #
+    #      Initial sampling, burn-in: used to avoid a poor starting point      #
+    # ........................................................................ #
+
+    start = time.time()
+    state = sampler.run_mcmc(
+        initial_state=sampling_initial_positions,
+        nsteps=n_initial_steps,
+        progress=verbose)
+    end = time.time()
+
+    logging.info(
+        f"Initial sampling completed: {n_initial_steps} steps and {n_walkers} "
+        f"walkers.\n Total run-time: {pretty_time_delta(end - start)}.")
+
+    sampler.reset()
+
+    # ........................................................................ #
+    #                        Sampling of the posterior                         #
+    # ........................................................................ #
+    start = time.time()
+    sampler.run_mcmc(initial_state=state, nsteps=n_steps, progress=verbose)
+    end = time.time()
+    runtime_str = pretty_time_delta(end - start)
+    logging.info(
+        f"Sampling of the posterior distribution completed: {n_steps} steps "
+        f"and {n_walkers} walkers.\n Total run-time: {runtime_str}.")
+
+    return sampler

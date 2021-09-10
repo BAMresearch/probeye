@@ -10,12 +10,13 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoise
-from probeye.inference.taralli_.solver import run_taralli_solver
+from probeye.inference.emcee_.solver import run_emcee_solver
+from probeye.inference.emcee_.postprocessing import run_emcee_postprocessing
 
 
 class TestProblem(unittest.TestCase):
 
-    def test_taralli_solver(self):
+    def test_emcee_solver(self):
 
         np.random.seed(6174)
 
@@ -47,13 +48,13 @@ class TestProblem(unittest.TestCase):
         problem.add_experiment(f'Tests', fwd_model_name="LinRe",
                                sensor_values={'x': x_test, 'y': y_test})
 
-        # run the taralli solver with deactivated output
+        # run the emcee solver with deactivated output
         logging.root.disabled = True
-        model = run_taralli_solver(problem, n_walkers=20, n_steps=200,
-                                   show_sampling_progress=False, seed=6174)
-        model.summary()
-        for mean, mean_true in zip(model.summary_output["mean"], 
-                                   [a_true, b_true, sigma_true]):
+        emcee_sampler = run_emcee_solver(problem, n_walkers=20, n_steps=200,
+                                         verbose=False, seed=6174)
+        summary = run_emcee_postprocessing(problem, emcee_sampler, verbose=True)
+        sample_means = summary['mean']
+        for mean, mean_true in zip(sample_means, [a_true, b_true, sigma_true]):
             self.assertAlmostEqual(mean, mean_true, delta=0.01)
 
 if __name__ == "__main__":
