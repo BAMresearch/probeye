@@ -401,12 +401,25 @@ class InferenceProblem:
                 self.remove_parameter(prior_prm)  # recursive call
             del self._priors[self._parameters[prm_name].prior.name]
             del self._parameters[prm_name]
-            # correct the indices of the remaining 'latent'-parameters
+            # correct the indices of the remaining 'latent'-parameters; note
+            # that the way how the correction is done is due to the fact that
+            # the parameter.index attribute is protected, and cannot be changed
+            # directly from outside
+            idx_dict = {}
             idx = 0
-            for name, parameter in self._parameters.items():
+            for prm_name, parameter in self._parameters.items():
                 if parameter.index is not None:
-                    parameter.index = idx
+                    idx_dict[prm_name] = idx
                     idx += 1
+            for prm_name, idx in idx_dict.items():
+                self._parameters[prm_name] = ParameterProperties(
+                    {'index': idx,
+                     'type':  self._parameters[prm_name].type,
+                     'role':  self._parameters[prm_name].role,
+                     'prior': self._parameters[prm_name].prior,
+                     'value': self._parameters[prm_name].value,
+                     'info':  self._parameters[prm_name].info,
+                     'tex':   self._parameters[prm_name].tex})
 
     def check_if_parameter_exists(self, prm_name):
         """
@@ -494,7 +507,7 @@ class InferenceProblem:
         self.add_parameter(prm_name, prm_type, const=const, prior=prior,
                            info=prm_info, tex=prm_tex)
 
-    def change_parameter_info(self, prm_name, new_info, new_tex=None):
+    def change_parameter_info(self, prm_name, new_info=None, new_tex=None):
         """
         Changes the info-string and/or the tex-string of a given parameter.
 
@@ -502,18 +515,29 @@ class InferenceProblem:
         ----------
         prm_name : str
             The name of the parameter whose info-string should be changed.
-        new_info : str
+        new_info : str, None, optional
             The new string for the explanation of parameter prm_name.
-        new_tex : str or None
+        new_tex : str, None, optional
             The new string for the parameter's tex-representation.
         """
         # check if the given parameter exists
         self.check_if_parameter_exists(prm_name)
 
+        # if None is given for the new info/tex, the old value will be kept
+        if new_info is None:
+            new_info = self._parameters[prm_name].info
+        if new_tex is None:
+            new_tex = self._parameters[prm_name].tex
+
         # change the info/tex-string
-        self._parameters[prm_name].info = new_info
-        if new_tex is not None:
-            self._parameters[prm_name].tex = new_tex
+        self._parameters[prm_name] =\
+            ParameterProperties({'index': self._parameters[prm_name].index,
+                                 'type':  self._parameters[prm_name].type,
+                                 'role':  self._parameters[prm_name].role,
+                                 'prior': self._parameters[prm_name].prior,
+                                 'value': self._parameters[prm_name].value,
+                                 'info':  new_info,
+                                 'tex':   new_tex})
 
     def change_constant(self, prm_name, new_value):
         """
@@ -536,7 +560,14 @@ class InferenceProblem:
                 f"The parameter '{prm_name}' is not a constant!"
             )
         # change the parameter's value
-        self._parameters[prm_name].value = new_value
+        self._parameters[prm_name] = ParameterProperties(
+            {'index': self._parameters[prm_name].index,
+             'type':  self._parameters[prm_name].type,
+             'role':  self._parameters[prm_name].role,
+             'prior': self._parameters[prm_name].prior,
+             'value': new_value,
+             'info':  self._parameters[prm_name].info,
+             'tex':   self._parameters[prm_name].tex})
 
     def _add_prior(self, name, prior_type, prms_def, ref_prm):
         """
