@@ -183,10 +183,66 @@ class ParameterProperties:
             properties. See also the explanations in InferenceProblem.__init__()
             for more detailed information.
         """
-        self.index = prm_dict['index']
-        self.type = prm_dict['type']
-        self.role = prm_dict['role']
-        self.prior = prm_dict['prior']
-        self.value = prm_dict['value']
+        self._index = prm_dict['index']
+        self._type = prm_dict['type']
+        self._role = prm_dict['role']
+        self._prior = prm_dict['prior']
+        self._value = prm_dict['value']
         self.info = prm_dict['info']
         self.tex = prm_dict['tex']
+
+    @property
+    def index(self):
+        """Access self._index from outside via self.index."""
+        return self._index
+
+    @index.setter
+    def index(self, value):
+        """Raise a specific error when trying to directly set self.index."""
+        raise AttributeError(
+            "Changing a parameter's index directly is prohibited!")
+
+    @property
+    def type(self):
+        """Access self._type from outside via self.type."""
+        return self._type
+
+    @type.setter
+    def type(self, value):
+        """Raise a specific error when trying to directly set self.type."""
+        raise AttributeError(
+            "Changing a parameter's type directly is prohibited!")
+
+    @property
+    def role(self):
+        """Access self._role from outside via self.role."""
+        return self._role
+
+    @role.setter
+    def role(self, value):
+        """Raise a specific error when trying to directly set self.role."""
+        raise AttributeError(
+            "You cannot change a parameter's role directly! Use "
+            "InferenceProblem.change_parameter_role instead.")
+
+    @property
+    def prior(self):
+        """Access self._prior from outside via self.prior."""
+        return self._prior
+
+    @prior.setter
+    def prior(self, value):
+        """Raise a specific error when trying to directly set self.prior."""
+        raise AttributeError(
+            "Changing a parameter's prior directly is prohibited!")
+
+    @property
+    def value(self):
+        """Access self._value from outside via self.value."""
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        """Raise a specific error when trying to directly set self.value."""
+        raise AttributeError(
+            "Changing a parameter's value directly is prohibited!")

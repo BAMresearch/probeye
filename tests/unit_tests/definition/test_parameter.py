@@ -46,5 +46,17 @@ class TestProblem(unittest.TestCase):
                                'info': "...",
                                'tex': r"$d$"}
 
+        # you should not be able to set parameter attributes directly
+        with self.assertRaises(AttributeError):
+            parameters['a'].index = -1
+        with self.assertRaises(AttributeError):
+            parameters['a'].type = -1
+        with self.assertRaises(AttributeError):
+            parameters['a'].role = -1
+        with self.assertRaises(AttributeError):
+            parameters['a'].prior = -1
+        with self.assertRaises(AttributeError):
+            parameters['a'].value = -1
+
 if __name__ == "__main__":
     unittest.main()
