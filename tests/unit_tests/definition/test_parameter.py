@@ -57,10 +57,6 @@ class TestProblem(unittest.TestCase):
             parameters['a'].prior = -1
         with self.assertRaises(AttributeError):
             parameters['a'].value = -1
-        with self.assertRaises(AttributeError):
-            parameters['a'].info = -1
-        with self.assertRaises(AttributeError):
-            parameters['a'].tex = -1
 
 if __name__ == "__main__":
     unittest.main()

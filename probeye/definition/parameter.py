@@ -188,8 +188,8 @@ class ParameterProperties:
         self._role = prm_dict['role']
         self._prior = prm_dict['prior']
         self._value = prm_dict['value']
-        self._info = prm_dict['info']
-        self._tex = prm_dict['tex']
+        self.info = prm_dict['info']
+        self.tex = prm_dict['tex']
 
     @property
     def index(self):
@@ -246,27 +246,3 @@ class ParameterProperties:
         """Raise a specific error when trying to directly set self.value."""
         raise AttributeError(
             "Changing a parameter's value directly is prohibited!")
-
-    @property
-    def info(self):
-        """Access self._info from outside via self.info."""
-        return self._info
-
-    @info.setter
-    def info(self, value):
-        """Raise a specific error when trying to directly set self.info."""
-        raise AttributeError(
-            "You cannot change a parameter's info-property directly! Use "
-            "InferenceProblem.change_parameter_info instead.")
-
-    @property
-    def tex(self):
-        """Access self._tex from outside via self.tex."""
-        return self._tex
-
-    @tex.setter
-    def tex(self, value):
-        """Raise a specific error when trying to directly set self.tex."""
-        raise AttributeError(
-            "You cannot change a parameter's tex-property directly! Use "
-            "InferenceProblem.change_parameter_info instead.")
