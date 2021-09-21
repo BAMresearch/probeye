@@ -12,27 +12,39 @@ class Sensor:
     local temperature, etc.) can be added by the user. See e.g. the definition
     of PositionSensor given below.
     """
-    def __init__(self, name):
+    def __init__(self, name, measurand="not defined", unit="not defined"):
         """
         Parameters
         ----------
         name : str
             The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
+        measurand : str, optional
+            Defines what the sensor measures, e.g. 'deflection'.
+        unit : str, optional
+            Defines what unit is associated with the sensor's measurements, for
+            example 'mm'.
         """
         self.name = name
+        self.measurand = measurand
+        self.unit = unit
 
 
 class PositionSensor(Sensor):
     """
     Class for a forward model's sensor with constant positional coordinates.
     """
-    def __init__(self, name, x=None, y=None, z=None, coords=None,
-                 order=('x', 'y', 'z')):
+    def __init__(self, name, measurand='position', unit='', x=None, y=None,
+                 z=None, coords=None, order=('x', 'y', 'z')):
         """
         Parameters
         ----------
         name : str
             The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
+        measurand : str, optional
+            Defines what the sensor measures.
+        unit : str, optional
+            Defines what unit is associated with the sensor's measurements, for
+            example 'mm'.
         x : float, int, numpy.ndarray, None, optional
             Positional x-coordinate of the sensor. When given, the coords-
             argument must be None.
@@ -53,7 +65,7 @@ class PositionSensor(Sensor):
             means that the 1st row are x-coordinates, the 2nd row are y-coords
             and the 3rd row are the z-coordinates.
         """
-        super().__init__(name)
+        super().__init__(name, measurand=measurand, unit=unit)
 
         # check that at least one coordinate is given
         if (x is None) and (y is None) and (z is None) and (coords is None):
