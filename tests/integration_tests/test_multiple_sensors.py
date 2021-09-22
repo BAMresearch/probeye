@@ -18,7 +18,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.sensor import Sensor, PositionSensor
+from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoise
 from probeye.inference.emcee_.solver import run_emcee_solver
@@ -131,9 +131,9 @@ class TestProblem(unittest.TestCase):
 
         # add the forward model to the problem
         isensor = Sensor("time")
-        osensor1 = PositionSensor("y1", x=pos_s1)
-        osensor2 = PositionSensor("y2", x=pos_s2)
-        osensor3 = PositionSensor("y3", x=pos_s3)
+        osensor1 = Sensor("y1", x=pos_s1)
+        osensor2 = Sensor("y2", x=pos_s2)
+        osensor3 = Sensor("y3", x=pos_s3)
         linear_model = LinearModel(
             ['A', 'B'], [isensor], [osensor1, osensor2, osensor3])
         problem.add_forward_model("LinearModel", linear_model)
