@@ -14,5 +14,4 @@
 ### Changed (1 item)
 - PositionProperties class:
   * Its attributes (except for info and tex) have been made private. They cannot be changed directly from outside anymore. This should prevent the user from messing up a well-defined InferenceProblem.
-  * The corresponding tests have been extendend to check this feature.
-
+  * The corresponding tests have been extended to check this feature.
