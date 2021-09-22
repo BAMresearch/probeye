@@ -4,22 +4,21 @@ import numpy as np
 
 # local imports
 from probeye.definition.sensor import Sensor
-from probeye.definition.sensor import SensorWithCoordinates
 
 
 class TestProblem(unittest.TestCase):
 
-    def test_sensor_init(self):
+    def test_sensor_no_coords_init(self):
         # so far the Sensor class has only a name attribute, no methods
         sensor_name = 'Some sensor-name'
         sensor = Sensor(sensor_name)
         # check if everything is where it should be
         self.assertEqual(sensor.name, sensor_name)
 
-    def test_position_sensor_init(self):
+    def test_sensor_with_coords_init(self):
         # check a position sensor with three coordinates via x-y-z-input
         x, y, z, sensor_name = 1, 2, 3, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, x=x, y=y, z=z)
+        position_sensor = Sensor(sensor_name, x=x, y=y, z=z)
         # check if everything is where it should be
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
@@ -31,7 +30,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with three coordinates via coords-input
         coords, sensor_name = np.array([[1], [2], [3]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, coords=coords)
+        position_sensor = Sensor(sensor_name, coords=coords)
         # check if everything is where it should be
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
@@ -43,7 +42,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with two coordinates (x and y) via x-y-input
         x, y, sensor_name = 1, 2, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, x=x, y=y)
+        position_sensor = Sensor(sensor_name, x=x, y=y)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.y, y)
@@ -53,7 +52,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with two coordinates (x, y) via coords-input
         coords, sensor_name = np.array([[1], [2]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, coords=coords)
+        position_sensor = Sensor(sensor_name, coords=coords)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.y, y)
@@ -63,7 +62,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with two coordinates (x and z) via x-z-input
         x, z, sensor_name = 1, 3, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, x=x, z=z)
+        position_sensor = Sensor(sensor_name, x=x, z=z)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.z, z)
@@ -73,7 +72,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with two coordinates (x, z) via coords-input
         coords, sensor_name = np.array([[1], [3]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(
+        position_sensor = Sensor(
             sensor_name, coords=coords, order=('x', 'z'))
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
@@ -84,7 +83,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with two coordinates (y and z) via y-z-input
         y, z, sensor_name = 2, 3, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, y=y, z=z)
+        position_sensor = Sensor(sensor_name, y=y, z=z)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.z, z)
@@ -94,7 +93,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with two coordinates (y, z) via coords-input
         coords, sensor_name = np.array([[2], [3]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(
+        position_sensor = Sensor(
             sensor_name, coords=coords, order=('y', 'z'))
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, y)
@@ -105,7 +104,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (x) via x-input
         x, sensor_name = 1, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, x=x)
+        position_sensor = Sensor(sensor_name, x=x)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.coords.shape, (1, 1))
@@ -113,7 +112,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (x) via coords-input
         coords, sensor_name = np.array([[1]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, coords=coords)
+        position_sensor = Sensor(sensor_name, coords=coords)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, 1)
         self.assertEqual(position_sensor.coords.shape, (1, 1))
@@ -121,7 +120,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (y) via y-input
         y, sensor_name = 2, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, y=y)
+        position_sensor = Sensor(sensor_name, y=y)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.coords.shape, (1, 1))
@@ -129,7 +128,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (y) via coords-input
         coords, sensor_name = np.array([[2]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(
+        position_sensor = Sensor(
             sensor_name, coords=coords, order='y')
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, 2)
@@ -138,7 +137,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (z) via z-input
         z, sensor_name = 3, 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(sensor_name, z=z)
+        position_sensor = Sensor(sensor_name, z=z)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.z, z)
         self.assertEqual(position_sensor.coords.shape, (1, 1))
@@ -146,16 +145,12 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (z) via coords-input
         coords, sensor_name = np.array([[3]]), 'Some sensor-name'
-        position_sensor = SensorWithCoordinates(
+        position_sensor = Sensor(
             sensor_name, coords=coords, order='z')
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.z, 3)
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], 3)
-
-        # check that an error is raised if no coordinates are given
-        with self.assertRaises(RuntimeError):
-            SensorWithCoordinates('Some sensor-name')
 
 if __name__ == "__main__":
     unittest.main()

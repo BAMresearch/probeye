@@ -7,32 +7,14 @@ from probeye.subroutines import make_list
 
 class Sensor:
     """
-    Base class for a sensor of the forward model. Essentially just a class with
-    a 'name' attribute. Additional attributes (such as sensor position, its
-    local temperature, etc.) can be added by the user. See e.g. the definition
-    of SensorWithCoordinates given below.
+    Base class for a sensor of the forward model. In its simplest form just a
+    class with a 'name' attribute. Additional attributes for the measured
+    quality (measurand) and the corresponding unit can be defined. If the
+    sensors position(s) are important, they can be defined as attributes.
+    Further attributes can be defined by the user by creating new classes
+    derived from this one.
     """
-    def __init__(self, name, measurand="not defined", unit="not defined"):
-        """
-        Parameters
-        ----------
-        name : str
-            The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
-        measurand : str, optional
-            Defines what the sensor measures, e.g. 'deflection'.
-        unit : str, optional
-            Defines what unit is associated with the sensor's measurements, for
-            example 'mm'.
-        """
-        self.name = name
-        self.measurand = measurand
-        self.unit = unit
 
-
-class SensorWithCoordinates(Sensor):
-    """
-    Class for a forward model's sensor with constant positional coordinates.
-    """
     def __init__(self, name, measurand='not defined', unit='not defined',
                  x=None, y=None, z=None, coords=None, order=('x', 'y', 'z')):
         """
@@ -41,7 +23,7 @@ class SensorWithCoordinates(Sensor):
         name : str
             The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
         measurand : str, optional
-            Defines what the sensor measures.
+            Defines what the sensor measures, e.g. 'deflection'.
         unit : str, optional
             Defines what unit is associated with the sensor's measurements, for
             example 'mm'.
@@ -65,26 +47,26 @@ class SensorWithCoordinates(Sensor):
             means that the 1st row are x-coordinates, the 2nd row are y-coords
             and the 3rd row are the z-coordinates.
         """
-        super().__init__(name, measurand=measurand, unit=unit)
 
-        # check that at least one coordinate is given
-        if (x is None) and (y is None) and (z is None) and (coords is None):
-            raise RuntimeError(
-                "At least one coordinate of x, y and z or a coordinate array"
-                "(coords) has to be specified. You did not specify anything.")
+        # basic attributes
+        self.name = name
+        self.measurand = measurand
+        self.unit = unit
+        self._order = order
 
         # define the attributes 'order' and 'coords'
         if coords is None:
-            # in this case, the coordinates are given directly via x, y, z; note
-            # that due to the eval-statement, the following for-loop cannot be
-            # put into a list comprehension
-            self.order = []  # this is going to be a list of str like ['x', 'z']
-            self.coords = []
-            for v in order:
-                if eval(v) is not None:
-                    self.order.append(v)
-                    self.coords.append(make_list(eval(v)))
-            self.coords = np.array(self.coords)
+            if not ((x is None) and (y is None) and (z is None)):
+                # in this case, the coordinates are given directly via x, y, z;
+                # note that due to the eval-statement, the following for-loop
+                # cannot be put into a list comprehension
+                self._order = []  # going to be a list of str like ['x', 'z']
+                self.coords = []
+                for v in order:
+                    if eval(v) is not None:
+                        self._order.append(v)
+                        self.coords.append(make_list(eval(v)))
+                self.coords = np.array(self.coords)
         else:
             if not ((x is None) and (y is None) and (z is None)):
                 raise RuntimeError(
@@ -93,23 +75,23 @@ class SensorWithCoordinates(Sensor):
 
             # here, the coords-array is given directly; the order is taken from
             # the order-argument
-            self.order = order[:coords.shape[0]]
+            self._order = order[:coords.shape[0]]
             self.coords = coords
 
         # this contains the information which row contains which coordinate
-        self.index_dict = {coord: i for i, coord in enumerate(self.order)}
+        self.index_dict = {coord: i for i, coord in enumerate(self._order)}
 
     @property
     def x(self):
         """Provides x-coords as attribute without copying them from coords."""
-        return self.coords[self.index_dict['x']] if 'x' in self.order else None
+        return self.coords[self.index_dict['x']] if 'x' in self._order else None
 
     @property
     def y(self):
         """Provides y-coords as attribute without copying them from coords."""
-        return self.coords[self.index_dict['y']] if 'y' in self.order else None
+        return self.coords[self.index_dict['y']] if 'y' in self._order else None
 
     @property
     def z(self):
         """Provides z-coords as attribute without copying them from coords."""
-        return self.coords[self.index_dict['z']] if 'z' in self.order else None
+        return self.coords[self.index_dict['z']] if 'z' in self._order else None

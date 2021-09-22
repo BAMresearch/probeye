@@ -1,11 +1,12 @@
 # probeye changelog
 
 ## 1.0.2 (2021-Sep-22)
-### Changed (2 item)
+### Changed (1 item)
 - Sensor class:
-  * Added measurand- and unit-attribute.
+  * Combined with PositionSensor. Now, the basic Sensor class provides the option to define sensor coordinates.
+### Removed (1 item)
 - PositionSensor class
-  * Renamed it to SensorWithCoordinates.
+  * Removal due to merge with the basic Sensor class.
 ### Added (1 item)
 - Changelog
   * Added CHANGELOG.md to repository.
