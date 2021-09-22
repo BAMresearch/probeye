@@ -33,8 +33,8 @@ class PositionSensor(Sensor):
     """
     Class for a forward model's sensor with constant positional coordinates.
     """
-    def __init__(self, name, measurand='position', unit='', x=None, y=None,
-                 z=None, coords=None, order=('x', 'y', 'z')):
+    def __init__(self, name, measurand='not defined', unit='not defined',
+                 x=None, y=None, z=None, coords=None, order=('x', 'y', 'z')):
         """
         Parameters
         ----------
