@@ -110,13 +110,11 @@ class TestProblem(unittest.TestCase):
                         prior=('uniform', {'low': 0.1, 'high': 2.0}))
         p.add_parameter('a', 'model', info='info', tex='$a$',
                         prior=('normal', {'loc': 'loc_a', 'scale': 'scale_a'}))
+        p.add_parameter('d', 'model')  # latent param. with uninformative prior
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # adding a parameter with wrong type
             p.add_parameter('d', 'wrong_type', const=1.0)
-        with self.assertRaises(RuntimeError):
-            # adding a parameter with neither const nor prior given
-            p.add_parameter('d', 'model')
         with self.assertRaises(RuntimeError):
             # adding a parameter with both const and prior given
             p.add_parameter('a', 'model', const=1.0,

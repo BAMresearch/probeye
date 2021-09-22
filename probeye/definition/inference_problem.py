@@ -281,17 +281,15 @@ class InferenceProblem:
                 f"Valid arguments are 'model', 'prior' or 'noise'."
             )
 
-        # exactly one of the const and prior key word arguments must be given
+        # only one of the const and prior key word arguments can be given; if
+        # none of them are given, the parameter is interpreted as latent with
+        # an uninformative prior
         if const is not None and prior is not None:
             raise RuntimeError(
-                f"You must specify either the 'const' or the 'prior' key " +
-                f"argument. You have specified both."
-            )
+                f"You can only specify one of the two key word arguments "
+                f"'const' and 'prior'. You have specified both.")
         if const is None and prior is None:
-            raise RuntimeError(
-                f"You must specify either the 'const' or the 'prior' key " +
-                f"argument. You have specified none."
-            )
+            prior = ('uninformative', {})
 
         # check whether the parameter name was used before; note that all
         # parameters (across types!) must have unique names
@@ -397,7 +395,7 @@ class InferenceProblem:
             # to remove the prior-parameter and the prior-object; also, we have
             # to correct the index values of the remaining latent parameters
             for prior_prm in self._parameters[prm_name].prior.\
-                    prms_def_no_ref.keys():
+                    hyperparameters.keys():
                 self.remove_parameter(prior_prm)  # recursive call
             del self._priors[self._parameters[prm_name].prior.name]
             del self._parameters[prm_name]
@@ -650,7 +648,7 @@ class InferenceProblem:
         # their parameters; each one of them must appear in self._parameters
         assert len(self._priors) == self._parameters.n_latent_prms
         for prior_obj in self._priors.values():
-            for prior_prm in prior_obj.prms_def_no_ref.keys():
+            for prior_prm in prior_obj.hyperparameters.keys():
                 assert prior_prm in self._parameters.keys()
                 assert self._parameters[prior_prm].type == 'prior'
 
@@ -658,7 +656,7 @@ class InferenceProblem:
         # the problem's parameter dictionary
         for prm_name, parameter in self._parameters.items():
             if parameter.role == 'latent':
-                for prior_prm in parameter.prior.prms_def_no_ref.keys():
+                for prior_prm in parameter.prior.hyperparameters.keys():
                     assert prior_prm in self._parameters.keys()
                     assert self._parameters[prior_prm].type == 'prior'
 
