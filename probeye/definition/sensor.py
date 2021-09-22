@@ -10,7 +10,7 @@ class Sensor:
     Base class for a sensor of the forward model. Essentially just a class with
     a 'name' attribute. Additional attributes (such as sensor position, its
     local temperature, etc.) can be added by the user. See e.g. the definition
-    of PositionSensor given below.
+    of SensorWithCoordinates given below.
     """
     def __init__(self, name, measurand="not defined", unit="not defined"):
         """
@@ -29,7 +29,7 @@ class Sensor:
         self.unit = unit
 
 
-class PositionSensor(Sensor):
+class SensorWithCoordinates(Sensor):
     """
     Class for a forward model's sensor with constant positional coordinates.
     """
