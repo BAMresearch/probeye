@@ -3,6 +3,7 @@ from tabulate import tabulate
 
 # local imports
 from probeye.subroutines import titled_table, simplified_list_string
+from probeye.definition.prior import PriorBase
 
 class Parameters(dict):
     """
@@ -183,13 +184,99 @@ class ParameterProperties:
             properties. See also the explanations in InferenceProblem.__init__()
             for more detailed information.
         """
+        # write attributes
         self._index = prm_dict['index']
         self._type = prm_dict['type']
-        self._role = prm_dict['role']
         self._prior = prm_dict['prior']
         self._value = prm_dict['value']
         self.info = prm_dict['info']
         self.tex = prm_dict['tex']
+
+        # check the given values
+        self.check_consistency()
+
+    def check_consistency(self):
+        """
+        Checks the defined attributes in both isolated checks (each attribute
+        is checked without considering others) and cross-checks, where the
+        combination of attributes is checked on consistency.
+        """
+
+        # ------------------------------- #
+        #         Isolated checks         #
+        # ------------------------------- #
+
+        if not (type(self._index) == int or self._index is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._index attribute! It must "
+                f"be of type int or None, but found {type(self._index)}.")
+
+        if (self._index is not None) and (self._index < 0):
+            raise RuntimeError(
+                f"Found negative value for ParameterProperties._index! This "
+                f"attribute must be a non-negative integer, but found a value "
+                f"of {self._index}.")
+
+        if type(self._type) != str:
+            raise TypeError(
+                f"Found invalid ParameterProperties._type attribute! Its type "
+                f"must be str, but found {type(self._type)}.")
+
+        if self._type not in ['model', 'prior', 'noise']:
+            raise RuntimeError(
+                f"Found invalid ParameterProperties._type attribute! It can "
+                f"only assume the three values 'model', 'prior' or 'noise' but "
+                f"found '{self._type}'.")
+
+        if not (type(self._prior) == PriorBase or self._prior is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._prior attribute! It must "
+                f"be of type PriorBase or None, but found {type(self._prior)}.")
+
+        if not (type(self._value) in [float, int] or self._value is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._value attribute! It must "
+                f"be of type float/int or None, but found {type(self._value)}.")
+
+        if type(self.info) != str:
+            raise TypeError(
+                f"Found invalid ParameterProperties.info attribute! Its type "
+                f"must be str, but found {type(self.info)}.")
+
+        if not (type(self.tex) == str or self.tex is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties.tex attribute! It must be "
+                f"of type str or None, but found {type(self.tex)}.")
+
+        # -------------------------------- #
+        #           Cross checks           #
+        # -------------------------------- #
+
+        if self._index is not None:
+            # in this case, we have a latent parameter
+            if self._value is not None:
+                raise RuntimeError(
+                    f"ParameterProperties._index and ParameterProperties._value"
+                    f" are both given (_index={self._index} and _value="
+                    f"{self._value}), but one of them must be None!")
+            if self._prior is None:
+                raise RuntimeError(
+                    f"ParameterProperties._index and ParameterProperties._prior"
+                    f" are both given (_index={self._index} and prior="
+                    f"{self._prior}), but one of them must be None!")
+
+        else:
+            # in this case, we have a constant parameter
+            if self._value is None:
+                raise RuntimeError(
+                    f"ParameterProperties._index and ParameterProperties._value"
+                    f" are both None, but one of them must be not None!")
+            if self._prior is not None:
+                raise RuntimeError(
+                    f"ParameterProperties._index is None while Parameter"
+                    f"Properties._prior is given ({self._prior}). This "
+                    f"combination is not valid. Either the index must also be "
+                    f"given, or the prior must also be None.")
 
     @property
     def index(self):
@@ -215,8 +302,9 @@ class ParameterProperties:
 
     @property
     def role(self):
-        """Access self._role from outside via self.role."""
-        return self._role
+        """Adds a pseudo-attribute self.role, which allows a convenient check
+           on whether a parameter is latent or not."""
+        return 'latent' if self._index is not None else 'const'
 
     @role.setter
     def role(self, value):

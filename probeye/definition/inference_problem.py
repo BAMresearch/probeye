@@ -42,8 +42,6 @@ class InferenceProblem:
         #         for 'latent'-parameter; None for 'const'-parameters)
         # .type   string (either 'model', 'prior' or 'noise' depending on where
         #         the parameter appears)
-        # .role   string (either 'const' for a constant parameter or
-        #         'latent' for a latent parameter)
         # .prior  object or None (the prior-object of the 'latent'-
         #         parameter; None for 'const'-parameters)
         # .value  float or None (defines the value for 'const'-parameters;
@@ -57,11 +55,6 @@ class InferenceProblem:
         # experiment_names (see self.add_experiment); this dict is managed
         # internally and should not be edited directly
         self._experiments = {}
-
-        # dictionary of the problem's priors; the items will have the structure
-        # <prior name> : <prior object>; this dict is managed internally and
-        # should not be edited directly
-        self._priors = {}
 
         # here, the forward models are written to; note that the problem can
         # have multiple forward models; the keys are the forward model names,
@@ -142,8 +135,12 @@ class InferenceProblem:
 
     @property
     def priors(self):
-        """Access self._priors from outside via self.priors."""
-        return self._priors
+        """Provides the problem's prior-dictionary which is derived from the
+           latent parameters in the self.parameters dictionary. The keys are the
+           priors names, while the values are the prior-objects."""
+        return {parameter_properties.prior.name: parameter_properties.prior
+                for parameter_properties in self.parameters.values()
+                if parameter_properties.role == 'latent'}
 
     @property
     def noise_models(self):
@@ -198,7 +195,7 @@ class InferenceProblem:
         # include information on the defined priors
         rows = [(name, simplified_list_string([*prior.prms_def.keys()]),
                  simplified_list_string([*prior.prms_def.values()]))
-                for name, prior in self._priors.items()]
+                for name, prior in self.priors.items()]
         headers = ["Prior name", "Global parameters", "Local parameters"]
         prior_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
         prior_str = titled_table('Priors', prior_table)
@@ -300,7 +297,6 @@ class InferenceProblem:
             )
 
         # add the parameter to the central parameter dictionary
-        prm_role = 'latent' if const is None else 'const'
         if const is None:  # in this case we are adding a 'latent'-param.
             # first, define the index of this parameter in the numeric vector
             # theta, which is given to self.loglike and self.logprior
@@ -309,7 +305,8 @@ class InferenceProblem:
             # to None in this case, where we are adding a 'latent'-param.
             prm_value = None
             # the remaining code in this if-branch defines the prior that is
-            # associated with this 'latent'-parameter
+            # associated with this 'latent'-parameter; first, however, check
+            # whether the given prior has a valid structure
             if type(prior) not in [list, tuple]:
                 raise TypeError(
                     f"The given prior is of type {type(prior)} but must be "
@@ -328,6 +325,7 @@ class InferenceProblem:
                     f"The second element of the prior must be of type dict. "
                     f"However, the given second element is of type "
                     f"{type(prior[1])}.")
+            # extract the prior's elements
             prior_type = prior[0]  # e.g. 'normal', 'lognormal', etc.
             prior_dict = prior[1]  # dictionary with parameter-value pairs
             prior_parameter_names = []
@@ -354,8 +352,9 @@ class InferenceProblem:
                         f"{type(value)}."
                     )
             prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
-            prm_prior = self._add_prior(prior_name, prior_type,
-                                        prior_parameter_names, prm_name)
+            prm_prior = PriorBase(prm_name, prior_parameter_names,
+                                  prior_name, prior_type)
+
         else:
             # in this case we are adding a 'const'-parameter, which means that
             # the prm_index and prm_prior values are not used here
@@ -366,7 +365,6 @@ class InferenceProblem:
         # add the parameter to the central parameter dictionary
         self._parameters[prm_name] = ParameterProperties({'index': prm_index,
                                                           'type': prm_type,
-                                                          'role': prm_role,
                                                           'prior': prm_prior,
                                                           'value': prm_value,
                                                           'info': info,
@@ -397,7 +395,6 @@ class InferenceProblem:
             for prior_prm in self._parameters[prm_name].prior.\
                     hyperparameters.keys():
                 self.remove_parameter(prior_prm)  # recursive call
-            del self._priors[self._parameters[prm_name].prior.name]
             del self._parameters[prm_name]
             # correct the indices of the remaining 'latent'-parameters; note
             # that the way how the correction is done is due to the fact that
@@ -413,7 +410,6 @@ class InferenceProblem:
                 self._parameters[prm_name] = ParameterProperties(
                     {'index': idx,
                      'type':  self._parameters[prm_name].type,
-                     'role':  self._parameters[prm_name].role,
                      'prior': self._parameters[prm_name].prior,
                      'value': self._parameters[prm_name].value,
                      'info':  self._parameters[prm_name].info,
@@ -531,7 +527,6 @@ class InferenceProblem:
         self._parameters[prm_name] =\
             ParameterProperties({'index': self._parameters[prm_name].index,
                                  'type':  self._parameters[prm_name].type,
-                                 'role':  self._parameters[prm_name].role,
                                  'prior': self._parameters[prm_name].prior,
                                  'value': self._parameters[prm_name].value,
                                  'info':  new_info,
@@ -561,53 +556,10 @@ class InferenceProblem:
         self._parameters[prm_name] = ParameterProperties(
             {'index': self._parameters[prm_name].index,
              'type':  self._parameters[prm_name].type,
-             'role':  self._parameters[prm_name].role,
              'prior': self._parameters[prm_name].prior,
              'value': new_value,
              'info':  self._parameters[prm_name].info,
              'tex':   self._parameters[prm_name].tex})
-
-    def _add_prior(self, name, prior_type, prms_def, ref_prm):
-        """
-        Adds a PriorBase-object, generally representing a prior of a latent
-        parameter to the internal prior dictionary. In the inference step, after
-        defining the problem, this template object has to be translated into a
-        prior-object of the user's choice, that is able to evaluate functions
-        like the logpdf. The PriorBase does not have this capabilities, it
-        merely describes the prior-type, its parameters, etc.
-
-        Parameters
-        ----------
-        name : str
-            Unique name of the prior. Usually this name has the structure
-            <ref_prm>_<prior_type>.
-        prior_type : str
-            Defines the prior type, e.g. 'normal' or 'uniform'.
-        prms_def : list[str]
-            States the prior's parameter names.
-        ref_prm : str
-            The name of the problem's latent parameter the prior refers to
-            (a prior is always defined for a specific latent parameter).
-
-        Returns
-        -------
-        obj[PriorBase]
-            The instantiated PriorBase-object which is also written to the
-            internal prior dictionary self._priors.
-        """
-        # check if the prior parameters exist (a prior cannot be defined before
-        # its parameters have been defined)
-        for prior_parameter in prms_def:
-            self.check_if_parameter_exists(prior_parameter)
-
-        # check if a prior with the same name was defined before
-        if name in [*self._priors.keys()]:
-            raise RuntimeError(
-                f"A prior with the name '{name}' already exists!")
-
-        # add the prior to the internal dictionary
-        self._priors[name] = PriorBase(ref_prm, prms_def, name, prior_type)
-        return self._priors[name]
 
     def check_problem_consistency(self):
         """
@@ -620,7 +572,7 @@ class InferenceProblem:
         # the following statements assert that the corresponding attributes are
         # not empty or None
         assert self._parameters, "No parameters have been defined yet!"
-        assert self._priors, "Found no priors in the problem definition!"
+        assert self.priors, "Found no priors in the problem definition!"
         assert self._forward_models, "No forward model has been defined yet!"
         assert self._noise_models, "No noise models have been defined yet!"
         assert self._experiments, "No experiments have been defined yet!"
@@ -644,10 +596,10 @@ class InferenceProblem:
                 assert noise_prm in self._parameters.keys()
                 assert self._parameters[noise_prm].type == "noise"
 
-        # check if all prior objects in self._priors are consistent in terms of
+        # check if all prior objects in self.priors are consistent in terms of
         # their parameters; each one of them must appear in self._parameters
-        assert len(self._priors) == self._parameters.n_latent_prms
-        for prior_obj in self._priors.values():
+        assert len(self.priors) == self._parameters.n_latent_prms
+        for prior_obj in self.priors.values():
             for prior_prm in prior_obj.hyperparameters.keys():
                 assert prior_prm in self._parameters.keys()
                 assert self._parameters[prior_prm].type == 'prior'
@@ -667,6 +619,10 @@ class InferenceProblem:
                 idx_list.append(parameter.index)
         assert len(idx_list) == self._parameters.n_latent_prms
         assert sorted(idx_list) == list(range(len(idx_list)))
+
+        # check the consistency of each parameter
+        for parameter in self._parameters.values():
+            parameter.check_consistency()
 
     def add_experiment(self, exp_name, sensor_values, fwd_model_name):
         """

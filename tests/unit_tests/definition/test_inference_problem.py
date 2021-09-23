@@ -259,20 +259,6 @@ class TestProblem(unittest.TestCase):
             # given parameter is not a constant parameter
             p.change_constant('b', 2.0)
 
-    def test_add_prior(self):
-        # check valid use case
-        p = InferenceProblem("TestProblem")
-        p.add_parameter('loc_a', 'prior', const=0.0)
-        p.add_parameter('scale_a', 'prior', const=1.0)
-        _ = p._add_prior('a_normal', 'normal', ['loc_a', 'scale_a'], 'a')
-        # check invalid use cases
-        with self.assertRaises(RuntimeError):
-            # add a prior with an undefined parameter
-            _ = p._add_prior('a_normal', 'normal', ['undef', 'scale_a'], 'a')
-        with self.assertRaises(RuntimeError):
-            # add a prior with a similar name
-            _ = p._add_prior('a_normal', 'normal', ['loc_a', 'scale_a'], 'a')
-
     def test_check_problem_consistency(self):
         p = InferenceProblem("TestProblem")
         # check if the method identifies inconsistent problems
