@@ -22,12 +22,13 @@ from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoise
 from probeye.inference.emcee_.solver import run_emcee_solver
 from probeye.inference.emcee_.postprocessing import run_emcee_postprocessing
-
+from probeye.inference.torch.solver import Pyro_torch_solver
+from probeye.inference.torch.visualisation import visualisation
 
 class TestProblem(unittest.TestCase):
 
     def test_prior_calibration(self, n_steps=100, n_walkers=20, plot=False,
-                               verbose=False):
+                               verbose=True, torch = True, emcee = False):
         """
         Integration test for the problem described at the top of this file.
 
@@ -140,7 +141,7 @@ class TestProblem(unittest.TestCase):
         problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
                                sensor_values={isensor.name: x_test,
                                               osensor.name: y_test})
-
+        problem.assign_experiments_to_noise_models()
         # give problem overview
         if verbose:
             problem.info()
@@ -161,12 +162,15 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         # run the taralli solver and postprocessing
-        logging.root.disabled = not verbose
-        emcee_model = run_emcee_solver(
-            problem, n_walkers=n_walkers, n_steps=n_steps, verbose=verbose)
-        if plot or verbose:
-            run_emcee_postprocessing(
-                problem, emcee_model, verbose=verbose)
-
+        if emcee:
+            logging.root.disabled = not verbose
+            emcee_model = run_emcee_solver(
+                problem, n_walkers=n_walkers, n_steps=n_steps, verbose=verbose)
+            if plot or verbose:
+                run_emcee_postprocessing(
+                    problem, emcee_model, verbose=verbose)
+        if torch:
+            mcmc = Pyro_torch_solver(problem,num_samples=300,warmup_steps=50)
+            visualisation(mcmc, problem)
 if __name__ == "__main__":
     unittest.main()
