@@ -5,27 +5,23 @@ from tabulate import tabulate
 from probeye.subroutines import titled_table, simplified_list_string
 from probeye.definition.prior import PriorBase
 
-
 class Parameters(dict):
     """
     The main parameter 'library'. In this dictionary, all of the problem's
     parameters are stored. The parameter's names are the keys, and the
     associated values are ParameterProperties-objects, see below.
     """
-
     def __setitem__(self, key, value):
         """Performs a type-check before adding a parameter to the dictionary."""
         if type(key) != str:
             raise ValueError(
                 f"The key must be a parameters name (string), but you provided "
-                f"something of type '{type(key)}'."
-            )
+                f"something of type '{type(key)}'.")
         if type(value) != ParameterProperties:
             raise ValueError(
                 f"The properties of your parameter must be given in form of an "
                 f"ParameterProperties-object. But you provided something of "
-                f"type '{type(value)}'."
-            )
+                f"type '{type(value)}'.")
         super().__setitem__(key, value)
 
     @property
@@ -105,37 +101,25 @@ class Parameters(dict):
             on the parameters of the problem.
         """
         # each element describes one row in the table to be generated
-        rows = [
-            (
-                "Model parameters",
+        rows = [('Model parameters',
                 simplified_list_string(self.model_prms),
-                self.n_model_prms,
-            ),
-            (
-                "Prior parameters",
+                self.n_model_prms),
+                ('Prior parameters',
                 simplified_list_string(self.prior_prms),
-                self.n_prior_prms,
-            ),
-            (
-                "Noise parameters",
+                self.n_prior_prms),
+                ('Noise parameters',
                 simplified_list_string(self.noise_prms),
-                self.n_noise_prms,
-            ),
-            (
-                "Const parameters",
+                self.n_noise_prms),
+                ('Const parameters',
                 simplified_list_string(self.constant_prms),
-                self.n_constant_prms,
-            ),
-            (
-                "Latent parameters",
+                self.n_constant_prms),
+                ('Latent parameters',
                 simplified_list_string(self.latent_prms),
-                self.n_latent_prms,
-            ),
-        ]
+                self.n_latent_prms)]
         # these are the strings appearing in the column headers
         headers = ["Parameter type/role", "Parameter names", "Count"]
         prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prm_string = titled_table("Parameter overview", prm_table)
+        prm_string = titled_table('Parameter overview', prm_table)
         return prm_string
 
     def parameter_explanations(self, tablefmt="presto"):
@@ -157,7 +141,7 @@ class Parameters(dict):
         rows = [(name, prm.info) for name, prm in self.items()]
         headers = ["Name", "Short explanation"]
         prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prm_string = titled_table("Parameter explanations", prm_table)
+        prm_string = titled_table('Parameter explanations', prm_table)
         return prm_string
 
     def const_parameter_values(self, tablefmt="presto"):
@@ -176,14 +160,12 @@ class Parameters(dict):
             This string describes a nice table with the names and values of the
             constant parameters of the problem.
         """
-        rows = [
-            (name, prm.value) for name, prm in self.items() if prm.value is not None
-        ]
+        rows = [(name, prm.value)
+                for name, prm in self.items() if prm.value is not None]
         headers = ["Name", "Value"]
         prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prm_string = titled_table("Constant parameters", prm_table)
+        prm_string = titled_table('Constant parameters', prm_table)
         return prm_string
-
 
 class ParameterProperties:
     """
@@ -192,7 +174,6 @@ class ParameterProperties:
     dictionary class 'Parameters', see above. The use of this class as opposed
     to a standard dictionary allows convenient auto-completion while coding.
     """
-
     def __init__(self, prm_dict):
         """
         Parameters
@@ -204,33 +185,26 @@ class ParameterProperties:
             for more detailed information.
         """
         # write attributes
-        self._index = prm_dict["index"]
-        self._type = prm_dict["type"]
-        self._prior = prm_dict["prior"]
-        self._value = prm_dict["value"]
-        self.info = prm_dict["info"]
-        self.tex = prm_dict["tex"]
+        self._index = prm_dict['index']
+        self._type = prm_dict['type']
+        self._prior = prm_dict['prior']
+        self._value = prm_dict['value']
+        self.info = prm_dict['info']
+        self.tex = prm_dict['tex']
 
         # check the given values
         self.check_consistency()
 
-    def changed(
-        self, index=None, type=None, prior=None, value=None, info=None, tex=None
-    ):
-        """
-        Returnes a copy of self with the option to overwrite attributes 
-        provided by the arguments
-        """
-        return ParameterProperties(
-            {
-                "index": index if index is not None else self._index,
-                "type": type or self._type,
-                "prior": prior or self._prior,
-                "value": value or self._value,
-                "info": info or self.info,
-                "tex": tex or self.tex,
-            }
-        )
+    def changed(self, index=None, type=None, prior=None, value=None, info=None, tex=None):
+        return ParameterProperties({
+                    "index" : index if index is not None else self._index,
+                    "type" : type or self._type,
+                    "prior" : prior or self._prior,
+                    "value" : value or self._value,
+                    "info" : info or self.info,
+                    "tex" : tex or self.tex,
+                    })
+
 
     def check_consistency(self):
         """
@@ -246,52 +220,44 @@ class ParameterProperties:
         if not (type(self._index) == int or self._index is None):
             raise TypeError(
                 f"Found invalid ParameterProperties._index attribute! It must "
-                f"be of type int or None, but found {type(self._index)}."
-            )
+                f"be of type int or None, but found {type(self._index)}.")
 
         if (self._index is not None) and (self._index < 0):
             raise RuntimeError(
                 f"Found negative value for ParameterProperties._index! This "
                 f"attribute must be a non-negative integer, but found a value "
-                f"of {self._index}."
-            )
+                f"of {self._index}.")
 
         if type(self._type) != str:
             raise TypeError(
                 f"Found invalid ParameterProperties._type attribute! Its type "
-                f"must be str, but found {type(self._type)}."
-            )
+                f"must be str, but found {type(self._type)}.")
 
-        if self._type not in ["model", "prior", "noise"]:
+        if self._type not in ['model', 'prior', 'noise']:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can "
                 f"only assume the three values 'model', 'prior' or 'noise' but "
-                f"found '{self._type}'."
-            )
+                f"found '{self._type}'.")
 
         if not (type(self._prior) == PriorBase or self._prior is None):
             raise TypeError(
                 f"Found invalid ParameterProperties._prior attribute! It must "
-                f"be of type PriorBase or None, but found {type(self._prior)}."
-            )
+                f"be of type PriorBase or None, but found {type(self._prior)}.")
 
         if not (type(self._value) in [float, int] or self._value is None):
             raise TypeError(
                 f"Found invalid ParameterProperties._value attribute! It must "
-                f"be of type float/int or None, but found {type(self._value)}."
-            )
+                f"be of type float/int or None, but found {type(self._value)}.")
 
         if type(self.info) != str:
             raise TypeError(
                 f"Found invalid ParameterProperties.info attribute! Its type "
-                f"must be str, but found {type(self.info)}."
-            )
+                f"must be str, but found {type(self.info)}.")
 
         if not (type(self.tex) == str or self.tex is None):
             raise TypeError(
                 f"Found invalid ParameterProperties.tex attribute! It must be "
-                f"of type str or None, but found {type(self.tex)}."
-            )
+                f"of type str or None, but found {type(self.tex)}.")
 
         # -------------------------------- #
         #           Cross checks           #
@@ -303,29 +269,25 @@ class ParameterProperties:
                 raise RuntimeError(
                     f"ParameterProperties._index and ParameterProperties._value"
                     f" are both given (_index={self._index} and _value="
-                    f"{self._value}), but one of them must be None!"
-                )
+                    f"{self._value}), but one of them must be None!")
             if self._prior is None:
                 raise RuntimeError(
                     f"ParameterProperties._index and ParameterProperties._prior"
                     f" are both given (_index={self._index} and prior="
-                    f"{self._prior}), but one of them must be None!"
-                )
+                    f"{self._prior}), but one of them must be None!")
 
         else:
             # in this case, we have a constant parameter
             if self._value is None:
                 raise RuntimeError(
                     f"ParameterProperties._index and ParameterProperties._value"
-                    f" are both None, but one of them must be not None!"
-                )
+                    f" are both None, but one of them must be not None!")
             if self._prior is not None:
                 raise RuntimeError(
                     f"ParameterProperties._index is None while Parameter"
                     f"Properties._prior is given ({self._prior}). This "
                     f"combination is not valid. Either the index must also be "
-                    f"given, or the prior must also be None."
-                )
+                    f"given, or the prior must also be None.")
 
     @property
     def index(self):
@@ -335,7 +297,8 @@ class ParameterProperties:
     @index.setter
     def index(self, value):
         """Raise a specific error when trying to directly set self.index."""
-        raise AttributeError("Changing a parameter's index directly is prohibited!")
+        raise AttributeError(
+            "Changing a parameter's index directly is prohibited!")
 
     @property
     def type(self):
@@ -345,21 +308,21 @@ class ParameterProperties:
     @type.setter
     def type(self, value):
         """Raise a specific error when trying to directly set self.type."""
-        raise AttributeError("Changing a parameter's type directly is prohibited!")
+        raise AttributeError(
+            "Changing a parameter's type directly is prohibited!")
 
     @property
     def role(self):
         """Adds a pseudo-attribute self.role, which allows a convenient check
-        on whether a parameter is latent or not."""
-        return "latent" if self._index is not None else "const"
+           on whether a parameter is latent or not."""
+        return 'latent' if self._index is not None else 'const'
 
     @role.setter
     def role(self, value):
         """Raise a specific error when trying to directly set self.role."""
         raise AttributeError(
             "You cannot change a parameter's role directly! Use "
-            "InferenceProblem.change_parameter_role instead."
-        )
+            "InferenceProblem.change_parameter_role instead.")
 
     @property
     def prior(self):
@@ -369,7 +332,8 @@ class ParameterProperties:
     @prior.setter
     def prior(self, value):
         """Raise a specific error when trying to directly set self.prior."""
-        raise AttributeError("Changing a parameter's prior directly is prohibited!")
+        raise AttributeError(
+            "Changing a parameter's prior directly is prohibited!")
 
     @property
     def value(self):
@@ -379,4 +343,5 @@ class ParameterProperties:
     @value.setter
     def value(self, value):
         """Raise a specific error when trying to directly set self.value."""
-        raise AttributeError("Changing a parameter's value directly is prohibited!")
+        raise AttributeError(
+            "Changing a parameter's value directly is prohibited!")
