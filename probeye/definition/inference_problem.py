@@ -1044,16 +1044,13 @@ class InferenceProblem:
 
         # check that each globally defined experiment appears in one of the
         # noise models
+        exp_names_in_noise_models = set()
+        for noise_model in self._noise_models:
+            for exp_name_noise in noise_model.experiment_names:
+                exp_names_in_noise_models.add(exp_name_noise)
+
         for exp_name in self._experiments.keys():
-            found_it = False
-            if not found_it:
-                for noise_model in self._noise_models:
-                    if not found_it:
-                        for exp_name_noise in noise_model.experiment_names:
-                            if exp_name == exp_name_noise:
-                                found_it = True
-                                break
-            if not found_it:
+            if exp_name not in exp_names_in_noise_models:
                 # one may argue, that this could also be only a warning here
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not "
