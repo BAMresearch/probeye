@@ -429,8 +429,7 @@ class InferenceProblem:
             raise RuntimeError(
                 f"A parameter with name '{prm_name}' has not been defined yet.")
 
-    def change_parameter_role(self, prm_name, const=None, prior=None,
-                              new_info=None, new_tex=None):
+    def change_parameter_role(self, prm_name, const=None, prior=None):
         """
         Performs the necessary tasks to change a parameter's role in the problem
         definition. A parameter's role can either be changed from 'const' to
@@ -452,10 +451,6 @@ class InferenceProblem:
             parameter within the problem scope. An example for a normal prior:
             ('normal', {'loc': 0.0, 'scale': 1.0}). In order to define the
             prior's parameters, check out the prior definitions in priors.py.
-        new_info : str or None, optional
-            The new string for the explanation of parameter prm_name.
-        new_tex : str or None, optional
-            The new string for the parameter's tex-representation.
         """
         self.check_if_parameter_exists(prm_name)
 
@@ -484,20 +479,10 @@ class InferenceProblem:
         # the parameter's role is changed by first removing it from the problem,
         # and then adding it again in its new role; the role-change does not
         # impact the type ('model', 'prior' or 'noise')
-        prm_type = self._parameters[prm_name].type
-        # if no new_info/new_tex was specified, use the old ones
-        if new_info is None:
-            prm_info = self._parameters[prm_name].info
-        else:
-            prm_info = new_info
-        if new_tex is None:
-            prm_tex = self._parameters[prm_name].tex
-        else:
-            prm_tex = new_tex
-        # now we can finally change the role
+        prm = self._parameters[prm_name]
         self.remove_parameter(prm_name)
-        self.add_parameter(prm_name, prm_type, const=const, prior=prior,
-                           info=prm_info, tex=prm_tex)
+        self.add_parameter(prm_name, prm.type, const=const, prior=prior,
+                           info=prm.info, tex=prm.tex)
 
     def change_parameter_info(self, prm_name, new_info=None, new_tex=None):
         """
