@@ -425,7 +425,6 @@ class InferenceProblem:
         prm_name : str
             A global parameter name.
         """
-        # check if the given parameter exists
         if prm_name not in self._parameters.keys():
             raise RuntimeError(
                 f"A parameter with name '{prm_name}' has not been defined yet.")
@@ -458,7 +457,6 @@ class InferenceProblem:
         new_tex : str or None, optional
             The new string for the parameter's tex-representation.
         """
-        # check if the given parameter exists
         self.check_if_parameter_exists(prm_name)
 
         # exactly one of the const and prior key word arguments must be given
@@ -514,7 +512,6 @@ class InferenceProblem:
         new_tex : str, None, optional
             The new string for the parameter's tex-representation.
         """
-        # check if the given parameter exists
         self.check_if_parameter_exists(prm_name)
 
         # if None is given for the new info/tex, the old value will be kept
@@ -544,7 +541,6 @@ class InferenceProblem:
         new_value : float
             The new value that prm_name should assume.
         """
-        # check if the given parameter exists
         self.check_if_parameter_exists(prm_name)
 
         # check if the given parameter is a constant
