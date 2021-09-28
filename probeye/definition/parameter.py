@@ -196,6 +196,13 @@ class ParameterProperties:
         self.check_consistency()
 
     def changed(self, index=None, type=None, prior=None, value=None, info=None, tex=None):
+        """
+        Convenience method that simplifies creating a copy of the 
+        ParameterProperties with some of its parameters changed.
+
+        See the explanations in InferenceProblem.__init__() for more detailed 
+        information on the arguments.
+        """
         return ParameterProperties({
                     "index" : index if index is not None else self._index,
                     "type" : type or self._type,
