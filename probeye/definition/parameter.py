@@ -195,23 +195,25 @@ class ParameterProperties:
         # check the given values
         self.check_consistency()
 
-    def changed(self, index=None, type=None, prior=None, value=None, info=None, tex=None):
+    # noinspection PyShadowingBuiltins
+    def change(self, index=None, type=None, prior=None, value=None,
+                  info=None, tex=None):
         """
-        Convenience method that simplifies creating a copy of the 
-        ParameterProperties with some of its parameters changed.
+        Convenience method that simplifies changing the attributes of a
+        ParameterProperties object based on creating a new instance. The reason
+        for this approach is that some of the attributes are private, and cannot
+        (or at least should not) be changed directly from outside.
 
         See the explanations in InferenceProblem.__init__() for more detailed 
         information on the arguments.
         """
         return ParameterProperties({
-                    "index" : index if index is not None else self._index,
-                    "type" : type or self._type,
-                    "prior" : prior or self._prior,
-                    "value" : value or self._value,
-                    "info" : info or self.info,
-                    "tex" : tex or self.tex,
-                    })
-
+                    "index": index if index is not None else self._index,
+                    "type": type or self._type,
+                    "prior": prior or self._prior,
+                    "value": value or self._value,
+                    "info": info or self.info,
+                    "tex": tex or self.tex})
 
     def check_consistency(self):
         """
