@@ -107,7 +107,8 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
     # translate the general noise model objects into solver specific ones
     noise_models = []
     for noise_model_base in problem.noise_models:
-        noise_models.append(translate_noise_model(noise_model_base))
+        noise_models.append(translate_noise_model(
+            noise_model_base, use_gradients=use_gradients))
 
     # the experimental data needs to be translated to torch.Tensors
     def get_theta_samples():
