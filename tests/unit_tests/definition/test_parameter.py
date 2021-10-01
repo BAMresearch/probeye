@@ -103,22 +103,7 @@ class TestProblem(unittest.TestCase):
                                                    'value': True,
                                                    'info': "...",
                                                    'tex': r"$d$"})
-        with self.assertRaises(TypeError):
-            # info has invalid type
-            parameters['d'] = ParameterProperties({'index': None,
-                                                   'type': 'model',
-                                                   'prior': None,
-                                                   'value': 1.0,
-                                                   'info': True,
-                                                   'tex': r"$d$"})
-        with self.assertRaises(TypeError):
-            # tex has invalid type
-            parameters['d'] = ParameterProperties({'index': None,
-                                                   'type': 'model',
-                                                   'prior': None,
-                                                   'value': 1.0,
-                                                   'info': "...",
-                                                   'tex': True})
+        
         with self.assertRaises(RuntimeError):
             # index and prior are inconsistently combined
             parameters['d'] = ParameterProperties({'index': 3,

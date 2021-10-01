@@ -253,16 +253,6 @@ class ParameterProperties:
                 f"Found invalid ParameterProperties._value attribute! It must "
                 f"be of type float/int or None, but found {type(self._value)}.")
 
-        if type(self.info) != str:
-            raise TypeError(
-                f"Found invalid ParameterProperties.info attribute! Its type "
-                f"must be str, but found {type(self.info)}.")
-
-        if not (type(self.tex) == str or self.tex is None):
-            raise TypeError(
-                f"Found invalid ParameterProperties.tex attribute! It must be "
-                f"of type str or None, but found {type(self.tex)}.")
-
         # -------------------------------- #
         #           Cross checks           #
         # -------------------------------- #
