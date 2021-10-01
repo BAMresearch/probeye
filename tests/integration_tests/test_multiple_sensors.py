@@ -9,26 +9,25 @@ This results in five latent parameters (parameters to infer). The problem
 is solved via sampling by means of taralli.
 """
 
-# standard library imports
-import logging
-
 # third party imports
 import unittest
 import numpy as np
 
-# local imports
+# local imports (problem definition)
+from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor, PositionSensor
-from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoise
-from probeye.inference.emcee_.solver import run_emcee_solver
-from probeye.inference.emcee_.postprocessing import run_emcee_postprocessing
+from probeye.definition.noise_model import NormalNoiseModel
+
+# local imports (testing related)
+from .subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
 
-    def test_multiple_sensors(self, n_steps=100, n_walkers=20, plot=False,
-                              verbose=False):
+    def test_multiple_sensors(self, n_steps=200, n_initial_steps=100,
+                              n_walkers=20, plot=False, verbose=False,
+                              run_emcee=True, run_torch=True):
         """
         Integration test for the problem described at the top of this file.
 
@@ -45,6 +44,12 @@ class TestProblem(unittest.TestCase):
             generated plots are closed.
         verbose : bool, optional
             If True, additional information will be printed to the console.
+        run_emcee : bool, optional
+            If True, the problem is solved with the emcee solver. Otherwise,
+            the emcee solver will not be used.
+        run_torch : bool, optional
+            If True, the problem is solved with the pyro/torch_ solver.
+            Otherwise, the pyro/torch_ solver will not be used.
         """
 
         # ==================================================================== #
@@ -52,14 +57,14 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         # 'true' value of A, and its normal prior parameters
-        A_true = 42.0
-        loc_A = 40.0
-        scale_A = 5.0
+        A_true = 1.3
+        loc_A = 1.0
+        scale_A = 1.0
 
         # 'true' value of B, and its normal prior parameters
-        B_true = 6174.0
-        loc_B = 6000.0
-        scale_B = 300.0
+        B_true = -1.0
+        loc_B = -2.0
+        scale_B = 1.5
 
         # 'true' value of sd_S1, and its uniform prior parameters
         sd_S1_true = 0.2
@@ -79,7 +84,7 @@ class TestProblem(unittest.TestCase):
         # define sensor positions
         pos_s1 = 0.2
         pos_s2 = 0.5
-        pos_s3 = 42.0
+        pos_s3 = 1.0
 
         # ==================================================================== #
         #                       Define the Forward Model                       #
@@ -138,10 +143,13 @@ class TestProblem(unittest.TestCase):
             ['A', 'B'], [isensor], [osensor1, osensor2, osensor3])
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the noise model to the problem
-        problem.add_noise_model(NormalNoise('sigma_1', sensors=osensor1.name))
-        problem.add_noise_model(NormalNoise('sigma_2', sensors=osensor2.name))
-        problem.add_noise_model(NormalNoise('sigma_3', sensors=osensor3.name))
+        # add the noise models to the problem
+        problem.add_noise_model(NormalNoiseModel(
+            prms_def={'sigma_1': 'std'}, sensors=osensor1.name))
+        problem.add_noise_model(NormalNoiseModel(
+            prms_def={'sigma_2': 'std'}, sensors=osensor2.name))
+        problem.add_noise_model(NormalNoiseModel(
+            prms_def={'sigma_3': 'std'}, sensors=osensor3.name))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -172,16 +180,16 @@ class TestProblem(unittest.TestCase):
             problem.info()
 
         # ==================================================================== #
-        #                      Solve problem with Taralli                      #
+        #                Solve problem with inference engine(s)                #
         # ==================================================================== #
 
-        # run the taralli solver and postprocessing
-        logging.root.disabled = not verbose
-        emcee_model = run_emcee_solver(
-            problem, n_walkers=n_walkers, n_steps=n_steps, verbose=verbose)
-        if plot or verbose:
-            run_emcee_postprocessing(
-                problem, emcee_model, verbose=verbose)
+        # this routine is imported from another script because it it used by all
+        # integration tests in the same way
+        run_inference_engines(problem, n_steps=n_steps,
+                              n_initial_steps=n_initial_steps,
+                              n_walkers=n_walkers, plot=plot,
+                              verbose=verbose,
+                              run_emcee=run_emcee, run_torch=run_torch)
 
 if __name__ == "__main__":
     unittest.main()

@@ -37,7 +37,7 @@ class PriorBase:
         # then 'a' is the reference variable; note that the conversion to a
         # dictionary via list2dict is due to the possibility of using local
         # parameter names, which however is not intended to be used for priors
-        self.prms_def_no_ref = list2dict(prms_def)
+        self.hyperparameters = list2dict(prms_def)
         self.prms_def = list2dict([ref_prm] + prms_def)
 
     def __str__(self):

@@ -397,7 +397,7 @@ class InferenceProblem:
             # to remove the prior-parameter and the prior-object; also, we have
             # to correct the index values of the remaining latent parameters
             for prior_prm in self._parameters[prm_name].prior.\
-                    prms_def_no_ref.keys():
+                    hyperparameters.keys():
                 self.remove_parameter(prior_prm)  # recursive call
             del self._priors[self._parameters[prm_name].prior.name]
             del self._parameters[prm_name]
@@ -619,7 +619,7 @@ class InferenceProblem:
         # their parameters; each one of them must appear in self._parameters
         assert len(self._priors) == self._parameters.n_latent_prms
         for prior_obj in self._priors.values():
-            for prior_prm in prior_obj.prms_def_no_ref.keys():
+            for prior_prm in prior_obj.hyperparameters.keys():
                 assert prior_prm in self._parameters.keys()
                 assert self._parameters[prior_prm].type == 'prior'
 
@@ -627,7 +627,7 @@ class InferenceProblem:
         # the problem's parameter dictionary
         for prm_name, parameter in self._parameters.items():
             if parameter.role == 'latent':
-                for prior_prm in parameter.prior.prms_def_no_ref.keys():
+                for prior_prm in parameter.prior.hyperparameters.keys():
                     assert prior_prm in self._parameters.keys()
                     assert self._parameters[prior_prm].type == 'prior'
 
@@ -1025,6 +1025,10 @@ class InferenceProblem:
                                 f"interface {noise_model.sensors} has already "
                                 f"been defined in this problem!")
 
+        # check if the noise model has been assigned a name; if not, assign one
+        if noise_model.name is None:
+            noise_model.name = f"noise_model_{len(self.noise_models)}"
+
         # add the problem's experiments to the noise model (this is just a
         # pointer!) for noise_model-internal checks
         noise_model.problem_experiments = self._experiments
@@ -1073,3 +1077,23 @@ class InferenceProblem:
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not "
                     f"appear in any of the noise models!")
+
+    def prepare_for_torch(self):
+        import torch as th
+        from probeye.definition.sensor import PositionSensor
+        # convert the sensor values from the experiments to tensors
+        for exp_name in self._experiments.keys():
+            sensor_values = self._experiments[exp_name]['sensor_values']
+            for sensor_name in sensor_values.keys():
+                self._experiments[exp_name]['sensor_values'][sensor_name] =\
+                    th.Tensor(self._experiments[exp_name]['sensor_values']
+                              [sensor_name])
+
+        # convert data stored in sensors to tensors
+        for fwd_model_name, forward_model in self._forward_models.items():
+            for input_sensor in forward_model.input_sensors:
+                if type(input_sensor) == PositionSensor:
+                    input_sensor.coords = th.tensor(input_sensor.coords)
+            for output_sensor in forward_model.output_sensors:
+                if type(output_sensor) == PositionSensor:
+                    output_sensor.coords = th.tensor(output_sensor.coords)

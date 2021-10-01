@@ -7,28 +7,26 @@ Additionally, the location parameter of a's prior is considered a latent
 parameter.The problem is solved via sampling using taralli.
 """
 
-# standard library imports
-import logging
-
 # third party imports
 import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-# local imports
+# local imports (problem definition)
+from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoise
-from probeye.inference.emcee_.solver import run_emcee_solver
-from probeye.inference.emcee_.postprocessing import run_emcee_postprocessing
-from probeye.inference.torch.solver import Pyro_torch_solver
-from probeye.inference.torch.visualisation import visualisation
+from probeye.definition.noise_model import NormalNoiseModel
+
+# local imports (testing related)
+from .subroutines import run_inference_engines
+
 
 class TestProblem(unittest.TestCase):
 
-    def test_prior_calibration(self, n_steps=100, n_walkers=20, plot=False,
-                               verbose=True, torch = True, emcee = False):
+    def test_prior_calibration(self, n_steps=200, n_initial_steps=100,
+                               n_walkers=20, plot=False, verbose=False,
+                               run_emcee=True, run_torch=True):
         """
         Integration test for the problem described at the top of this file.
 
@@ -37,6 +35,8 @@ class TestProblem(unittest.TestCase):
         n_steps : int, optional
             Number of steps (samples) to run. Note that the default number is
             rather low just so the test does not take too long.
+        n_initial_steps : int, optional
+            Number of steps for initial (burn-in) sampling.
         n_walkers : int, optional
             Number of walkers used by the estimator.
         plot : bool, optional
@@ -45,6 +45,12 @@ class TestProblem(unittest.TestCase):
             generated plots are closed.
         verbose : bool, optional
             If True, additional information will be printed to the console.
+        run_emcee : bool, optional
+            If True, the problem is solved with the emcee solver. Otherwise,
+            the emcee solver will not be used.
+        run_torch : bool, optional
+            If True, the problem is solved with the pyro/torch_ solver.
+            Otherwise, the pyro/torch_ solver will not be used.
         """
 
         # ==================================================================== #
@@ -124,7 +130,8 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoise('sigma', sensors=osensor.name))
+        problem.add_noise_model(NormalNoiseModel(
+            prms_def={'sigma': 'std'}, sensors=osensor.name))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -141,7 +148,7 @@ class TestProblem(unittest.TestCase):
         problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
                                sensor_values={isensor.name: x_test,
                                               osensor.name: y_test})
-        problem.assign_experiments_to_noise_models()
+
         # give problem overview
         if verbose:
             problem.info()
@@ -158,19 +165,16 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ==================================================================== #
-        #                      Solve problem with Taralli                      #
+        #                Solve problem with inference engine(s)                #
         # ==================================================================== #
 
-        # run the taralli solver and postprocessing
-        if emcee:
-            logging.root.disabled = not verbose
-            emcee_model = run_emcee_solver(
-                problem, n_walkers=n_walkers, n_steps=n_steps, verbose=verbose)
-            if plot or verbose:
-                run_emcee_postprocessing(
-                    problem, emcee_model, verbose=verbose)
-        if torch:
-            mcmc = Pyro_torch_solver(problem,num_samples=300,warmup_steps=50)
-            visualisation(mcmc, problem)
+        # this routine is imported from another script because it it used by all
+        # integration tests in the same way
+        run_inference_engines(problem, n_steps=n_steps,
+                              n_initial_steps=n_initial_steps,
+                              n_walkers=n_walkers, plot=plot,
+                              verbose=verbose,
+                              run_emcee=run_emcee, run_torch=run_torch)
+
 if __name__ == "__main__":
     unittest.main()
