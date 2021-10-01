@@ -78,14 +78,7 @@ class TestProblem(unittest.TestCase):
                                                    'value': 1.0,
                                                    'info': "...",
                                                    'tex': r"$d$"})
-        with self.assertRaises(TypeError):
-            # type has invalid type
-            parameters['d'] = ParameterProperties({'index': None,
-                                                   'type': True,
-                                                   'prior': None,
-                                                   'value': 1.0,
-                                                   'info': "...",
-                                                   'tex': r"$d$"})
+
         with self.assertRaises(RuntimeError):
             # type has invalid value
             parameters['d'] = ParameterProperties({'index': None,

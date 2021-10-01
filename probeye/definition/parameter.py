@@ -196,8 +196,8 @@ class ParameterProperties:
         self.check_consistency()
 
     # noinspection PyShadowingBuiltins
-    def change(self, index=None, type=None, prior=None, value=None,
-                  info=None, tex=None):
+    def return_changed_copy(self, index=None, type=None, prior=None, value=None,
+                            info=None, tex=None):
         """
         Convenience method that simplifies changing the attributes of a
         ParameterProperties object based on creating a new instance. The reason
