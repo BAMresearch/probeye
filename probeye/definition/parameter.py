@@ -237,11 +237,6 @@ class ParameterProperties:
                 f"attribute must be a non-negative integer, but found a value "
                 f"of {self._index}.")
 
-        if type(self._type) != str:
-            raise TypeError(
-                f"Found invalid ParameterProperties._type attribute! Its type "
-                f"must be str, but found {type(self._type)}.")
-
         if self._type not in ['model', 'prior', 'noise']:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can "
