@@ -10,7 +10,7 @@
   * Removed add_prior-test in test_inference_problem.py.
 - ParameterProperties class
   * Removed '_role'-attribute. There is still a 'role'-property, which is derived from the '_index'-attribute.
-  * Added 'return_changed_copy'-method for writing on the private attributes.
+  * Added 'changed_copy'-method for writing on the private attributes.
   * Added method check_consistency.
   * Added corresponding tests in test_parameter.py.
 

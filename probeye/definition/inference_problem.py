@@ -408,7 +408,7 @@ class InferenceProblem:
                     idx += 1
             for prm_name, idx in idx_dict.items():
                 self._parameters[prm_name] =\
-                    self._parameters[prm_name].return_changed_copy(index=idx)
+                    self._parameters[prm_name].changed_copy(index=idx)
 
     def check_if_parameter_exists(self, prm_name):
         """
@@ -502,7 +502,7 @@ class InferenceProblem:
 
         # change the info/tex-string
         self._parameters[prm_name] =\
-            self._parameters[prm_name].return_changed_copy(info=new_info,
+            self._parameters[prm_name].changed_copy(info=new_info,
                                                            tex=new_tex)
 
     def change_constant(self, prm_name, new_value):
@@ -526,7 +526,7 @@ class InferenceProblem:
             )
         # change the parameter's value
         self._parameters[prm_name] =\
-            self._parameters[prm_name].return_changed_copy(value=new_value)
+            self._parameters[prm_name].changed_copy(value=new_value)
 
     def check_problem_consistency(self):
         """
