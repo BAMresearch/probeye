@@ -8,6 +8,7 @@
   * Added parameter-consistency checks in the method check_problem_consistency.
   * Removed private _add_prior-method. The adding of a prior is now done directly in the add_parameter method.
   * Removed add_prior-test in test_inference_problem.py.
+  * Moved most code of add_parameter-method to Parameters-class.
 - ParameterProperties class
   * Removed '_role'-attribute. There is still a 'role'-property, which is derived from the '_index'-attribute.
   * Added 'changed_copy'-method for writing on the private attributes.

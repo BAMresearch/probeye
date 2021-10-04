@@ -243,124 +243,14 @@ class InferenceProblem:
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
         """
-        Adds a parameter ('const' or 'latent') to the inference problem. The
-        main functionality of this method is to distinguish between the two
-        types ('const' and 'latent') and in creating the prior-object and
-        adding the prior-parameters when adding a latent param. to the problem.
-
-        Parameters
-        ----------
-        prm_name : str
-            The name of the parameter which should be added to the problem.
-        prm_type : str
-            Either 'model' (for a model parameter), 'prior' (for a prior
-            parameter) or 'noise' (for a noise parameter).
-        const : float or None, optional
-            If the added parameter is a 'const'-parameter, the corresponding
-            value has to be specified by this argument.
-        prior : tuple or list of two elements or None, optional
-            If the added parameter is a 'latent'-parameter, this argument
-            has to be given as a 2-tuple. The first element (a string) defines
-            the prior-type (will be referenced in inference routines). The 2nd
-            element must be a dictionary stating the prior's parameters as keys
-            and their numeric values as values or the name of a pre-defined
-            parameter within the problem scope. An example for a normal prior:
-            ('normal', {'loc': 0.0, 'scale': 1.0}). In order to define the
-            prior's parameters, check out the prior definitions in priors.py.
-        info : str, optional
-            Short explanation on the added parameter.
-        tex : str or None, optional
-            The TeX version of the parameter's name, for example r'$\beta$'
-            for a parameter named 'beta'.
+        Adds a parameter ('const' or 'latent') to the inference problem. For
+        more information, check out the Parameters.add_parameter method.
         """
 
-        # only one of the const and prior key word arguments can be given; if
-        # none of them are given, the parameter is interpreted as latent with
-        # an uninformative prior
-        if const is not None and prior is not None:
-            raise RuntimeError(
-                f"You can only specify one of the two key word arguments "
-                f"'const' and 'prior'. You have specified both.")
-        if const is None and prior is None:
-            prior = ('uninformative', {})
-
-        # make sure the parameters has not been defined yet
-        self._parameters.confirm_that_parameter_does_not_exists(prm_name)
-
-        # add the parameter to the central parameter dictionary
-        if const is None:  # in this case we are adding a 'latent'-param.
-            # first, define the index of this parameter in the numeric vector
-            # theta, which is given to self.loglike and self.logprior
-            prm_index = self._parameters.n_latent_prms
-            # the prm_value is reserved for 'const'-parameter; hence, it is set
-            # to None in this case, where we are adding a 'latent'-param.
-            prm_value = None
-            # the remaining code in this if-branch defines the prior that is
-            # associated with this 'latent'-parameter; first, however, check
-            # whether the given prior has a valid structure
-            if type(prior) not in [list, tuple]:
-                raise TypeError(
-                    f"The given prior is of type {type(prior)} but must be "
-                    f"either a list or a tuple!")
-            if len(prior) != 2:
-                raise RuntimeError(
-                    f"The given prior must be a list/tuple with two elements. "
-                    f"However, the given prior has {len(prior)} element(s).")
-            if type(prior[0]) is not str:
-                raise TypeError(
-                    f"The first element of the prior must be of type string. "
-                    f"However, the given first element is of type "
-                    f"{type(prior[0])}.")
-            if type(prior[1]) is not dict:
-                raise TypeError(
-                    f"The second element of the prior must be of type dict. "
-                    f"However, the given second element is of type "
-                    f"{type(prior[1])}.")
-            # extract the prior's elements
-            prior_type = prior[0]  # e.g. 'normal', 'lognormal', etc.
-            prior_dict = prior[1]  # dictionary with parameter-value pairs
-            prior_parameter_names = []
-            for prior_parameter_name, value in prior_dict.items():
-                # create unique name for this prior parameter
-                new_name = f"{prior_parameter_name}_{prm_name}"
-                prior_parameter_names.append(new_name)
-                if type(value) in {float, int}:
-                    # in this case, the prior-parameter is considered a 'const'-
-                    # parameter and added to the problem accordingly here
-                    default_info = f"{prior_type.capitalize()} "
-                    default_info += f"prior's parameter "
-                    default_info += f"for latent parameter '{prm_name}'"
-                    # the following call is recursive, but only with a depth of
-                    # one, since the added parameter is a constant here
-                    self.add_parameter(new_name, 'prior', const=value,
-                                       info=default_info)
-                elif type(value) is str:
-                    # in this case the prior-parameter is defined as an already
-                    # defined parameter with the name stated in value
-                    self._parameters.confirm_that_parameter_exists(value)
-                else:
-                    raise TypeError(
-                        f"The prior-parameter {new_name} is not assigned a "
-                        f"float, int or str, but something of type "
-                        f"{type(value)}.")
-            prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
-            prm_prior = PriorBase(prm_name, prior_parameter_names,
-                                  prior_name, prior_type)
-
-        else:
-            # in this case we are adding a 'const'-parameter, which means that
-            # the prm_index and prm_prior values are not used here
-            prm_index = None
-            prm_prior = None
-            prm_value = const
-
-        # add the parameter to the central parameter dictionary
-        self._parameters[prm_name] = ParameterProperties({'index': prm_index,
-                                                          'type': prm_type,
-                                                          'prior': prm_prior,
-                                                          'value': prm_value,
-                                                          'info': info,
-                                                          'tex': tex})
+        # add the parameter to the central parameter dictionary; checks and
+        # translations are conducted in the Parameters.add_parameter method
+        self._parameters.add_parameter(prm_name, prm_type, const=const,
+                                       prior=prior, info=info, tex=tex)
 
     def remove_parameter(self, prm_name):
         """
