@@ -1,6 +1,6 @@
 # probeye changelog
 
-## 1.0.3 (2021-Sep-23)
+## 1.0.3 (2021-Oct-04)
 ### Changed
 - InferenceProblem class
   * One can now add latent parameters without explicitly defining a prior. When not stated, the prior will be assumed to be uninformative. The shortest way to do so is by: problem.add_parameter('a', 'model') for example. This is aiming at maximum likelihood problems, where no priors need to be defined.
