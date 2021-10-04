@@ -194,7 +194,7 @@ class Parameters(dict):
         prm_name : str
             A global parameter name.
         """
-        if prm_name not in [*self.keys()]:
+        if prm_name not in self:
             raise RuntimeError(
                 f"A parameter with name '{prm_name}' has not been defined yet.")
 

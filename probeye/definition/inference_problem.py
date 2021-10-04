@@ -7,8 +7,7 @@ from tabulate import tabulate
 import numpy as np
 
 # local imports
-from probeye.definition.parameter import Parameters, ParameterProperties
-from probeye.definition.prior import PriorBase
+from probeye.definition.parameter import Parameters
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
