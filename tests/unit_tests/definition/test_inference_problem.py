@@ -193,10 +193,10 @@ class TestProblem(unittest.TestCase):
         # check confirming existing parameter
         p = InferenceProblem("TestProblem")
         p.add_parameter('a', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-        p.check_if_parameter_exists('a')
+        p.parameters.confirm_that_parameter_exists('a')
         # check RuntimeError for non-existing parameter
         with self.assertRaises(RuntimeError):
-            p.check_if_parameter_exists('b')
+            p.parameters.confirm_that_parameter_exists('b')
 
     def test_change_parameter_role(self):
         p = InferenceProblem("TestProblem")

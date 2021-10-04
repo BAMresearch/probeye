@@ -12,7 +12,7 @@ class Parameters(dict):
     associated values are ParameterProperties-objects, see below.
     """
     def __setitem__(self, key, value):
-        """Performs a type-check before adding a parameter to the dictionary."""
+        """Performs some checks before adding a parameter to the dictionary."""
         if type(key) != str:
             raise ValueError(
                 f"The key must be a parameters name (string), but you provided "
@@ -23,6 +23,77 @@ class Parameters(dict):
                 f"ParameterProperties-object. But you provided something of "
                 f"type '{type(value)}'.")
         super().__setitem__(key, value)
+
+    def __delitem__(self, key):
+        """
+        Deletes an item from itself while taking care of additional actions. For
+        example removing prior-parameters when deleting a latent parameter or
+        keeping the index-attributes of the latent parameters consistent.
+        """
+
+        # the given key is a parameter's name
+        # (renaming for easier readability)
+        prm_name = key
+
+        # check if the given parameter exists
+        self.confirm_that_parameter_exists(prm_name)
+
+        # different steps must be taken depending on whether the parameter which
+        # should be removed is a 'const'- or a 'latent'-parameter
+        if self[prm_name].index is None:
+            # in this case prm_name refers to a constant parameter; hence, we
+            # can simply remove this parameter without having to take care of
+            # other things as we will have to do for latent parameters
+            dict.__delitem__(self, key)
+        else:
+            # in this case prm_name refers to a latent parameter; hence we need
+            # to also remove the prior-parameters; also, we have to correct the
+            # index values of the remaining latent parameters
+            for prior_prm in self[prm_name].prior.hyperparameters.keys():
+                self.__delitem__(prior_prm)  # recursive call
+            dict.__delitem__(self, prm_name)
+            # correct the indices of the remaining 'latent'-parameters; note
+            # that the way how the correction is done is due to the fact that
+            # the parameter.index attribute is protected, and cannot be changed
+            # directly from outside
+            idx_dict = {}
+            idx = 0
+            for prm_name, parameter in self.items():
+                if parameter.index is not None:
+                    idx_dict[prm_name] = idx
+                    idx += 1
+            for prm_name, idx in idx_dict.items():
+                self[prm_name] = self[prm_name].changed_copy(index=idx)
+
+    def confirm_that_parameter_exists(self, prm_name):
+        """
+        Checks if a parameter, given by its name, exists among the currently
+        defined parameters. An error is raised when the given parameter does not
+        exist yet.
+
+        Parameters
+        ----------
+        prm_name : str
+            A global parameter name.
+        """
+        if prm_name not in [*self.keys()]:
+            raise RuntimeError(
+                f"A parameter with name '{prm_name}' has not been defined yet.")
+
+    def confirm_that_parameter_does_not_exists(self, prm_name):
+        """
+        Checks if a parameter, given by its name, exists among the currently
+        defined parameters. An error is raised when the given parameter does
+        already exist.
+
+        Parameters
+        ----------
+        prm_name : str
+            A global parameter name.
+        """
+        if prm_name in [*self.keys()]:
+            raise RuntimeError(
+                f"A parameter with name '{prm_name}' has already been defined.")
 
     @property
     def prms(self):
@@ -37,7 +108,7 @@ class Parameters(dict):
     @property
     def latent_prms(self):
         """Access the names of all 'latent'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.role == "latent"]
+        return [name for name, prm in self.items() if prm.is_latent]
 
     @property
     def n_latent_prms(self):
@@ -47,7 +118,7 @@ class Parameters(dict):
     @property
     def constant_prms(self):
         """Access the names of all 'const'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.role == "const"]
+        return [name for name, prm in self.items() if prm.is_const]
 
     @property
     def n_constant_prms(self):
@@ -317,6 +388,18 @@ class ParameterProperties:
         raise AttributeError(
             "You cannot change a parameter's role directly! Use "
             "InferenceProblem.change_parameter_role instead.")
+
+    @property
+    def is_latent(self):
+        """Adds a pseudo-attribute self.is_latent, which allows a convenient
+           check on whether a parameter is latent or not."""
+        return True if self._index is not None else False
+
+    @property
+    def is_const(self):
+        """Adds a pseudo-attribute self.is_const, which allows a convenient
+           check on whether a parameter is constant or not."""
+        return True if self._index is None else False
 
     @property
     def prior(self):

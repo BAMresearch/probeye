@@ -140,7 +140,7 @@ class InferenceProblem:
            priors names, while the values are the prior-objects."""
         return {parameter_properties.prior.name: parameter_properties.prior
                 for parameter_properties in self.parameters.values()
-                if parameter_properties.role == 'latent'}
+                if parameter_properties.is_latent}
 
     @property
     def noise_models(self):
@@ -243,7 +243,10 @@ class InferenceProblem:
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
         """
-        Adds a parameter ('const' or 'latent') to the inference problem.
+        Adds a parameter ('const' or 'latent') to the inference problem. The
+        main functionality of this method is to distinguish between the two
+        types ('const' and 'latent') and in creating the prior-object and
+        adding the prior-parameters when adding a latent param. to the problem.
 
         Parameters
         ----------
@@ -271,13 +274,6 @@ class InferenceProblem:
             for a parameter named 'beta'.
         """
 
-        # make sure the given prm_type is valid
-        if prm_type not in ['model', 'prior', 'noise']:
-            raise RuntimeError(
-                f"Unknown parameter type: prm_type = {prm_type} \n" +
-                f"Valid arguments are 'model', 'prior' or 'noise'."
-            )
-
         # only one of the const and prior key word arguments can be given; if
         # none of them are given, the parameter is interpreted as latent with
         # an uninformative prior
@@ -288,13 +284,8 @@ class InferenceProblem:
         if const is None and prior is None:
             prior = ('uninformative', {})
 
-        # check whether the parameter name was used before; note that all
-        # parameters (across types!) must have unique names
-        if prm_name in self._parameters.keys():
-            raise RuntimeError(
-                f"A parameter with name '{prm_name}' has already been" +
-                f" defined. Please choose another name."
-            )
+        # make sure the parameters has not been defined yet
+        self._parameters.confirm_that_parameter_does_not_exists(prm_name)
 
         # add the parameter to the central parameter dictionary
         if const is None:  # in this case we are adding a 'latent'-param.
@@ -339,18 +330,19 @@ class InferenceProblem:
                     default_info = f"{prior_type.capitalize()} "
                     default_info += f"prior's parameter "
                     default_info += f"for latent parameter '{prm_name}'"
+                    # the following call is recursive, but only with a depth of
+                    # one, since the added parameter is a constant here
                     self.add_parameter(new_name, 'prior', const=value,
-                                       info=default_info)  # recursive call
+                                       info=default_info)
                 elif type(value) is str:
                     # in this case the prior-parameter is defined as an already
                     # defined parameter with the name stated in value
-                    self.check_if_parameter_exists(value)
+                    self._parameters.confirm_that_parameter_exists(value)
                 else:
                     raise TypeError(
                         f"The prior-parameter {new_name} is not assigned a "
                         f"float, int or str, but something of type "
-                        f"{type(value)}."
-                    )
+                        f"{type(value)}.")
             prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
             prm_prior = PriorBase(prm_name, prior_parameter_names,
                                   prior_name, prior_type)
@@ -379,50 +371,8 @@ class InferenceProblem:
         prm_name : str
             The name of the parameter to be removed.
         """
-        # check if the given parameter exists
-        self.check_if_parameter_exists(prm_name)
-
-        # different steps must be taken depending on whether the parameter which
-        # should be removed is a 'const'- or a 'latent'-parameter
-        if self._parameters[prm_name].index is None:
-            # in this case prm_name refers to a constant parameter; hence, we
-            # can simply remove this parameter without side effects
-            del self._parameters[prm_name]
-        else:
-            # in this case prm_name refers to a latent parameter; hence we need
-            # to remove the prior-parameter and the prior-object; also, we have
-            # to correct the index values of the remaining latent parameters
-            for prior_prm in self._parameters[prm_name].prior.\
-                    hyperparameters.keys():
-                self.remove_parameter(prior_prm)  # recursive call
-            del self._parameters[prm_name]
-            # correct the indices of the remaining 'latent'-parameters; note
-            # that the way how the correction is done is due to the fact that
-            # the parameter.index attribute is protected, and cannot be changed
-            # directly from outside
-            idx_dict = {}
-            idx = 0
-            for prm_name, parameter in self._parameters.items():
-                if parameter.index is not None:
-                    idx_dict[prm_name] = idx
-                    idx += 1
-            for prm_name, idx in idx_dict.items():
-                self._parameters[prm_name] =\
-                    self._parameters[prm_name].changed_copy(index=idx)
-
-    def check_if_parameter_exists(self, prm_name):
-        """
-        Checks if a parameter, given by its name, exists within the problem. An
-        error is raised when the given parameter does not exist yet.
-
-        Parameters
-        ----------
-        prm_name : str
-            A global parameter name.
-        """
-        if prm_name not in self._parameters.keys():
-            raise RuntimeError(
-                f"A parameter with name '{prm_name}' has not been defined yet.")
+        # checks/additional actions are done by Parameters' __delitem__ method
+        del self._parameters[prm_name]
 
     def change_parameter_role(self, prm_name, const=None, prior=None):
         """
@@ -447,7 +397,8 @@ class InferenceProblem:
             ('normal', {'loc': 0.0, 'scale': 1.0}). In order to define the
             prior's parameters, check out the prior definitions in priors.py.
         """
-        self.check_if_parameter_exists(prm_name)
+        # first, make sure that the given parameter exists
+        self._parameters.confirm_that_parameter_exists(prm_name)
 
         # exactly one of the const and prior key word arguments must be given
         if const is not None and prior is not None:
@@ -461,12 +412,11 @@ class InferenceProblem:
                 f"argument. You have specified none."
             )
         # raise an error if the role change would not change the role
-        current_role = self._parameters[prm_name].role
-        if (current_role == 'const') and (prior is None):
+        if self._parameters[prm_name].is_const and (prior is None):
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as constant."
             )
-        if (current_role == 'latent') and (const is None):
+        if self._parameters[prm_name].is_latent and (const is None):
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as a "
                 f"latent parameter."
@@ -492,7 +442,8 @@ class InferenceProblem:
         new_tex : str, None, optional
             The new string for the parameter's tex-representation.
         """
-        self.check_if_parameter_exists(prm_name)
+        # first, make sure that the given parameter exists
+        self._parameters.confirm_that_parameter_exists(prm_name)
 
         # if None is given for the new info/tex, the old value will be kept
         if new_info is None:
@@ -502,8 +453,7 @@ class InferenceProblem:
 
         # change the info/tex-string
         self._parameters[prm_name] =\
-            self._parameters[prm_name].changed_copy(info=new_info,
-                                                           tex=new_tex)
+            self._parameters[prm_name].changed_copy(info=new_info, tex=new_tex)
 
     def change_constant(self, prm_name, new_value):
         """
@@ -517,10 +467,11 @@ class InferenceProblem:
         new_value : float
             The new value that prm_name should assume.
         """
-        self.check_if_parameter_exists(prm_name)
+        # first, make sure that the given parameter exists
+        self._parameters.confirm_that_parameter_exists(prm_name)
 
         # check if the given parameter is a constant
-        if self._parameters[prm_name].role != "const":
+        if self._parameters[prm_name].is_latent:
             raise RuntimeError(
                 f"The parameter '{prm_name}' is not a constant!"
             )
@@ -546,7 +497,7 @@ class InferenceProblem:
 
         # check if all constant parameters have values assigned
         for parameter in self._parameters.values():
-            if parameter.role == 'const':
+            if parameter.is_const:
                 assert parameter.value is not None
 
         # check if all parameters of the forward model(s) appear in
@@ -574,7 +525,7 @@ class InferenceProblem:
         # check if the prior-parameters of each latent parameter exist in
         # the problem's parameter dictionary
         for prm_name, parameter in self._parameters.items():
-            if parameter.role == 'latent':
+            if parameter.is_latent:
                 for prior_prm in parameter.prior.hyperparameters.keys():
                     assert prior_prm in self._parameters.keys()
                     assert self._parameters[prior_prm].type == 'prior'
@@ -582,7 +533,7 @@ class InferenceProblem:
         # check the indices of the latent parameters
         idx_list = []
         for prm_name, parameter in self._parameters.items():
-            if parameter.role == 'latent':
+            if parameter.is_latent:
                 idx_list.append(parameter.index)
         assert len(idx_list) == self._parameters.n_latent_prms
         assert sorted(idx_list) == list(range(len(idx_list)))
@@ -863,7 +814,7 @@ class InferenceProblem:
         # inference problem; note that the forward model can only be added to
         # the problem after the corresponding parameters were defined
         for prm_name in forward_model.prms_def:
-            self.check_if_parameter_exists(prm_name)
+            self._parameters.confirm_that_parameter_exists(prm_name)
 
         # check if the given name for the forward model has already been used
         if name in [*self._forward_models.keys()]:
