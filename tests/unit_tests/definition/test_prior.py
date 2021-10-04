@@ -16,7 +16,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(prior_template.prior_type, 'normal distribution')
         self.assertEqual(prior_template.prms_def,
                          {'a': 'a', 'loc_a': 'loc_a', 'scale_a': 'scale_a'})
-        self.assertEqual(prior_template.prms_def_no_ref,
+        self.assertEqual(prior_template.hyperparameters,
                          {'loc_a': 'loc_a', 'scale_a': 'scale_a'})
         # check that the __str__-method works
         self.assertTrue(len(prior_template.__str__()) > 0)

@@ -104,12 +104,12 @@ def run_emcee_solver(problem, n_walkers=20, n_steps=1000, n_initial_steps=100,
         # is recursive, so that (in principle) one could also define priors of
         # the prior's prior parameters and so forth
         theta_aux = [0] * problem.parameters.n_latent_prms
-        for prior_prm_name in prior.prms_def_no_ref.keys():
+        for prior_prm_name in prior.hyperparameters.keys():
             if problem.parameters[prior_prm_name].role == 'latent':
                 samples = sample_from_prior(prior_prm_name, size)
                 theta_aux[problem.parameters[prior_prm_name].index] =\
                     np.mean(samples)
-        prms = problem.get_parameters(theta_aux, prior.prms_def_no_ref)
+        prms = problem.get_parameters(theta_aux, prior.hyperparameters)
         return prior.generate_samples(prms, size)
 
     def loglike(theta):
