@@ -1,5 +1,7 @@
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
 from scipy import stats
 
 # local imports

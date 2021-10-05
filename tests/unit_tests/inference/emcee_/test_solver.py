@@ -1,8 +1,8 @@
 # standard library
 import logging
+import unittest
 
 # third party imports
-import unittest
 import numpy as np
 
 # local imports
@@ -49,8 +49,8 @@ class TestProblem(unittest.TestCase):
 
         # run the emcee solver with deactivated output
         logging.root.disabled = True
-        emcee_sampler = run_emcee_solver(problem, n_walkers=20, n_steps=200,
-                                         verbose=False, seed=6174)
+        _ = run_emcee_solver(problem, n_walkers=20, n_steps=200,
+                             verbose=False, seed=6174)
         # summary = run_emcee_postprocessing(problem, emcee_sampler,
         #                                    verbose=True)
         # sample_means = summary['mean']

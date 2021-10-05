@@ -9,8 +9,10 @@ distribution where the standard deviation is to be inferred.The problem is
 solved via sampling using taralli.
 """
 
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
 import numpy as np
 import matplotlib.pyplot as plt
 

@@ -1,5 +1,7 @@
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
 import numpy as np
 
 # local imports

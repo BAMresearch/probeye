@@ -7,8 +7,11 @@ Additionally, the location parameter of a's prior is considered a latent
 parameter.The problem is solved via sampling using taralli.
 """
 
-# third party imports
+# standard library imports
 import unittest
+
+
+# third party imports
 import numpy as np
 import matplotlib.pyplot as plt
 

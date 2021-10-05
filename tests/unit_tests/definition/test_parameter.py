@@ -1,4 +1,4 @@
-# third party imports
+# standard library imports
 import unittest
 
 # local imports

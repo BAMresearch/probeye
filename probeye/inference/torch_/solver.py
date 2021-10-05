@@ -7,7 +7,6 @@ import copy as cp
 
 # third party imports
 import numpy as np
-import torch as th
 from pyro.infer import NUTS, MCMC
 import arviz as az
 

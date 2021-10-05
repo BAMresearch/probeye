@@ -6,8 +6,10 @@ noise model is a normal zero-mean distribution with the std. deviation to infer.
 The problem is solved via sampling using taralli.
 """
 
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
 import numpy as np
 import matplotlib.pyplot as plt
 

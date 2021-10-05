@@ -9,8 +9,10 @@ This results in five latent parameters (parameters to infer). The problem
 is solved via sampling by means of taralli.
 """
 
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
 import numpy as np
 
 # local imports (problem definition)

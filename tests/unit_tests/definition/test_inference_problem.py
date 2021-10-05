@@ -1,9 +1,9 @@
 # standard library
+import unittest
 import io
 import sys
 
 # third party imports
-import unittest
 import numpy as np
 
 # local imports
