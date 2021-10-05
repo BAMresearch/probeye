@@ -16,7 +16,7 @@ import numpy as np
 # local imports (problem definition)
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.sensor import Sensor, PositionSensor
+from probeye.definition.sensor import Sensor
 from probeye.definition.noise_model import NormalNoiseModel
 
 # local imports (testing related)

@@ -9,7 +9,6 @@ import torch as th
 
 # local imports
 from probeye.definition.parameter import Parameters
-from probeye.definition.sensor import PositionSensor
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
@@ -899,10 +898,10 @@ class InferenceProblem:
         # convert data stored in sensors to tensors
         for fwd_model_name, forward_model in self_copy._forward_models.items():
             for input_sensor in forward_model.input_sensors:
-                if type(input_sensor) == PositionSensor:
+                if hasattr(input_sensor, 'coords'):
                     input_sensor.coords = th.tensor(input_sensor.coords)
             for output_sensor in forward_model.output_sensors:
-                if type(output_sensor) == PositionSensor:
+                if hasattr(output_sensor, 'coords'):
                     output_sensor.coords = th.tensor(output_sensor.coords)
 
         return self_copy
