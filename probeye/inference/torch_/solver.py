@@ -57,6 +57,9 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
     if use_gradients:
         problem = problem_ori.convert_data_to_tensor()
     else:
+        # a copy is created here, so that this solver routine does not have side
+        # effects on the original problem; such side effects would occur due to
+        # calling the assign_experiments_to_noise_models-method below
         problem = cp.deepcopy(problem_ori)
 
     # each noise model must be connected to the relevant experiment_names
@@ -111,7 +114,6 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
         noise_models.append(translate_noise_model(
             noise_model_base, use_gradients=use_gradients))
 
-    # the experimental data needs to be translated to torch.Tensors
     def get_theta_samples():
         """
         Provides a list of latent-parameter samples in form of torch.Tensors.

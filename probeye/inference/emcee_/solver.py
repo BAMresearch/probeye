@@ -51,7 +51,10 @@ def run_emcee_solver(problem_ori, n_walkers=20, n_steps=1000,
         Contains the results of the sampling procedure.
     """
 
-    # each noise model must be connected to the relevant experiment_names
+    # each noise model must be connected to the relevant experiment_names;
+    # a copy is created before, so that this solver routine does not have side
+    # effects on the original problem; such side effects would occur due to
+    # calling the assign_experiments_to_noise_models-method below
     problem = cp.deepcopy(problem_ori)
     problem.assign_experiments_to_noise_models()
 
