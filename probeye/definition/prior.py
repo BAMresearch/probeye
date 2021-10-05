@@ -19,7 +19,9 @@ class PriorBase:
             parameter names. E.g. ['loc_a', 'scale_a'] or {'loc_a': 'loc_a',
             'scale_a': 'scale_a'}. The latter example is the notation for the
             use of global and local names, which should not be necessary for
-            the definition of prior-parameters.
+            the definition of prior-parameters. A special case is the
+            uninformative prior (see below) which hasn't got an parameters. So,
+            in this case prms_def might also be None.
         name : string
             Defining the priors name.
         prior_type : string
