@@ -14,9 +14,26 @@ class NormalNoise(NormalNoiseModel):
     """
     def __init__(self, prms_def, sensors, name=None, correlation=None,
                  noise_type='additive', use_gradients=True):
+        """
+        For information on most of the above arguments check out the docstring
+        of the parent class's __init__ method.
+
+        Parameters
+        ----------
+        use_gradients : bool, optional
+            When True, the noise model will be defined to be compatible with
+            torch.Tensors. More precisely, the error-method of this class will
+            be defined to expect to work with torch.Tensors. When False, the
+            default error-method of the parent class will be used which does
+            work with numpy-arrays but not with torch.Tensors.
+        """
         super().__init__(prms_def, sensors, name=name, correlation=correlation,
                          noise_type=noise_type)
+
+        # this attribute is not considered in the parent class
         self.use_gradients = use_gradients
+
+        # the error-method is defined based on whether to use gradients or not
         if self.use_gradients:
             self.error = self.error_torch
 

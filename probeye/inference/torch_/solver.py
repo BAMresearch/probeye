@@ -52,11 +52,12 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
     """
 
     # if gradients should be used the problem's data structures have to be
-    # converted into tensors; in order not to modify the original problem, a
-    # copy of the original problem will be transformed instead
-    problem = cp.deepcopy(problem_ori)
+    # converted into tensors; note that the convert-method does not modify the
+    # original problem
     if use_gradients:
-        problem.prepare_for_torch()
+        problem = problem_ori.convert_data_to_tensor()
+    else:
+        problem = cp.deepcopy(problem_ori)
 
     # each noise model must be connected to the relevant experiment_names
     problem.assign_experiments_to_noise_models()

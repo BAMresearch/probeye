@@ -1,13 +1,15 @@
 # standard library
-from copy import copy
+import copy as cp
 import logging
 
 # third party imports
 from tabulate import tabulate
 import numpy as np
+import torch as th
 
 # local imports
 from probeye.definition.parameter import Parameters, ParameterProperties
+from probeye.definition.sensor import PositionSensor
 from probeye.definition.prior import PriorBase
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
@@ -706,7 +708,7 @@ class InferenceProblem:
 
         # check that vector-valued sensor_values are given as numpy-arrays; if
         # not (e.g. if lists or tuples are given) change them to numpy-ndarrays
-        sensor_values_numpy = copy(sensor_values)
+        sensor_values_numpy = cp.copy(sensor_values)
         for sensor_name, values in sensor_values.items():
             if hasattr(values, '__len__'):
                 if not isinstance(values, np.ndarray):
@@ -1078,22 +1080,39 @@ class InferenceProblem:
                     f"The globally defined experiment '{exp_name}' does not "
                     f"appear in any of the noise models!")
 
-    def prepare_for_torch(self):
-        import torch as th
-        from probeye.definition.sensor import PositionSensor
-        # convert the sensor values from the experiments to tensors
-        for exp_name in self._experiments.keys():
-            sensor_values = self._experiments[exp_name]['sensor_values']
+    def convert_data_to_tensor(self):
+        """
+        Creates a full copy of the problem the data of which is converted to
+        torch.Tensors. This is a necessary pre-processing step when the pyro
+        solver is used to solve the inference problem. Note that the original
+        problem remains unchanged.
+
+        Returns
+        -------
+        self_copy : obj[InferenceProblem]
+            A full copy of self where the data (experiments and sensors) have
+            been converted to torch.Tensors.
+        """
+
+        # the original problem shall not be touched, so we create a copy here
+        # to which the torch preparations will be applied
+        self_copy = cp.deepcopy(self)
+
+        # convert the sensor values from the experiments to tensors; since these
+        # are originally defined as numpy arrays they have to be converted
+        for exp_name in self_copy._experiments.keys():
+            sensor_values = self_copy._experiments[exp_name]['sensor_values']
             for sensor_name in sensor_values.keys():
-                self._experiments[exp_name]['sensor_values'][sensor_name] =\
-                    th.Tensor(self._experiments[exp_name]['sensor_values']
-                              [sensor_name])
+                sensor_values[sensor_name] =\
+                    th.Tensor(sensor_values[sensor_name])
 
         # convert data stored in sensors to tensors
-        for fwd_model_name, forward_model in self._forward_models.items():
+        for fwd_model_name, forward_model in self_copy._forward_models.items():
             for input_sensor in forward_model.input_sensors:
                 if type(input_sensor) == PositionSensor:
                     input_sensor.coords = th.tensor(input_sensor.coords)
             for output_sensor in forward_model.output_sensors:
                 if type(output_sensor) == PositionSensor:
                     output_sensor.coords = th.tensor(output_sensor.coords)
+
+        return self_copy

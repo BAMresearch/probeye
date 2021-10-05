@@ -15,6 +15,10 @@ class NormalNoise(NormalNoiseModel):
     """
     def __init__(self, prms_def, sensors, name=None, correlation=None,
                  noise_type='additive'):
+        """
+        For information on the above arguments check out the docstring of the
+        parent class's __init__ method.
+        """
         super().__init__(prms_def, sensors, name=name, correlation=correlation,
                          noise_type=noise_type)
 

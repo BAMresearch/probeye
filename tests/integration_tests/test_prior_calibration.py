@@ -19,7 +19,7 @@ from probeye.definition.sensor import Sensor
 from probeye.definition.noise_model import NormalNoiseModel
 
 # local imports (testing related)
-from .subroutines import run_inference_engines
+from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
