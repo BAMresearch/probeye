@@ -68,7 +68,7 @@ class TestProblem(unittest.TestCase):
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase('b', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
-        p.add_noise_model(NoiseModelBase('normal', 's', sensors='y'))
+        p.add_noise_model(NoiseModelBase('normal', 's', sensors=Sensor('y')))
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
         sys.stdout = io.StringIO()
@@ -85,7 +85,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         test_model = ForwardModelBase('b', Sensor('x'), Sensor('y'))
         p.add_forward_model('TestModel', test_model)
-        p.add_noise_model(NoiseModelBase('normal', 's', sensors='y'))
+        p.add_noise_model(NoiseModelBase('normal', 's', sensors=Sensor('y')))
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
         sys.stdout = io.StringIO()  # redirect output to console
@@ -285,7 +285,7 @@ class TestProblem(unittest.TestCase):
             p.check_problem_consistency()
         # add a noise model
         p.add_parameter('s', 'noise', const=1.0)
-        noise_model = NoiseModelBase('normal', 's', sensors=['y'])
+        noise_model = NoiseModelBase('normal', 's', sensors=[Sensor('y')])
         p.add_noise_model(noise_model)
         with self.assertRaises(AssertionError):
             # no experiment_names defined yet
@@ -550,10 +550,11 @@ class TestProblem(unittest.TestCase):
         test_model = ForwardModelBase('a', Sensor('x'),
                                       [Sensor('y1'), Sensor('y2')])
         p.add_forward_model('TestModel', test_model)
-        noise_model1 = NoiseModelBase('normal', 's1', sensors=['y1', 'y2'])
-        noise_model2 = NoiseModelBase('normal', ['s2'], sensors=['y2'])
+        noise_model1 = NoiseModelBase('normal', 's1',
+                                      sensors=[Sensor('y1'), Sensor('y2')])
+        noise_model2 = NoiseModelBase('normal', ['s2'], sensors=[Sensor('y2')])
         noise_model3 = NoiseModelBase('normal', ['s1', 's2', 's3'],
-                                      sensors=['y1'])
+                                      sensors=[Sensor('y1')])
         p.add_noise_model(noise_model1)
         p.add_noise_model(noise_model2)
         p.add_noise_model(noise_model3)
@@ -561,7 +562,8 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # the given noise model parameter has not been defined
             p.add_noise_model(NoiseModelBase('normal', 'not_existing_parameter',
-                                             sensors=['y1', 'y2']))
+                                             sensors=[Sensor('y1'),
+                                                      Sensor('y2')]))
 
     def test_assign_experiments_to_noise_models(self):
         # some preparations before performing the actual tests
@@ -581,9 +583,11 @@ class TestProblem(unittest.TestCase):
         p.add_forward_model('TestModel_z1z2', test_model_z1z2)
         # add some noise models
         noise_model_y1 = NoiseModelBase('normal', ['s1', 's2', 's3'],
-                                        sensors=['y1'])
-        noise_model_y2 = NoiseModelBase('normal', ['s2'], sensors=['y2'])
-        noise_model_y1y2 = NoiseModelBase('normal', 's1', sensors=['z1', 'z2'])
+                                        sensors=[Sensor('y1')])
+        noise_model_y2 = NoiseModelBase(
+            'normal', ['s2'], sensors=[Sensor('y2')])
+        noise_model_y1y2 = NoiseModelBase(
+            'normal', 's1', sensors=[Sensor('z1'), Sensor('z2')])
         p.add_noise_model(noise_model_y1)
         p.add_noise_model(noise_model_y2)
         p.add_noise_model(noise_model_y1y2)

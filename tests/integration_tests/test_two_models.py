@@ -6,7 +6,7 @@ and the second model equation is y = alpha * x**2 + b where alpha is a new model
 parameter, and b is the same model parameter as in the first model equation.
 Both forward models have the same noise model with a normal zero-mean
 distribution where the standard deviation is to be inferred.The problem is
-solved via sampling using taralli.
+solved via sampling using emcee and pyro.
 """
 
 # standard library imports
@@ -151,9 +151,9 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor_linear.name))
+            prms_def={'sigma': 'std'}, sensors=osensor_linear))
         problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor_quadratic.name))
+            prms_def={'sigma': 'std'}, sensors=osensor_quadratic))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #

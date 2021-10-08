@@ -12,8 +12,8 @@ class NormalNoise(NormalNoiseModel):
     A general Gaussian (normal) noise model with or without correlations. Note
     that currently, there are no correlation capabilities defined.
     """
-    def __init__(self, prms_def, sensors, name=None, correlation=None,
-                 noise_type='additive', use_gradients=True):
+    def __init__(self, target_sensor, prms_def, name=None, corr=None,
+                 corr_model='exp', noise_type='additive', use_gradients=True):
         """
         For information on most of the above arguments check out the docstring
         of the parent class's __init__ method.
@@ -27,10 +27,13 @@ class NormalNoise(NormalNoiseModel):
             default error-method of the parent class will be used which does
             work with numpy-arrays but not with torch.Tensors.
         """
-        super().__init__(prms_def, sensors, name=name, correlation=correlation,
+        # initialize the super-class (NormalNoiseModel) based on the given input
+        super().__init__(prms_def=prms_def, sensors=target_sensor, name=name,
+                         corr=corr, corr_model=corr_model,
                          noise_type=noise_type)
 
-        # this attribute is not considered in the parent class
+        # the following attributes are not considered in the parent class
+        self.target_sensor = target_sensor
         self.use_gradients = use_gradients
 
         # the error-method is defined based on whether to use gradients or not
@@ -57,7 +60,7 @@ class NormalNoise(NormalNoiseModel):
         """
 
         # prepare the dictionary keys
-        model_error_dict = {name: th.Tensor([]) for name in self.sensors}
+        model_error_dict = {name: th.Tensor([]) for name in self.sensor_names}
 
         # fill the dictionary with model error vectors
         for exp_name in self.experiment_names:
@@ -67,7 +70,7 @@ class NormalNoise(NormalNoiseModel):
             me_dict = self.error_function(ym_dict, ye_dict)
             model_error_dict =\
                 {name: th.cat((model_error_dict[name], me_dict[name]))
-                 for name in self.sensors}
+                 for name in self.sensor_names}
         return model_error_dict
 
     def sample_cond_likelihood(self, model_response, prms, use_gradients):
@@ -87,7 +90,7 @@ class NormalNoise(NormalNoiseModel):
         std = prms['std']
         mean = 0.0 if self.zero_mean else prms['mean']
         # compute the model error; note that this mode has exactly one sensor
-        model_error_vector = self.error(model_response)[self.sensors[0]]
+        model_error_vector = self.error(model_response)[self.target_sensor.name]
         if not use_gradients:
             model_error_vector = th.tensor(model_error_vector)
         pyro.sample(f'lkl_{self.name}', dist.Normal(mean, std),
@@ -124,9 +127,10 @@ def translate_noise_model(noise_base, use_gradients=True):
 
     # this is where the translation happens
     noise_object = noise_classes[noise_base.dist](
-        prms_def=noise_base.prms_def, sensors=noise_base.sensors,
-        name=noise_base.name, correlation=noise_base.correlation,
-        noise_type=noise_base.noise_type, use_gradients=use_gradients)
+        target_sensor=noise_base.sensors[0], prms_def=noise_base.prms_def,
+        name=noise_base.name, corr=noise_base.corr,
+        corr_model=noise_base.corr_model, noise_type=noise_base.noise_type,
+        use_gradients=use_gradients)
 
     # here, we take the assigned experiments from the base object
     noise_object.experiment_names = noise_base.experiment_names
