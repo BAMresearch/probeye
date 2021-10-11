@@ -87,7 +87,6 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
         for idx in idx_latent_dependencies:
             key_idx = [*dependency_dict.keys()][idx]
             for dependency in dependency_dict[key_idx]:
-                print(dependency, key_idx)
                 if key_idx in dependency_dict[dependency]:
                     raise RuntimeError(
                         f"Found circular dependency between {key_idx} and "

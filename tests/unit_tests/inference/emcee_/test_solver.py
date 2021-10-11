@@ -37,7 +37,8 @@ class TestProblem(unittest.TestCase):
             'sigma', 'noise', prior=('uniform',  {'low': 0.1, 'high': 1}))
         problem.add_forward_model(
             "LinRe", LinRe(['a', 'b'], [Sensor("x")], [Sensor("y")]))
-        problem.add_noise_model(NormalNoiseModel({'sigma': 'std'}, sensors='y'))
+        problem.add_noise_model(
+            NormalNoiseModel({'sigma': 'std'}, sensors=Sensor('y')))
 
         # generate and add some simple test data
         n_tests, a_true, b_true, sigma_true = 5000, 0.3, -0.2, 0.1

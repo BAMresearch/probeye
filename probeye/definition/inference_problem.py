@@ -814,10 +814,11 @@ class InferenceProblem:
         # existing noise models (this does not make the problem inconsistent
         # but I don't know an example where this would make sense)
         for existing_noise_model in self._noise_models:
-            if set(existing_noise_model.sensors) == set(noise_model.sensors):
+            if set(existing_noise_model.sensor_names) == \
+                    set(noise_model.sensor_names):
                 logging.warning(f"A noise model with an identical sensor "
-                                f"interface {noise_model.sensors} has already "
-                                f"been defined in this problem!")
+                                f"interface {noise_model.sensor_names} has "
+                                f"already been defined in this problem!")
 
         # check if the noise model has been assigned a name; if not, assign one
         if noise_model.name is None:
@@ -842,7 +843,7 @@ class InferenceProblem:
         for noise_model in self._noise_models:
             # get the experiments that contain all of the noise model's sensors
             experiment_names = self.get_experiment_names(
-                sensor_names=noise_model.sensors)
+                sensor_names=noise_model.sensor_names)
             n_experiments_noise += len(experiment_names)
             # add the relevant experiment names to the noise model
             noise_model.add_experiments(experiment_names)

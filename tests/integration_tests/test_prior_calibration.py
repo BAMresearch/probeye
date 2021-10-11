@@ -4,7 +4,7 @@ Linear regression example where a prior parameter is a latent parameter
 The model equation is y = a * x + b with a, b being the model parameters and the
 noise model is a normal zero-mean distribution with the std. deviation to infer.
 Additionally, the location parameter of a's prior is considered a latent
-parameter.The problem is solved via sampling using taralli.
+parameter.The problem is solved via sampling using emcee and pyro.
 """
 
 # standard library imports
@@ -134,7 +134,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor.name))
+            prms_def={'sigma': 'std'}, sensors=osensor))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #

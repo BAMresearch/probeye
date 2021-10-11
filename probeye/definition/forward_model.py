@@ -1,6 +1,5 @@
 # local imports
-from probeye.subroutines import len_or_one
-from probeye.subroutines import list2dict
+from probeye.subroutines import translate_prms_def
 from probeye.subroutines import make_list
 
 
@@ -36,10 +35,9 @@ class ForwardModelBase:
 
         # convert the given parameter names to a dictionary with global names
         # as keys and local names as values
-        self.prms_def = list2dict(make_list(prms_def_))
+        self.prms_def, self.prms_dim = translate_prms_def(prms_def_)
 
         # other attributes
-        self.prms_dim = len_or_one(self.prms_def)
         self.input_sensors = make_list(input_sensors)
         self.output_sensors = make_list(output_sensors)
 

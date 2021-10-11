@@ -6,7 +6,7 @@ while x and t represent position and time respectively. Measurements are made
 at three different positions (x-values) each of which is associated with an own
 zero-mean, uncorrelated normal noise model with the std. deviations to infer.
 This results in five latent parameters (parameters to infer). The problem
-is solved via sampling by means of taralli.
+is solved via sampling by means of emcee and pyro.
 """
 
 # standard library imports
@@ -147,11 +147,11 @@ class TestProblem(unittest.TestCase):
 
         # add the noise models to the problem
         problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma_1': 'std'}, sensors=osensor1.name))
+            prms_def={'sigma_1': 'std'}, sensors=osensor1))
         problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma_2': 'std'}, sensors=osensor2.name))
+            prms_def={'sigma_2': 'std'}, sensors=osensor2))
         problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma_3': 'std'}, sensors=osensor3.name))
+            prms_def={'sigma_3': 'std'}, sensors=osensor3))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #

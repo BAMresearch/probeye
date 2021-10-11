@@ -1,12 +1,18 @@
 """
-Simple linear regression example with two model and one noise parameter
+Linear regression example with spatial correlation model
 --------------------------------------------------------------------------------
-The model equation is y = a * x + b with a, b being the model parameters and the
-noise model is a normal zero-mean distribution with the std. deviation to infer.
-The problem is solved via sampling using emcee and pyro.
+The n data points (y1, y2, ..., yn) generated for this example are sampled from
+an n-variate normal distribution with mean values given by yi = a * xi + b with
+a, b being the model parameters and x1, x2, ..., xi, ..., xn being predefined
+spatial x-coordinates ranging from 0 to 1. The data points (y1, y2, ..., yn) are
+not independent but correlated. The corresponding covariance matrix is defined
+based on an exponential correlation function parameterized by the const standard
+deviation sigma of the n-variate normal distribution and a correlation length
+l_corr. Hence, the full model has four parameters a, b, sigma, l_corr, all of
+which are inferred in this example using emcee-sampling.
 """
 
-# standard library imports
+# standard library
 import unittest
 
 # third party imports
@@ -21,13 +27,15 @@ from probeye.definition.noise_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
+from probeye.inference.emcee_.correlation_models import \
+    SpatialExponentialCorrelationModel
 
 
 class TestProblem(unittest.TestCase):
 
-    def test_linear_regression(self, n_steps=200, n_initial_steps=100,
-                               n_walkers=20, plot=False, verbose=False,
-                               run_emcee=True, run_torch=True):
+    def test_spatial_correlation(self, n_steps=200, n_initial_steps=100,
+                                 n_walkers=20, plot=False, verbose=False,
+                                 run_emcee=True, run_torch=False):
         """
         Integration test for the problem described at the top of this file.
 
@@ -69,12 +77,18 @@ class TestProblem(unittest.TestCase):
         scale_b = 1.0
 
         # 'true' value of noise sd, and its uniform prior parameters
-        sigma_noise = 0.5
+        sigma = 0.5
         low_sigma = 0.1
         high_sigma = 0.8
 
-        # the number of generated experiment_names and seed for random numbers
-        n_tests = 50
+        # 'true' value of correlation length, and its uniform prior parameters
+        l_corr = 0.05
+        low_l_corr = 0.001
+        high_l_corr = 0.2
+
+        # settings for the data generation
+        n_experiments = 8
+        n_points = 50
         seed = 1
 
         # ==================================================================== #
@@ -83,12 +97,11 @@ class TestProblem(unittest.TestCase):
 
         class LinearModel(ForwardModelBase):
             def __call__(self, inp):
-                x = inp['x']
-                m = inp['m']
+                a = inp['a']
                 b = inp['b']
                 response = {}
                 for os in self.output_sensors:
-                    response[os.name] = m * x + b
+                    response[os.name] = a * os.x.flatten() + b
                 return response
 
         # ==================================================================== #
@@ -126,6 +139,11 @@ class TestProblem(unittest.TestCase):
                               info="Std. dev, of 0-mean noise model",
                               prior=('uniform', {'low': low_sigma,
                                                  'high': high_sigma}))
+        problem.add_parameter('l_corr', 'noise',
+                              tex=r"$l_\mathrm{corr}$",
+                              info="Correlation length of correlation model",
+                              prior=('uniform', {'low': low_l_corr,
+                                                 'high': high_l_corr}))
 
         # add the forward model to the problem; note that the first positional
         # argument [{'a': 'm'}, 'b'] passed to LinearModel defines the forward
@@ -141,45 +159,48 @@ class TestProblem(unittest.TestCase):
         # verbose notation  {<global parameter name>: <local parameter name>}
         # but can instead just write the parameter's (global=local) name, like
         # it is done with the forward model's parameter 'b' below
-        isensor = Sensor("x")
-        osensor = Sensor("y")
-        linear_model = LinearModel([{'a': 'm'}, 'b'], [isensor], [osensor])
+        x_test = np.linspace(0.0, 1.0, n_points)
+        osensor = Sensor("y", x=x_test)
+        linear_model = LinearModel(['a', 'b'], [], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor))
+        noise_model = NormalNoiseModel(
+            sensors=osensor, corr='x', corr_model='exp',
+            prms_def=[{'sigma': 'std'}, 'l_corr'])
+        problem.add_noise_model(noise_model)
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
         # ==================================================================== #
 
-        # data-generation; normal noise with constant variance around each point
+        # data-generation; first create the true values without noise; these
+        # true values will be the mean values for sampling from a multivariate
+        # normal distribution
         np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model(
-            {isensor.name: x_test, 'm': a_true, 'b': b_true})[osensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma_noise)
+        y_true = linear_model({'a': a_true, 'b': b_true})[osensor.name]
 
-        # add the experimental data
-        problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
-                               sensor_values={isensor.name: x_test,
-                                              osensor.name: y_test})
+        # create the covariance matrix
+        correlation_model = SpatialExponentialCorrelationModel(x=osensor.x)
+        cov = correlation_model({'std': sigma, 'l_corr': l_corr})
 
-        # give problem overview
-        if verbose:
-            problem.info()
-
-        # plot the true and noisy data
+        # now generate the noisy test data including correlations; we assume
+        # here that there are n_experiments test series
+        for i in range(n_experiments):
+            y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
+            problem.add_experiment(f'Test_{i}', fwd_model_name="LinearModel",
+                                   sensor_values={osensor.name: y_test})
+            if plot:
+                plt.scatter(x_test, y_test, label=f'measured data (test {i+1})',
+                            s=10, zorder=10)
+        # finish the plot
         if plot:
-            plt.scatter(x_test, y_test, label='measured data',
-                        s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label='true', c="black")
-            plt.xlabel(isensor.name)
+            plt.plot(x_test, y_true, label='true model', c="black", linewidth=3)
+            plt.xlabel('x')
             plt.ylabel(osensor.name)
             plt.legend()
             plt.tight_layout()
-            plt.draw()  # does not stop execution
+            plt.draw()  # plt.draw() does not stop execution
 
         # ==================================================================== #
         #                Solve problem with inference engine(s)                #
