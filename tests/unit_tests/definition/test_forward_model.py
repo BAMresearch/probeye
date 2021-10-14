@@ -1,6 +1,9 @@
 # standard library imports
 import unittest
 
+# third party imports
+import numpy as np
+
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
@@ -24,6 +27,19 @@ class TestProblem(unittest.TestCase):
         computed_result = forward_model({**{'x': 1.0}, **prms})
         expected_result = {'y': 3.0}
         self.assertEqual(computed_result, expected_result)
+
+        # check the jacobian-method (dict-version)
+        computed_result = forward_model.jacobian({**{'x': 1.0}, **prms})
+        expected_result = {'x': {'y': 2.0}, 'a': {'y': 1.0}, 'b': {'y': 1.0}}
+        for k1, v1 in computed_result.items():
+            for k2, v2 in v1.items():
+                self.assertAlmostEqual(v2, expected_result[k1][k2])
+        # check the jacobian-method (array-version)
+        computed_result = forward_model.jacobian(
+            {**{'x': 1.0}, **prms}, return_as_array=True)
+        expected_result = np.array([[[2.], [1.], [1.]]])
+        self.assertTrue(np.allclose(computed_result, expected_result) and
+                        computed_result.shape == expected_result.shape)
 
     def test_model_template_multiple_sensors(self):
 
@@ -53,6 +69,25 @@ class TestProblem(unittest.TestCase):
         computed_result = forward_model({**{'x1': 2.0, 'x2': 3.0}, **prms})
         expected_result = {'y1': 10.1, 'y2': 9.8}
         self.assertEqual(computed_result, expected_result)
+
+        # check the jacobian-method (dict-version)
+        computed_result = forward_model.jacobian(
+            {**{'x1': 2.0, 'x2': 3.0}, **prms})
+        expected_result = {'x1': {'y1': 4.0, 'y2': 4.0},
+                           'x2': {'y1': 2.0, 'y2': 2.0},
+                           'a': {'y1': 4.0, 'y2': 4.0},
+                           'b': {'y1': 3.0, 'y2': 3.0}}
+        for k1, v1 in computed_result.items():
+            for k2, v2 in v1.items():
+                self.assertAlmostEqual(v2, expected_result[k1][k2])
+        # check the jacobian-method (array-version)
+        computed_result = forward_model.jacobian(
+            {**{'x1': 2.0, 'x2': 3.0}, **prms}, return_as_array=True)
+        expected_result = np.array([[[4.], [2.], [4.], [3.]],
+                                    [[4.], [2.], [4.], [3.]]])
+        self.assertTrue(
+            np.allclose(computed_result, expected_result) and
+            computed_result.shape == expected_result.shape)
 
 if __name__ == "__main__":
     unittest.main()
