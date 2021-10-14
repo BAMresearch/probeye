@@ -24,16 +24,23 @@ def len_or_one(obj):
 
     Returns
     -------
-    length : int
+    int
         The length of the given list/tuple etc. or 1, if obj has no __len__
         attribute; the latter case is mostly intended for scalar numbers
 
     """
     if hasattr(obj, '__len__'):
-        length = len(obj)
+        # the following check is necessary, since the len-function applied to a
+        # numpy array of format numpy.array(1) results in a TypeError
+        if type(obj) is np.ndarray:
+            if not obj.shape:
+                return 1
+            else:
+                return len(obj)
+        else:
+            return len(obj)
     else:
-        length = 1
-    return length
+        return 1
 
 def make_list(arg):
     """
