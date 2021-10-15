@@ -14,7 +14,7 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ForwardModelBase
         class ForwardModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
@@ -30,13 +30,14 @@ class TestProblem(unittest.TestCase):
 
         # check the jacobian-method (dict-version)
         computed_result = forward_model.jacobian({**{'x': 1.0}, **prms})
-        expected_result = {'x': {'y': 2.0}, 'a': {'y': 1.0}, 'b': {'y': 1.0}}
+        expected_result = {'y': {'x': 2.0, 'a': 1.0, 'b': 1.0}}
         for k1, v1 in computed_result.items():
             for k2, v2 in v1.items():
                 self.assertAlmostEqual(v2, expected_result[k1][k2])
         # check the jacobian-method (array-version)
-        computed_result = forward_model.jacobian(
-            {**{'x': 1.0}, **prms}, return_as_array=True)
+        inp_ = {**{'x': 1.0}, **prms}
+        jac_dict = forward_model.jacobian(inp_)
+        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict)
         expected_result = np.array([[[2.], [1.], [1.]]])
         self.assertTrue(np.allclose(computed_result, expected_result) and
                         computed_result.shape == expected_result.shape)
@@ -51,7 +52,7 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ForwardModelBase
         class ForwardModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x1 = inp['x1']
                 x2 = inp['x2']
                 a = inp['a']
@@ -73,16 +74,15 @@ class TestProblem(unittest.TestCase):
         # check the jacobian-method (dict-version)
         computed_result = forward_model.jacobian(
             {**{'x1': 2.0, 'x2': 3.0}, **prms})
-        expected_result = {'x1': {'y1': 4.0, 'y2': 4.0},
-                           'x2': {'y1': 2.0, 'y2': 2.0},
-                           'a': {'y1': 4.0, 'y2': 4.0},
-                           'b': {'y1': 3.0, 'y2': 3.0}}
+        expected_result = {'y1': {'x1': 4.0, 'x2': 2.0, 'a': 4.0, 'b': 3.0},
+                           'y2': {'x1': 4.0, 'x2': 2.0, 'a': 4.0, 'b': 3.0}}
         for k1, v1 in computed_result.items():
             for k2, v2 in v1.items():
                 self.assertAlmostEqual(v2, expected_result[k1][k2])
         # check the jacobian-method (array-version)
-        computed_result = forward_model.jacobian(
-            {**{'x1': 2.0, 'x2': 3.0}, **prms}, return_as_array=True)
+        inp_ = {**{'x1': 2.0, 'x2': 3.0}, **prms}
+        jac_dict = forward_model.jacobian(inp_)
+        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict)
         expected_result = np.array([[[4.], [2.], [4.], [3.]],
                                     [[4.], [2.], [4.], [3.]]])
         self.assertTrue(

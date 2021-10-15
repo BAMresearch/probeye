@@ -90,7 +90,7 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class LinearModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
@@ -100,7 +100,7 @@ class TestProblem(unittest.TestCase):
                 return response
 
         class QuadraticModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x = inp['x']
                 alpha = inp['alpha']
                 beta = inp['beta']

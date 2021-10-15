@@ -82,7 +82,7 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class LinearModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x = inp['x']
                 m = inp['m']
                 b = inp['b']
@@ -157,7 +157,7 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal noise with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model(
+        y_true = linear_model.response(
             {isensor.name: x_test, 'm': a_true, 'b': b_true})[osensor.name]
         y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 

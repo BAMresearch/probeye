@@ -96,7 +96,7 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class LinearModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 a = inp['a']
                 b = inp['b']
                 response = {}

@@ -148,6 +148,11 @@ class InferenceProblem:
         return self._noise_models
 
     @property
+    def forward_models(self):
+        """Access self._forward_models from outside via self.forward_models."""
+        return self._forward_models
+
+    @property
     def experiments(self):
         """Access self._experiments from outside via self.experiments."""
         return self._experiments
@@ -895,14 +900,5 @@ class InferenceProblem:
             for sensor_name in sensor_values.keys():
                 sensor_values[sensor_name] =\
                     th.Tensor(sensor_values[sensor_name])
-
-        # convert data stored in sensors to tensors
-        for fwd_model_name, forward_model in self_copy._forward_models.items():
-            for input_sensor in forward_model.input_sensors:
-                if hasattr(input_sensor, 'coords'):
-                    input_sensor.coords = th.tensor(input_sensor.coords)
-            for output_sensor in forward_model.output_sensors:
-                if hasattr(output_sensor, 'coords'):
-                    output_sensor.coords = th.tensor(output_sensor.coords)
 
         return self_copy
