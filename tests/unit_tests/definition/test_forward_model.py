@@ -10,6 +10,14 @@ from probeye.definition.sensor import Sensor
 
 class TestProblem(unittest.TestCase):
 
+    def test_undefined_forward_model(self):
+        # check for the not-implemented-error when no response method is defined
+        forward_model = ForwardModelBase(['a'], Sensor('x'), Sensor('y'))
+        with self.assertRaises(NotImplementedError):
+            forward_model.response({})
+        with self.assertRaises(NotImplementedError):
+            forward_model({})
+
     def test_model_template_one_sensor(self):
 
         # define a simple model using ForwardModelBase
@@ -27,6 +35,10 @@ class TestProblem(unittest.TestCase):
         computed_result = forward_model({**{'x': 1.0}, **prms})
         expected_result = {'y': 3.0}
         self.assertEqual(computed_result, expected_result)
+
+        # check input/output sensor names
+        self.assertEqual(forward_model.input_sensor_names, ['x'])
+        self.assertEqual(forward_model.output_sensor_names, ['y'])
 
         # check the jacobian-method (dict-version)
         computed_result = forward_model.jacobian({**{'x': 1.0}, **prms})
@@ -70,6 +82,10 @@ class TestProblem(unittest.TestCase):
         computed_result = forward_model({**{'x1': 2.0, 'x2': 3.0}, **prms})
         expected_result = {'y1': 10.1, 'y2': 9.8}
         self.assertEqual(computed_result, expected_result)
+
+        # check input/output sensor names
+        self.assertEqual(forward_model.input_sensor_names, ['x1', 'x2'])
+        self.assertEqual(forward_model.output_sensor_names, ['y1', 'y2'])
 
         # check the jacobian-method (dict-version)
         computed_result = forward_model.jacobian(

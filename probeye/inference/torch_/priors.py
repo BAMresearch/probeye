@@ -75,7 +75,7 @@ class PriorUniform(PriorBase):
         high = prms[f"high_{self.ref_prm}"]
         return pyro.sample(self.ref_prm, dist.Uniform(low, high))
 
-def translate_prior_template(prior_template, prior_classes=None):
+def translate_prior_template(prior_template):
     """
     Translate a given instance of PriorBase (which is essentially just a
     description of the prior without compute-methods) to a specific prior object
@@ -86,11 +86,6 @@ def translate_prior_template(prior_template, prior_classes=None):
     prior_template : obj[PriorBase]
         An instance of PriorBase which contains basic information on the
         prior but no computing-methods.
-    prior_classes : dict, None
-        If None, the prior classes defined in this file are used to translate
-        the prior_template. If other user-defined priors should be used, they
-        can be provided via this argument, by providing a dictionary with the
-        prior_type as key and the custom prior class as value.
 
     Returns
     -------
@@ -99,16 +94,9 @@ def translate_prior_template(prior_template, prior_classes=None):
         Examples for such classes are given above in this file.
     """
 
-    # check the prior_classes argument; it either must be None, or of type dict
-    if type(prior_classes) is not dict:
-        if prior_classes is None:
-            prior_classes = {'normal': PriorNormal,
-                             'uniform': PriorUniform}
-        else:
-            # in this case prior_classes is not None, and not of type dict
-            raise TypeError(
-                f"Custom prior_classes must be given as a dictionary. However, "
-                "you provided an input of type {type(prior_classes)}.")
+    # this dictionary contains the classes from above in this file
+    prior_classes = {'normal': PriorNormal,
+                     'uniform': PriorUniform}
 
     # prepare the corresponding prior object; the following translation is
     # necessary, because prms_def must be given in form of a list, but was

@@ -1,8 +1,9 @@
 """
 Linear model in time and space with three different noise models
 --------------------------------------------------------------------------------
-The model equation is y = A * x + B * t with A, B being the model parameters,
-while x and t represent position and time respectively. Measurements are made
+The model equation is y = A * x + B * t + c with A, B, c being the model prms.
+while x and t represent position and time respectively. From the three model
+parameters A and B are latent ones while c is a constant. Measurements are made
 at three different positions (x-values) each of which is associated with an own
 zero-mean, uncorrelated normal noise model with the std. deviations to infer.
 This results in five latent parameters (parameters to infer). The problem
@@ -88,6 +89,10 @@ class TestProblem(unittest.TestCase):
         pos_s2 = 0.5
         pos_s3 = 1.0
 
+        # define global constant; this constant is used here only to test if
+        # there are any problems when using global constants
+        c = 0.5
+
         # ==================================================================== #
         #                       Define the Forward Model                       #
         # ==================================================================== #
@@ -97,9 +102,10 @@ class TestProblem(unittest.TestCase):
                 t = inp['time']
                 A = inp['A']
                 B = inp['B']
+                const = inp['const']
                 response = dict()
                 for os in self.output_sensors:
-                    response[os.name] = A * os.x + B * t
+                    response[os.name] = A * os.x + B * t + const
                 return response
 
         # ==================================================================== #
@@ -135,14 +141,15 @@ class TestProblem(unittest.TestCase):
                                                  'high': high_S3}),
                               info="Std. dev. of zero-mean noise model for S1",
                               tex=r"$\sigma_3$")
+        problem.add_parameter('c', 'model', const=c)
 
         # add the forward model to the problem
         isensor = Sensor("time")
         osensor1 = Sensor("y1", x=pos_s1)
         osensor2 = Sensor("y2", x=pos_s2)
         osensor3 = Sensor("y3", x=pos_s3)
-        linear_model = LinearModel(
-            ['A', 'B'], [isensor], [osensor1, osensor2, osensor3])
+        linear_model = LinearModel(['A', 'B', {'c': 'const'}], [isensor],
+                                   [osensor1, osensor2, osensor3])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise models to the problem
@@ -165,7 +172,7 @@ class TestProblem(unittest.TestCase):
 
         def generate_data(n_time_steps, n=None):
             time_steps = np.linspace(0, 1, n_time_steps)
-            inp = {'A': A_true, 'B': B_true, 'time': time_steps}
+            inp = {'A': A_true, 'B': B_true, 'const': c, 'time': time_steps}
             sensors = linear_model(inp)
             for key, val in sensors.items():
                 sensors[key] = val + np.random.normal(0.0, sd_dict[key],
