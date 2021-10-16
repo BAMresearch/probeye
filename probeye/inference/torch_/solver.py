@@ -50,7 +50,7 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
     # effects on the original problem; such side effects would occur due to
     # calling the assign_experiments_to_noise_models-method below
     problem = cp.deepcopy(problem_ori)
-    problem = problem.convert_data_to_tensor()
+    problem = problem.transform_experimental_data(f=th.from_numpy)
 
     # each noise model must be connected to the relevant experiment_names
     problem.assign_experiments_to_noise_models()

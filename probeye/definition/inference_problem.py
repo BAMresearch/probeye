@@ -5,7 +5,6 @@ import logging
 # third party imports
 from tabulate import tabulate
 import numpy as np
-import torch as th
 
 # local imports
 from probeye.definition.parameter import Parameters
@@ -875,30 +874,40 @@ class InferenceProblem:
                     f"The globally defined experiment '{exp_name}' does not "
                     f"appear in any of the noise models!")
 
-    def convert_data_to_tensor(self):
+    def transform_experimental_data(self, f, args=(), **kwargs):
         """
-        Creates a full copy of the problem the data of which is converted to
-        torch.Tensors. This is a necessary pre-processing step when the pyro
-        solver is used to solve the inference problem. Note that the original
-        problem remains unchanged.
+        Creates a full copy of the problem the experimental data of which is
+        transformed in some way. This might be a necessary pre-processing step
+        for an inference engine in order to be able to solve the problem. Note
+        that the original problem remains unchanged.
+
+        Parameters
+        ----------
+        f : callable
+            The function that is applied on each of the experiment's sensor
+            values.
+        args : tuple
+            Additional positional arguments to be passed to f.
+        kwargs
+            Keyword arguments to be passed to f.
 
         Returns
         -------
         self_copy : obj[InferenceProblem]
-            A full copy of self where the data (experiments and sensors) have
-            been converted to torch.Tensors.
+            A full copy of self where the experimental data has been transformed
+            in the specified fashion.
         """
 
         # the original problem shall not be touched, so we create a copy here
-        # to which the torch preparations will be applied
+        # to which the transformation will be applied
         self_copy = cp.deepcopy(self)
 
-        # convert the sensor values from the experiments to tensors; since these
-        # are originally defined as numpy arrays they have to be converted
+        # transform the sensor values from the experiments by applying the
+        # specified function with the given arguments to them
         for exp_name in self_copy._experiments.keys():
             sensor_values = self_copy._experiments[exp_name]['sensor_values']
             for sensor_name in sensor_values.keys():
                 sensor_values[sensor_name] =\
-                    th.Tensor(sensor_values[sensor_name])
+                    f(sensor_values[sensor_name], *args, **kwargs)
 
         return self_copy
