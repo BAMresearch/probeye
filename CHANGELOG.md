@@ -6,7 +6,8 @@
 - arviz-based post-processing for sampling methods (in postprocessing submodule)
 - integration test with a correlation example
 - new subroutines: flatten_generator, flatten, process_spatial_coordinates, translate_prms_def
-- new script: correlation_models.py in inference/emcee module 
+- new script: correlation_models.py in inference/emcee module
+- general plot-method in PriorBase
 ### Changed
 - tool-independent noise model (in definition submodule)
 - tool-independent normal noise model (in definition submodule)
