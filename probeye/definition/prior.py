@@ -85,22 +85,28 @@ class PriorBase:
         if self.prior_type == 'normal':
             mu = prms[self.prms_def[f"loc_{self.ref_prm}"]].value
             sigma = prms[self.prms_def[f"scale_{self.ref_prm}"]].value
-            if x is None:
-                x = np.linspace(
-                    mu - n_sigma * sigma, mu + n_sigma * sigma, n_points)
-            y = 1 / (sigma * np.sqrt(2 * np.pi))
-            y *= np.exp(-0.5 * ((x - mu) / sigma) ** 2)
-            ax.plot(x, y, label='prior', color=color)
+            # proceed, only if both values are constants and not latent
+            # parameters themselves
+            if mu and sigma:
+                if x is None:
+                    x = np.linspace(
+                        mu - n_sigma * sigma, mu + n_sigma * sigma, n_points)
+                y = 1 / (sigma * np.sqrt(2 * np.pi))
+                y *= np.exp(-0.5 * ((x - mu) / sigma) ** 2)
+                ax.plot(x, y, label='prior', color=color)
 
         elif self.prior_type == 'uniform':
             a = prms[self.prms_def[f"low_{self.ref_prm}"]].value
             b = prms[self.prms_def[f"high_{self.ref_prm}"]].value
-            y = np.zeros(n_points)
-            y[1:-1] = np.ones(n_points - 2) / (b - a)
-            if x is None:
-                x = np.linspace(a, b, n_points)
-                y[0], y[-1] = 0, 0
-            else:
-                y[0] = 0 if (x[0] <= a) else y[1]
-                y[-1] = 0 if (x[-1] >= b) else y[-2]
-            ax.plot(x, y, label='prior', color=color)
+            # proceed, only if both values are constants and not latent
+            # parameters themselves
+            if a and b:
+                y = np.zeros(n_points)
+                y[1:-1] = np.ones(n_points - 2) / (b - a)
+                if x is None:
+                    x = np.linspace(a, b, n_points)
+                    y[0], y[-1] = 0, 0
+                else:
+                    y[0] = 0 if (x[0] <= a) else y[1]
+                    y[-1] = 0 if (x[-1] >= b) else y[-2]
+                ax.plot(x, y, label='prior', color=color)

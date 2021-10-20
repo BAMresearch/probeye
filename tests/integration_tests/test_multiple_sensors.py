@@ -194,10 +194,11 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        run_inference_engines(problem, n_steps=n_steps,
+        true_values = {'A': A_true, 'B': B_true, 'sigma_1': sd_S1_true,
+                       'sigma_2': sd_S2_true, 'sigma_3': sd_S3_true}
+        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
                               n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              verbose=verbose,
+                              n_walkers=n_walkers, plot=plot, verbose=verbose,
                               run_emcee=run_emcee, run_torch=run_torch)
 
 if __name__ == "__main__":

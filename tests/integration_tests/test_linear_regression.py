@@ -186,8 +186,9 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         # this routine is imported from another script because it it used by all
-        # integration tests in the same way
-        run_inference_engines(problem, n_steps=n_steps,
+        # integration tests in the same way; ref_values are used for plotting
+        true_values = {'a': a_true, 'b': b_true, 'sigma': sigma_noise}
+        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
                               n_initial_steps=n_initial_steps,
                               n_walkers=n_walkers, plot=plot, verbose=verbose,
                               run_emcee=run_emcee, run_torch=run_torch)

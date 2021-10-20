@@ -1,6 +1,3 @@
-# standard library
-import copy as cp
-
 # third party imports
 import arviz as az
 import numpy as np
@@ -9,7 +6,8 @@ import matplotlib.pyplot as plt
 
 def create_pair_plot(inference_data, problem, plot_with="arviz",
                      plot_priors=True, focus_on_posterior=False, kind="kde",
-                     figsize=(9, 9), textsize=10, **kwargs):
+                     figsize=(9, 9), textsize=10, true_values=None,
+                     show_legends=True, **kwargs):
     """
     Creates a pair-plot for the given inference data using arviz.
 
@@ -38,35 +36,44 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         chose, the figsize will be derived automatically.
     textsize : float, optional
         Defines the font size in the default unit.
+    true_values : None, dict, optional
+        Used for plotting 'true' parameter values. Keys are the parameter names
+        and values are the values that are supposed to be shown in the marginal
+        plots.
+    show_legends : bool, optional
+        If True, legends are shown in the marginal plots. Otherwise no legends
+        are included in the plot.
     kwargs
         Additional keyword arguments passed to arviz' pairplot function.
     """
 
     if plot_with == 'arviz':
 
-        # avoid double definition of kde_kwargs
-        if 'kde_kwargs' in kwargs:
-            kde_kwargs = cp.copy(kwargs['kde_kwargs'])
-            del kwargs['kde_kwargs']
-        else:
-            kde_kwargs = {'contourf_kwargs': {"alpha": 0},
-                          'contour_kwargs': {"colors": None}}
-
-        # avoid double definition of marginal_kwargs
-        if 'marginal_kwargs' in kwargs:
-            marginal_kwargs = cp.copy(kwargs['marginal_kwargs'])
-            del kwargs['marginal_kwargs']
-        else:
-            marginal_kwargs = {}
-
         # these names will appear on the axis labels
         var_names = problem.get_theta_names(tex=True)
 
+        # set default value for kde_kwargs if not given in kwargs; note that
+        # this default value is mutable, so it should not be given as a default
+        # argument in create_pair_plot
+        if 'kde_kwargs' not in kwargs:
+            kwargs['kde_kwargs'] = {'contourf_kwargs': {"alpha": 0},
+                                    'contour_kwargs': {"colors": None}}
+
+        # process true_values if specified
+        if true_values is not None:
+            reference_values = dict()
+            for prm_name, value in true_values.items():
+                key = problem.parameters[prm_name].tex
+                reference_values[key] = value
+            kwargs['reference_values'] = reference_values
+            if 'reference_values_kwargs' not in kwargs:
+                kwargs['reference_values_kwargs'] = {'marker': 'o',
+                                                     'color': 'red'}
+
         # call the main plotting routine from arviz
         axs = az.plot_pair(inference_data, var_names=var_names, marginals=True,
-                           kind=kind, marginal_kwargs=marginal_kwargs,
-                           kde_kwargs=kde_kwargs, figsize=figsize,
-                           textsize=textsize, **kwargs)
+                           kind=kind, figsize=figsize, textsize=textsize,
+                           **kwargs)
 
         # by default, the y-axis of the first and last marginal plot have ticks,
         # tick-labels and axis-labels that are not meaningful to show on the
@@ -75,6 +82,17 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
             axs[i, i].yaxis.set_ticks_position('none')
             axs[i, i].yaxis.set_ticklabels([])
             axs[i, i].yaxis.set_visible(False)
+
+        # adds a reference value in each marginal plot; for some reason this is
+        # not done by arviz.pair_plot when passing 'reference_values'
+        if 'reference_values' in kwargs:
+            reference_values_kwargs = None
+            if 'reference_values_kwargs' in kwargs:
+                reference_values_kwargs = kwargs['reference_values_kwargs']
+            ref_value_list = [*kwargs['reference_values'].values()]
+            for i, prm_value in enumerate(ref_value_list):
+                axs[i, i].scatter(prm_value, 0, label='true value',
+                                  **reference_values_kwargs, edgecolor='black')
 
         if plot_priors:
 
@@ -91,14 +109,17 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                     posterior_handle = [axs[i, i].lines[0]]
                     posterior_label = ['posterior']
                 else:
+                    # this is for the case, when the posterior is not shown as
+                    # a line, but for example as a histogram etc.
                     posterior_handle, posterior_label = [], []
                 problem.parameters[prm_name].prior.plot(
                     axs[i, i], problem.parameters, x=x)
-                prior_handle, prior_label =\
-                    axs[i, i].get_legend_handles_labels()
-                axs[i, i].legend(posterior_handle + prior_handle,
-                                 posterior_label + prior_label)
-                print(type(axs[i, i]))
+                if show_legends:
+                    prior_handle, prior_label =\
+                        axs[i, i].get_legend_handles_labels()
+                    axs[i, i].legend(posterior_handle + prior_handle,
+                                     posterior_label + prior_label,
+                                     loc='upper right')
 
             # here, the axis of the non-marginal plots are adjusted to the new
             # axis ranges
@@ -110,6 +131,25 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                         axs[j, i].set_xlim((x_min, x_max))
                     for j in range(0, i):
                         axs[i, j].set_ylim((x_min, x_max))
+        else:
+
+            # the following code adds legends to the marginal plots for the case
+            # where no priors are supposed to be plotted
+            if show_legends:
+                prm_names = problem.get_theta_names(tex=False)
+                for i, prm_name in enumerate(prm_names):
+                    existing_handles, existing_labels = \
+                        axs[i, i].get_legend_handles_labels()
+                    if axs[i, i].lines:
+                        posterior_handle = [axs[i, i].lines[0]]
+                        posterior_label = ['posterior']
+                    else:
+                        # this is for the case, when the posterior is not shown
+                        # as a line, but for example as a histogram etc.
+                        posterior_handle, posterior_label = [], []
+                    axs[i, i].legend(posterior_handle + existing_handles,
+                                     posterior_label + existing_labels,
+                                     loc='upper right')
         plt.tight_layout()
         plt.show()
 

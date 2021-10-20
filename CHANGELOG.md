@@ -1,6 +1,6 @@
 # probeye changelog
 
-## 1.0.4 (2021-Oct-??)
+## 1.0.4 (2021-Oct20)
 ### Added
 - torch submodule (in inference submodule)
 - arviz-based post-processing for sampling methods (in postprocessing submodule)

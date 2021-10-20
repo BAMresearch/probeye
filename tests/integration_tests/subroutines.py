@@ -8,9 +8,9 @@ from probeye.postprocessing.sampling import create_posterior_plot
 from probeye.postprocessing.sampling import create_trace_plot
 
 
-def run_inference_engines(problem, n_steps=1000, n_initial_steps=100,
-                          n_walkers=20, plot=True, verbose=True, run_emcee=True,
-                          run_torch=True):
+def run_inference_engines(problem, true_values=None, n_steps=1000,
+                          n_initial_steps=100, n_walkers=20, plot=True,
+                          verbose=True, run_emcee=True, run_torch=True):
     """
     Runs a requested selection of inference engines on a given problem. This
     function is in a separate file to avoid repeating the same lines of code in
@@ -20,6 +20,10 @@ def run_inference_engines(problem, n_steps=1000, n_initial_steps=100,
     ----------
     problem : obj[InferenceProblem]
         Describes the inference problem including e.g. parameters and data.
+    true_values : None, dict, optional
+        Used for plotting 'true' parameter values. Keys are the parameter names
+        and values are the values that are supposed to be shown in the marginal
+        plots.
     n_steps : int, optional
         Number of steps (samples) to run.
     n_initial_steps : int, optional
@@ -74,6 +78,6 @@ def run_inference_engines(problem, n_steps=1000, n_initial_steps=100,
         # each inference engine; also note, that the plots are not so much
         # intended for automatic testing, as for manually running the script
         if plot:
-            create_pair_plot(inference_data, problem)
+            create_pair_plot(inference_data, problem, true_values=true_values)
             create_posterior_plot(inference_data, problem)
             create_trace_plot(inference_data, problem)

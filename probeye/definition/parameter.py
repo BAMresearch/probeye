@@ -381,6 +381,12 @@ class ParameterProperties:
         self.info = prm_dict['info']
         self.tex = prm_dict['tex']
 
+        # whitespace in the tex strings is a problem for some plotting routines,
+        # so they are replaced here by a math-command for whitespace that does
+        # not contain actual whitespace
+        if self.tex:
+            self.tex = self.tex.replace(" ", r'$\enspace$')
+
         # check the given values
         self.check_consistency()
 
