@@ -4,30 +4,32 @@ Linear regression example where a prior parameter is a latent parameter
 The model equation is y = a * x + b with a, b being the model parameters and the
 noise model is a normal zero-mean distribution with the std. deviation to infer.
 Additionally, the location parameter of a's prior is considered a latent
-parameter.The problem is solved via sampling using taralli.
+parameter.The problem is solved via sampling using emcee and pyro.
 """
 
 # standard library imports
-import logging
+import unittest
+
 
 # third party imports
-import unittest
 import numpy as np
 import matplotlib.pyplot as plt
 
-# local imports
+# local imports (problem definition)
+from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoise
-from probeye.inference.emcee_.solver import run_emcee_solver
-from probeye.inference.emcee_.postprocessing import run_emcee_postprocessing
+from probeye.definition.noise_model import NormalNoiseModel
+
+# local imports (testing related)
+from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
 
-    def test_prior_calibration(self, n_steps=100, n_walkers=20, plot=False,
-                               verbose=False):
+    def test_prior_calibration(self, n_steps=200, n_initial_steps=100,
+                               n_walkers=20, plot=False, verbose=False,
+                               run_emcee=True, run_torch=True):
         """
         Integration test for the problem described at the top of this file.
 
@@ -36,6 +38,8 @@ class TestProblem(unittest.TestCase):
         n_steps : int, optional
             Number of steps (samples) to run. Note that the default number is
             rather low just so the test does not take too long.
+        n_initial_steps : int, optional
+            Number of steps for initial (burn-in) sampling.
         n_walkers : int, optional
             Number of walkers used by the estimator.
         plot : bool, optional
@@ -44,6 +48,12 @@ class TestProblem(unittest.TestCase):
             generated plots are closed.
         verbose : bool, optional
             If True, additional information will be printed to the console.
+        run_emcee : bool, optional
+            If True, the problem is solved with the emcee solver. Otherwise,
+            the emcee solver will not be used.
+        run_torch : bool, optional
+            If True, the problem is solved with the pyro/torch_ solver.
+            Otherwise, the pyro/torch_ solver will not be used.
         """
 
         # ==================================================================== #
@@ -77,7 +87,7 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class LinearModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
@@ -123,7 +133,8 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoise('sigma', sensors=osensor.name))
+        problem.add_noise_model(NormalNoiseModel(
+            prms_def={'sigma': 'std'}, sensors=osensor))
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -157,16 +168,17 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ==================================================================== #
-        #                      Solve problem with Taralli                      #
+        #                Solve problem with inference engine(s)                #
         # ==================================================================== #
 
-        # run the taralli solver and postprocessing
-        logging.root.disabled = not verbose
-        emcee_model = run_emcee_solver(
-            problem, n_walkers=n_walkers, n_steps=n_steps, verbose=verbose)
-        if plot or verbose:
-            run_emcee_postprocessing(
-                problem, emcee_model, verbose=verbose)
+        # this routine is imported from another script because it it used by all
+        # integration tests in the same way
+        true_values = {'loc_a': a_true, 'a': a_true, 'b': b_true,
+                       'sigma': sigma_noise}
+        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
+                              n_initial_steps=n_initial_steps,
+                              n_walkers=n_walkers, plot=plot, verbose=verbose,
+                              run_emcee=run_emcee, run_torch=run_torch)
 
 if __name__ == "__main__":
     unittest.main()

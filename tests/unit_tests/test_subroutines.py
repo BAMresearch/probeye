@@ -1,5 +1,8 @@
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
+import numpy as np
 
 # local imports
 from probeye.subroutines import len_or_one
@@ -13,6 +16,9 @@ from probeye.subroutines import unvectorize_dict_values
 from probeye.subroutines import sub_when_empty
 from probeye.subroutines import dict2list
 from probeye.subroutines import list2dict
+from probeye.subroutines import flatten
+from probeye.subroutines import process_spatial_coordinates
+from probeye.subroutines import translate_prms_def
 
 class TestProblem(unittest.TestCase):
 
@@ -28,6 +34,9 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(len_or_one([1]), 1)
         self.assertEqual(len_or_one([1, 2]), 2)
         self.assertEqual(len_or_one([1, 2, 3]), 3)
+        # check for the weird numpy case (the object np.array(1.0) does have
+        # len-method, but when you do len(np.array(1.0)) you get an error)
+        self.assertEqual(len_or_one(np.array(1.0)), 1)
 
     def test_make_list(self):
         # check main use for single non-list input
@@ -114,6 +123,215 @@ class TestProblem(unittest.TestCase):
         # the input cannot contain numbers
         with self.assertRaises(TypeError):
             list2dict(['a', 1.0])
+
+    def test_flatten(self):
+        # test for a simple nested list
+        nested_list_1 = [1, 2, [3, 4]]
+        computed_result = flatten(nested_list_1)
+        expected_result = [1, 2, 3, 4]
+        self.assertEqual(computed_result, expected_result)
+        # test for another simple nested list
+        nested_list_2 = [[1, 2, [3, 4]]]
+        computed_result = flatten(nested_list_2)
+        expected_result = [1, 2, 3, 4]
+        self.assertEqual(computed_result, expected_result)
+        # test for a flat list
+        flat_list = [1, 2, 3, 4]
+        computed_result = flatten(flat_list)
+        expected_result = [1, 2, 3, 4]
+        self.assertEqual(computed_result, expected_result)
+        # test for a simple nested numpy-array
+        nested_array_1 = np.array([[1, 2], [3, 4]])
+        computed_result = flatten(nested_array_1)
+        expected_result = [1, 2, 3, 4]
+        self.assertEqual(computed_result, expected_result)
+        # test for another simple nested numpy-array
+        nested_array_2 = np.array([[1, 2, 3, 4]])
+        computed_result = flatten(nested_array_2)
+        expected_result = [1, 2, 3, 4]
+        self.assertEqual(computed_result, expected_result)
+        # test for a flat numpy-array
+        flat_array = np.array([1, 2, 3, 4])
+        computed_result = flatten(flat_array)
+        expected_result = [1, 2, 3, 4]
+        self.assertEqual(computed_result, expected_result)
+        # test for use with scalar
+        scalar = 1.2
+        computed_result = flatten(scalar)
+        expected_result = [1.2]
+        self.assertEqual(computed_result, expected_result)
+        # test for the None-input
+        none_arg = None
+        computed_result = flatten(none_arg)
+        expected_result = None
+        self.assertEqual(computed_result, expected_result)
+
+    def test_process_spatial_coordinates(self):
+        # check for complete None-input
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=None, z=None, coords=None)
+        coords_expected = np.array([])
+        order_expected = []
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for only x being given as numpy array
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=np.array([1, 2, 3]), y=None, z=None, coords=None)
+        coords_expected = np.array([[1, 2, 3]])
+        order_expected = ['x']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for only x being given as list
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=[1, 2, 3], y=None, z=None, coords=None)
+        coords_expected = np.array([[1, 2, 3]])
+        order_expected = ['x']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for only y being given as numpy array
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=np.array([1, 2, 3]), z=None, coords=None)
+        coords_expected = np.array([[1, 2, 3]])
+        order_expected = ['y']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for only y being given as list
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=[1, 2, 3], z=None, coords=None)
+        coords_expected = np.array([[1, 2, 3]])
+        order_expected = ['y']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for only z being given as numpy array
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=None, z=np.array([1, 2, 3]), coords=None)
+        coords_expected = np.array([[1, 2, 3]])
+        order_expected = ['z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for only z being given as list
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=None, z=[1, 2, 3], coords=None)
+        coords_expected = np.array([[1, 2, 3]])
+        order_expected = ['z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for x and y being given as numpy arrays
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=np.array([1, 2, 3]), y=np.array([4, 5, 6]), z=None, coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
+        order_expected = ['x', 'y']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for x and y being given as lists
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=[1, 2, 3], y=[4, 5, 6], z=None, coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
+        order_expected = ['x', 'y']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for x and z being given as numpy arrays
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=np.array([1, 2, 3]), y=None, z=np.array([4, 5, 6]), coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
+        order_expected = ['x', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for x and z being given as lists
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=[1, 2, 3], y=None, z=[4, 5, 6], coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
+        order_expected = ['x', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for y and z being given as numpy arrays
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=np.array([1, 2, 3]), z=np.array([4, 5, 6]), coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
+        order_expected = ['y', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for y and z being given as lists
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=None, y=[1, 2, 3], z=[4, 5, 6], coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
+        order_expected = ['y', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for x, y and z being given as numpy arrays
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=np.array([1, 2, 3]), y=np.array([4, 5, 6]),
+            z=np.array([7, 8, 9]), coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        order_expected = ['x', 'y', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for y and z being given as lists
+        coords_computed, order_computed = process_spatial_coordinates(
+            x=[1, 2, 3], y=[4, 5, 6], z=[7, 8, 9], coords=None)
+        coords_expected = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+        order_expected = ['x', 'y', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+        # check for coords being given as numpy array with new order
+        coords_computed, order_computed = process_spatial_coordinates(
+            coords=np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]]),
+            order=('y', 'x', 'z'))
+        coords_expected = np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]])
+        order_expected = ['y', 'x', 'z']
+        self.assertTrue(np.allclose(coords_computed, coords_expected) and
+                        coords_computed.shape == coords_expected.shape)
+        self.assertEqual(order_computed, order_expected)
+
+    def test_translate_prms_def(self):
+        # valid use case: single string
+        prms_def_given = 'sigma'
+        expected_result = {'sigma': 'sigma'}
+        computed_result, _ = translate_prms_def(prms_def_given)
+        self.assertEqual(computed_result, expected_result)
+        # valid use case: single string as list
+        prms_def_given = ['sigma']
+        expected_result = {'sigma': 'sigma'}
+        computed_result, _ = translate_prms_def(prms_def_given)
+        self.assertEqual(computed_result, expected_result)
+        # valid use case: single 1-element dict
+        prms_def_given = {'sigma': 'sigma'}
+        expected_result = {'sigma': 'sigma'}
+        computed_result, _ = translate_prms_def(prms_def_given)
+        self.assertEqual(computed_result, expected_result)
+        # valid use case: multiple-element dict
+        prms_def_given = {'sigma': 'std', 'mu': 'mean'}
+        expected_result = {'sigma': 'std', 'mu': 'mean'}
+        computed_result, _ = translate_prms_def(prms_def_given)
+        self.assertEqual(computed_result, expected_result)
+        # valid use case: multiple-element list of strings
+        prms_def_given = ['sigma', 'mu']
+        expected_result = {'sigma': 'sigma', 'mu': 'mu'}
+        computed_result, _ = translate_prms_def(prms_def_given)
+        self.assertEqual(computed_result, expected_result)
+        # valid use case: mixed multiple-element list
+        prms_def_given = ['sigma', {'mu': 'mean'}]
+        expected_result = {'sigma': 'sigma', 'mu': 'mean'}
+        computed_result, _ = translate_prms_def(prms_def_given)
+        self.assertEqual(computed_result, expected_result)
+        # invalid use case: list with 2-element dict
+        with self.assertRaises(ValueError):
+            translate_prms_def([{'sigma': 'sigma', 'mu': 'mean'}])
 
 if __name__ == "__main__":
     unittest.main()

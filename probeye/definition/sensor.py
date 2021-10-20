@@ -1,8 +1,5 @@
-# third party imports
-import numpy as np
-
 # local imports
-from probeye.subroutines import make_list
+from probeye.subroutines import process_spatial_coordinates
 
 
 class Sensor:
@@ -52,31 +49,10 @@ class Sensor:
         self.name = name
         self.measurand = measurand
         self.unit = unit
-        self._order = order
 
-        # define the attributes 'order' and 'coords'
-        if coords is None:
-            if not ((x is None) and (y is None) and (z is None)):
-                # in this case, the coordinates are given directly via x, y, z;
-                # note that due to the eval-statement, the following for-loop
-                # cannot be put into a list comprehension
-                self._order = []  # going to be a list of str like ['x', 'z']
-                self.coords = []
-                for v in order:
-                    if eval(v) is not None:
-                        self._order.append(v)
-                        self.coords.append(make_list(eval(v)))
-                self.coords = np.array(self.coords)
-        else:
-            if not ((x is None) and (y is None) and (z is None)):
-                raise RuntimeError(
-                    "When 'coords' is provided as an argument, you cannot "
-                    "provide 'x', 'y' and 'z' at the same time!")
-
-            # here, the coords-array is given directly; the order is taken from
-            # the order-argument
-            self._order = order[:coords.shape[0]]
-            self.coords = coords
+        # translate the input to a coords-array
+        self.coords, self._order = process_spatial_coordinates(
+            x=x, y=y, z=z, coords=coords, order=order)
 
         # this contains the information which row contains which coordinate
         self.index_dict = {coord: i for i, coord in enumerate(self._order)}
@@ -95,3 +71,8 @@ class Sensor:
     def z(self):
         """Provides z-coords as attribute without copying them from coords."""
         return self.coords[self.index_dict['z']] if 'z' in self._order else None
+
+    @property
+    def order(self):
+        """Provides read-access to privat attribute self._order."""
+        return self._order

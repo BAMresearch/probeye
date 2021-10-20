@@ -3,6 +3,7 @@
 # ============================================================================ #
 
 # standard library imports
+import copy as cp
 import time
 import logging
 import random
@@ -11,24 +12,25 @@ import random
 import copy
 import numpy as np
 import emcee
+import arviz as az
 
 # local imports
 from probeye.subroutines import pretty_time_delta
-from probeye.inference.emcee_.priors import translate_prior_template
+from probeye.inference.emcee_.priors import translate_prior
+from probeye.inference.emcee_.noise_models import translate_noise_model
 
 # ============================================================================ #
-#                           Taralli sampling solver                            #
+#                            emcee sampling solver                             #
 # ============================================================================ #
 
-def run_emcee_solver(problem, n_walkers=20, n_steps=1000, n_initial_steps=100,
-                     seed=1, verbose=True, **kwargs):
+def run_emcee_solver(problem_ori, n_walkers=20, n_steps=1000,
+                     n_initial_steps=100, seed=1, verbose=True, **kwargs):
     """
-    Solves an inference problem described in problem via taralli's Markov chain
-    Monte Carlo method from EmceeParameterEstimator.
+    Solves an inference problem described in problem using emcee.
 
     Parameters
     ----------
-    problem : obj[InferenceProblem]
+    problem_ori : obj[InferenceProblem]
         Describes the inference problem including e.g. parameters and data.
     n_walkers : int, optional
         Number of walkers used by the estimator.
@@ -49,13 +51,22 @@ def run_emcee_solver(problem, n_walkers=20, n_steps=1000, n_initial_steps=100,
         Contains the results of the sampling procedure.
     """
 
+    # each noise model must be connected to the relevant experiment_names;
+    # a copy is created before, so that this solver routine does not have side
+    # effects on the original problem; such side effects would occur due to
+    # calling the assign_experiments_to_noise_models-method below
+    problem = cp.deepcopy(problem_ori)
+    problem.assign_experiments_to_noise_models()
+
     # translate the prior definitions to objects with computing capabilities
     priors = copy.deepcopy(problem.priors)
     for prior_name, prior_template in problem.priors.items():
-        priors[prior_name] = translate_prior_template(prior_template)
+        priors[prior_name] = translate_prior(prior_template)
 
-    # each noise model must be connected to the relevant experiment_names
-    problem.assign_experiments_to_noise_models()
+    # translate the general noise model objects into solver specific ones
+    noise_models = []
+    for noise_model_base in problem.noise_models:
+        noise_models.append(translate_noise_model(noise_model_base))
 
     def logprior(theta):
         """
@@ -131,7 +142,7 @@ def run_emcee_solver(problem, n_walkers=20, n_steps=1000, n_initial_steps=100,
         # compute the contribution to the log-likelihood function for each noise
         # model and sum it all up
         ll = 0.0
-        for noise_model in problem.noise_models:
+        for noise_model in noise_models:
             # compute the model response for the noise model's experiment_names
             model_response = problem.evaluate_model_response(
                 theta, noise_model.experiment_names)
@@ -207,4 +218,7 @@ def run_emcee_solver(problem, n_walkers=20, n_steps=1000, n_initial_steps=100,
         f"Sampling of the posterior distribution completed: {n_steps} steps "
         f"and {n_walkers} walkers.\n Total run-time: {runtime_str}.")
 
-    return sampler
+    # translate the results to a common data structure and return it
+    var_names = problem.get_theta_names(tex=True)
+    inference_data = az.from_emcee(sampler, var_names=var_names)
+    return inference_data

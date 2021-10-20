@@ -264,7 +264,7 @@ class PriorWeibull(PriorBase):
         return stats.weibull_min.rvs(shape, loc=loc, scale=scale, size=size,
                                      random_state=seed)
 
-def translate_prior_template(prior_template, prior_classes=None):
+def translate_prior(prior_template, prior_classes=None):
     """
     Translate a given instance of PriorBase (which is essentially just a
     description of the prior without compute-methods) to a specific prior object

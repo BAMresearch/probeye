@@ -1,5 +1,18 @@
 # probeye changelog
 
+## 1.0.4 (2021-Oct20)
+### Added
+- torch submodule (in inference submodule)
+- arviz-based post-processing for sampling methods (in postprocessing submodule)
+- integration test with a correlation example
+- new subroutines: flatten_generator, flatten, process_spatial_coordinates, translate_prms_def
+- new script: correlation_models.py in inference/emcee module
+- general plot-method in PriorBase
+### Changed
+- tool-independent noise model (in definition submodule)
+- tool-independent normal noise model (in definition submodule)
+- normal noise model for emcee (revised to be able to account for correlation)
+
 ## 1.0.3 (2021-Oct-04)
 ### Changed
 - InferenceProblem class

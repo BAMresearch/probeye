@@ -1,5 +1,7 @@
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
 import numpy as np
 
 # local imports
@@ -25,6 +27,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.z, z)
         self.assertEqual(position_sensor.coords.shape, (3, 1))
+        self.assertEqual(position_sensor.order, ['x', 'y', 'z'])
         for i, value in enumerate([x, y, z]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
 
@@ -37,6 +40,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.z, z)
         self.assertEqual(position_sensor.coords.shape, (3, 1))
+        self.assertEqual(position_sensor.order, ['x', 'y', 'z'])
         for i, value in enumerate([x, y, z]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
 
@@ -47,6 +51,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.coords.shape, (2, 1))
+        self.assertEqual(position_sensor.order, ['x', 'y'])
         for i, value in enumerate([x, y]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
 
@@ -56,6 +61,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.y, y)
+        self.assertEqual(position_sensor.order, ['x', 'y'])
         self.assertEqual(position_sensor.coords.shape, (2, 1))
         for i, value in enumerate([x, y]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
@@ -66,6 +72,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.z, z)
+        self.assertEqual(position_sensor.order, ['x', 'z'])
         self.assertEqual(position_sensor.coords.shape, (2, 1))
         for i, value in enumerate([x, z]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
@@ -77,6 +84,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
         self.assertEqual(position_sensor.z, z)
+        self.assertEqual(position_sensor.order, ['x', 'z'])
         self.assertEqual(position_sensor.coords.shape, (2, 1))
         for i, value in enumerate([x, z]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
@@ -87,6 +95,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.z, z)
+        self.assertEqual(position_sensor.order, ['y', 'z'])
         self.assertEqual(position_sensor.coords.shape, (2, 1))
         for i, value in enumerate([y, z]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
@@ -98,6 +107,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, y)
         self.assertEqual(position_sensor.z, z)
+        self.assertEqual(position_sensor.order, ['y', 'z'])
         self.assertEqual(position_sensor.coords.shape, (2, 1))
         for i, value in enumerate([y, z]):
             self.assertAlmostEqual(position_sensor.coords[i], value)
@@ -107,6 +117,7 @@ class TestProblem(unittest.TestCase):
         position_sensor = Sensor(sensor_name, x=x)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, x)
+        self.assertEqual(position_sensor.order, ['x'])
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], x)
 
@@ -115,6 +126,7 @@ class TestProblem(unittest.TestCase):
         position_sensor = Sensor(sensor_name, coords=coords)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.x, 1)
+        self.assertEqual(position_sensor.order, ['x'])
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], 1)
 
@@ -123,6 +135,7 @@ class TestProblem(unittest.TestCase):
         position_sensor = Sensor(sensor_name, y=y)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, y)
+        self.assertEqual(position_sensor.order, ['y'])
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], y)
 
@@ -132,6 +145,7 @@ class TestProblem(unittest.TestCase):
             sensor_name, coords=coords, order='y')
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, 2)
+        self.assertEqual(position_sensor.order, ['y'])
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], 2)
 
@@ -140,6 +154,7 @@ class TestProblem(unittest.TestCase):
         position_sensor = Sensor(sensor_name, z=z)
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.z, z)
+        self.assertEqual(position_sensor.order, ['z'])
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], z)
 
@@ -149,6 +164,7 @@ class TestProblem(unittest.TestCase):
             sensor_name, coords=coords, order='z')
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.z, 3)
+        self.assertEqual(position_sensor.order, ['z'])
         self.assertEqual(position_sensor.coords.shape, (1, 1))
         self.assertAlmostEqual(position_sensor.coords[0], 3)
 

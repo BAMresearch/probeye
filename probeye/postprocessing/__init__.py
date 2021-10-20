@@ -1,2 +1,2 @@
 # module imports
-from probeye.postprocessing import *
+from probeye.postprocessing import sampling

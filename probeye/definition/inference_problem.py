@@ -1,5 +1,5 @@
 # standard library
-from copy import copy
+import copy as cp
 import logging
 
 # third party imports
@@ -147,6 +147,11 @@ class InferenceProblem:
         return self._noise_models
 
     @property
+    def forward_models(self):
+        """Access self._forward_models from outside via self.forward_models."""
+        return self._forward_models
+
+    @property
     def experiments(self):
         """Access self._experiments from outside via self.experiments."""
         return self._experiments
@@ -260,6 +265,7 @@ class InferenceProblem:
         prm_name : str
             The name of the parameter to be removed.
         """
+        
         # checks/additional actions are done by Parameters' __delitem__ method
         del self._parameters[prm_name]
 
@@ -498,7 +504,7 @@ class InferenceProblem:
 
         # check that vector-valued sensor_values are given as numpy-arrays; if
         # not (e.g. if lists or tuples are given) change them to numpy-ndarrays
-        sensor_values_numpy = copy(sensor_values)
+        sensor_values_numpy = cp.copy(sensor_values)
         for sensor_name, values in sensor_values.items():
             if hasattr(values, '__len__'):
                 if not isinstance(values, np.ndarray):
@@ -812,10 +818,15 @@ class InferenceProblem:
         # existing noise models (this does not make the problem inconsistent
         # but I don't know an example where this would make sense)
         for existing_noise_model in self._noise_models:
-            if set(existing_noise_model.sensors) == set(noise_model.sensors):
+            if set(existing_noise_model.sensor_names) == \
+                    set(noise_model.sensor_names):
                 logging.warning(f"A noise model with an identical sensor "
-                                f"interface {noise_model.sensors} has already "
-                                f"been defined in this problem!")
+                                f"interface {noise_model.sensor_names} has "
+                                f"already been defined in this problem!")
+
+        # check if the noise model has been assigned a name; if not, assign one
+        if noise_model.name is None:
+            noise_model.name = f"noise_model_{len(self.noise_models)}"
 
         # add the problem's experiments to the noise model (this is just a
         # pointer!) for noise_model-internal checks
@@ -836,7 +847,7 @@ class InferenceProblem:
         for noise_model in self._noise_models:
             # get the experiments that contain all of the noise model's sensors
             experiment_names = self.get_experiment_names(
-                sensor_names=noise_model.sensors)
+                sensor_names=noise_model.sensor_names)
             n_experiments_noise += len(experiment_names)
             # add the relevant experiment names to the noise model
             noise_model.add_experiments(experiment_names)
@@ -862,3 +873,41 @@ class InferenceProblem:
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not "
                     f"appear in any of the noise models!")
+
+    def transform_experimental_data(self, f, args=(), **kwargs):
+        """
+        Creates a full copy of the problem the experimental data of which is
+        transformed in some way. This might be a necessary pre-processing step
+        for an inference engine in order to be able to solve the problem. Note
+        that the original problem remains unchanged.
+
+        Parameters
+        ----------
+        f : callable
+            The function that is applied on each of the experiment's sensor
+            values.
+        args : tuple
+            Additional positional arguments to be passed to f.
+        kwargs
+            Keyword arguments to be passed to f.
+
+        Returns
+        -------
+        self_copy : obj[InferenceProblem]
+            A full copy of self where the experimental data has been transformed
+            in the specified fashion.
+        """
+
+        # the original problem shall not be touched, so we create a copy here
+        # to which the transformation will be applied
+        self_copy = cp.deepcopy(self)
+
+        # transform the sensor values from the experiments by applying the
+        # specified function with the given arguments to them
+        for exp_name in self_copy._experiments.keys():
+            sensor_values = self_copy._experiments[exp_name]['sensor_values']
+            for sensor_name in sensor_values.keys():
+                sensor_values[sensor_name] =\
+                    f(sensor_values[sensor_name], *args, **kwargs)
+
+        return self_copy

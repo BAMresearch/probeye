@@ -4,7 +4,10 @@
 
 # standard library imports
 from copy import copy
-from typing import Union
+from typing import Iterable
+
+# third party imports
+import numpy as np
 
 # ============================================================================ #
 #                                 Subroutines                                  #
@@ -21,16 +24,23 @@ def len_or_one(obj):
 
     Returns
     -------
-    length : int
+    int
         The length of the given list/tuple etc. or 1, if obj has no __len__
         attribute; the latter case is mostly intended for scalar numbers
 
     """
     if hasattr(obj, '__len__'):
-        length = len(obj)
+        # the following check is necessary, since the len-function applied to a
+        # numpy array of format numpy.array(1) results in a TypeError
+        if type(obj) is np.ndarray:
+            if not obj.shape:
+                return 1
+            else:
+                return len(obj)
+        else:
+            return len(obj)
     else:
-        length = 1
-    return length
+        return 1
 
 def make_list(arg):
     """
@@ -360,3 +370,167 @@ def pretty_time_delta(seconds):
         return "%s%dm%ds" % (sign_string, minutes, seconds)
     else:
         return "%s%ds" % (sign_string, seconds)
+
+def flatten_generator(items):
+    """
+    Yield items from any nested iterable. This solution is modified from a
+    recipe in Beazley, D. and B. Jones. Recipe 4.14, Python Cookbook 3rd Ed.,
+    O'Reilly Media Inc. Sebastopol, CA: 2013.
+
+    Parameters
+    ----------
+    items : Iterable
+        A list, tuple, numpy.ndarray, etc. that should be flattened.
+
+    Returns
+    -------
+    obj[generator]
+        Can be translated to a list by applying list(...) on it.
+    """
+    for x in items:
+        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+            for sub_x in flatten_generator(x):
+                yield sub_x
+        else:
+            yield x
+
+def flatten(arg):
+    """
+    Flattens and returns the given input argument.
+
+    Parameters
+    ----------
+    arg : list, numpy.ndarray, float, int, None
+        The list/array that should be flattened.
+
+    Returns
+    -------
+    arg_flat : list, None
+        The flattened list/numpy.ndarray is the input is not None. Otherwise,
+        None is returned.
+    """
+    arg_type = type(arg)
+    if arg is None:
+        arg_flat = arg
+    elif arg_type in [float, int]:
+        arg_flat = [arg]
+    else:
+        if arg_type not in [list, np.ndarray]:
+            raise TypeError(f"The argument must be either None or of type list "
+                            f"numpy.ndarray, float or int. Found type "
+                            f"{arg_type} however.")
+        arg_flat = list(flatten_generator(arg))
+    return arg_flat
+
+def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
+                                order=('x', 'y', 'z')):
+    """
+    x : float, int, numpy.ndarray, None, optional
+        Positional x-coordinate. When given, the coords-argument must be None.
+    y : float, int, numpy.ndarray, None, optional
+        Positional y-coordinate. When given, the coords-argument must be None.
+    z : float, int, numpy.ndarray, None, optional
+        Positional z-coordinate. When given, the coords-argument must be None.
+    coords : numpy.ndarray, optional
+        Some or all of the coordinates x, y, z concatenated as an array. Each
+        row corresponds to one coordinate. For example, row 1 might contain all
+        x-coordinates. Which row corresponds to which coordinate is defined via
+        the order-argument. When the coords-argument is given, all 3 arguments
+        x, y and z must be None.
+    order : tuple[str], optional
+        Only relevant when coords is given. Defines which row in coords
+        corresponds to which coordinate. For example, order=('x', 'y', 'z')
+        means that the 1st row are x-coordinates, the 2nd row are y-coords and
+        the 3rd row are the z-coordinates.
+
+    Returns
+    -------
+    coords : numpy.ndarray
+        An array with as many columns as coordinates are given, and as many rows
+        as points are given. For example if 10 points with x and z coordinates
+        are given, then coords would have a shape of (2, 10).
+    adjusted_order : list[str]
+        Describes which coordinates are described by the rows of the returned
+        coords. In the example given above, adjusted_order would be ['x', 'z'].
+    """
+
+    # the following check should cover the option that no spatial input is given
+    if (x is None) and (y is None) and (z is None) and (coords is None):
+        return np.array([]), []
+
+    # convert all single-coordinate inputs to flat numpy arrays
+    x = np.array(flatten(x)) if x is not None else None
+    y = np.array(flatten(y)) if y is not None else None
+    z = np.array(flatten(z)) if z is not None else None
+
+    # derive the number of given coordinate vectors and points
+    if coords is not None:
+        if not type(coords) is np.ndarray:
+            raise TypeError(f"The argument 'coords' must be of type "
+                            f"numpy.ndarray. Found {type(coords)} however.")
+        else:
+            # each row corresponds to one coordinate, so the number of given
+            # points is the length of rows
+            n_coords, n_points = coords.shape
+    else:
+        n_points_list = [len(v) for v in [x, y, z] if v is not None]
+        n_points_set = set(n_points_list)
+        if len(n_points_set) == 1:
+            n_coords = len(n_points_list)
+            n_points = n_points_list[0]
+        else:
+            raise RuntimeError(
+                f"Found inconsistent lengths in given coordinate "
+                f"vectors: {n_points_list}!")
+
+    # derive the coords array and the corresponding order-vector to be returned;
+    # note that the repeated if-else clause here should improve readability
+    if coords is not None:
+        # it is assumed here that the first n_coords elements from the order-
+        # vector correspond to the n_coords rows of the given coords-argument
+        adjusted_order = list(order[:n_coords])
+    else:
+        # in this case the order-vector might have to be trimmed; for example if
+        # x and z are given, the 'y' from the order vector has to be removed
+        coords = np.zeros((n_coords, n_points))
+        adjusted_order = []
+        row_idx = 0
+        for v in order:
+            if eval(v) is not None:
+                adjusted_order.append(v)
+                coords[row_idx, :] = eval(v)
+                row_idx += 1
+
+    return coords, adjusted_order
+
+def translate_prms_def(prms_def_given):
+    """
+    Translates the prms_def argument which is used by several sub-modules (e.g.
+    ForwardModelBase, NoiseModelBase, PriorBase) into a default format. The
+    prms_def argument specifies the local/global names of the parameters used by
+    a sub-module.
+
+    Parameters
+    ----------
+    prms_def_given : {str, list, dict}
+        Either a single string, a dictionary with global names as keys and local
+        names as values, or a list, the elements of which are either strings or
+        1-element dictionaries, where the latter would again contain one global
+        name as key and one local name as value. Valid examples are: 'sigma',
+        ['sigma'], ['sigma', 'beta'], ['sigma', {'beta': 'b'}],
+        {'sigma': 'sigma', 'beta': 'b'}.
+
+    Returns
+    -------
+    prms_def : dict
+        Contains global names as keys and local names as values.
+    prms_dim : int
+        The number of items in prms_def.
+    """
+    prms_def_copy = copy(prms_def_given)
+    if type(prms_def_copy) is dict:
+        prms_def = list2dict(prms_def_copy)
+    else:
+        prms_def = list2dict(make_list(prms_def_copy))
+    prms_dim = len(prms_def)
+    return prms_def, prms_dim

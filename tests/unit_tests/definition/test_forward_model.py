@@ -1,5 +1,8 @@
-# third party imports
+# standard library imports
 import unittest
+
+# third party imports
+import numpy as np
 
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
@@ -7,11 +10,19 @@ from probeye.definition.sensor import Sensor
 
 class TestProblem(unittest.TestCase):
 
+    def test_undefined_forward_model(self):
+        # check for the not-implemented-error when no response method is defined
+        forward_model = ForwardModelBase(['a'], Sensor('x'), Sensor('y'))
+        with self.assertRaises(NotImplementedError):
+            forward_model.response({})
+        with self.assertRaises(NotImplementedError):
+            forward_model({})
+
     def test_model_template_one_sensor(self):
 
         # define a simple model using ForwardModelBase
         class ForwardModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x = inp['x']
                 a = inp['a']
                 b = inp['b']
@@ -25,6 +36,24 @@ class TestProblem(unittest.TestCase):
         expected_result = {'y': 3.0}
         self.assertEqual(computed_result, expected_result)
 
+        # check input/output sensor names
+        self.assertEqual(forward_model.input_sensor_names, ['x'])
+        self.assertEqual(forward_model.output_sensor_names, ['y'])
+
+        # check the jacobian-method (dict-version)
+        computed_result = forward_model.jacobian({**{'x': 1.0}, **prms})
+        expected_result = {'y': {'x': 2.0, 'a': 1.0, 'b': 1.0}}
+        for k1, v1 in computed_result.items():
+            for k2, v2 in v1.items():
+                self.assertAlmostEqual(v2, expected_result[k1][k2])
+        # check the jacobian-method (array-version)
+        inp_ = {**{'x': 1.0}, **prms}
+        jac_dict = forward_model.jacobian(inp_)
+        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict)
+        expected_result = np.array([[[2.], [1.], [1.]]])
+        self.assertTrue(np.allclose(computed_result, expected_result) and
+                        computed_result.shape == expected_result.shape)
+
     def test_model_template_multiple_sensors(self):
 
         # define an output sensor with an offset attribute
@@ -35,7 +64,7 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ForwardModelBase
         class ForwardModel(ForwardModelBase):
-            def __call__(self, inp):
+            def response(self, inp):
                 x1 = inp['x1']
                 x2 = inp['x2']
                 a = inp['a']
@@ -53,6 +82,28 @@ class TestProblem(unittest.TestCase):
         computed_result = forward_model({**{'x1': 2.0, 'x2': 3.0}, **prms})
         expected_result = {'y1': 10.1, 'y2': 9.8}
         self.assertEqual(computed_result, expected_result)
+
+        # check input/output sensor names
+        self.assertEqual(forward_model.input_sensor_names, ['x1', 'x2'])
+        self.assertEqual(forward_model.output_sensor_names, ['y1', 'y2'])
+
+        # check the jacobian-method (dict-version)
+        computed_result = forward_model.jacobian(
+            {**{'x1': 2.0, 'x2': 3.0}, **prms})
+        expected_result = {'y1': {'x1': 4.0, 'x2': 2.0, 'a': 4.0, 'b': 3.0},
+                           'y2': {'x1': 4.0, 'x2': 2.0, 'a': 4.0, 'b': 3.0}}
+        for k1, v1 in computed_result.items():
+            for k2, v2 in v1.items():
+                self.assertAlmostEqual(v2, expected_result[k1][k2])
+        # check the jacobian-method (array-version)
+        inp_ = {**{'x1': 2.0, 'x2': 3.0}, **prms}
+        jac_dict = forward_model.jacobian(inp_)
+        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict)
+        expected_result = np.array([[[4.], [2.], [4.], [3.]],
+                                    [[4.], [2.], [4.], [3.]]])
+        self.assertTrue(
+            np.allclose(computed_result, expected_result) and
+            computed_result.shape == expected_result.shape)
 
 if __name__ == "__main__":
     unittest.main()
