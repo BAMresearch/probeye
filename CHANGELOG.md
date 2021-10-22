@@ -1,6 +1,12 @@
 # probeye changelog
 
-## 1.0.4 (2021-Oct20)
+## 1.0.5 (2021-Oct-22)
+### Changed
+- computation of Jacobian reshaped from 3d to 2d array
+- corresponding modifications in pyro-solver
+- adopted corresponding tests
+
+## 1.0.4 (2021-Oct-20)
 ### Added
 - torch submodule (in inference submodule)
 - arviz-based post-processing for sampling methods (in postprocessing submodule)
