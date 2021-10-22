@@ -154,10 +154,9 @@ class ForwardModelBase:
         # gradient of y with respect to theta
         jac_dict = {}
         for output_sensor in self.output_sensors:
-            os_name = output_sensor.name
-            jac_dict[os_name] = {}
+            jac_dict[output_sensor.name] = {}
             for prm_name in inp.keys():
-                jac_dict[os_name][prm_name] = None
+                jac_dict[output_sensor.name][prm_name] = None
 
         # eps is the machine precision; it is needed to compute the step size of
         # the central difference scheme below; note that this refers to single
@@ -165,20 +164,32 @@ class ForwardModelBase:
         # float32, in which case using the eps of double precision (float64)
         # would not work since the step size would be too small
         eps = np.finfo(np.float32).eps
+        # the following evaluations are needed in the for-loop; they are put
+        # here so they are not repeatedly evaluated (to the same value) during
+        # the for-loop
+        sqrt_eps = np.sqrt(eps)
+        response_dict_center = self.response(inp)
+        inp_right = cp.copy(inp)
         for prm_name, prm_value in inp.items():
-            inp_left = cp.copy(inp)
-            inp_right = cp.copy(inp)
             x = inp[prm_name]
-            h = np.sqrt(eps) * x + np.sqrt(eps)
-            inp_left[prm_name] = x - h
+            # the following formula for the step size is NOT taken from the
+            # literature; in the literature, a common recommended choice for the
+            # step size h given x is not 0 is h = sqrt_eps * x, see for example
+            # https://en.wikipedia.org/wiki/Numerical_differentiation; we added
+            # the term '+ sqrt_eps' below to also cover the cases where x
+            # actually is zero (or very close to 0)
+            h = sqrt_eps * x + sqrt_eps
             inp_right[prm_name] = x + h
-            dx = 2 * h
-            response_dict_left = self.response(inp_left)
             response_dict_right = self.response(inp_right)
             for output_sensor in self.output_sensors:
-                os_name = output_sensor.name
-                jac_dict[os_name][prm_name] = (response_dict_right[os_name] -
-                                               response_dict_left[os_name]) / dx
+                # the simple forward scheme should be sufficient for most
+                # applications since the Jacobian will only be used as info for
+                # choosing the next sample; for that purpose it is secondary if
+                # it contains small numerical errors
+                jac_dict[output_sensor.name][prm_name] =\
+                    (response_dict_right[output_sensor.name] -
+                     response_dict_center[output_sensor.name]) / h
+            inp_right[prm_name] = inp[prm_name]  # resetting perturbed value
         return jac_dict
 
     def jacobian_dict_to_array(self, inp, jac_dict):
@@ -213,8 +224,11 @@ class ForwardModelBase:
         n1 = len(self.output_sensors)
         n2 = len(inp)
         n3 = max([len_or_one(v) for v in [*inp.values()]])
-        jac = np.zeros((n1, n2, n3))
+        jac = np.zeros((n1 * n3, n2))
         for i, prm_dict in enumerate([*jac_dict.values()]):
+            idx_start = i * n3
             for j, derivative in enumerate([*prm_dict.values()]):
-                jac[i, j, :] = derivative
+                idx_end = idx_start + len_or_one(derivative)
+                jac[idx_start: idx_end, j] = derivative
+
         return jac

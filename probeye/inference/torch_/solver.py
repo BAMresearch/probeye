@@ -170,8 +170,10 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
                 # now we have the forward model's response in dict format;
                 # however, in this format it cannot be processed here, so we
                 # will put all its numeric results in one long vector
-                n1, _, n3 = jac_numpy.shape
-                response_numpy = np.zeros(n1 * n3)
+                n1 = len(forward_model.output_sensors)
+                n1_times_n3, _ = jac_numpy.shape
+                n3 = n1_times_n3 // n1
+                response_numpy = np.zeros(n1_times_n3)
                 response_structure = dict()
                 for i, (key, value) in enumerate(response_dict.items()):
                     n_elements = len_or_one(value)
@@ -234,23 +236,11 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
                 # with respect to the model parameters theta); note that
                 # dl_dy_tuple is a tuple of length 1 since the likelihood is a
                 # scalar (and not a vector-valued) function
-                shape = dy_dtheta.size()
-                dl_dy = th.reshape(dl_dy_tuple[0], (shape[0], 1, shape[2]))
+                dl_dy = dl_dy_tuple[0]
 
                 # now dl/dtheta (grad) is computed using the chain rule (which
-                # reads dl/dy * dy/dtheta here); the transposition is required
-                # so that the matrix multiplication is consistent
-                dy_dtheta_transposed = th.transpose(dy_dtheta, 1, 2)
-                grad_total = th.matmul(dl_dy, dy_dtheta_transposed)
-
-                # at this point, grad_total will have the shape (n, 1, m) where
-                # n is the number of the forward model's output sensors and m is
-                # the number of the forward model's input channels; each of the
-                # (1, m) sub-tensors can be interpreted as the total gradient
-                # dl/dtheta if the forward model had only the corresponding one
-                # output sensor; but since it has n output sensors one has to
-                # sum over all of those to get the total gradient
-                grad_total = th.sum(grad_total, dim=0)
+                # reads dl/dy * dy/dtheta here)
+                grad_total = th.matmul(dl_dy, dy_dtheta)
 
                 # the returned gradients must be in tuple form; note that
                 # ctx.needs_input_grad is a list with True/False elements of
