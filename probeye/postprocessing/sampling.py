@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 def create_pair_plot(inference_data, problem, plot_with="arviz",
                      plot_priors=True, focus_on_posterior=False, kind="kde",
                      figsize=(9, 9), textsize=10, true_values=None,
-                     show_legends=True, **kwargs):
+                     show_legends=True, show=True, **kwargs):
     """
-    Creates a pair-plot for the given inference data using arviz.
+    Creates a pair-plot for the given inference data.
 
     Parameters
     ----------
@@ -43,8 +43,17 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
     show_legends : bool, optional
         If True, legends are shown in the marginal plots. Otherwise no legends
         are included in the plot.
+    show : boolean, optional
+        When True, the show-method is called after creating the plot. Otherwise,
+        the show-method is not called. The latter is useful, when the plot
+        should be further processed.
     kwargs
         Additional keyword arguments passed to arviz' pairplot function.
+
+    Returns
+    -------
+    array[matplotlib.axes._subplots.AxesSubplot]
+            The subplots of the created plot.
     """
 
     if plot_with == 'arviz':
@@ -73,7 +82,7 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         # call the main plotting routine from arviz
         axs = az.plot_pair(inference_data, var_names=var_names, marginals=True,
                            kind=kind, figsize=figsize, textsize=textsize,
-                           **kwargs)
+                           show=False, **kwargs)
 
         # by default, the y-axis of the first and last marginal plot have ticks,
         # tick-labels and axis-labels that are not meaningful to show on the
@@ -150,8 +159,14 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                     axs[i, i].legend(posterior_handle + existing_handles,
                                      posterior_label + existing_labels,
                                      loc='upper right')
+
+        # the following command reduces the otherwise wide margins
         plt.tight_layout()
-        plt.show()
+
+        # only show if requested by user
+        if show:
+            plt.show()
+        return axs
 
     elif plot_with == 'seaborn':
         raise NotImplementedError(
@@ -167,9 +182,10 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
             f"are currently 'arviz', 'seaborn', 'matplotlib'")
 
 def create_posterior_plot(inference_data, problem, plot_with="arviz",
-                          kind="kde", figsize=(10, 3), textsize=10, **kwargs):
+                          kind="hist", figsize=(10, 3), textsize=10,
+                          hdi_prob=0.95, true_values=None, show=True, **kwargs):
     """
-    Creates a posterior-plot for the given inference data using arviz.
+    Creates a posterior-plot for the given inference data.
 
     Parameters
     ----------
@@ -186,15 +202,42 @@ def create_posterior_plot(inference_data, problem, plot_with="arviz",
         chose, the figsize will be derived automatically.
     textsize : float, optional
         Defines the font size in the default unit.
+    hdi_prob : float, optional
+        Defines the highest density interval. Must be a number between 0 and 1.
+    true_values : None, dict, optional
+        Used for plotting 'true' parameter values. Keys are the parameter names
+        and values are the values that are supposed to be shown in the marginal
+        plots.
+    show : boolean, optional
+        When True, the show-method is called after creating the plot. Otherwise,
+        the show-method is not called. The latter is useful, when the plot
+        should be further processed.
     kwargs
         Additional keyword arguments passed to arviz' plot_posterior function.
+
+    Returns
+    -------
+    array[matplotlib.axes._subplots.AxesSubplot]
+        The subplots of the created plot.
     """
 
     if plot_with == "arviz":
+
+        # these names will appear on the axis labels
         var_names = problem.get_theta_names(tex=True)
-        az.plot_posterior(inference_data, var_names=var_names, kind=kind,
-                          figsize=figsize, textsize=textsize, **kwargs)
-        plt.show()
+
+        # process true_values if specified
+        if true_values is not None:
+            var_names_raw = problem.get_theta_names(tex=False)
+            ref_val = []
+            for var_name in var_names_raw:
+                ref_val.append(true_values[var_name])
+            kwargs['ref_val'] = ref_val
+
+        # call the main plotting routine from arviz and return the axes object
+        return az.plot_posterior(inference_data, var_names=var_names, kind=kind,
+                                 figsize=figsize, textsize=textsize,
+                                 hdi_prob=hdi_prob, show=show, **kwargs)
 
     elif plot_with == 'seaborn':
         raise NotImplementedError(
@@ -210,9 +253,9 @@ def create_posterior_plot(inference_data, problem, plot_with="arviz",
             f"are currently 'arviz', 'seaborn', 'matplotlib'")
 
 def create_trace_plot(inference_data, problem, plot_with="arviz", kind="trace",
-                      figsize=(10, 6), textsize=10, **kwargs):
+                      figsize=(10, 6), textsize=10, show=True, **kwargs):
     """
-    Creates a trace-plot for the given inference data using arviz.
+    Creates a trace-plot for the given inference data.
 
     Parameters
     ----------
@@ -230,16 +273,33 @@ def create_trace_plot(inference_data, problem, plot_with="arviz", kind="trace",
         chose, the figsize will be derived automatically.
     textsize : float, optional
         Defines the font size in the default unit.
+    show : boolean, optional
+        When True, the show-method is called after creating the plot. Otherwise,
+        the show-method is not called. The latter is useful, when the plot
+        should be further processed.
     kwargs
         Additional keyword arguments passed to arviz' plot_posterior function.
+
+    Returns
+    -------
+    array[matplotlib.axes._subplots.AxesSubplot]
+        The subplots of the created plot.
     """
 
     if plot_with == 'arviz':
+
+        # these names will appear on the axis labels
         var_names = problem.get_theta_names(tex=True)
-        az.plot_trace(inference_data, var_names=var_names, kind=kind,
-                      figsize=figsize, plot_kwargs={'textsize': textsize},
-                      **kwargs)
-        plt.show()
+
+        # set default value for kde_kwargs if not given in kwargs; note that
+        # this default value is mutable, so it should not be given as a default
+        # argument in create_pair_plot
+        if 'plot_kwargs' not in kwargs:
+            kwargs['plot_kwargs'] = {'textsize': textsize}
+
+        # call the main plotting routine from arviz and return the axes object
+        return az.plot_trace(inference_data, var_names=var_names, kind=kind,
+                             figsize=figsize, show=show, **kwargs)
 
     elif plot_with == 'seaborn':
         raise NotImplementedError(

@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 1.0.X (2021-XX-XX)
+### Changed
+- revised arviz-based post-processing routine in create_posterior_plot, create_trace_plot
+
 ## 1.0.5 (2021-Oct-22)
 ### Changed
 - computation of Jacobian reshaped from 3d to 2d array

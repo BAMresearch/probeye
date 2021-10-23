@@ -1,3 +1,6 @@
+# third party imports
+import matplotlib.pyplot as plt
+
 # local imports (inference engines)
 from probeye.inference.emcee_.solver import run_emcee_solver
 from probeye.inference.torch_.solver import run_pyro_solver
@@ -78,6 +81,9 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
         # each inference engine; also note, that the plots are not so much
         # intended for automatic testing, as for manually running the script
         if plot:
-            create_pair_plot(inference_data, problem, true_values=true_values)
-            create_posterior_plot(inference_data, problem)
-            create_trace_plot(inference_data, problem)
+            create_pair_plot(inference_data, problem,
+                             true_values=true_values, show=False)
+            create_posterior_plot(inference_data, problem,
+                                  true_values=true_values, show=False)
+            create_trace_plot(inference_data, problem, show=False)
+            plt.show()  # shows all plots at once due to 'show=False' above
