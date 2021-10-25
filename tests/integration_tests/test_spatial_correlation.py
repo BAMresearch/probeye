@@ -27,7 +27,7 @@ from probeye.definition.noise_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
-from probeye.inference.emcee_.correlation_models import \
+from probeye.inference.scipy_.correlation_models import \
     SpatialExponentialCorrelationModel
 
 

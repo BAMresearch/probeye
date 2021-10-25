@@ -20,10 +20,11 @@ class PriorNormal(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "normal distribution")
 
-    def __call__(self, prms, method):
+    def __call__(self, prms, method, use_ref_prm=True):
         """
-        Evaluates stats.norm.<method>(x, loc, scale). This function is mostly
-        used with method='logpdf' during the sampling procedure.
+        Evaluates stats.norm.<method>(x, loc, scale) or, if use_ref_prm=False
+        stats.norm.<method>(loc, scale). This function is mostly used with
+        method='logpdf' during the sampling procedure.
 
         Parameters
         ----------
@@ -31,16 +32,25 @@ class PriorNormal(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method : string
             The method of stats.norm to be evaluated (e.g. 'pdf' or 'logpdf').
+        use_ref_prm : bool, optional
+            If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x'
+            must be provided in the prms dictionary. Otherwise, the evaluated
+            method is stats.norm.<method>(loc, scale).
 
         Returns
         -------
         float
-            The result of stats.norm.<method>(x, loc, scale).
+            The result of stats.norm.<method>(x, loc, scale) or of
+            stats.norm.<method>(loc, scale).
         """
-        x = prms[self.ref_prm]
+        fun = getattr(stats.norm, method)
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return getattr(stats.norm, method)(x, loc=loc, scale=scale)
+        if use_ref_prm:
+            x = prms[self.ref_prm]
+            return fun(x, loc=loc, scale=scale)
+        else:
+            return fun(loc=loc, scale=scale)
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -82,10 +92,11 @@ class PriorLognormal(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "log-normal distribution")
 
-    def __call__(self, prms, method, shape=1):
+    def __call__(self, prms, method, shape=1, use_ref_prm=True):
         """
-        Evaluates stats.lognorm.<method>(x, loc, scale). This function is mostly
-        used with method='logpdf' during the sampling procedure.
+        Evaluates stats.lognorm.<method>(x, loc, scale) or, if use_ref_prm=False
+        stats.lognorm.<method>(loc, scale). This function is mostly used with
+        method='logpdf' during the sampling procedure.
 
         Parameters
         ----------
@@ -97,16 +108,25 @@ class PriorLognormal(PriorBase):
             Scipy uses this shape parameter, which is not considered as a prior
             parameter here. So, it is set to 1, which results in the standard
             version of the lognormal distribution.
+        use_ref_prm : bool, optional
+            If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x'
+            must be provided in the prms dictionary. Otherwise, the evaluated
+            method is stats.norm.<method>(loc, scale).
 
         Returns
         -------
         float
-            The result of stats.lognorm.<method>(x, loc, scale).
+            The result of stats.lognorm.<method>(x, loc, scale) or of
+            stats.lognorm.<method>(loc, scale).
         """
-        x = prms[self.ref_prm]
+        fun = getattr(stats.lognorm, method)
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return getattr(stats.lognorm, method)(x, shape, loc=loc, scale=scale)
+        if use_ref_prm:
+            x = prms[self.ref_prm]
+            return fun(x, shape, loc=loc, scale=scale)
+        else:
+            return fun(shape, loc=loc, scale=scale)
 
     def generate_samples(self, prms, size, seed=None, shape=1):
         """
@@ -152,10 +172,11 @@ class PriorUniform(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "uniform distribution")
 
-    def __call__(self, prms, method):
+    def __call__(self, prms, method, use_ref_prm=True):
         """
-        Evaluates stats.uniform.<method>(x, loc, scale). This function is mostly
-        used with method='logpdf' during the sampling procedure.
+        Evaluates stats.uniform.<method>(x, loc, scale) or, if use_ref_prm=False
+        stats.uniform.<method>(loc, scale). This function is mostly used with
+        method='logpdf' during the sampling procedure.
 
         Parameters
         ----------
@@ -163,16 +184,25 @@ class PriorUniform(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method : string
             The method of stats.uniform to be evaluated (e.g. 'pdf', 'logpdf').
+        use_ref_prm : bool, optional
+            If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x'
+            must be provided in the prms dictionary. Otherwise, the evaluated
+            method is stats.norm.<method>(loc, scale).
 
         Returns
         -------
         float
-            The result of stats.uniform.<method>(x, loc, scale).
+            The result of stats.uniform.<method>(x, loc, scale) or of
+            stats.uniform.<method>(loc, scale).
         """
-        x = prms[self.ref_prm]
+        fun = getattr(stats.uniform, method)
         low = prms[f"low_{self.ref_prm}"]
         high = prms[f"high_{self.ref_prm}"]
-        return getattr(stats.uniform, method)(x, loc=low, scale=high-low)
+        if use_ref_prm:
+            x = prms[self.ref_prm]
+            return fun(x, loc=low, scale=high-low)
+        else:
+            return fun(loc=low, scale=high - low)
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -214,10 +244,11 @@ class PriorWeibull(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "Weibull distribution")
 
-    def __call__(self, prms, method):
+    def __call__(self, prms, method, use_ref_prm=True):
         """
-        Evaluates stats.weibull_min.<method>(x, loc, scale). This function is
-        mostly used with method='logpdf' during the sampling procedure.
+        Evaluates stats.weibull_min.<method>(x, loc, scale) or, if use_ref_prm=
+        False, stats.weibull_min.<method>(loc, scale). This function is mostly
+        used with method='logpdf' during the sampling procedure.
 
         Parameters
         ----------
@@ -226,18 +257,26 @@ class PriorWeibull(PriorBase):
         method : string
             The method of stats.weibull_min to be evaluated (e.g. 'pdf',
             'logpdf', etc.).
+        use_ref_prm : bool, optional
+            If True stats.weibull_min.<method>(x, loc, scale) is evaluated,
+            hence 'x' must be provided in the prms dictionary. Otherwise, the
+            evaluated method is weibull_min.norm.<method>(loc, scale).
 
         Returns
         -------
         float
-            The result of stats.weibull_min.<method>(x, loc, scale).
+            The result of stats.weibull_min.<method>(x, loc, scale) or of
+            stats.weibull_min.<method>(loc, scale).
         """
-        x = prms[self.ref_prm]
+        fun = getattr(stats.weibull_min, method)
         shape = prms[f"shape_{self.ref_prm}"]
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return getattr(stats.weibull_min, method)(x, shape, loc=loc,
-                                                  scale=scale)
+        if use_ref_prm:
+            x = prms[self.ref_prm]
+            return fun(x, shape, loc=loc, scale=scale)
+        else:
+            return fun(shape, loc=loc, scale=scale)
 
     def generate_samples(self, prms, size, seed=None):
         """

@@ -185,6 +185,12 @@ class TestProblem(unittest.TestCase):
         #                Solve problem with inference engine(s)                #
         # ==================================================================== #
 
+        from probeye.inference.scipy_.solver import ScipySolver
+        scipy_solver = ScipySolver(problem)
+        x0_dict = None#{'a': 2.0, 'b': 1.0, 'sigma': 1.0}
+        true_values = None#{'a': a_true, 'b': b_true, 'sigma': sigma_noise}
+        #scipy_solver.run_max_likelihood(x0_dict=x0_dict, true_values=true_values)
+
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting
         true_values = {'a': a_true, 'b': b_true, 'sigma': sigma_noise}

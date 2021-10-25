@@ -1,5 +1,5 @@
 # local imports (inference engines)
-from probeye.inference.emcee_.solver import run_emcee_solver
+from probeye.inference.emcee_.solver import EmceeSolver
 from probeye.inference.torch_.solver import run_pyro_solver
 
 # local imports (post-processing)
@@ -50,8 +50,9 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
         # solve the problem with emcee if requested
         if inference_engine == 'emcee':
             if requested_to_run:
-                inference_data = run_emcee_solver(
-                    problem, n_walkers=n_walkers, n_steps=n_steps,
+                emcee_solver = EmceeSolver(problem, verbose=verbose)
+                inference_data = emcee_solver.run_mcmc(
+                    n_walkers=n_walkers, n_steps=n_steps,
                     n_initial_steps=n_initial_steps, verbose=verbose)
             else:
                 # in this case, the engine was not requested to run
