@@ -134,7 +134,7 @@ class ScipySolver:
 
     def run_max_likelihood(self, x0_dict=None, x0_prior='mean', default_x0=1.0,
                            true_values=None, method='Nelder-Mead',
-                           solver_options=None):
+                           solver_options=None, verbose=None):
         """
         Finds values for an InferenceProblem's latent parameters that maximize
         the problem's likelihood function. The used method is scipy's minimize
@@ -164,6 +164,8 @@ class ScipySolver:
             Options passed to scipy.optimize.minimize under the 'options' key
             word argument. See the documentation of this scipy method to see
             available options.
+        verbose : bool, optional
+            No logging output when False. More logging information when True.
 
         Returns
         -------
@@ -172,6 +174,11 @@ class ScipySolver:
             optimization results. The parameter vector that optimizes the
             likelihood function can be requested via 'minimize_results.x'.
         """
+
+        # allows to overwrite the default values the solver was initialized
+        # with if this should be required
+        if not verbose:
+            verbose = self.verbose
 
         # since scipy's minimize function is used, we need a function that
         # returns the negative log-likelihood function (minimizing the negative
@@ -200,7 +207,7 @@ class ScipySolver:
                 if prior_type != 'uninformative':
                     prm_value = self.priors[prior_name](
                         prms, x0_prior, use_ref_prm=False)
-                    prms['prm_name'] = prm_value
+                    prms[prm_name] = prm_value
                     x0[idx] = prm_value
                 else:
                     # no mean value can be requested if the prior is
@@ -213,11 +220,11 @@ class ScipySolver:
             fun, x0, method=method, options=solver_options)
 
         # some convenient printout with respect to the solver's results
-        if self.verbose:
+        if verbose:
             n_char_message = len(minimize_results.message)
-            msg = (f"\n{minimize_results.message}\n"
-                   f"{'-' * n_char_message}\n"
-                   f"Start values: {x0_dict}\n"
+            msg = (f"\nMaximum likelihood estimation (scipy)\n"
+                   f"{'═' * n_char_message}\n"
+                   f"{minimize_results.message}\n"
                    f"{'-' * n_char_message}\n"
                    f"Number of iterations:           {minimize_results.nit}\n"
                    f"Number of function evaluations: {minimize_results.nfev}\n"
@@ -230,7 +237,11 @@ class ScipySolver:
                     opt_name = f"{theta_name}_opt"
                     line = f"{opt_name:{n_char}s} = {minimize_results.x[i]:.6f}"
                     if true_values:
-                        line += f" (true = {true_values[theta_name]})"
+                        line += (f" (true = {true_values[theta_name]}, "
+                                 f"start = {x0_dict[theta_name]})")
+                    else:
+                        line += f" (start = {x0_dict[theta_name]})"
                     print(line)
+            print('')  # empty line at the end
 
         return minimize_results

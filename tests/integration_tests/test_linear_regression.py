@@ -27,7 +27,7 @@ class TestProblem(unittest.TestCase):
 
     def test_linear_regression(self, n_steps=200, n_initial_steps=100,
                                n_walkers=20, plot=False, verbose=False,
-                               run_emcee=True, run_torch=True):
+                               run_scipy=True, run_emcee=True, run_torch=True):
         """
         Integration test for the problem described at the top of this file.
 
@@ -46,6 +46,9 @@ class TestProblem(unittest.TestCase):
             generated plots are closed.
         verbose : bool, optional
             If True, additional information will be printed to the console.
+        run_scipy : bool, optional
+            If True, the problem is solved with scipy (maximum likelihood est).
+            Otherwise, no maximum likelihood estimate is derived.
         run_emcee : bool, optional
             If True, the problem is solved with the emcee solver. Otherwise,
             the emcee solver will not be used.
@@ -185,19 +188,14 @@ class TestProblem(unittest.TestCase):
         #                Solve problem with inference engine(s)                #
         # ==================================================================== #
 
-        from probeye.inference.scipy_.solver import ScipySolver
-        scipy_solver = ScipySolver(problem)
-        x0_dict = None#{'a': 2.0, 'b': 1.0, 'sigma': 1.0}
-        true_values = None#{'a': a_true, 'b': b_true, 'sigma': sigma_noise}
-        #scipy_solver.run_max_likelihood(x0_dict=x0_dict, true_values=true_values)
-
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting
         true_values = {'a': a_true, 'b': b_true, 'sigma': sigma_noise}
         run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
                               n_initial_steps=n_initial_steps,
                               n_walkers=n_walkers, plot=plot, verbose=verbose,
-                              run_emcee=run_emcee, run_torch=run_torch)
+                              run_scipy=run_scipy, run_emcee=run_emcee,
+                              run_torch=run_torch)
 
 if __name__ == "__main__":
     unittest.main()
