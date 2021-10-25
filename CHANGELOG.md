@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 1.0.X (2021-MMM-DD)
+### Changed
+- extended the documentation in README.md
+
 ## 1.0.5 (2021-Oct-22)
 ### Changed
 - computation of Jacobian reshaped from 3d to 2d array
