@@ -239,6 +239,11 @@ class Parameters(dict):
         return [name for name, prm in self.items() if prm.is_const]
 
     @property
+    def constant_prms_dict(self):
+        """Access the names and values of all 'const'-param. as an attribute."""
+        return {name: prm.value for name, prm in self.items() if prm.is_const}
+
+    @property
     def n_constant_prms(self):
         """Access the number of all 'const'-parameters as an attribute."""
         return len(self.constant_prms)
