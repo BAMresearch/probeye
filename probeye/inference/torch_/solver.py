@@ -28,6 +28,9 @@ class PyroSolver:
         self.verbose = verbose
         self.seed = seed
 
+        # the following attribute will be set after the solver was run
+        self.raw_results = None
+
         # the problem is copied, and in the copy, the experimental data is
         # reformatted from numpy-arrays to torch-tensors
         self.problem = problem.transform_experimental_data(f=th.from_numpy)
@@ -351,6 +354,7 @@ class PyroSolver:
         mcmc = MCMC(kernel, num_samples=n_steps, warmup_steps=n_initial_steps,
                     num_chains=n_walkers, disable_progbar=not verbose)
         mcmc.run()
+        self.raw_results = mcmc
 
         # translate the results to a common data structure and return it
         var_names = self.problem.get_theta_names(tex=False)

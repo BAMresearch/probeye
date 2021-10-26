@@ -128,6 +128,7 @@ class EmceeSolver(ScipySolver):
         logging.info(
             f"Sampling of the posterior distribution completed: {n_steps} steps"
             f" and {n_walkers} walkers.\n Total run-time: {runtime_str}.")
+        self.raw_results = sampler
 
         # translate the results to a common data structure and return it
         var_names = self.problem.get_theta_names(tex=True)

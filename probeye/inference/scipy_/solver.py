@@ -30,6 +30,9 @@ class ScipySolver:
         self.verbose = verbose
         self.seed = seed
 
+        # the following attribute will be set after the solver was run
+        self.raw_results = None
+
         # each noise model must be connected to the relevant experiment_names;
         # a copy is created before, so that this solver routine does not have
         # side effects on the original problem; such side effects would occur
@@ -218,6 +221,11 @@ class ScipySolver:
         # this is the where the solver does its thing
         minimize_results = minimize(
             fun, x0, method=method, options=solver_options)
+
+        # note that in this case, the raw solver result is identical with the
+        # return-value of this method; however, for other solver they differ;
+        # hence, this attribute is set here only for consistency reasons
+        self.raw_results = minimize_results
 
         # some convenient printout with respect to the solver's results
         if verbose:
