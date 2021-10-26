@@ -1,6 +1,6 @@
 # probeye changelog
 
-## 1.0.X (2021-MMM-DD)
+## 1.0.6 (2021-Oct-26)
 ### Added
 - Added ScipySolver-class which provides a maximum likelihood solver
 ### Changed
