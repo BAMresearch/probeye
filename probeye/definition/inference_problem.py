@@ -1,9 +1,10 @@
 # standard library
 import copy as cp
-import logging
+import sys
 
 # third party imports
 from tabulate import tabulate
+from loguru import logger
 import numpy as np
 
 # local imports
@@ -11,6 +12,7 @@ from probeye.definition.parameter import Parameters
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
+from probeye.subroutines import print_probeye_header
 
 
 class InferenceProblem:
@@ -19,13 +21,18 @@ class InferenceProblem:
     Capabilities for solving the set up problem are intentionally not included.
     """
 
-    def __init__(self, name):
+    def __init__(self, name, log_level='INFO', log_format=None):
         """
         Parameters
         ----------
         name : str
             This is the name of the problem and has only descriptive value, for
             example when working with several inference problems.
+        log_level : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+            Defines the level of the logging output.
+        log_format : None, str, optional
+            A format string defining the logging output. If this argument is
+            set to None, a default format will be used.
         """
 
         # the name of the problem
@@ -66,6 +73,20 @@ class InferenceProblem:
         # attributes from above as the noise models don't need to have names);
         # this list is managed internally and should not be edited directly
         self._noise_models = list()
+
+        # start the logger, and create initial logs
+        if not log_format:
+            log_format = ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
+                          '<level>{level: <8}</level> | '
+                          '<level>{message:100s}</level> | '
+                          '<cyan>{name}</cyan>:'
+                          '<cyan>{function}</cyan>:'
+                          '<cyan>{line}</cyan>')
+        logger.remove()  # just if there still exists another logger
+        logger.add(sys.stdout, format=log_format, level=log_level)
+        print_probeye_header()
+        logger.info("")  # intended as visual buffer
+        logger.info(f"Initialized inference problem: '{self.name}'")
 
     @property
     def n_prms(self):
@@ -512,8 +533,8 @@ class InferenceProblem:
 
         # throw warning when the experiment name was defined before
         if exp_name in self._experiments.keys():
-            print(f"WARNING - Experiment '{exp_name}' is already defined" +
-                  f" and will be overwritten!")
+            logger.warning(f"Experiment '{exp_name}' is already defined "
+                           f"and will be overwritten!")
 
         # add the experiment to the central dictionary
         self._experiments[exp_name] = {'sensor_values': sensor_values_numpy,
@@ -820,9 +841,9 @@ class InferenceProblem:
         for existing_noise_model in self._noise_models:
             if set(existing_noise_model.sensor_names) == \
                     set(noise_model.sensor_names):
-                logging.warning(f"A noise model with an identical sensor "
-                                f"interface {noise_model.sensor_names} has "
-                                f"already been defined in this problem!")
+                logger.warning(f"A noise model with an identical sensor "
+                               f"interface {noise_model.sensor_names} has "
+                               f"already been defined in this problem!")
 
         # check if the noise model has been assigned a name; if not, assign one
         if noise_model.name is None:

@@ -1,5 +1,12 @@
 # probeye changelog
 
+## 1.0.X (2021-MMM-DD)
+### Added
+- added probeye header-file 'probeye.txt'
+- added loguru dependency
+### Changed
+- changed various print-commands to logging-commands using loguru
+
 ## 1.0.5 (2021-Oct-22)
 ### Changed
 - computation of Jacobian reshaped from 3d to 2d array

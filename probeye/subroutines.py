@@ -5,9 +5,12 @@
 # standard library imports
 from copy import copy
 from typing import Iterable
+import os
 
 # third party imports
 import numpy as np
+import configparser
+from loguru import logger
 
 # ============================================================================ #
 #                                 Subroutines                                  #
@@ -534,3 +537,78 @@ def translate_prms_def(prms_def_given):
         prms_def = list2dict(make_list(prms_def_copy))
     prms_dim = len(prms_def)
     return prms_def, prms_dim
+
+def print_probeye_header(width=100, header_file="../probeye.txt",
+                         setup_cfg="../setup.cfg", margin=5, h_symbol="=",
+                         v_symbol="#", use_logger=True):
+    """
+    Prints the probeye header which is printed, when an inference problem is
+    set up. Mostly just nice to have. The only useful information it contains
+    is the version number of the package.
+
+    Parameters
+    ----------
+    width : int, optional
+        The width (i.e., number of characters) the header should have.
+    header_file : str, optional
+        Relative path (with respect to this file) to the txt-file that contains
+        the probeye letters.
+    setup_cfg : str, optional
+        Relative path (with respect to this file) to the setup.cfg file
+        containing version number and description.
+    margin : int, optional
+        Minimum number of blank spaces at the header margins.
+    h_symbol : str, optional
+        The symbol used to 'draw' the horizontal frame line.
+    v_symbol : str, optional
+        The symbol used to 'draw' the vertical frame line.
+    use_logger : bool, optional
+        When True, the header will be logged, otherwise just printed.
+    """
+
+    # define the full paths of the given files
+    file_path = os.path.dirname(__file__)
+    header_file = os.path.join(file_path, header_file)
+    setup_cfg = os.path.join(file_path, setup_cfg)
+
+    # read in the big probeye letters
+    with open(header_file, 'r') as f:
+        content = f.readlines()
+    # this is the width of the read in 'probeye' in terms of number of chars;
+    # note that all lines (should) have the same length
+    width_probeye = len(content[0]) - 1
+
+    # get the version and the description from the setup.cfg file
+    cfg = configparser.ConfigParser()
+    cfg.read(setup_cfg)
+    version = cfg.get('metadata', 'version')
+    description = cfg.get('metadata', 'description')
+
+    subtitle = f"Version {version} - {description}"
+    width_subtitle = len(subtitle)
+
+    # choose a width so that the margin on one side is at least 'margin'
+    width_used = max((width, width_probeye + 2 * (margin + 1),
+                      width_subtitle + 2 * margin + 1))
+
+    # assemble the header
+    outer_frame_line = f"{v_symbol} {h_symbol * (width_used - 4)} {v_symbol}"
+    inner_frame_line = f"{v_symbol}{' ' * (width_used - 2)}{v_symbol}"
+    lines = [outer_frame_line, inner_frame_line]
+    for line in content:
+        clean_line = line.replace('\n', '')
+        lines.append(f"{v_symbol}{clean_line:^{width_used - 2}s}{v_symbol}")
+    lines.append(inner_frame_line)
+    lines.append(outer_frame_line)
+    lines.append(inner_frame_line)
+    lines.append(f"{v_symbol}{subtitle:^{width_used - 2}s}{v_symbol}")
+    lines.append(inner_frame_line)
+    lines.append(outer_frame_line)
+
+    # log or print the header
+    if use_logger:
+        print("")
+        for line in lines:
+            logger.info(line)
+    else:
+        print('\n' + '\n'.join(lines))
