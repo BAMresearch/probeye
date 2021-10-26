@@ -29,8 +29,8 @@ from tests.integration_tests.subroutines import run_inference_engines
 class TestProblem(unittest.TestCase):
 
     def test_two_models(self, n_steps=200, n_initial_steps=100, n_walkers=20,
-                        plot=False, verbose=False, run_emcee=True,
-                        run_torch=True):
+                        plot=False, verbose=False, run_scipy=True,
+                        run_emcee=True, run_torch=False):
         """
         Integration test for the problem described at the top of this file.
 
@@ -49,6 +49,9 @@ class TestProblem(unittest.TestCase):
             generated plots are closed.
         verbose : bool, optional
             If True, additional information will be printed to the console.
+        run_scipy : bool, optional
+            If True, the problem is solved with scipy (maximum likelihood est).
+            Otherwise, no maximum likelihood estimate is derived.
         run_emcee : bool, optional
             If True, the problem is solved with the emcee solver. Otherwise,
             the emcee solver will not be used.
@@ -215,7 +218,8 @@ class TestProblem(unittest.TestCase):
         run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
                               n_initial_steps=n_initial_steps,
                               n_walkers=n_walkers, plot=plot, verbose=verbose,
-                              run_emcee=run_emcee, run_torch=run_torch)
+                              run_scipy=run_scipy, run_emcee=run_emcee,
+                              run_torch=run_torch)
 
 if __name__ == "__main__":
     unittest.main()
