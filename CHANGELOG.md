@@ -7,6 +7,12 @@
 ### Changed
 - changed various print-commands to logging-commands using loguru
 
+## 1.0.6 (2021-Oct-26)
+### Added
+- Added ScipySolver-class which provides a maximum likelihood solver
+### Changed
+- restructured solver routines for emcee and pyro to methods of corresponding solver-classes
+
 ## 1.0.5 (2021-Oct-22)
 ### Changed
 - computation of Jacobian reshaped from 3d to 2d array
