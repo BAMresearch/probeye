@@ -137,7 +137,7 @@ class ScipySolver:
 
     def run_max_likelihood(self, x0_dict=None, x0_prior='mean', default_x0=1.0,
                            true_values=None, method='Nelder-Mead',
-                           solver_options=None, verbose=None):
+                           solver_options=None):
         """
         Finds values for an InferenceProblem's latent parameters that maximize
         the problem's likelihood function. The used method is scipy's minimize
@@ -167,8 +167,6 @@ class ScipySolver:
             Options passed to scipy.optimize.minimize under the 'options' key
             word argument. See the documentation of this scipy method to see
             available options.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
 
         Returns
         -------
@@ -178,16 +176,11 @@ class ScipySolver:
             likelihood function can be requested via 'minimize_results.x'.
         """
 
-        # allows to overwrite the default values the solver was initialized
-        # with if this should be required
-        if not verbose:
-            verbose = self.verbose
-
         # since scipy's minimize function is used, we need a function that
         # returns the negative log-likelihood function (minimizing the negative
         # log-likelihood is equivalent to maximizing the (log-)likelihood)
         def fun(x):
-            return -1 * self.loglike(x)
+            return -self.loglike(x)
 
         # prepare the start value either from the given x0_dict or from the mean
         # values of the latent parameter's priors
@@ -228,7 +221,7 @@ class ScipySolver:
         self.raw_results = minimize_results
 
         # some convenient printout with respect to the solver's results
-        if verbose:
+        if self.verbose:
             n_char_message = len(minimize_results.message)
             msg = (f"\nMaximum likelihood estimation (scipy)\n"
                    f"{'═' * n_char_message}\n"

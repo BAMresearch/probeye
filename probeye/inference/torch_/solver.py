@@ -314,7 +314,7 @@ class PyroSolver:
         return self.loglike(theta)
 
     def run_mcmc(self, n_walkers=1, n_steps=300, n_initial_steps=30,
-                   step_size=0.1, seed=None, verbose=None):
+                   step_size=0.1):
         """
         Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
@@ -329,10 +329,6 @@ class PyroSolver:
             The number of steps the sampler takes.
         n_initial_steps: int, optional
             The number of steps for the burn-in phase.
-        seed : int, optional
-            Random state used for random number generation.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
 
         Returns
         -------
@@ -340,19 +336,12 @@ class PyroSolver:
             Contains the results of the sampling procedure.
         """
 
-        # allows to overwrite the default values the solver was initialized
-        # with if this should be required
-        if not seed:
-            seed = self.seed
-        if not verbose:
-            verbose = self.verbose
-
         # perform the sampling with the requested parameters
-        th.manual_seed(seed)
+        th.manual_seed(self.seed)
         kernel = NUTS(
             self.posterior_model, step_size=step_size, jit_compile=False)
         mcmc = MCMC(kernel, num_samples=n_steps, warmup_steps=n_initial_steps,
-                    num_chains=n_walkers, disable_progbar=not verbose)
+                    num_chains=n_walkers, disable_progbar=not self.verbose)
         mcmc.run()
         self.raw_results = mcmc
 

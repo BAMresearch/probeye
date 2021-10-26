@@ -25,7 +25,7 @@ class EmceeSolver(ScipySolver):
         super().__init__(problem, seed=seed, verbose=verbose)
 
     def run_mcmc(self, n_walkers=20, n_steps=1000, n_initial_steps=100,
-                 seed=None, verbose=None, **kwargs):
+                 **kwargs):
         """
         Runs the emcee-sampler for the InferenceProblem the EmceeSolver was
         initialized with and returns the results as an arviz InferenceData obj.
@@ -38,10 +38,6 @@ class EmceeSolver(ScipySolver):
             Number of steps to run.
         n_initial_steps : int, optional
             Number of steps for initial (burn-in) sampling.
-        seed : int, optional
-            Random state used for random number generation.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
         **kwargs : optional
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
@@ -50,13 +46,6 @@ class EmceeSolver(ScipySolver):
         inference_data : obj[arviz.data.inference_data.InferenceData]
             Contains the results of the sampling procedure.
         """
-
-        # allows to overwrite the default values the solver was initialized
-        # with if this should be required
-        if not seed:
-            seed = self.seed
-        if not verbose:
-            verbose = self.verbose
 
         # draw initial samples from the parameter's priors
         sampling_initial_positions = np.zeros(
@@ -87,9 +76,9 @@ class EmceeSolver(ScipySolver):
                 f"'sampling_initial_positions' should have {n_walkers} rows "
                 f"(one for each walker), but {n_rows} are provided.")
 
-        random.seed(seed)
-        np.random.seed(seed)
-        rstate = np.random.mtrand.RandomState(seed)
+        random.seed(self.seed)
+        np.random.seed(self.seed)
+        rstate = np.random.mtrand.RandomState(self.seed)
 
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
@@ -107,7 +96,7 @@ class EmceeSolver(ScipySolver):
         state = sampler.run_mcmc(
             initial_state=sampling_initial_positions,
             nsteps=n_initial_steps,
-            progress=verbose)
+            progress=self.verbose)
         end = time.time()
 
         logging.info(
@@ -122,7 +111,8 @@ class EmceeSolver(ScipySolver):
         # .................................................................... #
 
         start = time.time()
-        sampler.run_mcmc(initial_state=state, nsteps=n_steps, progress=verbose)
+        sampler.run_mcmc(
+            initial_state=state, nsteps=n_steps, progress=self.verbose)
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
         logging.info(

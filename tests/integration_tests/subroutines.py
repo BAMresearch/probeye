@@ -71,7 +71,7 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
                 emcee_solver = EmceeSolver(problem, verbose=verbose)
                 inference_data = emcee_solver.run_mcmc(
                     n_walkers=n_walkers, n_steps=n_steps,
-                    n_initial_steps=n_initial_steps, verbose=verbose)
+                    n_initial_steps=n_initial_steps)
             else:
                 # in this case, the engine was not requested to run
                 continue
