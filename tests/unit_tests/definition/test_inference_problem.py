@@ -344,16 +344,9 @@ class TestProblem(unittest.TestCase):
         y_in_p = p.experiments['Experiment_3']['sensor_values']['y']
         self.assertEqual(type(x_in_p), np.ndarray)
         self.assertEqual(type(y_in_p), np.ndarray)
-        # check adding the same experiment again; note that this results in a
-        # warning that is printed; this printout is redirected below
-        capturedOutput = io.StringIO()
-        sys.stdout = capturedOutput
+        # check adding the same experiment again
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
-        sys.stdout = sys.__stdout__  # reset printout to console
-        warning = capturedOutput.getvalue()
-        self.assertEqual(warning, "WARNING - Experiment 'Experiment_1' is "
-                                 "already defined and will be overwritten!\n")
 
     def test_get_parameters(self):
         # check a simple use case
