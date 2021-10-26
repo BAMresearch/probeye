@@ -1,10 +1,3 @@
-# ============================================================================ #
-#                                   Imports                                    #
-# ============================================================================ #
-
-# standard library imports
-import copy as cp
-
 # third party imports
 import numpy as np
 import torch as th
@@ -16,93 +9,92 @@ from probeye.inference.torch_.priors import translate_prior_template
 from probeye.inference.torch_.noise_models import translate_noise_model
 from probeye.subroutines import len_or_one
 
-# ============================================================================ #
-#                          pyro/torch sampling solver                          #
-# ============================================================================ #
 
-def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
-                    step_size=0.1, verbose=True):
-    """
-    Solves an inference problem described in problem using pyro/torch.
+class PyroSolver:
 
-    Parameters
-    ----------
-    problem_ori : obj[InferenceProblem]
-        Describes the inference problem including e.g. parameters and data.
-    n_walkers : int, optional
-        Number of walkers used by the estimator.
-    step_size : float, optional
-        The step size of the NUTS sampler.
-    n_steps: int, optional
-        The number of steps the sampler takes.
-    n_initial_steps: int, optional
-        The number of steps for the burn-in phase.
-    verbose : bool, optional
-        No logging output when False. More logging information when True.
-        
-    Returns
-    -------
-    inference_data : obj[arviz.data.inference_data.InferenceData]
-        Contains the results of the sampling procedure.
-    """
+    def __init__(self, problem, seed=1, verbose=True):
+        """
+        Parameters
+        ----------
+        problem : obj[InferenceProblem]
+            Describes the inference problem including e.g. parameters and data.
+        seed : int, optional
+            Random state used for random number generation.
+        verbose : bool, optional
+            No logging output when False. More logging information when True.
+        """
 
-    # a copy is created here, so that this solver routine does not have side
-    # effects on the original problem; such side effects would occur due to
-    # calling the assign_experiments_to_noise_models-method below
-    problem = cp.deepcopy(problem_ori)
-    problem = problem.transform_experimental_data(f=th.from_numpy)
+        # attributes from arguments
+        self.verbose = verbose
+        self.seed = seed
 
-    # each noise model must be connected to the relevant experiment_names
-    problem.assign_experiments_to_noise_models()
+        # the following attribute will be set after the solver was run
+        self.raw_results = None
 
-    # the dictionary dependency_dict will contain all latent parameter names as
-    # keys; the value of each key will be a list with latent hyperparameters of
-    # the latent parameter's prior
-    dependency_dict = dict()
-    for prm_name in problem.parameters.latent_prms:
-        dependency_dict[prm_name] = []
-        hyperparameters = problem.parameters[prm_name].prior.hyperparameters
-        for prior_prm_name in hyperparameters:
-            if prior_prm_name in problem.parameters.latent_prms:
-                dependency_dict[prm_name].append(prior_prm_name)
+        # the problem is copied, and in the copy, the experimental data is
+        # reformatted from numpy-arrays to torch-tensors
+        self.problem = problem.transform_experimental_data(f=th.from_numpy)
 
-    # this makes sure that the items in dependency are in an order that they can
-    # be sampled from beginning (index 0) sequentially until the last item
-    # without encountering any dependency problems (i.e. that another parameter
-    # has to be sampled before the considered parameter can be sampled)
-    consistent = False
-    while not consistent:
-        consistent = True
-        idx_latent_dependencies =\
-            [i for i, v in enumerate(dependency_dict.values()) if len(v) > 0]
-        for idx in idx_latent_dependencies:
-            key_idx = [*dependency_dict.keys()][idx]
-            for dependency in dependency_dict[key_idx]:
-                if key_idx in dependency_dict[dependency]:
-                    raise RuntimeError(
-                        f"Found circular dependency between {key_idx} and "
-                        f"{dependency}!")
-                idx_dependency = [*dependency_dict.keys()].index(dependency)
-                if idx_dependency > idx:
-                    consistent = False
-                    tuples = [*dependency_dict.items()]
-                    tuples[idx], tuples[idx_dependency] = \
-                        tuples[idx_dependency], tuples[idx]
-                    dependency_dict = dict(tuples)
+        # each noise model must be connected to the relevant experiment_names
+        self.problem.assign_experiments_to_noise_models()
 
-    # translate the prior definitions to objects with computing capabilities
-    priors = {}
-    for prm_name in dependency_dict.keys():
-        prior_template = problem.parameters[prm_name].prior
-        priors[prior_template.ref_prm] = \
-            translate_prior_template(prior_template)
+        # the dictionary dependency_dict will contain all latent parameter names
+        # as keys; the value of each key will be a list with latent hyper-
+        # parameters of the latent parameter's prior
+        dependency_dict = dict()
+        for prm_name in self.problem.parameters.latent_prms:
+            dependency_dict[prm_name] = []
+            hyperparameters =\
+                self.problem.parameters[prm_name].prior.hyperparameters
+            for prior_prm_name in hyperparameters:
+                if prior_prm_name in self.problem.parameters.latent_prms:
+                    dependency_dict[prm_name].append(prior_prm_name)
 
-    # translate the general noise model objects into solver specific ones
-    noise_models = []
-    for noise_model_base in problem.noise_models:
-        noise_models.append(translate_noise_model(noise_model_base))
+        # this makes sure that the items in dependency are in an order that they
+        # ca be sampled from beginning (index 0) sequentially until the last
+        # item without encountering any dependency problems (i.e. that another
+        # parameter has to be sampled before the considered prm can be sampled)
+        consistent = False
+        while not consistent:
+            consistent = True
+            idx_latent_dependencies =\
+                [i for i, v in enumerate(dependency_dict.values())
+                 if len(v) > 0]
+            for idx in idx_latent_dependencies:
+                key_idx = [*dependency_dict.keys()][idx]
+                for dependency in dependency_dict[key_idx]:
+                    if key_idx in dependency_dict[dependency]:
+                        raise RuntimeError(
+                            f"Found circular dependency between {key_idx} and "
+                            f"{dependency}!")
+                    idx_dependency = [*dependency_dict.keys()].index(dependency)
+                    if idx_dependency > idx:
+                        consistent = False
+                        tuples = [*dependency_dict.items()]
+                        tuples[idx], tuples[idx_dependency] = \
+                            tuples[idx_dependency], tuples[idx]
+                        dependency_dict = dict(tuples)
 
-    def only_values(func):
+        # translate the prior definitions to objects with computing capabilities
+        self.priors = {}
+        for prm_name in dependency_dict.keys():
+            prior_template = self.problem.parameters[prm_name].prior
+            self.priors[prior_template.ref_prm] = \
+                translate_prior_template(prior_template)
+
+        # translate the general noise model objects into solver specific ones
+        self.noise_models = []
+        for noise_model_base in self.problem.noise_models:
+            self.noise_models.append(translate_noise_model(noise_model_base))
+
+        # translate the problem's forward models into torch compatible ones
+        for fwd_model_name in self.problem.forward_models.keys():
+            setattr(self.problem.forward_models[fwd_model_name], 'call',
+                    self._translate_forward_model(
+                        self.problem.forward_models[fwd_model_name]))
+
+    @staticmethod
+    def _only_values(func):
         """
         This function wrapper is required for the Autograd.apply function which
         is returned by translate_forward_model. While the forward model's
@@ -115,7 +107,7 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
             return func(*inp.values())
         return wrapper
 
-    def translate_forward_model(forward_model):
+    def _translate_forward_model(self, forward_model):
         """
         Translates a given forward model (based on non-tensor in/outputs) to a
         torch-compatible forward model based on tensors.
@@ -254,14 +246,9 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
                     in zip(ctx.needs_input_grad, th.flatten(grad_total)))
                 return return_val
 
-        return only_values(Autograd.apply)
+        return self._only_values(Autograd.apply)
 
-    # translate the problem's forward models into torch compatible ones
-    for fwd_model_name in problem.forward_models.keys():
-        setattr(problem.forward_models[fwd_model_name], 'call',
-                translate_forward_model(problem.forward_models[fwd_model_name]))
-
-    def get_theta_samples():
+    def get_theta_samples(self):
         """
         Provides a list of latent-parameter samples in form of torch.Tensors.
 
@@ -274,7 +261,7 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
         # to enable the action in the if-statement in the loop below
         pyro_parameter_samples = dict()
         # we have to sample each parameter for which a prior is defined
-        for ref_prm, prior_obj in priors.items():
+        for ref_prm, prior_obj in self.priors.items():
             hyperprms_dict = {}
             for name in prior_obj.hyperparameters.keys():
                 if name in pyro_parameter_samples:
@@ -282,12 +269,12 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
                 else:
                     # this is the default case, where the prior's parameters
                     # (i.e. the hyperparameters) are simply constants
-                    hyperprms_dict[name] = problem.parameters[name].value
+                    hyperprms_dict[name] = self.problem.parameters[name].value
             # this is where the parameter's sample is generated with pyro
             pyro_parameter_samples[ref_prm] = prior_obj.sample(hyperprms_dict)
         return [*pyro_parameter_samples.values()]
 
-    def loglike(theta):
+    def loglike(self, theta):
         """
         Evaluates the log-likelihood function of the problem at theta.
 
@@ -304,16 +291,17 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
         """
         # compute the contribution to the log-likelihood function for each noise
         # model and sum it all up
-        for noise_model in noise_models:
+        for noise_model in self.noise_models:
             # compute the model response for the noise model's experiment_names
-            model_response = problem.evaluate_model_response(
+            model_response = self.problem.evaluate_model_response(
                 theta, noise_model.experiment_names)
             # get the tensors for the noise model's parameters
-            prms_noise = problem.get_parameters(theta, noise_model.prms_def)
+            prms_noise = self.problem.get_parameters(
+                theta, noise_model.prms_def)
             # evaluate the loglike-contribution for the noise model
             noise_model.sample_cond_likelihood(model_response, prms_noise)
 
-    def posterior_model():
+    def posterior_model(self):
         """
         Returns the sampled log-likelihood in form of a torch.Tensor.
 
@@ -322,21 +310,47 @@ def run_pyro_solver(problem_ori, n_walkers=1, n_steps=300, n_initial_steps=30,
         list[torch.Tensor]
             The sampled values based on the latent parameter's priors.
         """
-        theta = get_theta_samples()
-        return loglike(theta)
+        theta = self.get_theta_samples()
+        return self.loglike(theta)
 
-    # perform the sampling with the requested parameters
-    kernel = NUTS(posterior_model, step_size=step_size, jit_compile=False)
-    mcmc = MCMC(kernel, num_samples=n_steps, warmup_steps=n_initial_steps,
-                num_chains=n_walkers, disable_progbar=not verbose)
-    mcmc.run()
+    def run_mcmc(self, n_walkers=1, n_steps=300, n_initial_steps=30,
+                   step_size=0.1):
+        """
+        Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
+        initialized with and returns the results as an arviz InferenceData obj.
 
-    # translate the results to a common data structure and return it
-    var_names = problem.get_theta_names(tex=False)
-    var_names_tex = problem.get_theta_names(tex=True)
-    name_dict = {var_name: var_name_tex for var_name, var_name_tex
-                 in zip(var_names, var_names_tex)}
-    inference_data = az.from_pyro(mcmc)
-    inference_data.rename(name_dict, groups='posterior', inplace=True)
+        Parameters
+        ----------
+        n_walkers : int, optional
+            Number of walkers used by the estimator.
+        step_size : float, optional
+            The step size of the NUTS sampler.
+        n_steps: int, optional
+            The number of steps the sampler takes.
+        n_initial_steps: int, optional
+            The number of steps for the burn-in phase.
 
-    return inference_data
+        Returns
+        -------
+        inference_data : obj[arviz.data.inference_data.InferenceData]
+            Contains the results of the sampling procedure.
+        """
+
+        # perform the sampling with the requested parameters
+        th.manual_seed(self.seed)
+        kernel = NUTS(
+            self.posterior_model, step_size=step_size, jit_compile=False)
+        mcmc = MCMC(kernel, num_samples=n_steps, warmup_steps=n_initial_steps,
+                    num_chains=n_walkers, disable_progbar=not self.verbose)
+        mcmc.run()
+        self.raw_results = mcmc
+
+        # translate the results to a common data structure and return it
+        var_names = self.problem.get_theta_names(tex=False)
+        var_names_tex = self.problem.get_theta_names(tex=True)
+        name_dict = {var_name: var_name_tex for var_name, var_name_tex
+                     in zip(var_names, var_names_tex)}
+        inference_data = az.from_pyro(mcmc)
+        inference_data.rename(name_dict, groups='posterior', inplace=True)
+
+        return inference_data

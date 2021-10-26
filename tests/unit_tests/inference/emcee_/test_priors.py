@@ -5,10 +5,10 @@ import unittest
 from scipy import stats
 
 # local imports
-from probeye.inference.emcee_.priors import PriorNormal
-from probeye.inference.emcee_.priors import PriorLognormal
-from probeye.inference.emcee_.priors import PriorUniform
-from probeye.inference.emcee_.priors import PriorWeibull
+from probeye.inference.scipy_.priors import PriorNormal
+from probeye.inference.scipy_.priors import PriorLognormal
+from probeye.inference.scipy_.priors import PriorUniform
+from probeye.inference.scipy_.priors import PriorWeibull
 
 
 class TestProblem(unittest.TestCase):

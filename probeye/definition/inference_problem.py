@@ -98,6 +98,11 @@ class InferenceProblem:
         return self._parameters.constant_prms
 
     @property
+    def constant_prms_dict(self):
+        """Provides constant_prms_dict attribute."""
+        return self._parameters.constant_prms_dict
+
+    @property
     def n_model_prms(self):
         """Provides n_model_prms attribute."""
         return self._parameters.n_model_prms
