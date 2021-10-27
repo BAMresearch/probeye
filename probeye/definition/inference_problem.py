@@ -13,7 +13,7 @@ from probeye.definition.parameter import Parameters
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
-from probeye.subroutines import print_probeye_header, assert_log
+from probeye.subroutines import print_probeye_header, assert_log, raise_log
 
 
 class InferenceProblem:
@@ -290,7 +290,7 @@ class InferenceProblem:
 
         # concatenate the string and return it
         full_string = title_string + fwd_string + prior_str + prm_string
-        full_string += theta_string + exp_str
+        full_string += theta_string + exp_str + "\n"
 
         # either print or return the string
         if log:
@@ -360,22 +360,26 @@ class InferenceProblem:
 
         # exactly one of the const and prior key word arguments must be given
         if const is not None and prior is not None:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"You must specify either the 'const' or the 'prior' key " +
                 f"argument. You have specified both."
             )
         if const is None and prior is None:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"You must specify either the 'const' or the 'prior' key " +
                 f"argument. You have specified none."
             )
         # raise an error if the role change would not change the role
         if self._parameters[prm_name].is_const and (prior is None):
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The parameter '{prm_name}' is already defined as constant."
             )
         if self._parameters[prm_name].is_latent and (const is None):
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The parameter '{prm_name}' is already defined as a "
                 f"latent parameter."
             )
@@ -430,7 +434,8 @@ class InferenceProblem:
 
         # check if the given parameter is a constant
         if self._parameters[prm_name].is_latent:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The parameter '{prm_name}' is not a constant!"
             )
         # change the parameter's value
@@ -445,13 +450,13 @@ class InferenceProblem:
 
         # check if the central components have been added to the problem:
         # parameters, forward models, noise models and experiments
-        assert_log(self._parameters,
+        assert_log(len(self._parameters) != 0,
                    "The problem does not contain any parameters!")
-        assert_log(self._forward_models,
+        assert_log(len(self._forward_models) != 0,
                    "The problem does not contain any forward models!")
-        assert_log(self._noise_models,
+        assert_log(len(self._noise_models) != 0,
                    "The problem does not contain any noise models!")
-        assert_log(self._experiments,
+        assert_log(len(self._experiments) != 0,
                    "The problem does not contain any experiments!")
 
         # check if all parameters of the forward model(s) appear in
@@ -521,21 +526,28 @@ class InferenceProblem:
             Name of the forward model this experiment refers to.
         """
 
+        # log at beginning so that errors can be associated
+        logger.info("")
+        logger.info(f"Adding experiment '{exp_name}'")
+
         # check all keyword arguments are given
         if type(sensor_values) is not dict:
-            raise TypeError(
+            raise_log(
+                TypeError,
                 f"The sensor_values must be given as a dictionary. However, "
                 f"found type '{type(sensor_values)}'."
             )
         if type(fwd_model_name) is not str:
-            raise TypeError(
+            raise_log(
+                TypeError,
                 f"The fwd_model_name must be given as a string. However, "
                 f"found type '{type(fwd_model_name)}'."
             )
 
         # check if the given forward model exists
         if fwd_model_name not in self._forward_models.keys():
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The forward model '{fwd_model_name}' does not exist! You "
                 f"need to define it before adding experiments that refer to it."
             )
@@ -545,14 +557,16 @@ class InferenceProblem:
         input_sensors = self._forward_models[fwd_model_name].input_sensors
         for input_sensor in input_sensors:
             if input_sensor.name not in experiment_sensors:
-                raise RuntimeError(
+                raise_log(
+                    RuntimeError,
                     f"The forward model's ({fwd_model_name}) input sensor "
                     f"'{input_sensor.name}' is not provided by the given "
                     f"experiment '{exp_name}'!")
         output_sensors = self._forward_models[fwd_model_name].output_sensors
         for output_sensor in output_sensors:
             if output_sensor.name not in experiment_sensors:
-                raise RuntimeError(
+                raise_log(
+                    RuntimeError,
                     f"The forward model's ({fwd_model_name}) output sensor "
                     f"'{output_sensor.name}' is not provided by the given "
                     f"experiment '{exp_name}'!")
@@ -562,7 +576,8 @@ class InferenceProblem:
         for sensor_name, values in sensor_values.items():
             vector_lengths.add(len_or_one(values))
         if len(vector_lengths) > 1:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The sensor values must be all scalars or vectors of the same "
                 f"length. However, found the lengths {vector_lengths}.")
 
@@ -644,7 +659,8 @@ class InferenceProblem:
 
         # at least one of forward_model_names and sensor_names must be given
         if (forward_model_names is None) and (sensor_names is None):
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"You did not specify any forward model(s) or sensor name(s).")
 
         # if experiments is not further specified it is assumed that all given
@@ -769,6 +785,10 @@ class InferenceProblem:
             to derive his own forward model from that base class.
         """
 
+        # log at beginning so that errors can be associated
+        logger.info("")
+        logger.info(f"Adding forward model '{name}'")
+
         # check if all given model parameters have already been added to the
         # inference problem; note that the forward model can only be added to
         # the problem after the corresponding parameters were defined
@@ -777,7 +797,8 @@ class InferenceProblem:
 
         # check if the given name for the forward model has already been used
         if name in [*self._forward_models.keys()]:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The given name '{name}' for the forward model has already "
                 f"been used for another forward model. Please choose another "
                 f"name.")
@@ -787,7 +808,8 @@ class InferenceProblem:
         for existing_name, existing_fwd_model in self._forward_models.items():
             for output_sensor in existing_fwd_model.output_sensor_names:
                 if output_sensor in forward_model.output_sensor_names:
-                    raise RuntimeError(
+                    raise_log(
+                        RuntimeError,
                         f"The given forward model '{name}' has an output "
                         f"sensor '{output_sensor}', \nwhich is also defined as "
                         f"an output sensor in the already defined forward "
@@ -866,11 +888,21 @@ class InferenceProblem:
             see some noise model classes.
         """
 
+        # check if the noise model has been assigned a name; if not, assign one
+        logger.info("")
+        if noise_model.name is None:
+            noise_model.name = f"noise_model_{len(self.noise_models)}"
+            logger.info(f"Adding noise model '{noise_model.name}' "
+                        f"(name assigned automatically)")
+        else:
+            logger.info(f"Adding noise model '{noise_model.name}'")
+
         # check if all given noise model parameters have already been added to
         # the inference problem
         for prm_name in noise_model.prms_def:
             if prm_name not in self._parameters.keys():
-                raise RuntimeError(
+                raise_log(
+                    RuntimeError,
                     f"The noise model parameter '{prm_name}' has not been " +
                     f"defined yet.\nYou have to add all noise model " +
                     f"parameters to the problem before adding the noise " +
@@ -888,10 +920,6 @@ class InferenceProblem:
                                f"interface {noise_model.sensor_names} has "
                                f"already been defined in this problem!")
 
-        # check if the noise model has been assigned a name; if not, assign one
-        if noise_model.name is None:
-            noise_model.name = f"noise_model_{len(self.noise_models)}"
-
         # add the problem's experiments to the noise model (this is just a
         # pointer!) for noise_model-internal checks
         noise_model.problem_experiments = self._experiments
@@ -906,6 +934,7 @@ class InferenceProblem:
         Alternatively, you can assign the experiments 'by hand', by using the
         NoiseModelBase's 'add_experiments' method.
         """
+        logger.info("Assigning experiments to noise models")
         n_experiments_defined = len(self._experiments)
         n_experiments_noise = 0
         for noise_model in self._noise_models:
@@ -934,7 +963,8 @@ class InferenceProblem:
         for exp_name in self._experiments.keys():
             if exp_name not in exp_names_in_noise_models:
                 # one may argue, that this could also be only a warning here
-                raise RuntimeError(
+                raise_log(
+                    RuntimeError,
                     f"The globally defined experiment '{exp_name}' does not "
                     f"appear in any of the noise models!")
 
@@ -961,6 +991,8 @@ class InferenceProblem:
             A full copy of self where the experimental data has been transformed
             in the specified fashion.
         """
+
+        logger.info(f"Transforming experimental data using f={f}")
 
         # the original problem shall not be touched, so we create a copy here
         # to which the transformation will be applied

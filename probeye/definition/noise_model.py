@@ -3,6 +3,7 @@ import numpy as np
 
 # local imports
 from probeye.subroutines import make_list, translate_prms_def
+from probeye.subroutines import raise_log
 
 
 class NoiseModelBase:
@@ -64,7 +65,8 @@ class NoiseModelBase:
         elif noise_type == "other":
             self.error_function = self.error_function_other
         else:
-            raise ValueError(
+            raise_log(
+                ValueError,
                 f"Encountered unknown noise_type: '{noise_type}'. The noise"
                 f"_type must be either 'additive', 'multiplicative' or 'other'."
             )
@@ -90,18 +92,21 @@ class NoiseModelBase:
             sensor_names_exp = [*exp_dict['sensor_values'].keys()]
             for sensor_name in self.sensor_names:
                 if sensor_name not in sensor_names_exp:
-                    raise RuntimeError(
+                    raise_log(
+                        RuntimeError,
                         f"Experiment '{exp_name}' does not contain a sensor "
                         f"'{sensor_name}' which is required for the evaluation "
                         f"of the noise model.")
         # check if the given experiments all refer to one forward model
         if len(forward_models) > 1:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 f"The given experiments refer to more than one forward model!")
         # check if one of the given experiments have been added before
         for exp_name in experiment_names:
             if exp_name in self.experiment_names:
-                raise RuntimeError(
+                raise_log(
+                    RuntimeError,
                     f"The experiment '{exp_name}' has already been added to "
                     f"this noise model. Something might be wrong here.")
         self.experiment_names += experiment_names
@@ -138,26 +143,6 @@ class NoiseModelBase:
                  for name in self.sensor_names}
 
         return model_error_dict
-
-    def error_function(self, ym_dict, ye_dict):
-        """
-        Evaluates the model error for each of the noise model's sensors.
-
-        Parameters
-        ----------
-        ym_dict : dict
-            The computed values for the model's output sensor_values.
-        ye_dict : dict
-            The measured values for the model's output sensor_values.
-
-        Returns
-        -------
-        error_dict : dict
-            The computed model error for the model's output sensor_values.
-        """
-        raise NotImplementedError(
-            "Your model does not have a error_function-method yet. If you " +
-            "want to use it, you need to implement it first.")
 
     def error_function_additive(self, ym_dict, ye_dict):
         """
@@ -254,7 +239,8 @@ class NormalNoiseModel(NoiseModelBase):
         # check that at the standard deviation is provided (this can be either
         # as a constant or a latent parameter, but it has to be given)
         if 'std' not in [*self.prms_def.values()]:
-            raise RuntimeError(
+            raise_log(
+                RuntimeError,
                 "The standard deviation 'std' was not provided in prms_def!")
 
         # the mean value(s) do not have to be stated explicitly; if they are not

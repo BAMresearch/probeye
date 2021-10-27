@@ -1,12 +1,12 @@
 # standard library imports
 import time
-import logging
 import random
 
 # third party imports
 import numpy as np
 import emcee
 import arviz as az
+from loguru import logger
 
 # local imports
 from probeye.subroutines import pretty_time_delta
@@ -21,6 +21,7 @@ class EmceeSolver(ScipySolver):
     """
     def __init__(self, problem, seed=1, verbose=True):
         """See docstring of ScipySolver for information on the arguments."""
+        logger.info("Initializing EmceeSolver")
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, verbose=verbose)
 
@@ -48,6 +49,7 @@ class EmceeSolver(ScipySolver):
         """
 
         # draw initial samples from the parameter's priors
+        logger.info("Drawing initial samples")
         sampling_initial_positions = np.zeros(
             (n_walkers, self.problem.n_latent_prms))
         theta_names = self.problem.get_theta_names()
@@ -80,6 +82,7 @@ class EmceeSolver(ScipySolver):
         np.random.seed(self.seed)
         rstate = np.random.mtrand.RandomState(self.seed)
 
+        logger.info("Setting up EnsembleSampler")
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms,
@@ -92,32 +95,26 @@ class EmceeSolver(ScipySolver):
         #    Initial sampling, burn-in: used to avoid a poor starting point    #
         # .................................................................... #
 
+        logger.info("Starting sampling (initial + main)")
         start = time.time()
         state = sampler.run_mcmc(
             initial_state=sampling_initial_positions,
             nsteps=n_initial_steps,
             progress=self.verbose)
-        end = time.time()
-
-        logging.info(
-            f"Initial sampling completed: {n_initial_steps} steps and "
-            f"{n_walkers} walkers.\n Total run-time: "
-            f"{pretty_time_delta(end - start)}.")
-
         sampler.reset()
 
         # .................................................................... #
         #                      Sampling of the posterior                       #
         # .................................................................... #
-
-        start = time.time()
         sampler.run_mcmc(
             initial_state=state, nsteps=n_steps, progress=self.verbose)
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
-        logging.info(
+        logger.info(
             f"Sampling of the posterior distribution completed: {n_steps} steps"
-            f" and {n_walkers} walkers.\n Total run-time: {runtime_str}.")
+            f" and {n_walkers} walkers.")
+        logger.info(
+            f"Total run-time (including initial sampling): {runtime_str}.")
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it
