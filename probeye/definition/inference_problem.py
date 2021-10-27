@@ -1,4 +1,5 @@
 # standard library
+import os
 import copy as cp
 import sys
 
@@ -12,7 +13,7 @@ from probeye.definition.parameter import Parameters
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
-from probeye.subroutines import print_probeye_header
+from probeye.subroutines import print_probeye_header, assert_log
 
 
 class InferenceProblem:
@@ -21,7 +22,8 @@ class InferenceProblem:
     Capabilities for solving the set up problem are intentionally not included.
     """
 
-    def __init__(self, name, log_level='INFO', log_format=None):
+    def __init__(self, name, log_level='INFO', log_format=None, log_file=None,
+                 overwrite_log_file=True):
         """
         Parameters
         ----------
@@ -33,6 +35,12 @@ class InferenceProblem:
         log_format : None, str, optional
             A format string defining the logging output. If this argument is
             set to None, a default format will be used.
+        log_file : None, str, optional
+            Path to the log-file, if the logging should be printed to file. If
+            None is given, no logging-file will be created.
+        overwrite_log_file : bool, optional
+            When True, a specified log-file will be overwritten. Otherwise,
+            the generated logging will appended to a given log-file.
         """
 
         # the name of the problem
@@ -74,19 +82,24 @@ class InferenceProblem:
         # this list is managed internally and should not be edited directly
         self._noise_models = list()
 
-        # start the logger, and create initial logs
-        if not log_format:
-            log_format = ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
-                          '<level>{level: <8}</level> | '
-                          '<level>{message:100s}</level> | '
-                          '<cyan>{name}</cyan>:'
-                          '<cyan>{function}</cyan>:'
-                          '<cyan>{line}</cyan>')
-        logger.remove()  # just if there still exists another logger
-        logger.add(sys.stdout, format=log_format, level=log_level)
+        # ----------------------- #
+        #      logging stuff      #
+        # ----------------------- #
+
+        # logging attributes
+        self.log_level = log_level
+        self.log_format = log_format
+        self.log_file = log_file
+        self.overwrite_log_file = overwrite_log_file
+
+        # setup the logger with the given specifications
+        self._logging_setup()
+
+        # log probeye header and first message
         print_probeye_header()
         logger.info("")  # intended as visual buffer
         logger.info(f"Initialized inference problem: '{self.name}'")
+        logger.info("")  # intended as visual buffer
 
     @property
     def n_prms(self):
@@ -182,7 +195,28 @@ class InferenceProblem:
         """Access self._experiments from outside via self.experiments."""
         return self._experiments
 
-    def info(self, print_it=True, include_experiments=False, tablefmt="presto",
+    def _logging_setup(self):
+        """
+        Sets up the logger for listening to the inference problem.
+        """
+        if not self.log_format:
+            self.log_format =\
+                ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
+                 '<level>{level: <8}</level> | '
+                 '<level>{message:100s}</level> | '
+                 '<cyan>{name}</cyan>:'
+                 '<cyan>{function}</cyan>:'
+                 '<cyan>{line}</cyan>')
+        logger.remove()  # just in case there still exists another logger
+        logger.add(sys.stdout, format=self.log_format, level=self.log_level)
+        logger.opt(colors=True)
+        if self.log_file:
+            if os.path.isfile(self.log_file) and self.overwrite_log_file:
+                os.remove(self.log_file)
+            logger.add(
+                self.log_file, format=self.log_format, level=self.log_level)
+
+    def info(self, log=True, include_experiments=False, tablefmt="presto",
              check_consistency=True):
         """
         Either prints the problem definition to the console (print_it=True) or
@@ -190,9 +224,9 @@ class InferenceProblem:
 
         Parameters
         ----------
-        print_it : bool, optional
-            If True, the generated string is printed and not returned. If set
-            to False, the generated string is not printed but returned.
+        log : bool, optional
+            If True, the generated string is logged and not returned. If set
+            to False, the generated string is not logged but returned.
         include_experiments : bool, optional
             If True, information on the experiments defined within the model
             will be included in the printout. Depending on the number of defined
@@ -212,7 +246,8 @@ class InferenceProblem:
         """
 
         # contains the name of the inference problem
-        title_string = underlined_string(self.name, n_empty_start=2)
+        title = f"Problem summary: {self.name}"
+        title_string = underlined_string(title, n_empty_start=2)
 
         # list the forward models that have been defined within the problem
         rows = [(name, simplified_list_string([*model.prms_def.keys()]),
@@ -258,8 +293,10 @@ class InferenceProblem:
         full_string += theta_string + exp_str
 
         # either print or return the string
-        if print_it:
-            print(full_string)
+        if log:
+            lines = full_string.split('\n')
+            for line in lines:
+                logger.info(line)
         else:
             return full_string
 
@@ -268,7 +305,7 @@ class InferenceProblem:
         Allows to print the problem definition via print(problem) if problem is
         an instance of InferenceProblem. See self.info for more details.
         """
-        return self.info(print_it=False)
+        return self.info(log=False)
 
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
@@ -407,57 +444,58 @@ class InferenceProblem:
         """
 
         # check if the central components have been added to the problem:
-        # parameters, priors, a forward model, experiments and noise models;
-        # the following statements assert that the corresponding attributes are
-        # not empty or None
-        assert self._parameters, "No parameters have been defined yet!"
-        assert self.priors, "Found no priors in the problem definition!"
-        assert self._forward_models, "No forward model has been defined yet!"
-        assert self._noise_models, "No noise models have been defined yet!"
-        assert self._experiments, "No experiments have been defined yet!"
-
-        # check if all constant parameters have values assigned
-        for parameter in self._parameters.values():
-            if parameter.is_const:
-                assert parameter.value is not None
+        # parameters, forward models, noise models and experiments
+        assert_log(self._parameters,
+                   "The problem does not contain any parameters!")
+        assert_log(self._forward_models,
+                   "The problem does not contain any forward models!")
+        assert_log(self._noise_models,
+                   "The problem does not contain any noise models!")
+        assert_log(self._experiments,
+                   "The problem does not contain any experiments!")
 
         # check if all parameters of the forward model(s) appear in
         # self._parameters and if they have the correct type
         for forward_model in self._forward_models.values():
             for model_prm in forward_model.prms_def.keys():
-                assert model_prm in self._parameters.keys()
-                assert self._parameters[model_prm].type == "model"
+                assert_log(model_prm in self._parameters.keys(),
+                           (f"The forward model parameter '{model_prm}' "
+                            f"is not defined within the problem!"))
+                assert_log(self._parameters[model_prm].type == "model",
+                           (f"The forward model parameter '{model_prm}' "
+                            f"is not of type 'model'!"))
 
         # check if all parameters of the noise model appear in self._parameters
         # and if they have the correct type
         for noise_model in self._noise_models:
             for noise_prm in noise_model.prms_def.keys():
-                assert noise_prm in self._parameters.keys()
-                assert self._parameters[noise_prm].type == "noise"
+                assert_log(noise_prm in self._parameters.keys(),
+                           (f"The noise model parameter '{noise_prm}' "
+                            f"is not defined within the problem!"))
+                assert_log(self._parameters[noise_prm].type == "noise",
+                           (f"The noise model parameter '{noise_prm}' "
+                            f"is not of type 'noise'!"))
 
         # check if all prior objects in self.priors are consistent in terms of
         # their parameters; each one of them must appear in self._parameters
-        assert len(self.priors) == self._parameters.n_latent_prms
         for prior_obj in self.priors.values():
             for prior_prm in prior_obj.hyperparameters.keys():
-                assert prior_prm in self._parameters.keys()
-                assert self._parameters[prior_prm].type == 'prior'
-
-        # check if the prior-parameters of each latent parameter exist in
-        # the problem's parameter dictionary
-        for prm_name, parameter in self._parameters.items():
-            if parameter.is_latent:
-                for prior_prm in parameter.prior.hyperparameters.keys():
-                    assert prior_prm in self._parameters.keys()
-                    assert self._parameters[prior_prm].type == 'prior'
+                assert_log(prior_prm in self._parameters.keys(),
+                           (f"The prior parameter '{prior_prm}' "
+                            f"is not defined within the problem!"))
+                assert_log(self._parameters[prior_prm].type == "prior",
+                           (f"The prior parameter '{prior_prm}' "
+                            f"is not of type 'prior'!"))
 
         # check the indices of the latent parameters
         idx_list = []
         for prm_name, parameter in self._parameters.items():
             if parameter.is_latent:
                 idx_list.append(parameter.index)
-        assert len(idx_list) == self._parameters.n_latent_prms
-        assert sorted(idx_list) == list(range(len(idx_list)))
+        assert_log(sorted(idx_list) == list(range(len(idx_list))),
+                   (f"There seems to be an inconsistency in the latent "
+                    f"parameter's indices. The sorted index list is: "
+                    f"{sorted(idx_list)}"))
 
         # check the consistency of each parameter
         for parameter in self._parameters.values():
@@ -691,7 +729,7 @@ class InferenceProblem:
         Returns
         -------
         s : str or None
-            The constructed string when 'print_it' was set to False.
+            The constructed string when 'log' was set to False.
         """
 
         # an explanation is not printed if the problem is inconsistent
