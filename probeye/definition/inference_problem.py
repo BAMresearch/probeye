@@ -14,6 +14,7 @@ from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
 from probeye.subroutines import print_probeye_header, assert_log, raise_log
+from probeye.subroutines import logging_setup
 
 
 class InferenceProblem:
@@ -22,25 +23,19 @@ class InferenceProblem:
     Capabilities for solving the set up problem are intentionally not included.
     """
 
-    def __init__(self, name, log_level='INFO', log_format=None, log_file=None,
-                 overwrite_log_file=True):
+    def __init__(self, name, setup_logger=True, log_file=None):
         """
         Parameters
         ----------
         name : str
             This is the name of the problem and has only descriptive value, for
             example when working with several inference problems.
-        log_level : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
-            Defines the level of the logging output.
-        log_format : None, str, optional
-            A format string defining the logging output. If this argument is
-            set to None, a default format will be used.
+        setup_logger : bool, optional
+            When True, the logger will be set up with some useful default
+            values. Otherwise, no logger configurations are applied.
         log_file : None, str, optional
             Path to the log-file, if the logging should be printed to file. If
             None is given, no logging-file will be created.
-        overwrite_log_file : bool, optional
-            When True, a specified log-file will be overwritten. Otherwise,
-            the generated logging will appended to a given log-file.
         """
 
         # the name of the problem
@@ -82,24 +77,13 @@ class InferenceProblem:
         # this list is managed internally and should not be edited directly
         self._noise_models = list()
 
-        # ----------------------- #
-        #      logging stuff      #
-        # ----------------------- #
-
-        # logging attributes
-        self.log_level = log_level
-        self.log_format = log_format
-        self.log_file = log_file
-        self.overwrite_log_file = overwrite_log_file
-
         # setup the logger with the given specifications
-        self._logging_setup()
+        if setup_logger:
+            logging_setup(log_file=log_file)
 
         # log probeye header and first message
         print_probeye_header()
-        logger.info("")  # intended as visual buffer
         logger.info(f"Initialized inference problem: '{self.name}'")
-        logger.info("")  # intended as visual buffer
 
     @property
     def n_prms(self):
@@ -195,28 +179,7 @@ class InferenceProblem:
         """Access self._experiments from outside via self.experiments."""
         return self._experiments
 
-    def _logging_setup(self):
-        """
-        Sets up the logger for listening to the inference problem.
-        """
-        if not self.log_format:
-            self.log_format =\
-                ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
-                 '<level>{level: <8}</level> | '
-                 '<level>{message:100s}</level> | '
-                 '<cyan>{name}</cyan>:'
-                 '<cyan>{function}</cyan>:'
-                 '<cyan>{line}</cyan>')
-        logger.remove()  # just in case there still exists another logger
-        logger.add(sys.stdout, format=self.log_format, level=self.log_level)
-        logger.opt(colors=True)
-        if self.log_file:
-            if os.path.isfile(self.log_file) and self.overwrite_log_file:
-                os.remove(self.log_file)
-            logger.add(
-                self.log_file, format=self.log_format, level=self.log_level)
-
-    def info(self, log=True, include_experiments=False, tablefmt="presto",
+    def info(self, include_experiments=False, tablefmt="presto",
              check_consistency=True):
         """
         Either prints the problem definition to the console (print_it=True) or
@@ -224,9 +187,6 @@ class InferenceProblem:
 
         Parameters
         ----------
-        log : bool, optional
-            If True, the generated string is logged and not returned. If set
-            to False, the generated string is not logged but returned.
         include_experiments : bool, optional
             If True, information on the experiments defined within the model
             will be included in the printout. Depending on the number of defined
@@ -247,7 +207,7 @@ class InferenceProblem:
 
         # contains the name of the inference problem
         title = f"Problem summary: {self.name}"
-        title_string = underlined_string(title, n_empty_start=2)
+        title_string = underlined_string(title, n_empty_start=1)
 
         # list the forward models that have been defined within the problem
         rows = [(name, simplified_list_string([*model.prms_def.keys()]),
@@ -290,22 +250,20 @@ class InferenceProblem:
 
         # concatenate the string and return it
         full_string = title_string + fwd_string + prior_str + prm_string
-        full_string += theta_string + exp_str + "\n"
+        full_string += theta_string + exp_str
 
-        # either print or return the string
-        if log:
-            lines = full_string.split('\n')
-            for line in lines:
-                logger.info(line)
-        else:
-            return full_string
+        # log and return the string
+        lines = full_string.split('\n')
+        for line in lines:
+            logger.info(line)
+        return full_string
 
     def __str__(self):
         """
         Allows to print the problem definition via print(problem) if problem is
         an instance of InferenceProblem. See self.info for more details.
         """
-        return self.info(log=False)
+        return self.info()
 
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
@@ -527,7 +485,6 @@ class InferenceProblem:
         """
 
         # log at beginning so that errors can be associated
-        logger.info("")
         logger.info(f"Adding experiment '{exp_name}'")
 
         # check all keyword arguments are given
@@ -786,7 +743,6 @@ class InferenceProblem:
         """
 
         # log at beginning so that errors can be associated
-        logger.info("")
         logger.info(f"Adding forward model '{name}'")
 
         # check if all given model parameters have already been added to the
@@ -889,7 +845,6 @@ class InferenceProblem:
         """
 
         # check if the noise model has been assigned a name; if not, assign one
-        logger.info("")
         if noise_model.name is None:
             noise_model.name = f"noise_model_{len(self.noise_models)}"
             logger.info(f"Adding noise model '{noise_model.name}' "

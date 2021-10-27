@@ -6,6 +6,7 @@
 from copy import copy
 from typing import Iterable
 import os
+import sys
 
 # third party imports
 import numpy as np
@@ -609,6 +610,7 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     lines.append(f"{v_symbol}{subtitle:^{width_used - 2}s}{v_symbol}")
     lines.append(inner_frame_line)
     lines.append(outer_frame_line)
+    lines.append('')
 
     # log or print the header
     if use_logger:
@@ -648,3 +650,40 @@ def raise_log(error_class, msg):
     """
     logger.error(msg)
     raise error_class(msg)
+
+def logging_setup(log_level_stdout='WARNING', log_level_file='INFO',
+                  log_format=None, log_file=None, overwrite_log_file=True):
+    """
+    Sets up the loguru logger for listening to the inference problem.
+
+    Parameters
+    ----------
+    log_level_stdout : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+        Defines the level of the logging output to stdout.
+    log_level_file : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+        Defines the level of the logging output to a log file.
+    log_format : None, str, optional
+        A format string defining the logging output. If this argument is
+        set to None, a default format will be used.
+    log_file : None, str, optional
+        Path to the log-file, if the logging should be printed to file. If
+        None is given, no logging-file will be created.
+    overwrite_log_file : bool, optional
+        When True, a specified log-file will be overwritten. Otherwise,
+        the generated logging will appended to a given log-file.
+    """
+    if not log_format:
+        log_format =\
+            ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
+             '<level>{level: <8}</level> | '
+             '<level>{message:100s}</level> | '
+             '<cyan>{name}</cyan>:'
+             '<cyan>{function}</cyan>:'
+             '<cyan>{line}</cyan>')
+    logger.remove()  # just in case there still exists another logger
+    logger.add(sys.stdout, format=log_format, level=log_level_stdout)
+    if log_file:
+        if os.path.isfile(log_file) and overwrite_log_file:
+            os.remove(log_file)
+        logger.add(
+            log_file, format=log_format, level=log_level_file)

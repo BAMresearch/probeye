@@ -51,19 +51,19 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         sys.stdout = io.StringIO()
         # try out different options
-        p.info(log=True, include_experiments=False, tablefmt="presto",
+        p.info(include_experiments=False, tablefmt="presto",
                check_consistency=False)
-        _ = p.info(log=False, include_experiments=False, tablefmt="presto",
+        _ = p.info(include_experiments=False, tablefmt="presto",
                    check_consistency=False)
-        p.info(log=True, include_experiments=True, tablefmt="presto",
+        p.info(include_experiments=True, tablefmt="presto",
                check_consistency=False)
-        p.info(log=True, include_experiments=True, tablefmt="plain",
+        p.info(include_experiments=True, tablefmt="plain",
                check_consistency=False)
         sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
             # the problem is not consistent yet (e.g. no forward model defined
             # yet), so the consistency_check will raise an error
-            p.info(log=True, include_experiments=True, tablefmt="presto",
+            p.info(include_experiments=True, tablefmt="presto",
                    check_consistency=True)
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase('b', Sensor('x'), Sensor('y'))
@@ -73,7 +73,7 @@ class TestProblem(unittest.TestCase):
                          fwd_model_name='TestModel')
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
-        p.info(log=True, include_experiments=True, tablefmt="presto",
+        p.info(include_experiments=True, tablefmt="presto",
                check_consistency=True)
         sys.stdout = sys.__stdout__  # reset printout to console
 
