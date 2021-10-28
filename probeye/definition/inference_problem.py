@@ -23,14 +23,14 @@ class InferenceProblem:
     Capabilities for solving the set up problem are intentionally not included.
     """
 
-    def __init__(self, name, setup_logger=True, log_file=None):
+    def __init__(self, name, use_default_logger=True, log_file=None):
         """
         Parameters
         ----------
         name : str
             This is the name of the problem and has only descriptive value, for
             example when working with several inference problems.
-        setup_logger : bool, optional
+        use_default_logger : bool, optional
             When True, the logger will be set up with some useful default
             values. Otherwise, no logger configurations are applied.
         log_file : None, str, optional
@@ -78,7 +78,7 @@ class InferenceProblem:
         self._noise_models = list()
 
         # setup the logger with the given specifications
-        if setup_logger:
+        if use_default_logger:
             logging_setup(log_file=log_file)
 
         # log probeye header and first message
@@ -947,7 +947,7 @@ class InferenceProblem:
             in the specified fashion.
         """
 
-        logger.info(f"Transforming experimental data using f={f}")
+        logger.info(f"Transforming experimental data using f = '{f.__name__}'")
 
         # the original problem shall not be touched, so we create a copy here
         # to which the transformation will be applied

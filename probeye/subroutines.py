@@ -651,7 +651,7 @@ def raise_log(error_class, msg):
     logger.error(msg)
     raise error_class(msg)
 
-def logging_setup(log_level_stdout='WARNING', log_level_file='INFO',
+def logging_setup(log_level_stdout='INFO', log_level_file='INFO',
                   log_format=None, log_file=None, overwrite_log_file=True):
     """
     Sets up the loguru logger for listening to the inference problem.
@@ -687,3 +687,36 @@ def logging_setup(log_level_stdout='WARNING', log_level_file='INFO',
             os.remove(log_file)
         logger.add(
             log_file, format=log_format, level=log_level_file)
+
+def stream_to_logger(log_level):
+    """
+    Returns a stream-object that can be used to redirect a function's print
+    output to the logger. Taken from the section 'Capturing standard stdout ...'
+    of https://loguru.readthedocs.io/en/stable/resources/recipes.html.
+
+    Parameters
+    ----------
+    log_level : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+        Defines the log level the streamed output will be associated with.
+
+    Returns
+    -------
+    obj[StreamToLogger]
+        This object should be used as follows:
+        import contextlib
+        with contextlib.redirect_stdout(stream_to_logger('INFO')):
+            <function that prints something>
+    """
+
+    class StreamToLogger:
+        def __init__(self, level):
+            self._level = level
+
+        def write(self, buffer):
+            for line in buffer.rstrip().splitlines():
+                logger.opt(depth=1).log(self._level, line.rstrip())
+
+        def flush(self):
+            pass
+
+    return StreamToLogger(log_level)
