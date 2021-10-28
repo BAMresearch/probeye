@@ -5,7 +5,6 @@ from loguru import logger
 # local imports
 from probeye.subroutines import titled_table
 from probeye.subroutines import simplified_list_string
-from probeye.subroutines import raise_log
 from probeye.definition.prior import PriorBase
 
 class Parameters(dict):
@@ -15,6 +14,7 @@ class Parameters(dict):
     associated values are ParameterProperties-objects, see below.
     """
 
+    @logger.catch(reraise=True)
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
         """
@@ -69,24 +69,20 @@ class Parameters(dict):
             # associated with this 'latent'-parameter; first, however, check
             # whether the given prior has a valid structure
             if type(prior) not in [list, tuple]:
-                raise_log(
-                    TypeError,
+                raise TypeError(
                     f"The given prior is of type {type(prior)} but must be "
                     f"either a list or a tuple!")
             if len(prior) != 2:
-                raise_log(
-                    RuntimeError,
+                raise RuntimeError(
                     f"The given prior must be a list/tuple with two elements. "
                     f"However, the given prior has {len(prior)} element(s).")
             if type(prior[0]) is not str:
-                raise_log(
-                    TypeError,
+                raise TypeError(
                     f"The first element of the prior must be of type string. "
                     f"However, the given first element is of type "
                     f"{type(prior[0])}.")
             if type(prior[1]) is not dict:
-                raise_log(
-                    TypeError,
+                raise TypeError(
                     f"The second element of the prior must be of type dict. "
                     f"However, the given second element is of type "
                     f"{type(prior[1])}.")
@@ -113,8 +109,7 @@ class Parameters(dict):
                     # defined parameter with the name stated in value
                     self.confirm_that_parameter_exists(value)
                 else:
-                    raise_log(
-                        TypeError,
+                    raise TypeError(
                         f"The prior-parameter {new_name} is not assigned a "
                         f"float, int or str, but something of type "
                         f"{type(value)}.")
@@ -141,21 +136,21 @@ class Parameters(dict):
                                               'info': info,
                                               'tex': tex})
 
+    @logger.catch(reraise=True)
     def __setitem__(self, key, value):
         """Performs some checks before adding a parameter to the dictionary."""
         if type(key) != str:
-            raise_log(
-                ValueError,
+            raise ValueError(
                 f"The key must be a parameters name (string), but you provided "
                 f"something of type '{type(key)}'.")
         if type(value) != ParameterProperties:
-            raise_log(
-                ValueError,
+            raise ValueError(
                 f"The properties of your parameter must be given in form of an "
                 f"ParameterProperties-object. But you provided something of "
                 f"type '{type(value)}'.")
         super().__setitem__(key, value)
 
+    @logger.catch(reraise=True)
     def __delitem__(self, key):
         """
         Deletes an item from itself while taking care of additional actions. For
@@ -197,6 +192,7 @@ class Parameters(dict):
             for prm_name, idx in idx_dict.items():
                 self[prm_name] = self[prm_name].changed_copy(index=idx)
 
+    @logger.catch(reraise=True)
     def confirm_that_parameter_exists(self, prm_name):
         """
         Checks if a parameter, given by its name, exists among the currently
@@ -209,10 +205,10 @@ class Parameters(dict):
             A global parameter name.
         """
         if prm_name not in self:
-            raise_log(
-                RuntimeError,
+            raise RuntimeError(
                 f"A parameter with name '{prm_name}' has not been defined yet.")
 
+    @logger.catch(reraise=True)
     def confirm_that_parameter_does_not_exists(self, prm_name):
         """
         Checks if a parameter, given by its name, exists among the currently
@@ -225,8 +221,7 @@ class Parameters(dict):
             A global parameter name.
         """
         if prm_name in self:
-            raise_log(
-                RuntimeError,
+            raise RuntimeError(
                 f"A parameter with name '{prm_name}' has already been defined.")
 
     @property
@@ -294,6 +289,7 @@ class Parameters(dict):
         """Access the number of all 'prior'-parameters as an attribute."""
         return len(self.noise_prms)
 
+    @logger.catch(reraise=True)
     def parameter_overview(self, tablefmt="presto"):
         """
         Returns a string providing an overview of the defined parameters.
@@ -332,6 +328,7 @@ class Parameters(dict):
         prm_string = titled_table('Parameter overview', prm_table)
         return prm_string
 
+    @logger.catch(reraise=True)
     def parameter_explanations(self, tablefmt="presto"):
         """
         Returns a string providing short explanations on the defined parameters.
@@ -354,6 +351,7 @@ class Parameters(dict):
         prm_string = titled_table('Parameter explanations', prm_table)
         return prm_string
 
+    @logger.catch(reraise=True)
     def const_parameter_values(self, tablefmt="presto"):
         """
         Returns a string providing the values of the defined 'const'-parameters.
@@ -384,6 +382,8 @@ class ParameterProperties:
     dictionary class 'Parameters', see above. The use of this class as opposed
     to a standard dictionary allows convenient auto-completion while coding.
     """
+
+    @logger.catch(reraise=True)
     def __init__(self, prm_dict):
         """
         Parameters
@@ -412,6 +412,7 @@ class ParameterProperties:
         self.check_consistency()
 
     # noinspection PyShadowingBuiltins
+    @logger.catch(reraise=True)
     def changed_copy(self, index=None, type=None, prior=None, value=None,
                      info=None, tex=None):
         """
@@ -431,6 +432,7 @@ class ParameterProperties:
                     "info": info or self.info,
                     "tex": tex or self.tex})
 
+    @logger.catch(reraise=True)
     def check_consistency(self):
         """
         Checks the defined attributes in both isolated checks (each attribute
@@ -443,34 +445,29 @@ class ParameterProperties:
         # ------------------------------- #
 
         if not (type(self._index) == int or self._index is None):
-            raise_log(
-                TypeError,
+            raise TypeError(
                 f"Found invalid ParameterProperties._index attribute! It must "
                 f"be of type int or None, but found {type(self._index)}.")
 
         if (self._index is not None) and (self._index < 0):
-            raise_log(
-                RuntimeError,
+            raise RuntimeError(
                 f"Found negative value for ParameterProperties._index! This "
                 f"attribute must be a non-negative integer, but found a value "
                 f"of {self._index}.")
 
         if self._type not in ['model', 'prior', 'noise']:
-            raise_log(
-                RuntimeError,
+            raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can "
                 f"only assume the three values 'model', 'prior' or 'noise' but "
                 f"found '{self._type}'.")
 
         if not (type(self._prior) == PriorBase or self._prior is None):
-            raise_log(
-                TypeError,
+            raise TypeError(
                 f"Found invalid ParameterProperties._prior attribute! It must "
                 f"be of type PriorBase or None, but found {type(self._prior)}.")
 
         if not (type(self._value) in [float, int] or self._value is None):
-            raise_log(
-                TypeError,
+            raise TypeError(
                 f"Found invalid ParameterProperties._value attribute! It must "
                 f"be of type float/int or None, but found {type(self._value)}.")
 
@@ -481,14 +478,12 @@ class ParameterProperties:
         if self._index is not None:
             # in this case, we have a latent parameter
             if self._value is not None:
-                raise_log(
-                    RuntimeError,
+                raise RuntimeError(
                     f"ParameterProperties._index and ParameterProperties._value"
                     f" are both given (_index={self._index} and _value="
                     f"{self._value}), but one of them must be None!")
             if self._prior is None:
-                raise_log(
-                    RuntimeError,
+                raise RuntimeError(
                     f"ParameterProperties._index and ParameterProperties._prior"
                     f" are both given (_index={self._index} and prior="
                     f"{self._prior}), but one of them must be None!")
@@ -496,13 +491,11 @@ class ParameterProperties:
         else:
             # in this case, we have a constant parameter
             if self._value is None:
-                raise_log(
-                    RuntimeError,
+                raise RuntimeError(
                     f"ParameterProperties._index and ParameterProperties._value"
                     f" are both None, but one of them must be not None!")
             if self._prior is not None:
-                raise_log(
-                    RuntimeError,
+                raise RuntimeError(
                     f"ParameterProperties._index is None while Parameter"
                     f"Properties._prior is given ({self._prior}). This "
                     f"combination is not valid. Either the index must also be "
@@ -516,8 +509,7 @@ class ParameterProperties:
     @index.setter
     def index(self, value):
         """Raise a specific error when trying to directly set self.index."""
-        raise_log(
-            AttributeError,
+        raise AttributeError(
             "Changing a parameter's index directly is prohibited!")
 
     @property
@@ -528,8 +520,7 @@ class ParameterProperties:
     @type.setter
     def type(self, value):
         """Raise a specific error when trying to directly set self.type."""
-        raise_log(
-            AttributeError,
+        raise AttributeError(
             "Changing a parameter's type directly is prohibited!")
 
     @property
@@ -541,8 +532,7 @@ class ParameterProperties:
     @role.setter
     def role(self, value):
         """Raise a specific error when trying to directly set self.role."""
-        raise_log(
-            AttributeError,
+        raise AttributeError(
             "You cannot change a parameter's role directly! Use "
             "InferenceProblem.change_parameter_role instead.")
 
@@ -566,8 +556,7 @@ class ParameterProperties:
     @prior.setter
     def prior(self, value):
         """Raise a specific error when trying to directly set self.prior."""
-        raise_log(
-            AttributeError,
+        raise AttributeError(
             "Changing a parameter's prior directly is prohibited!")
 
     @property
@@ -578,6 +567,5 @@ class ParameterProperties:
     @value.setter
     def value(self, value):
         """Raise a specific error when trying to directly set self.value."""
-        raise_log(
-            AttributeError,
+        raise AttributeError(
             "Changing a parameter's value directly is prohibited!")

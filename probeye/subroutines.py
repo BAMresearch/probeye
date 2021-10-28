@@ -620,37 +620,6 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     else:
         print('\n' + '\n'.join(lines))
 
-def assert_log(statement, msg):
-    """
-    Performs assert-check with logging output. Instead of writing
-    'assert statement, msg' write 'assert_log(statement, msg)'.
-
-    Parameters
-    ----------
-    statement : bool
-        The statement to be checked.
-    msg : str
-        The error message, if the check fails.
-    """
-    if not statement:
-        logger.error(msg)
-        raise AssertionError(msg)
-
-def raise_log(error_class, msg):
-    """
-    Raises an error after generating a corresponding logging output. Instead of
-    writing 'raise error_class(msg)' write 'raise_log(error_class, msg)'.
-
-    Parameters
-    ----------
-    error_class : type
-        The error class, e.g., TypeError, RuntimeError, etc.
-    msg : str
-        The error message, if the check fails.
-    """
-    logger.error(msg)
-    raise error_class(msg)
-
 def logging_setup(log_level_stdout='INFO', log_level_file='INFO',
                   log_format=None, log_file=None, overwrite_log_file=True):
     """

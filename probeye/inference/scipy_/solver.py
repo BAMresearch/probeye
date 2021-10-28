@@ -15,6 +15,7 @@ from probeye.inference.scipy_.noise_models import translate_noise_model
 class ScipySolver:
     """Solver routines based on scipy and numpy for an InferenceProblem."""
 
+    @logger.catch(reraise=True)
     def __init__(self, problem, seed=1, verbose=True):
         """
         Parameters
@@ -78,6 +79,7 @@ class ScipySolver:
             lp += prior(prms, 'logpdf')
         return lp
 
+    @logger.catch(reraise=True)
     def sample_from_prior(self, prm_name, size):
         """
         Generates random samples from a parameter's prior distribution and
@@ -141,6 +143,7 @@ class ScipySolver:
             ll += noise_model.loglike_contribution(model_response, prms_noise)
         return ll
 
+    @logger.catch(reraise=True)
     def get_start_values(self, x0_dict, x0_prior, x0_default):
         """
         Derives the start values for the maximum likelihood optimization run.
@@ -188,6 +191,7 @@ class ScipySolver:
 
         return x0, x0_dict
 
+    @logger.catch(reraise=True)
     def summarize_ml_results(self, minimize_results, true_values, x0_dict):
         """
         Prints a summary of the results of the maximum likelihood estimation.
@@ -223,6 +227,7 @@ class ScipySolver:
                 logger.info(line)
         logger.info('')  # empty line for visual buffer
 
+    @logger.catch(reraise=True)
     def run_max_likelihood(self, x0_dict=None, x0_prior='mean', x0_default=1.0,
                            true_values=None, method='Nelder-Mead',
                            solver_options=None):

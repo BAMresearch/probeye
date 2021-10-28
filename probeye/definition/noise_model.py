@@ -1,12 +1,14 @@
 # third party imports
 import numpy as np
+from loguru import logger
 
 # local imports
 from probeye.subroutines import make_list, translate_prms_def
-from probeye.subroutines import raise_log
 
 
 class NoiseModelBase:
+
+    @logger.catch(reraise=True)
     def __init__(self, dist, prms_def, sensors, name=None, corr=None,
                  corr_model=None, noise_type='additive'):
         """
@@ -65,12 +67,12 @@ class NoiseModelBase:
         elif noise_type == "other":
             self.error_function = self.error_function_other
         else:
-            raise_log(
-                ValueError,
+            raise ValueError(
                 f"Encountered unknown noise_type: '{noise_type}'. The noise"
                 f"_type must be either 'additive', 'multiplicative' or 'other'."
             )
 
+    @logger.catch(reraise=True)
     def add_experiments(self, experiment_names_):
         """
         Adds experiment names to the noise model. When the noise model is
@@ -92,21 +94,18 @@ class NoiseModelBase:
             sensor_names_exp = [*exp_dict['sensor_values'].keys()]
             for sensor_name in self.sensor_names:
                 if sensor_name not in sensor_names_exp:
-                    raise_log(
-                        RuntimeError,
+                    raise RuntimeError(
                         f"Experiment '{exp_name}' does not contain a sensor "
                         f"'{sensor_name}' which is required for the evaluation "
                         f"of the noise model.")
         # check if the given experiments all refer to one forward model
         if len(forward_models) > 1:
-            raise_log(
-                RuntimeError,
+            raise RuntimeError(
                 f"The given experiments refer to more than one forward model!")
         # check if one of the given experiments have been added before
         for exp_name in experiment_names:
             if exp_name in self.experiment_names:
-                raise_log(
-                    RuntimeError,
+                raise RuntimeError(
                     f"The experiment '{exp_name}' has already been added to "
                     f"this noise model. Something might be wrong here.")
         self.experiment_names += experiment_names
@@ -226,6 +225,7 @@ class NormalNoiseModel(NoiseModelBase):
     A general Gaussian (normal) noise model with or without correlations.
     """
 
+    @logger.catch(reraise=True)
     def __init__(self, prms_def, sensors, name=None, corr=None, corr_model=None,
                  noise_type='additive'):
         """
@@ -239,8 +239,7 @@ class NormalNoiseModel(NoiseModelBase):
         # check that at the standard deviation is provided (this can be either
         # as a constant or a latent parameter, but it has to be given)
         if 'std' not in [*self.prms_def.values()]:
-            raise_log(
-                RuntimeError,
+            raise RuntimeError(
                 "The standard deviation 'std' was not provided in prms_def!")
 
         # the mean value(s) do not have to be stated explicitly; if they are not

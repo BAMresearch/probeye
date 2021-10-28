@@ -1,6 +1,7 @@
 # standard library
 import copy as cp
 import numpy as np
+from loguru import logger
 
 # local imports
 from probeye.subroutines import translate_prms_def
@@ -15,6 +16,8 @@ class ForwardModelBase:
     one, and then define the '__call__' method. The latter essentially describes
     the model function mapping the model input to the output.
     """
+
+    @logger.catch(reraise=True)
     def __init__(self, prms_def_, input_sensors, output_sensors):
         """
         Parameters

@@ -2,6 +2,7 @@
 import torch as th
 import pyro
 import pyro.distributions as dist
+from loguru import logger
 
 # local imports
 from probeye.definition.noise_model import NormalNoiseModel
@@ -12,6 +13,8 @@ class NormalNoise(NormalNoiseModel):
     A general Gaussian (normal) noise model with or without correlations. Note
     that currently, there are no correlation capabilities defined.
     """
+
+    @logger.catch(reraise=True)
     def __init__(self, target_sensor, prms_def, name=None, corr=None,
                  corr_model='exp', noise_type='additive'):
         """
@@ -75,6 +78,7 @@ class NormalNoise(NormalNoiseModel):
         pyro.sample(f'lkl_{self.name}', dist.Normal(mean, std),
                     obs=model_error_vector)
 
+@logger.catch(reraise=True)
 def translate_noise_model(noise_base):
     """
     Translates a given instance of NoiseBase (which is essentially just a

@@ -22,12 +22,15 @@ class EmceeSolver(ScipySolver):
     Weare’s Affine Invariant Markov chain Monte Carlo (MCMC) Ensemble sampler,
     see https://emcee.readthedocs.io/en/stable/.
     """
+
+    @logger.catch(reraise=True)
     def __init__(self, problem, seed=1, verbose=True):
         """See docstring of ScipySolver for information on the arguments."""
         logger.info("Initializing EmceeSolver")
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, verbose=verbose)
 
+    @logger.catch(reraise=True)
     def emcee_summary(self, posterior_samples):
         """
         Computes and prints a summary of the posterior samples containing
@@ -68,6 +71,7 @@ class EmceeSolver(ScipySolver):
 
         print(tabulate(tab, headers=col_names, floatfmt=".2f"))
 
+    @logger.catch(reraise=True)
     def run_mcmc(self, n_walkers=20, n_steps=1000, n_initial_steps=100,
                  **kwargs):
         """

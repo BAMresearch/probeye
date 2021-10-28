@@ -1,3 +1,6 @@
+# third party imports
+from loguru import logger
+
 # local imports
 from probeye.subroutines import process_spatial_coordinates
 
@@ -12,6 +15,7 @@ class Sensor:
     derived from this one.
     """
 
+    @logger.catch(reraise=True)
     def __init__(self, name, measurand='not defined', unit='not defined',
                  x=None, y=None, z=None, coords=None, order=('x', 'y', 'z')):
         """

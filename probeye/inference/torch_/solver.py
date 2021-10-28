@@ -15,7 +15,9 @@ from probeye.subroutines import pretty_time_delta, stream_to_logger
 
 
 class PyroSolver:
+    """Solver routines based on pyro/torch for an InferenceProblem."""
 
+    @logger.catch(reraise=True)
     def __init__(self, problem, seed=1, verbose=True):
         """
         Parameters
@@ -115,6 +117,7 @@ class PyroSolver:
             return func(*inp.values())
         return wrapper
 
+    @logger.catch(reraise=True)
     def _translate_forward_model(self, forward_model):
         """
         Translates a given forward model (based on non-tensor in/outputs) to a
@@ -321,6 +324,7 @@ class PyroSolver:
         theta = self.get_theta_samples()
         return self.loglike(theta)
 
+    @logger.catch(reraise=True)
     def run_mcmc(self, n_walkers=1, n_steps=300, n_initial_steps=30,
                    step_size=0.1):
         """

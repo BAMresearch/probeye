@@ -1,5 +1,6 @@
 # third party imports
 from scipy import stats
+from loguru import logger
 
 # local imports
 from probeye.definition.prior import PriorBase
@@ -7,6 +8,8 @@ from probeye.definition.prior import PriorBase
 
 class PriorNormal(PriorBase):
     """Prior class for a normal distribution."""
+
+    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -52,6 +55,7 @@ class PriorNormal(PriorBase):
         else:
             return fun(loc=loc, scale=scale)
 
+    @logger.catch(reraise=True)
     def generate_samples(self, prms, size, seed=None):
         """
         Randomly draws samples from this prior distribution. This method is used
@@ -79,6 +83,8 @@ class PriorNormal(PriorBase):
 
 class PriorLognormal(PriorBase):
     """Prior class for a log-normal distribution."""
+
+    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -128,6 +134,7 @@ class PriorLognormal(PriorBase):
         else:
             return fun(shape, loc=loc, scale=scale)
 
+    @logger.catch(reraise=True)
     def generate_samples(self, prms, size, seed=None, shape=1):
         """
         Randomly draws samples from this prior distribution. This method is used
@@ -159,6 +166,8 @@ class PriorLognormal(PriorBase):
 
 class PriorUniform(PriorBase):
     """Prior class for a uniform distribution."""
+
+    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -204,6 +213,7 @@ class PriorUniform(PriorBase):
         else:
             return fun(loc=low, scale=high - low)
 
+    @logger.catch(reraise=True)
     def generate_samples(self, prms, size, seed=None):
         """
         Randomly draws samples from this prior distribution. This method is used
@@ -231,6 +241,8 @@ class PriorUniform(PriorBase):
 
 class PriorWeibull(PriorBase):
     """Prior class for a three-parameter Weibull distribution."""
+
+    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -278,6 +290,7 @@ class PriorWeibull(PriorBase):
         else:
             return fun(shape, loc=loc, scale=scale)
 
+    @logger.catch(reraise=True)
     def generate_samples(self, prms, size, seed=None):
         """
         Randomly draws samples from this prior distribution. This method is used
@@ -303,6 +316,7 @@ class PriorWeibull(PriorBase):
         return stats.weibull_min.rvs(shape, loc=loc, scale=scale, size=size,
                                      random_state=seed)
 
+@logger.catch(reraise=True)
 def translate_prior(prior_template, prior_classes=None):
     """
     Translate a given instance of PriorBase (which is essentially just a
