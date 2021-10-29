@@ -1,8 +1,10 @@
 # third party imports
 from tabulate import tabulate
+from loguru import logger
 
 # local imports
-from probeye.subroutines import titled_table, simplified_list_string
+from probeye.subroutines import titled_table
+from probeye.subroutines import simplified_list_string
 from probeye.definition.prior import PriorBase
 
 class Parameters(dict):
@@ -113,6 +115,8 @@ class Parameters(dict):
             prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
             prm_prior = PriorBase(prm_name, prior_parameter_names,
                                   prior_name, prior_type)
+            logger.debug(f"Adding  latent  {prm_type}-parameter "
+                         f"{prm_name} with {prior_type} prior to problem")
 
         else:
             # in this case we are adding a 'const'-parameter, which means that
@@ -120,6 +124,8 @@ class Parameters(dict):
             prm_index = None
             prm_prior = None
             prm_value = const
+            logger.debug(f"Adding constant {prm_type}-parameter "
+                         f"{prm_name} = {prm_value} to problem")
 
         # add the parameter to the central parameter dictionary
         self[prm_name] = ParameterProperties({'index': prm_index,
@@ -368,6 +374,7 @@ class ParameterProperties:
     dictionary class 'Parameters', see above. The use of this class as opposed
     to a standard dictionary allows convenient auto-completion while coding.
     """
+
     def __init__(self, prm_dict):
         """
         Parameters

@@ -11,6 +11,7 @@ class SpatialExponentialCorrelationModel:
     contains the functionality to compute the covariance matrix over a static
     (i.e. constant for all experiments) grid of coordinates in 1D, 2D or 3D.
     """
+
     def __init__(self, x=None, y=None, z=None, coords=None,
                  order=('x', 'y', 'z')):
         """
