@@ -10,12 +10,12 @@ from loguru import logger
 # local imports
 from probeye.inference.scipy_.priors import translate_prior
 from probeye.inference.scipy_.noise_models import translate_noise_model
+from probeye.subroutines import print_dict_in_rows
 
 
 class ScipySolver:
     """Solver routines based on scipy and numpy for an InferenceProblem."""
 
-    @logger.catch(reraise=True)
     def __init__(self, problem, seed=1, verbose=True):
         """
         Parameters
@@ -29,7 +29,7 @@ class ScipySolver:
         """
 
         # log at beginning so that errors can be associated
-        logger.info("Initializing ScipySolver")
+        logger.debug("Initializing ScipySolver")
 
         # attributes from arguments
         self.verbose = verbose
@@ -46,13 +46,13 @@ class ScipySolver:
         self.problem.assign_experiments_to_noise_models()
 
         # translate the prior definitions to objects with computing capabilities
-        logger.info("Translate problem's priors")
+        logger.debug("Translate problem's priors")
         self.priors = copy.deepcopy(self.problem.priors)
         for prior_name, prior_template in self.problem.priors.items():
             self.priors[prior_name] = translate_prior(prior_template)
 
         # translate the general noise model objects into solver specific ones
-        logger.info("Translate problem's noise models")
+        logger.debug("Translate problem's noise models")
         self.noise_models = []
         for noise_model_base in self.problem.noise_models:
             self.noise_models.append(translate_noise_model(noise_model_base))
@@ -79,7 +79,6 @@ class ScipySolver:
             lp += prior(prms, 'logpdf')
         return lp
 
-    @logger.catch(reraise=True)
     def sample_from_prior(self, prm_name, size):
         """
         Generates random samples from a parameter's prior distribution and
@@ -143,7 +142,6 @@ class ScipySolver:
             ll += noise_model.loglike_contribution(model_response, prms_noise)
         return ll
 
-    @logger.catch(reraise=True)
     def get_start_values(self, x0_dict, x0_prior, x0_default):
         """
         Derives the start values for the maximum likelihood optimization run.
@@ -191,7 +189,6 @@ class ScipySolver:
 
         return x0, x0_dict
 
-    @logger.catch(reraise=True)
     def summarize_ml_results(self, minimize_results, true_values, x0_dict):
         """
         Prints a summary of the results of the maximum likelihood estimation.
@@ -227,7 +224,6 @@ class ScipySolver:
                 logger.info(line)
         logger.info('')  # empty line for visual buffer
 
-    @logger.catch(reraise=True)
     def run_max_likelihood(self, x0_dict=None, x0_prior='mean', x0_default=1.0,
                            true_values=None, method='Nelder-Mead',
                            solver_options=None):
@@ -270,7 +266,7 @@ class ScipySolver:
         """
 
         # log at beginning so that errors can be associated
-        logger.info("Preparing for maximum likelihood estimation")
+        logger.info("Solving problem via maximum likelihood estimation")
 
         # since scipy's minimize function is used, we need a function that
         # returns the negative log-likelihood function (minimizing the negative
@@ -280,11 +276,18 @@ class ScipySolver:
 
         # prepare the start value either from the given x0_dict or from the mean
         # values of the latent parameter's priors
-        logger.info("Deriving start values")
+        logger.debug("Deriving start values")
         x0, x0_dict = self.get_start_values(x0_dict, x0_prior, x0_default)
+        logger.info("Using start values:")
+        print_dict_in_rows(x0_dict, printer=logger.info, val_fmt='.2f')
 
         # this is the where the solver does its thing
-        logger.info("Starting optimizer (scipy.optimize.minimize)")
+        logger.info(f"Starting optimizer (using {method})")
+        if solver_options:
+            logger.info("Specified solver options:")
+            print_dict_in_rows(solver_options, printer=logger.info)
+        else:
+            logger.info("No solver options specified")
         minimize_results = minimize(
             fun, x0, method=method, options=solver_options)
 

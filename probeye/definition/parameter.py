@@ -14,7 +14,6 @@ class Parameters(dict):
     associated values are ParameterProperties-objects, see below.
     """
 
-    @logger.catch(reraise=True)
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
         """
@@ -116,8 +115,8 @@ class Parameters(dict):
             prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
             prm_prior = PriorBase(prm_name, prior_parameter_names,
                                   prior_name, prior_type)
-            logger.info(f"Adding  latent  {prm_type}-parameter "
-                        f"{prm_name} with {prior_type} prior to problem")
+            logger.debug(f"Adding  latent  {prm_type}-parameter "
+                         f"{prm_name} with {prior_type} prior to problem")
 
         else:
             # in this case we are adding a 'const'-parameter, which means that
@@ -125,8 +124,8 @@ class Parameters(dict):
             prm_index = None
             prm_prior = None
             prm_value = const
-            logger.info(f"Adding constant {prm_type}-parameter "
-                        f"{prm_name} = {prm_value} to problem")
+            logger.debug(f"Adding constant {prm_type}-parameter "
+                         f"{prm_name} = {prm_value} to problem")
 
         # add the parameter to the central parameter dictionary
         self[prm_name] = ParameterProperties({'index': prm_index,
@@ -136,7 +135,6 @@ class Parameters(dict):
                                               'info': info,
                                               'tex': tex})
 
-    @logger.catch(reraise=True)
     def __setitem__(self, key, value):
         """Performs some checks before adding a parameter to the dictionary."""
         if type(key) != str:
@@ -150,7 +148,6 @@ class Parameters(dict):
                 f"type '{type(value)}'.")
         super().__setitem__(key, value)
 
-    @logger.catch(reraise=True)
     def __delitem__(self, key):
         """
         Deletes an item from itself while taking care of additional actions. For
@@ -192,7 +189,6 @@ class Parameters(dict):
             for prm_name, idx in idx_dict.items():
                 self[prm_name] = self[prm_name].changed_copy(index=idx)
 
-    @logger.catch(reraise=True)
     def confirm_that_parameter_exists(self, prm_name):
         """
         Checks if a parameter, given by its name, exists among the currently
@@ -208,7 +204,6 @@ class Parameters(dict):
             raise RuntimeError(
                 f"A parameter with name '{prm_name}' has not been defined yet.")
 
-    @logger.catch(reraise=True)
     def confirm_that_parameter_does_not_exists(self, prm_name):
         """
         Checks if a parameter, given by its name, exists among the currently
@@ -289,7 +284,6 @@ class Parameters(dict):
         """Access the number of all 'prior'-parameters as an attribute."""
         return len(self.noise_prms)
 
-    @logger.catch(reraise=True)
     def parameter_overview(self, tablefmt="presto"):
         """
         Returns a string providing an overview of the defined parameters.
@@ -328,7 +322,6 @@ class Parameters(dict):
         prm_string = titled_table('Parameter overview', prm_table)
         return prm_string
 
-    @logger.catch(reraise=True)
     def parameter_explanations(self, tablefmt="presto"):
         """
         Returns a string providing short explanations on the defined parameters.
@@ -351,7 +344,6 @@ class Parameters(dict):
         prm_string = titled_table('Parameter explanations', prm_table)
         return prm_string
 
-    @logger.catch(reraise=True)
     def const_parameter_values(self, tablefmt="presto"):
         """
         Returns a string providing the values of the defined 'const'-parameters.
@@ -383,7 +375,6 @@ class ParameterProperties:
     to a standard dictionary allows convenient auto-completion while coding.
     """
 
-    @logger.catch(reraise=True)
     def __init__(self, prm_dict):
         """
         Parameters
@@ -412,7 +403,6 @@ class ParameterProperties:
         self.check_consistency()
 
     # noinspection PyShadowingBuiltins
-    @logger.catch(reraise=True)
     def changed_copy(self, index=None, type=None, prior=None, value=None,
                      info=None, tex=None):
         """
@@ -432,7 +422,6 @@ class ParameterProperties:
                     "info": info or self.info,
                     "tex": tex or self.tex})
 
-    @logger.catch(reraise=True)
     def check_consistency(self):
         """
         Checks the defined attributes in both isolated checks (each attribute

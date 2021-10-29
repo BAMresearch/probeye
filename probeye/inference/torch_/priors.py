@@ -1,7 +1,6 @@
 # third party imports
 import pyro
 import pyro.distributions as dist
-from loguru import logger
 
 # local imports
 from probeye.definition.prior import PriorBase
@@ -10,7 +9,6 @@ from probeye.definition.prior import PriorBase
 class PriorNormal(PriorBase):
     """Prior class for a normal distribution."""
 
-    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -47,7 +45,6 @@ class PriorNormal(PriorBase):
 class PriorUniform(PriorBase):
     """Prior class for a uniform distribution."""
 
-    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -80,7 +77,6 @@ class PriorUniform(PriorBase):
         high = prms[f"high_{self.ref_prm}"]
         return pyro.sample(self.ref_prm, dist.Uniform(low, high))
 
-@logger.catch(reraise=True)
 def translate_prior_template(prior_template):
     """
     Translate a given instance of PriorBase (which is essentially just a

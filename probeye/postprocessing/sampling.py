@@ -2,10 +2,8 @@
 import arviz as az
 import numpy as np
 import matplotlib.pyplot as plt
-from loguru import logger
 
 
-@logger.catch(reraise=True)
 def create_pair_plot(inference_data, problem, plot_with="arviz",
                      plot_priors=True, focus_on_posterior=False, kind="kde",
                      figsize=(9, 9), textsize=10, true_values=None,
@@ -168,7 +166,6 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
             f"Invalid 'plot_with' argument: '{plot_with}'. Available options "
             f"are currently 'arviz', 'seaborn', 'matplotlib'")
 
-@logger.catch(reraise=True)
 def create_posterior_plot(inference_data, problem, plot_with="arviz",
                           kind="kde", figsize=(10, 3), textsize=10, **kwargs):
     """
@@ -212,7 +209,6 @@ def create_posterior_plot(inference_data, problem, plot_with="arviz",
             f"Invalid 'plot_with' argument: '{plot_with}'. Available options "
             f"are currently 'arviz', 'seaborn', 'matplotlib'")
 
-@logger.catch(reraise=True)
 def create_trace_plot(inference_data, problem, plot_with="arviz", kind="trace",
                       figsize=(10, 6), textsize=10, **kwargs):
     """

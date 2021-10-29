@@ -13,7 +13,7 @@ from tabulate import tabulate
 # local imports
 from probeye.subroutines import pretty_time_delta
 from probeye.inference.scipy_.solver import ScipySolver
-from probeye.subroutines import stream_to_logger
+from probeye.subroutines import stream_to_logger, print_dict_in_rows
 
 
 class EmceeSolver(ScipySolver):
@@ -23,14 +23,12 @@ class EmceeSolver(ScipySolver):
     see https://emcee.readthedocs.io/en/stable/.
     """
 
-    @logger.catch(reraise=True)
     def __init__(self, problem, seed=1, verbose=True):
         """See docstring of ScipySolver for information on the arguments."""
-        logger.info("Initializing EmceeSolver")
+        logger.debug("Initializing EmceeSolver")
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, verbose=verbose)
 
-    @logger.catch(reraise=True)
     def emcee_summary(self, posterior_samples):
         """
         Computes and prints a summary of the posterior samples containing
@@ -43,6 +41,14 @@ class EmceeSolver(ScipySolver):
         posterior_samples : numpy.ndarray
             The generated samples in an array with as many columns as there are
             latent parameters, and n rows, where n = n_chains * n_steps.
+
+        Returns
+        -------
+        dict
+            Keys are the different statistics 'mean', 'median', 'sd' (standard
+            deviation), 'q05' and 'q95' (0.05- and 0.95-quantile). The values
+            are dictionaries with the parameter names as keys and the respective
+            statistic-values as values.
         """
 
         # used for the names in the first column
@@ -57,7 +63,7 @@ class EmceeSolver(ScipySolver):
 
         # compute the sample standard deviations for each parameter
         cov_matrix = np.atleast_2d(np.cov(posterior_samples.T))
-        std = np.sqrt(np.diag(cov_matrix))
+        sd = np.sqrt(np.diag(cov_matrix))
 
         # assemble the summary array
         col_names = ["", "mean", "median", "sd", "5%", "95%"]
@@ -65,13 +71,18 @@ class EmceeSolver(ScipySolver):
         tab = np.hstack((row_names,
                          mean.reshape(-1, 1),
                          median.reshape(-1, 1),
-                         std.reshape(-1, 1),
+                         sd.reshape(-1, 1),
                          quantile_05.reshape(-1, 1),
                          quantile_95.reshape(-1, 1)))
 
+        # print the generated table, and return a summary dict for later use
         print(tabulate(tab, headers=col_names, floatfmt=".2f"))
+        return {'mean': {name: val for name, val in zip(mean, row_names)},
+                'median': {name: val for name, val in zip(median, row_names)},
+                'sd':  {name: val for name, val in zip(sd, row_names)},
+                'q05': {name: val for name, val in zip(quantile_05, row_names)},
+                'q95': {name: val for name, val in zip(quantile_95, row_names)}}
 
-    @logger.catch(reraise=True)
     def run_mcmc(self, n_walkers=20, n_steps=1000, n_initial_steps=100,
                  **kwargs):
         """
@@ -95,8 +106,18 @@ class EmceeSolver(ScipySolver):
             Contains the results of the sampling procedure.
         """
 
+        # log which solver is used
+        logger.info(
+            f"Solving problem using emcee sampler with {n_initial_steps} + "
+            f"{n_steps} samples and {n_walkers} walkers")
+        if kwargs:
+            logger.info("Additional options:")
+            print_dict_in_rows(kwargs, printer=logger.info)
+        else:
+            logger.info("No additional options specified")
+
         # draw initial samples from the parameter's priors
-        logger.info("Drawing initial samples")
+        logger.debug("Drawing initial samples")
         sampling_initial_positions = np.zeros(
             (n_walkers, self.problem.n_latent_prms))
         theta_names = self.problem.get_theta_names()
@@ -129,7 +150,7 @@ class EmceeSolver(ScipySolver):
         np.random.seed(self.seed)
         rstate = np.random.mtrand.RandomState(self.seed)
 
-        logger.info("Setting up EnsembleSampler")
+        logger.debug("Setting up EnsembleSampler")
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms,
@@ -142,7 +163,7 @@ class EmceeSolver(ScipySolver):
         #    Initial sampling, burn-in: used to avoid a poor starting point    #
         # .................................................................... #
 
-        logger.info("Starting sampling (initial + main)")
+        logger.debug("Starting sampling (initial + main)")
         start = time.time()
         state = sampler.run_mcmc(
             initial_state=sampling_initial_positions,

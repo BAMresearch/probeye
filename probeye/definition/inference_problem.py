@@ -21,7 +21,6 @@ class InferenceProblem:
     Capabilities for solving the set up problem are intentionally not included.
     """
 
-    @logger.catch(reraise=True)
     def __init__(self, name, use_default_logger=True, log_file=None):
         """
         Parameters
@@ -82,7 +81,8 @@ class InferenceProblem:
 
         # log probeye header and first message
         print_probeye_header()
-        logger.info(f"Initialized inference problem: '{self.name}'")
+        logger.debug('')  # for visual separation
+        logger.debug(f"Initialized inference problem: '{self.name}'")
 
     @property
     def n_prms(self):
@@ -178,7 +178,6 @@ class InferenceProblem:
         """Access self._experiments from outside via self.experiments."""
         return self._experiments
 
-    @logger.catch(reraise=True)
     def info(self, include_experiments=False, tablefmt="presto",
              check_consistency=True):
         """
@@ -233,7 +232,7 @@ class InferenceProblem:
         # include the information on the theta interpretation
         theta_string = "\nTheta interpretation"
         theta_string += self.theta_explanation(
-            print_it=False, check_consistency=check_consistency)
+            check_consistency=check_consistency)
 
         # print information on added experiments if requested
         if include_experiments:
@@ -253,8 +252,7 @@ class InferenceProblem:
         full_string += theta_string + exp_str
 
         # log and return the string
-        lines = full_string.split('\n')
-        for line in lines:
+        for line in full_string.split('\n'):
             logger.info(line)
         return full_string
 
@@ -265,7 +263,6 @@ class InferenceProblem:
         """
         return self.info()
 
-    @logger.catch(reraise=True)
     def add_parameter(self, prm_name, prm_type, const=None, prior=None,
                       info="No explanation provided", tex=None):
         """
@@ -278,7 +275,6 @@ class InferenceProblem:
         self._parameters.add_parameter(prm_name, prm_type, const=const,
                                        prior=prior, info=info, tex=tex)
 
-    @logger.catch(reraise=True)
     def remove_parameter(self, prm_name):
         """
         Removes a parameter ('const' or 'latent') from inference problem.
@@ -292,7 +288,6 @@ class InferenceProblem:
         # checks/additional actions are done by Parameters' __delitem__ method
         del self._parameters[prm_name]
 
-    @logger.catch(reraise=True)
     def change_parameter_role(self, prm_name, const=None, prior=None):
         """
         Performs the necessary tasks to change a parameter's role in the problem
@@ -348,7 +343,6 @@ class InferenceProblem:
         self.add_parameter(prm_name, prm.type, const=const, prior=prior,
                            info=prm.info, tex=prm.tex)
 
-    @logger.catch(reraise=True)
     def change_parameter_info(self, prm_name, new_info=None, new_tex=None):
         """
         Changes the info-string and/or the tex-string of a given parameter.
@@ -375,7 +369,6 @@ class InferenceProblem:
         self._parameters[prm_name] =\
             self._parameters[prm_name].changed_copy(info=new_info, tex=new_tex)
 
-    @logger.catch(reraise=True)
     def change_constant(self, prm_name, new_value):
         """
         Changes the value of a 'const'-parameter, i.e. a constant parameter of
@@ -400,7 +393,6 @@ class InferenceProblem:
         self._parameters[prm_name] =\
             self._parameters[prm_name].changed_copy(value=new_value)
 
-    @logger.catch(reraise=True)
     def check_problem_consistency(self):
         """
         Conducts various checks to make sure the problem definition does not
@@ -422,7 +414,7 @@ class InferenceProblem:
         # self._parameters and if they have the correct type
         for forward_model in self._forward_models.values():
             for model_prm in forward_model.prms_def.keys():
-                assert model_prm in self._parameters.keys(),\
+                assert model_prm in self._parameters,\
                     (f"The forward model parameter '{model_prm}' "
                      f"is not defined within the problem!")
                 assert self._parameters[model_prm].type == "model",\
@@ -433,7 +425,7 @@ class InferenceProblem:
         # and if they have the correct type
         for noise_model in self._noise_models:
             for noise_prm in noise_model.prms_def.keys():
-                assert noise_prm in self._parameters.keys(),\
+                assert noise_prm in self._parameters,\
                     (f"The noise model parameter '{noise_prm}' "
                      f"is not defined within the problem!")
                 assert self._parameters[noise_prm].type == "noise",\
@@ -444,7 +436,7 @@ class InferenceProblem:
         # their parameters; each one of them must appear in self._parameters
         for prior_obj in self.priors.values():
             for prior_prm in prior_obj.hyperparameters.keys():
-                assert prior_prm in self._parameters.keys(),\
+                assert prior_prm in self._parameters,\
                     (f"The prior parameter '{prior_prm}' "
                      f"is not defined within the problem!")
                 assert self._parameters[prior_prm].type == "prior",\
@@ -465,7 +457,6 @@ class InferenceProblem:
         for parameter in self._parameters.values():
             parameter.check_consistency()
 
-    @logger.catch(reraise=True)
     def add_experiment(self, exp_name, sensor_values, fwd_model_name):
         """
         Adds a single experiment to the inference problem. Here, an experiment
@@ -487,7 +478,7 @@ class InferenceProblem:
         """
 
         # log at beginning so that errors can be associated
-        logger.info(f"Adding experiment '{exp_name}'")
+        logger.debug(f"Adding experiment '{exp_name}'")
 
         # check all keyword arguments are given
         if type(sensor_values) is not dict:
@@ -587,7 +578,6 @@ class InferenceProblem:
                 prms[local_name] = theta[idx]
         return prms
 
-    @logger.catch(reraise=True)
     def get_experiment_names(self, forward_model_names=None, sensor_names=None,
                              experiment_names=None):
         """
@@ -646,7 +636,6 @@ class InferenceProblem:
 
         return relevant_experiment_names
 
-    @logger.catch(reraise=True)
     def get_theta_names(self, tex=False):
         """
         Returns the parameter names of the parameter vector theta in the
@@ -679,20 +668,16 @@ class InferenceProblem:
         theta_names = [name for _, name in sorted(zip(indices, theta_names))]
         return theta_names
 
-    @logger.catch(reraise=True)
-    def theta_explanation(self, print_it=True, check_consistency=True):
+    def theta_explanation(self, check_consistency=True):
         """
-        Prints out or returns a string on how the theta-vector, which is the
-        numeric parameter vector that is given to the self.loglike and
-        self.logprior methods, is interpreted with respect to the problem's
-        parameters. The printout will tell you which parameter is connected to
-        which index of theta.
+        Logs and returns a string on how the theta-vector, which is the numeric
+        parameter vector that is given to the self.loglike and self.logprior
+        methods, is interpreted with respect to the problem's parameters. The
+        printout will tell you which parameter is connected to which index of
+        theta.
 
         Parameters
         ----------
-        print_it : bool, optional
-            If True, the explanation string is printed and not returned. If set
-            to False, the info-string is not printed but returned.
         check_consistency : bool, optional
             When True, a consistency check is performed before printing the
             explanations on theta. When False, this check is skipped.
@@ -719,13 +704,8 @@ class InferenceProblem:
             s += f"|{i:5d} --> {prm_name:<9s}|\n"
         s += "---------------------\n"
 
-        # print or return s
-        if print_it:
-            print(s)
-        else:
-            return s
+        return s
 
-    @logger.catch(reraise=True)
     def add_forward_model(self, name, forward_model):
         """
         Adds a forward model to the inference problem. Note that multiple
@@ -742,7 +722,7 @@ class InferenceProblem:
         """
 
         # log at beginning so that errors can be associated
-        logger.info(f"Adding forward model '{name}'")
+        logger.debug(f"Adding forward model '{name}'")
 
         # check if all given model parameters have already been added to the
         # inference problem; note that the forward model can only be added to
@@ -830,7 +810,6 @@ class InferenceProblem:
 
         return model_response_dict
 
-    @logger.catch(reraise=True)
     def add_noise_model(self, noise_model):
         """
         Adds a noise model to the inference problem.
@@ -845,10 +824,10 @@ class InferenceProblem:
         # check if the noise model has been assigned a name; if not, assign one
         if noise_model.name is None:
             noise_model.name = f"noise_model_{len(self.noise_models)}"
-            logger.info(f"Adding noise model '{noise_model.name}' "
-                        f"(name assigned automatically)")
+            logger.debug(f"Adding noise model '{noise_model.name}' "
+                         f"(name assigned automatically)")
         else:
-            logger.info(f"Adding noise model '{noise_model.name}'")
+            logger.debug(f"Adding noise model '{noise_model.name}'")
 
         # check if all given noise model parameters have already been added to
         # the inference problem
@@ -878,7 +857,6 @@ class InferenceProblem:
         # finally, add the noise_model to the internal dict
         self._noise_models.append(noise_model)
 
-    @logger.catch(reraise=True)
     def assign_experiments_to_noise_models(self):
         """
         Assigns each noise model the corresponding experiment names, based on
@@ -887,7 +865,7 @@ class InferenceProblem:
         Alternatively, you can assign the experiments 'by hand', by using the
         NoiseModelBase's 'add_experiments' method.
         """
-        logger.info("Assigning experiments to noise models")
+        logger.debug("Assigning experiments to noise models")
         n_experiments_defined = len(self._experiments)
         n_experiments_noise = 0
         for noise_model in self._noise_models:
@@ -920,7 +898,6 @@ class InferenceProblem:
                     f"The globally defined experiment '{exp_name}' does not "
                     f"appear in any of the noise models!")
 
-    @logger.catch(reraise=True)
     def transform_experimental_data(self, f, args=(), **kwargs):
         """
         Creates a full copy of the problem the experimental data of which is
@@ -945,7 +922,7 @@ class InferenceProblem:
             in the specified fashion.
         """
 
-        logger.info(f"Transforming experimental data using f = '{f.__name__}'")
+        logger.debug(f"Transforming experimental data using f = '{f.__name__}'")
 
         # the original problem shall not be touched, so we create a copy here
         # to which the transformation will be applied

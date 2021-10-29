@@ -1,6 +1,5 @@
 # third party imports
 import numpy as np
-from loguru import logger
 
 # local imports
 from probeye.subroutines import translate_prms_def
@@ -13,7 +12,6 @@ class PriorBase:
     the priors parameters within the prior object.
     """
 
-    @logger.catch(reraise=True)
     def __init__(self, ref_prm, prms_def, name, prior_type):
         """
         Parameters
@@ -49,7 +47,6 @@ class PriorBase:
         self.prms_def, _ = translate_prms_def(
             [ref_prm] + [*self.hyperparameters.values()])
 
-    @logger.catch(reraise=True)
     def __str__(self):
         """
         Allows printing an object of this class.
@@ -62,7 +59,6 @@ class PriorBase:
         s = f"{self.prior_type} for '{self.ref_prm}', prms={self.prms_def}"
         return s
 
-    @logger.catch(reraise=True)
     def plot(self, ax, prms,  x=None, n_points=200, n_sigma=2,
              color='darkorange'):
         """

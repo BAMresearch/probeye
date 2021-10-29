@@ -12,12 +12,12 @@ from probeye.inference.torch_.priors import translate_prior_template
 from probeye.inference.torch_.noise_models import translate_noise_model
 from probeye.subroutines import len_or_one
 from probeye.subroutines import pretty_time_delta, stream_to_logger
+from probeye.subroutines import print_dict_in_rows
 
 
 class PyroSolver:
     """Solver routines based on pyro/torch for an InferenceProblem."""
 
-    @logger.catch(reraise=True)
     def __init__(self, problem, seed=1, verbose=True):
         """
         Parameters
@@ -47,7 +47,7 @@ class PyroSolver:
         # the dictionary dependency_dict will contain all latent parameter names
         # as keys; the value of each key will be a list with latent hyper-
         # parameters of the latent parameter's prior
-        logger.info("Checking parameter's dependencies")
+        logger.debug("Checking parameter's dependencies")
         dependency_dict = dict()
         for prm_name in self.problem.parameters.latent_prms:
             dependency_dict[prm_name] = []
@@ -83,7 +83,7 @@ class PyroSolver:
                         dependency_dict = dict(tuples)
 
         # translate the prior definitions to objects with computing capabilities
-        logger.info("Translating problem's priors")
+        logger.debug("Translating problem's priors")
         self.priors = {}
         for prm_name in dependency_dict.keys():
             prior_template = self.problem.parameters[prm_name].prior
@@ -91,13 +91,13 @@ class PyroSolver:
                 translate_prior_template(prior_template)
 
         # translate the general noise model objects into solver specific ones
-        logger.info("Translating problem's noise models")
+        logger.debug("Translating problem's noise models")
         self.noise_models = []
         for noise_model_base in self.problem.noise_models:
             self.noise_models.append(translate_noise_model(noise_model_base))
 
         # translate the problem's forward models into torch compatible ones
-        logger.info("Wrapping problem's forward models")
+        logger.debug("Wrapping problem's forward models")
         for fwd_model_name in self.problem.forward_models.keys():
             setattr(self.problem.forward_models[fwd_model_name], 'call',
                     self._translate_forward_model(
@@ -117,7 +117,6 @@ class PyroSolver:
             return func(*inp.values())
         return wrapper
 
-    @logger.catch(reraise=True)
     def _translate_forward_model(self, forward_model):
         """
         Translates a given forward model (based on non-tensor in/outputs) to a
@@ -324,9 +323,8 @@ class PyroSolver:
         theta = self.get_theta_samples()
         return self.loglike(theta)
 
-    @logger.catch(reraise=True)
     def run_mcmc(self, n_walkers=1, n_steps=300, n_initial_steps=30,
-                   step_size=0.1):
+                   step_size=0.1, **kwargs):
         """
         Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
@@ -341,6 +339,8 @@ class PyroSolver:
             The number of steps the sampler takes.
         n_initial_steps: int, optional
             The number of steps for the burn-in phase.
+        kwargs : dict
+            Additional keyword arguments passed to NUTS.
 
         Returns
         -------
@@ -348,11 +348,22 @@ class PyroSolver:
             Contains the results of the sampling procedure.
         """
 
+        # log which solver is used
+        logger.info(
+            f"Solving problem using pyro's NUTS sampler with {n_initial_steps} "
+            f"+ {n_steps} samples, ...")
+        logger.info(f"... {n_walkers} chains and a step size of {step_size:.3f}")
+        if kwargs:
+            logger.info("Additional NUTS options:")
+            print_dict_in_rows(kwargs, printer=logger.info)
+        else:
+            logger.info("No additional NUTS options specified")
+
         # prepare the sampling with the requested parameters
-        logger.info("Setting up NUTS sampler")
+        logger.debug("Setting up NUTS sampler")
         th.manual_seed(self.seed)
-        kernel = NUTS(self.posterior_model, step_size=step_size)
-        logger.info("Starting sampling (warmup + main)")
+        kernel = NUTS(self.posterior_model, step_size=step_size, **kwargs)
+        logger.debug("Starting sampling (warmup + main)")
         time.sleep(0.1)  # for logging; otherwise no time for new line
 
         # this is where the actual sampling happens

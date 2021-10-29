@@ -455,15 +455,10 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a', 'model', const=1.0)
         p.add_parameter('b', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
-        sys.stdout = io.StringIO()
-        # try out different options
-        p.theta_explanation(print_it=True, check_consistency=False)
-        _ = p.theta_explanation(print_it=False, check_consistency=False)
-        sys.stdout = sys.__stdout__  # reset printout to console
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
             # the model is not consistent
-            p.theta_explanation(print_it=True, check_consistency=True)
+            p.theta_explanation(check_consistency=True)
 
     def test_add_forward_model(self):
         # check correct use

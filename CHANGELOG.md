@@ -1,11 +1,12 @@
 # probeye changelog
 
-## 1.0.X (2021-MMM-DD)
+## 1.0.7 (2021-Oct-29)
 ### Added
 - added probeye header-file 'probeye.txt'
 - added loguru dependency
 ### Changed
 - changed various print-commands to logging-commands using loguru
+- exceptions are now logged
 
 ## 1.0.6 (2021-Oct-26)
 ### Added

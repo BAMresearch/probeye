@@ -610,7 +610,6 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     lines.append(f"{v_symbol}{subtitle:^{width_used - 2}s}{v_symbol}")
     lines.append(inner_frame_line)
     lines.append(outer_frame_line)
-    lines.append('')
 
     # log or print the header
     if use_logger:
@@ -621,7 +620,8 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
         print('\n' + '\n'.join(lines))
 
 def logging_setup(log_level_stdout='INFO', log_level_file='INFO',
-                  log_format=None, log_file=None, overwrite_log_file=True):
+                  log_format=None, log_file=None, overwrite_log_file=True,
+                  **kwargs):
     """
     Sets up the loguru logger for listening to the inference problem.
 
@@ -640,6 +640,8 @@ def logging_setup(log_level_stdout='INFO', log_level_file='INFO',
     overwrite_log_file : bool, optional
         When True, a specified log-file will be overwritten. Otherwise,
         the generated logging will appended to a given log-file.
+    kwargs : dict
+        Additional keyword arguments passed to logger.add (for file and stdout).
     """
     if not log_format:
         log_format =\
@@ -650,12 +652,12 @@ def logging_setup(log_level_stdout='INFO', log_level_file='INFO',
              '<cyan>{function}</cyan>:'
              '<cyan>{line}</cyan>')
     logger.remove()  # just in case there still exists another logger
-    logger.add(sys.stdout, format=log_format, level=log_level_stdout)
+    logger.add(sys.stdout, format=log_format, level=log_level_stdout, **kwargs)
     if log_file:
         if os.path.isfile(log_file) and overwrite_log_file:
             os.remove(log_file)
         logger.add(
-            log_file, format=log_format, level=log_level_file)
+            log_file, format=log_format, level=log_level_file, **kwargs)
 
 def stream_to_logger(log_level):
     """
@@ -689,3 +691,25 @@ def stream_to_logger(log_level):
             pass
 
     return StreamToLogger(log_level)
+
+def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
+    """
+    Prints a dictionary with key-value pairs in rows.
+
+    Parameters
+    ----------
+    d : dict
+        The dictionary to print.
+    printer : callable, optional
+        Function used for printing. For example 'print' or 'logger.info'.
+    sep : str, optional
+        The character printed between key and value.
+    val_fmt : str, optional
+        A format string used for printing the dictionary's values.
+    """
+    n = max([len(key) for key in d.keys()])
+    for key, val in d.items():
+        if val_fmt:
+            printer(f"{key:{n + 1}s} {sep} {val:{val_fmt}}")
+        else:
+            printer(f"{key:{n + 1}s} {sep} {val}")

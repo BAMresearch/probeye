@@ -1,6 +1,5 @@
 # third party imports
 import numpy as np
-from loguru import logger
 
 # local imports
 from probeye.definition.noise_model import NormalNoiseModel
@@ -10,7 +9,6 @@ from probeye.inference.scipy_.correlation_models import \
 
 class NormalNoise(NormalNoiseModel):
 
-    @logger.catch(reraise=True)
     def __init__(self, target_sensor, prms_def, name=None, corr=None,
                  corr_model='exp', noise_type='additive'):
         """
@@ -154,7 +152,6 @@ class NormalNoise(NormalNoiseModel):
             ll += -np.dot(error, inv_cov_matrix.dot(error)) / 2
         return ll
 
-@logger.catch(reraise=True)
 def translate_noise_model(noise_base):
     """
     Translates a given instance of NoiseBase (which is essentially just a

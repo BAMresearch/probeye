@@ -1,6 +1,5 @@
 # third party imports
 import numpy as np
-from loguru import logger
 
 # local imports
 from probeye.subroutines import make_list, translate_prms_def
@@ -8,7 +7,6 @@ from probeye.subroutines import make_list, translate_prms_def
 
 class NoiseModelBase:
 
-    @logger.catch(reraise=True)
     def __init__(self, dist, prms_def, sensors, name=None, corr=None,
                  corr_model=None, noise_type='additive'):
         """
@@ -72,7 +70,6 @@ class NoiseModelBase:
                 f"_type must be either 'additive', 'multiplicative' or 'other'."
             )
 
-    @logger.catch(reraise=True)
     def add_experiments(self, experiment_names_):
         """
         Adds experiment names to the noise model. When the noise model is
@@ -225,7 +222,6 @@ class NormalNoiseModel(NoiseModelBase):
     A general Gaussian (normal) noise model with or without correlations.
     """
 
-    @logger.catch(reraise=True)
     def __init__(self, prms_def, sensors, name=None, corr=None, corr_model=None,
                  noise_type='additive'):
         """
