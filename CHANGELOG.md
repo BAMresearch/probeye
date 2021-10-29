@@ -4,6 +4,13 @@
 ### Changed
 - extended the documentation in README.md
 
+## 1.0.7 (2021-Oct-29)
+### Added
+- added probeye header-file 'probeye.txt'
+- added loguru dependency
+### Changed
+- changed various print-commands to logging-commands using loguru
+
 ## 1.0.6 (2021-Oct-26)
 ### Added
 - Added ScipySolver-class which provides a maximum likelihood solver

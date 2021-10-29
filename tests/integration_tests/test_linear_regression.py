@@ -26,7 +26,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 class TestProblem(unittest.TestCase):
 
     def test_linear_regression(self, n_steps=200, n_initial_steps=100,
-                               n_walkers=20, plot=False, verbose=False,
+                               n_walkers=20, plot=False, show_progress=False,
                                run_scipy=True, run_emcee=True, run_torch=True):
         """
         Integration test for the problem described at the top of this file.
@@ -44,8 +44,8 @@ class TestProblem(unittest.TestCase):
             If True, the data and the posterior distributions are plotted. This
             is deactivated by default, so that the test does not stop until the
             generated plots are closed.
-        verbose : bool, optional
-            If True, additional information will be printed to the console.
+        show_progress : bool, optional
+            If True, progress-bars will be shown, if available.
         run_scipy : bool, optional
             If True, the problem is solved with scipy (maximum likelihood est).
             Otherwise, no maximum likelihood estimate is derived.
@@ -170,8 +170,7 @@ class TestProblem(unittest.TestCase):
                                               osensor.name: y_test})
 
         # give problem overview
-        if verbose:
-            problem.info()
+        problem.info()
 
         # plot the true and noisy data
         if plot:
@@ -193,7 +192,8 @@ class TestProblem(unittest.TestCase):
         true_values = {'a': a_true, 'b': b_true, 'sigma': sigma_noise}
         run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
                               n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot, verbose=verbose,
+                              n_walkers=n_walkers, plot=plot,
+                              show_progress=show_progress,
                               run_scipy=run_scipy, run_emcee=run_emcee,
                               run_torch=run_torch)
 

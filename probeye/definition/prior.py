@@ -11,6 +11,7 @@ class PriorBase:
     this class is implemented was to avoid storing any numeric values for any of
     the priors parameters within the prior object.
     """
+
     def __init__(self, ref_prm, prms_def, name, prior_type):
         """
         Parameters

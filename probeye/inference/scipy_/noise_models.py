@@ -8,6 +8,7 @@ from probeye.inference.scipy_.correlation_models import \
 
 
 class NormalNoise(NormalNoiseModel):
+
     def __init__(self, target_sensor, prms_def, name=None, corr=None,
                  corr_model='exp', noise_type='additive'):
         """

@@ -51,19 +51,19 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
         sys.stdout = io.StringIO()
         # try out different options
-        p.info(print_it=True, include_experiments=False, tablefmt="presto",
+        p.info(include_experiments=False, tablefmt="presto",
                check_consistency=False)
-        _ = p.info(print_it=False, include_experiments=False, tablefmt="presto",
+        _ = p.info(include_experiments=False, tablefmt="presto",
                    check_consistency=False)
-        p.info(print_it=True, include_experiments=True, tablefmt="presto",
+        p.info(include_experiments=True, tablefmt="presto",
                check_consistency=False)
-        p.info(print_it=True, include_experiments=True, tablefmt="plain",
+        p.info(include_experiments=True, tablefmt="plain",
                check_consistency=False)
         sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
             # the problem is not consistent yet (e.g. no forward model defined
             # yet), so the consistency_check will raise an error
-            p.info(print_it=True, include_experiments=True, tablefmt="presto",
+            p.info(include_experiments=True, tablefmt="presto",
                    check_consistency=True)
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase('b', Sensor('x'), Sensor('y'))
@@ -73,7 +73,7 @@ class TestProblem(unittest.TestCase):
                          fwd_model_name='TestModel')
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
-        p.info(print_it=True, include_experiments=True, tablefmt="presto",
+        p.info(include_experiments=True, tablefmt="presto",
                check_consistency=True)
         sys.stdout = sys.__stdout__  # reset printout to console
 
@@ -344,16 +344,9 @@ class TestProblem(unittest.TestCase):
         y_in_p = p.experiments['Experiment_3']['sensor_values']['y']
         self.assertEqual(type(x_in_p), np.ndarray)
         self.assertEqual(type(y_in_p), np.ndarray)
-        # check adding the same experiment again; note that this results in a
-        # warning that is printed; this printout is redirected below
-        capturedOutput = io.StringIO()
-        sys.stdout = capturedOutput
+        # check adding the same experiment again
         p.add_experiment('Experiment_1', sensor_values={'x': 1, 'y': 1},
                          fwd_model_name='TestModel')
-        sys.stdout = sys.__stdout__  # reset printout to console
-        warning = capturedOutput.getvalue()
-        self.assertEqual(warning, "WARNING - Experiment 'Experiment_1' is "
-                                 "already defined and will be overwritten!\n")
 
     def test_get_parameters(self):
         # check a simple use case
@@ -462,15 +455,10 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a', 'model', const=1.0)
         p.add_parameter('b', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
         p.add_parameter('s', 'noise', prior=('normal', {'loc': 0, 'scale': 1}))
-        sys.stdout = io.StringIO()
-        # try out different options
-        p.theta_explanation(print_it=True, check_consistency=False)
-        _ = p.theta_explanation(print_it=False, check_consistency=False)
-        sys.stdout = sys.__stdout__  # reset printout to console
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
             # the model is not consistent
-            p.theta_explanation(print_it=True, check_consistency=True)
+            p.theta_explanation(check_consistency=True)
 
     def test_add_forward_model(self):
         # check correct use

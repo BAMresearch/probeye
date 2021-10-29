@@ -7,6 +7,7 @@ from probeye.definition.prior import PriorBase
 
 class PriorNormal(PriorBase):
     """Prior class for a normal distribution."""
+
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -79,6 +80,7 @@ class PriorNormal(PriorBase):
 
 class PriorLognormal(PriorBase):
     """Prior class for a log-normal distribution."""
+
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -159,6 +161,7 @@ class PriorLognormal(PriorBase):
 
 class PriorUniform(PriorBase):
     """Prior class for a uniform distribution."""
+
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters
@@ -231,6 +234,7 @@ class PriorUniform(PriorBase):
 
 class PriorWeibull(PriorBase):
     """Prior class for a three-parameter Weibull distribution."""
+
     def __init__(self, ref_prm, prms_def, name):
         """
         Parameters

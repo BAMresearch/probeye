@@ -12,6 +12,7 @@ class NormalNoise(NormalNoiseModel):
     A general Gaussian (normal) noise model with or without correlations. Note
     that currently, there are no correlation capabilities defined.
     """
+
     def __init__(self, target_sensor, prms_def, name=None, corr=None,
                  corr_model='exp', noise_type='additive'):
         """

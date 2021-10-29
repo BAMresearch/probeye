@@ -51,7 +51,7 @@ class TestProblem(unittest.TestCase):
 
     def test_underlined_string(self):
         # check common use cases
-        self.assertEqual(underlined_string("Test"), "\nTest\n════\n")
+        self.assertEqual(underlined_string("Test"), "\nTest\n====\n")
         self.assertEqual(underlined_string(
             "ABC", n_empty_start=0, n_empty_end=2, symbol="-"), "ABC\n---\n\n")
 
