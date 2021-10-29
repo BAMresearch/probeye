@@ -50,10 +50,10 @@ class TestProblem(unittest.TestCase):
 
         # run the emcee solver with deactivated output
         logging.root.disabled = True
-        emcee_solver = EmceeSolver(problem, verbose=False, seed=6174)
+        emcee_solver = EmceeSolver(problem, show_progress=False, seed=6174)
         _ = emcee_solver.run_mcmc(n_walkers=20, n_steps=200)
         # summary = run_emcee_postprocessing(problem, emcee_sampler,
-        #                                    verbose=True)
+        #                                    show_progress=True)
         # sample_means = summary['mean']
         # for mean, mean_true\
         #         in zip(sample_means, [a_true, b_true, sigma_true]):

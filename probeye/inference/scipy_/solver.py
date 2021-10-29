@@ -16,7 +16,7 @@ from probeye.subroutines import print_dict_in_rows
 class ScipySolver:
     """Solver routines based on scipy and numpy for an InferenceProblem."""
 
-    def __init__(self, problem, seed=1, verbose=True):
+    def __init__(self, problem, seed=1, show_progress=True):
         """
         Parameters
         ----------
@@ -24,15 +24,17 @@ class ScipySolver:
             Describes the inference problem including e.g. parameters and data.
         seed : int, optional
             Random state used for random number generation.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
+        show_progress : bool, optional
+            When True, the progress of a solver routine will be shown (for
+            example as a progress-bar) if such a feature is available.
+            Otherwise, the progress will not shown.
         """
 
         # log at beginning so that errors can be associated
         logger.debug("Initializing ScipySolver")
 
         # attributes from arguments
-        self.verbose = verbose
+        self.show_progress = show_progress
         self.seed = seed
 
         # the following attribute will be set after the solver was run
@@ -297,7 +299,6 @@ class ScipySolver:
         self.raw_results = minimize_results
 
         # some convenient printout with respect to the solver's results
-        if self.verbose:
-            self.summarize_ml_results(minimize_results, true_values, x0_dict)
+        self.summarize_ml_results(minimize_results, true_values, x0_dict)
 
         return minimize_results

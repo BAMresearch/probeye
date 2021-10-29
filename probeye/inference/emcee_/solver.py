@@ -23,11 +23,11 @@ class EmceeSolver(ScipySolver):
     see https://emcee.readthedocs.io/en/stable/.
     """
 
-    def __init__(self, problem, seed=1, verbose=True):
+    def __init__(self, problem, seed=1, show_progress=True):
         """See docstring of ScipySolver for information on the arguments."""
         logger.debug("Initializing EmceeSolver")
         # initialize the scipy-based solver (ScipySolver)
-        super().__init__(problem, seed=seed, verbose=verbose)
+        super().__init__(problem, seed=seed, show_progress=show_progress)
 
     def emcee_summary(self, posterior_samples):
         """
@@ -168,14 +168,14 @@ class EmceeSolver(ScipySolver):
         state = sampler.run_mcmc(
             initial_state=sampling_initial_positions,
             nsteps=n_initial_steps,
-            progress=self.verbose)
+            progress=self.show_progress)
         sampler.reset()
 
         # .................................................................... #
         #                      Sampling of the posterior                       #
         # .................................................................... #
         sampler.run_mcmc(
-            initial_state=state, nsteps=n_steps, progress=self.verbose)
+            initial_state=state, nsteps=n_steps, progress=self.show_progress)
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
         logger.info(

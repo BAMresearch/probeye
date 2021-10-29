@@ -11,7 +11,7 @@ from probeye.postprocessing.sampling import create_trace_plot
 
 def run_inference_engines(problem, true_values=None, n_steps=1000,
                           n_initial_steps=100, n_walkers=20, plot=True,
-                          verbose=True, run_scipy=True, run_emcee=True,
+                          show_progress=True, run_scipy=True, run_emcee=True,
                           run_torch=True):
     """
     Runs a requested selection of inference engines on a given problem. This
@@ -34,8 +34,8 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
         Number of walkers used by the estimator.
     plot : bool, optional
         If True, the data and the post-processing plots are plotted.
-    verbose : bool, optional
-        If True, additional information will be printed to the console.
+    show_progress : bool, optional
+        If True, progress-bars will be shown, if available.
     run_scipy : bool, optional
         If True, the problem is solved with scipy (maximum likelihood estimate).
         Otherwise, no maximum likelihood estimate is derived.
@@ -57,7 +57,7 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
         if inference_engine == 'scipy':
             is_sampling_solver = False
             if requested_to_run:
-                scipy_solver = ScipySolver(problem, verbose=verbose)
+                scipy_solver = ScipySolver(problem, show_progress=show_progress)
                 inference_data = scipy_solver.run_max_likelihood(
                     true_values=true_values)
             else:
@@ -68,7 +68,7 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
         elif inference_engine == 'emcee':
             is_sampling_solver = True
             if requested_to_run:
-                emcee_solver = EmceeSolver(problem, verbose=verbose)
+                emcee_solver = EmceeSolver(problem, show_progress=show_progress)
                 inference_data = emcee_solver.run_mcmc(
                     n_walkers=n_walkers, n_steps=n_steps,
                     n_initial_steps=n_initial_steps)
@@ -81,7 +81,7 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
             is_sampling_solver = True
             if requested_to_run:
                 n_walkers_used = 1  # getting errors when trying to use more
-                pyro_solver = PyroSolver(problem, verbose=verbose)
+                pyro_solver = PyroSolver(problem, show_progress=show_progress)
                 inference_data = pyro_solver.run_mcmc(
                     n_walkers=n_walkers_used, n_steps=n_steps,
                     n_initial_steps=n_initial_steps)

@@ -18,7 +18,7 @@ from probeye.subroutines import print_dict_in_rows
 class PyroSolver:
     """Solver routines based on pyro/torch for an InferenceProblem."""
 
-    def __init__(self, problem, seed=1, verbose=True):
+    def __init__(self, problem, seed=1, show_progress=True):
         """
         Parameters
         ----------
@@ -26,12 +26,14 @@ class PyroSolver:
             Describes the inference problem including e.g. parameters and data.
         seed : int, optional
             Random state used for random number generation.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
+        show_progress : bool, optional
+            When True, the progress of a solver routine will be shown (for
+            example as a progress-bar) if such a feature is available.
+            Otherwise, the progress will not shown.
         """
 
         # attributes from arguments
-        self.verbose = verbose
+        self.show_progress = show_progress
         self.seed = seed
 
         # the following attribute will be set after the solver was run
@@ -368,8 +370,11 @@ class PyroSolver:
 
         # this is where the actual sampling happens
         start = time.time()
-        mcmc = MCMC(kernel, num_samples=n_steps, warmup_steps=n_initial_steps,
-                    num_chains=n_walkers, disable_progbar=not self.verbose)
+        mcmc = MCMC(kernel,
+                    num_samples=n_steps,
+                    warmup_steps=n_initial_steps,
+                    num_chains=n_walkers,
+                    disable_progbar=not self.show_progress)
         mcmc.run()
         end = time.time()
 

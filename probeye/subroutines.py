@@ -619,7 +619,7 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     else:
         print('\n' + '\n'.join(lines))
 
-def logging_setup(log_level_stdout='INFO', log_level_file='INFO',
+def logging_setup(log_level_stdout='INFO', log_level_file='DEBUG',
                   log_format=None, log_file=None, overwrite_log_file=True,
                   **kwargs):
     """
