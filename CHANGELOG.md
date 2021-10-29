@@ -6,7 +6,6 @@
 - added loguru dependency
 ### Changed
 - changed various print-commands to logging-commands using loguru
-- exceptions are now logged
 
 ## 1.0.6 (2021-Oct-26)
 ### Added
