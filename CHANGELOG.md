@@ -4,6 +4,13 @@
 ### Changed
 - revised arviz-based post-processing routine in create_posterior_plot, create_trace_plot
 
+## 1.0.7 (2021-Oct-29)
+### Added
+- added probeye header-file 'probeye.txt'
+- added loguru dependency
+### Changed
+- changed various print-commands to logging-commands using loguru
+
 ## 1.0.6 (2021-Oct-26)
 ### Added
 - Added ScipySolver-class which provides a maximum likelihood solver

@@ -3,16 +3,22 @@ import numpy as np
 import torch as th
 from pyro.infer import NUTS, MCMC
 import arviz as az
+from loguru import logger
+import time
+import contextlib
 
 # local imports
 from probeye.inference.torch_.priors import translate_prior_template
 from probeye.inference.torch_.noise_models import translate_noise_model
 from probeye.subroutines import len_or_one
+from probeye.subroutines import pretty_time_delta, stream_to_logger
+from probeye.subroutines import print_dict_in_rows
 
 
 class PyroSolver:
+    """Solver routines based on pyro/torch for an InferenceProblem."""
 
-    def __init__(self, problem, seed=1, verbose=True):
+    def __init__(self, problem, seed=1, show_progress=True):
         """
         Parameters
         ----------
@@ -20,12 +26,14 @@ class PyroSolver:
             Describes the inference problem including e.g. parameters and data.
         seed : int, optional
             Random state used for random number generation.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
+        show_progress : bool, optional
+            When True, the progress of a solver routine will be shown (for
+            example as a progress-bar) if such a feature is available.
+            Otherwise, the progress will not shown.
         """
 
         # attributes from arguments
-        self.verbose = verbose
+        self.show_progress = show_progress
         self.seed = seed
 
         # the following attribute will be set after the solver was run
@@ -41,6 +49,7 @@ class PyroSolver:
         # the dictionary dependency_dict will contain all latent parameter names
         # as keys; the value of each key will be a list with latent hyper-
         # parameters of the latent parameter's prior
+        logger.debug("Checking parameter's dependencies")
         dependency_dict = dict()
         for prm_name in self.problem.parameters.latent_prms:
             dependency_dict[prm_name] = []
@@ -76,6 +85,7 @@ class PyroSolver:
                         dependency_dict = dict(tuples)
 
         # translate the prior definitions to objects with computing capabilities
+        logger.debug("Translating problem's priors")
         self.priors = {}
         for prm_name in dependency_dict.keys():
             prior_template = self.problem.parameters[prm_name].prior
@@ -83,11 +93,13 @@ class PyroSolver:
                 translate_prior_template(prior_template)
 
         # translate the general noise model objects into solver specific ones
+        logger.debug("Translating problem's noise models")
         self.noise_models = []
         for noise_model_base in self.problem.noise_models:
             self.noise_models.append(translate_noise_model(noise_model_base))
 
         # translate the problem's forward models into torch compatible ones
+        logger.debug("Wrapping problem's forward models")
         for fwd_model_name in self.problem.forward_models.keys():
             setattr(self.problem.forward_models[fwd_model_name], 'call',
                     self._translate_forward_model(
@@ -314,7 +326,7 @@ class PyroSolver:
         return self.loglike(theta)
 
     def run_mcmc(self, n_walkers=1, n_steps=300, n_initial_steps=30,
-                   step_size=0.1):
+                   step_size=0.1, **kwargs):
         """
         Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
@@ -329,6 +341,8 @@ class PyroSolver:
             The number of steps the sampler takes.
         n_initial_steps: int, optional
             The number of steps for the burn-in phase.
+        kwargs : dict
+            Additional keyword arguments passed to NUTS.
 
         Returns
         -------
@@ -336,13 +350,43 @@ class PyroSolver:
             Contains the results of the sampling procedure.
         """
 
-        # perform the sampling with the requested parameters
+        # log which solver is used
+        logger.info(
+            f"Solving problem using pyro's NUTS sampler with {n_initial_steps} "
+            f"+ {n_steps} samples, ...")
+        logger.info(f"... {n_walkers} chains and a step size of {step_size:.3f}")
+        if kwargs:
+            logger.info("Additional NUTS options:")
+            print_dict_in_rows(kwargs, printer=logger.info)
+        else:
+            logger.info("No additional NUTS options specified")
+
+        # prepare the sampling with the requested parameters
+        logger.debug("Setting up NUTS sampler")
         th.manual_seed(self.seed)
-        kernel = NUTS(
-            self.posterior_model, step_size=step_size, jit_compile=False)
-        mcmc = MCMC(kernel, num_samples=n_steps, warmup_steps=n_initial_steps,
-                    num_chains=n_walkers, disable_progbar=not self.verbose)
+        kernel = NUTS(self.posterior_model, step_size=step_size, **kwargs)
+        logger.debug("Starting sampling (warmup + main)")
+        time.sleep(0.1)  # for logging; otherwise no time for new line
+
+        # this is where the actual sampling happens
+        start = time.time()
+        mcmc = MCMC(kernel,
+                    num_samples=n_steps,
+                    warmup_steps=n_initial_steps,
+                    num_chains=n_walkers,
+                    disable_progbar=not self.show_progress)
         mcmc.run()
+        end = time.time()
+
+        # log out the results of the process
+        runtime_str = pretty_time_delta(end - start)
+        logger.info(f"Sampling of the posterior distribution completed: "
+                    f"{n_steps} steps and {n_walkers} chains.")
+        logger.info(f"Total run-time (including warmup): {runtime_str}.")
+        logger.info("")
+        logger.info("Summary of sampling results")
+        with contextlib.redirect_stdout(stream_to_logger('INFO')):
+            mcmc.summary()
         self.raw_results = mcmc
 
         # translate the results to a common data structure and return it

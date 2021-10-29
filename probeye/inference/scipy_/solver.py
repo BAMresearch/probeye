@@ -5,16 +5,18 @@ import copy as cp
 import copy
 import numpy as np
 from scipy.optimize import minimize
+from loguru import logger
 
 # local imports
 from probeye.inference.scipy_.priors import translate_prior
 from probeye.inference.scipy_.noise_models import translate_noise_model
+from probeye.subroutines import print_dict_in_rows
 
 
 class ScipySolver:
     """Solver routines based on scipy and numpy for an InferenceProblem."""
 
-    def __init__(self, problem, seed=1, verbose=True):
+    def __init__(self, problem, seed=1, show_progress=True):
         """
         Parameters
         ----------
@@ -22,12 +24,17 @@ class ScipySolver:
             Describes the inference problem including e.g. parameters and data.
         seed : int, optional
             Random state used for random number generation.
-        verbose : bool, optional
-            No logging output when False. More logging information when True.
+        show_progress : bool, optional
+            When True, the progress of a solver routine will be shown (for
+            example as a progress-bar) if such a feature is available.
+            Otherwise, the progress will not shown.
         """
 
+        # log at beginning so that errors can be associated
+        logger.debug("Initializing ScipySolver")
+
         # attributes from arguments
-        self.verbose = verbose
+        self.show_progress = show_progress
         self.seed = seed
 
         # the following attribute will be set after the solver was run
@@ -41,11 +48,13 @@ class ScipySolver:
         self.problem.assign_experiments_to_noise_models()
 
         # translate the prior definitions to objects with computing capabilities
+        logger.debug("Translate problem's priors")
         self.priors = copy.deepcopy(self.problem.priors)
         for prior_name, prior_template in self.problem.priors.items():
             self.priors[prior_name] = translate_prior(prior_template)
 
         # translate the general noise model objects into solver specific ones
+        logger.debug("Translate problem's noise models")
         self.noise_models = []
         for noise_model_base in self.problem.noise_models:
             self.noise_models.append(translate_noise_model(noise_model_base))
@@ -191,14 +200,15 @@ class ScipySolver:
 
         # the first part of the summary contains process information
         n_char_message = len(minimize_results.message)
-        msg = (f"\nMaximum likelihood estimation (scipy)\n"
-               f"{'═' * n_char_message}\n"
+        msg = (f"\nResults of maximum likelihood estimation\n"
+               f"{'=' * n_char_message}\n"
                f"{minimize_results.message}\n"
                f"{'-' * n_char_message}\n"
                f"Number of iterations:           {minimize_results.nit}\n"
                f"Number of function evaluations: {minimize_results.nfev}\n"
                f"{'-' * n_char_message}")
-        print(msg)
+        for line in msg.split('\n'):
+            logger.info(line)
 
         # the second part shows the actual results and compares them with the
         # true values (if given) and the start values
@@ -213,8 +223,8 @@ class ScipySolver:
                              f"start = {x0_dict[theta_name]})")
                 else:
                     line += f" (start = {x0_dict[theta_name]})"
-                print(line)
-        print('')  # empty line for visual buffer
+                logger.info(line)
+        logger.info('')  # empty line for visual buffer
 
     def run_max_likelihood(self, x0_dict=None, x0_prior='mean', x0_default=1.0,
                            true_values=None, method='Nelder-Mead',
@@ -257,6 +267,9 @@ class ScipySolver:
             likelihood function can be requested via 'minimize_results.x'.
         """
 
+        # log at beginning so that errors can be associated
+        logger.info("Solving problem via maximum likelihood estimation")
+
         # since scipy's minimize function is used, we need a function that
         # returns the negative log-likelihood function (minimizing the negative
         # log-likelihood is equivalent to maximizing the (log-)likelihood)
@@ -265,9 +278,18 @@ class ScipySolver:
 
         # prepare the start value either from the given x0_dict or from the mean
         # values of the latent parameter's priors
+        logger.debug("Deriving start values")
         x0, x0_dict = self.get_start_values(x0_dict, x0_prior, x0_default)
+        logger.info("Using start values:")
+        print_dict_in_rows(x0_dict, printer=logger.info, val_fmt='.2f')
 
         # this is the where the solver does its thing
+        logger.info(f"Starting optimizer (using {method})")
+        if solver_options:
+            logger.info("Specified solver options:")
+            print_dict_in_rows(solver_options, printer=logger.info)
+        else:
+            logger.info("No solver options specified")
         minimize_results = minimize(
             fun, x0, method=method, options=solver_options)
 
@@ -277,7 +299,6 @@ class ScipySolver:
         self.raw_results = minimize_results
 
         # some convenient printout with respect to the solver's results
-        if self.verbose:
-            self.summarize_ml_results(minimize_results, true_values, x0_dict)
+        self.summarize_ml_results(minimize_results, true_values, x0_dict)
 
         return minimize_results

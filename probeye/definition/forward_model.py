@@ -15,6 +15,7 @@ class ForwardModelBase:
     one, and then define the '__call__' method. The latter essentially describes
     the model function mapping the model input to the output.
     """
+
     def __init__(self, prms_def_, input_sensors, output_sensors):
         """
         Parameters

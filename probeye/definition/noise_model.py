@@ -6,6 +6,7 @@ from probeye.subroutines import make_list, translate_prms_def
 
 
 class NoiseModelBase:
+
     def __init__(self, dist, prms_def, sensors, name=None, corr=None,
                  corr_model=None, noise_type='additive'):
         """
@@ -138,26 +139,6 @@ class NoiseModelBase:
                  for name in self.sensor_names}
 
         return model_error_dict
-
-    def error_function(self, ym_dict, ye_dict):
-        """
-        Evaluates the model error for each of the noise model's sensors.
-
-        Parameters
-        ----------
-        ym_dict : dict
-            The computed values for the model's output sensor_values.
-        ye_dict : dict
-            The measured values for the model's output sensor_values.
-
-        Returns
-        -------
-        error_dict : dict
-            The computed model error for the model's output sensor_values.
-        """
-        raise NotImplementedError(
-            "Your model does not have a error_function-method yet. If you " +
-            "want to use it, you need to implement it first.")
 
     def error_function_additive(self, ym_dict, ye_dict):
         """

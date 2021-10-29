@@ -5,9 +5,18 @@
 # standard library imports
 from copy import copy
 from typing import Iterable
+import os
+import sys
 
 # third party imports
 import numpy as np
+import configparser
+from loguru import logger
+from functools import partial
+
+logger = logger.opt(colors=True)
+logger.opt = partial(logger.opt, colors=True)
+
 
 # ============================================================================ #
 #                                 Subroutines                                  #
@@ -66,7 +75,7 @@ def make_list(arg):
         new_arg = [copy(arg)]
     return new_arg
 
-def underlined_string(string, symbol="═", n_empty_start=1, n_empty_end=1):
+def underlined_string(string, symbol="=", n_empty_start=1, n_empty_end=1):
     """
     Adds a line made of 'symbol'-characters under a given string and returns it.
 
@@ -534,3 +543,173 @@ def translate_prms_def(prms_def_given):
         prms_def = list2dict(make_list(prms_def_copy))
     prms_dim = len(prms_def)
     return prms_def, prms_dim
+
+def print_probeye_header(width=100, header_file="../probeye.txt",
+                         setup_cfg="../setup.cfg", margin=5, h_symbol="=",
+                         v_symbol="#", use_logger=True):
+    """
+    Prints the probeye header which is printed, when an inference problem is
+    set up. Mostly just nice to have. The only useful information it contains
+    is the version number of the package.
+
+    Parameters
+    ----------
+    width : int, optional
+        The width (i.e., number of characters) the header should have.
+    header_file : str, optional
+        Relative path (with respect to this file) to the txt-file that contains
+        the probeye letters.
+    setup_cfg : str, optional
+        Relative path (with respect to this file) to the setup.cfg file
+        containing version number and description.
+    margin : int, optional
+        Minimum number of blank spaces at the header margins.
+    h_symbol : str, optional
+        The symbol used to 'draw' the horizontal frame line.
+    v_symbol : str, optional
+        The symbol used to 'draw' the vertical frame line.
+    use_logger : bool, optional
+        When True, the header will be logged, otherwise just printed.
+    """
+
+    # define the full paths of the given files
+    file_path = os.path.dirname(__file__)
+    header_file = os.path.join(file_path, header_file)
+    setup_cfg = os.path.join(file_path, setup_cfg)
+
+    # read in the big probeye letters
+    with open(header_file, 'r') as f:
+        content = f.readlines()
+    # this is the width of the read in 'probeye' in terms of number of chars;
+    # note that all lines (should) have the same length
+    width_probeye = len(content[0]) - 1
+
+    # get the version and the description from the setup.cfg file
+    cfg = configparser.ConfigParser()
+    cfg.read(setup_cfg)
+    version = cfg.get('metadata', 'version')
+    description = cfg.get('metadata', 'description')
+
+    subtitle = f"Version {version} - {description}"
+    width_subtitle = len(subtitle)
+
+    # choose a width so that the margin on one side is at least 'margin'
+    width_used = max((width, width_probeye + 2 * (margin + 1),
+                      width_subtitle + 2 * margin + 1))
+
+    # assemble the header
+    outer_frame_line = f"{v_symbol} {h_symbol * (width_used - 4)} {v_symbol}"
+    inner_frame_line = f"{v_symbol}{' ' * (width_used - 2)}{v_symbol}"
+    lines = [outer_frame_line, inner_frame_line]
+    for line in content:
+        clean_line = line.replace('\n', '')
+        lines.append(f"{v_symbol}{clean_line:^{width_used - 2}s}{v_symbol}")
+    lines.append(inner_frame_line)
+    lines.append(outer_frame_line)
+    lines.append(inner_frame_line)
+    lines.append(f"{v_symbol}{subtitle:^{width_used - 2}s}{v_symbol}")
+    lines.append(inner_frame_line)
+    lines.append(outer_frame_line)
+
+    # log or print the header
+    if use_logger:
+        print("")
+        for line in lines:
+            logger.info(line)
+    else:
+        print('\n' + '\n'.join(lines))
+
+def logging_setup(log_level_stdout='INFO', log_level_file='DEBUG',
+                  log_format=None, log_file=None, overwrite_log_file=True,
+                  **kwargs):
+    """
+    Sets up the loguru logger for listening to the inference problem.
+
+    Parameters
+    ----------
+    log_level_stdout : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+        Defines the level of the logging output to stdout.
+    log_level_file : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+        Defines the level of the logging output to a log file.
+    log_format : None, str, optional
+        A format string defining the logging output. If this argument is
+        set to None, a default format will be used.
+    log_file : None, str, optional
+        Path to the log-file, if the logging should be printed to file. If
+        None is given, no logging-file will be created.
+    overwrite_log_file : bool, optional
+        When True, a specified log-file will be overwritten. Otherwise,
+        the generated logging will appended to a given log-file.
+    kwargs : dict
+        Additional keyword arguments passed to logger.add (for file and stdout).
+    """
+    if not log_format:
+        log_format =\
+            ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
+             '<level>{level: <8}</level> | '
+             '<level>{message:100s}</level> | '
+             '<cyan>{name}</cyan>:'
+             '<cyan>{function}</cyan>:'
+             '<cyan>{line}</cyan>')
+    logger.remove()  # just in case there still exists another logger
+    logger.add(sys.stdout, format=log_format, level=log_level_stdout, **kwargs)
+    if log_file:
+        if os.path.isfile(log_file) and overwrite_log_file:
+            os.remove(log_file)
+        logger.add(
+            log_file, format=log_format, level=log_level_file, **kwargs)
+
+def stream_to_logger(log_level):
+    """
+    Returns a stream-object that can be used to redirect a function's print
+    output to the logger. Taken from the section 'Capturing standard stdout ...'
+    of https://loguru.readthedocs.io/en/stable/resources/recipes.html.
+
+    Parameters
+    ----------
+    log_level : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
+        Defines the log level the streamed output will be associated with.
+
+    Returns
+    -------
+    obj[StreamToLogger]
+        This object should be used as follows:
+        import contextlib
+        with contextlib.redirect_stdout(stream_to_logger('INFO')):
+            <function that prints something>
+    """
+
+    class StreamToLogger:
+        def __init__(self, level):
+            self._level = level
+
+        def write(self, buffer):
+            for line in buffer.rstrip().splitlines():
+                logger.opt(depth=1).log(self._level, line.rstrip())
+
+        def flush(self):
+            pass
+
+    return StreamToLogger(log_level)
+
+def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
+    """
+    Prints a dictionary with key-value pairs in rows.
+
+    Parameters
+    ----------
+    d : dict
+        The dictionary to print.
+    printer : callable, optional
+        Function used for printing. For example 'print' or 'logger.info'.
+    sep : str, optional
+        The character printed between key and value.
+    val_fmt : str, optional
+        A format string used for printing the dictionary's values.
+    """
+    n = max([len(key) for key in d.keys()])
+    for key, val in d.items():
+        if val_fmt:
+            printer(f"{key:{n + 1}s} {sep} {val:{val_fmt}}")
+        else:
+            printer(f"{key:{n + 1}s} {sep} {val}")
