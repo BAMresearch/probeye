@@ -447,6 +447,25 @@ class TestProblem(unittest.TestCase):
         computed_result = p.get_theta_names(tex=True)
         expected_result = ['$a$', '$b$']
         self.assertEqual(computed_result, expected_result)
+        # check use case with vector-valued parameter
+        p = InferenceProblem("TestProblem")
+        p.add_parameter('a', 'model', dim=2, tex="$a$",
+                        prior=('normal', {'loc': [0, 0],
+                                          'scale': [[1, 0], [0, 1]]}))
+        p.add_parameter('b', 'model', tex="$b$",
+                        prior=('normal', {'loc': 0, 'scale': 1}))
+        computed_result = p.get_theta_names(tex=False, components=False)
+        expected_result = ['a', 'b']
+        self.assertEqual(computed_result, expected_result)
+        computed_result = p.get_theta_names(tex=False, components=True)
+        expected_result = ['a_1', 'a_2', 'b']
+        self.assertEqual(computed_result, expected_result)
+        computed_result = p.get_theta_names(tex=True, components=False)
+        expected_result = ['$a$', '$b$']
+        self.assertEqual(computed_result, expected_result)
+        computed_result = p.get_theta_names(tex=True, components=True)
+        expected_result = ['$a_1$', '$a_2$', '$b$']
+        self.assertEqual(computed_result, expected_result)
 
     def test_theta_explanation(self):
         # simply check that no errors occur when theta_explanation is called;

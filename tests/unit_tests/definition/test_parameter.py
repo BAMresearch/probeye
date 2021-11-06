@@ -26,6 +26,7 @@ class TestProblem(unittest.TestCase):
                                                'tex': r"$b$"})
         c_prior = PriorBase('c', ['s'], 'c_dummy', 'normal')
         parameters['c'] = ParameterProperties({'index': 2,
+                                               'dim': 1,
                                                'type': 'model',
                                                'prior': c_prior,
                                                'value': None,
@@ -42,6 +43,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(ValueError):
             d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
             parameters['d'] = {'index': 3,
+                               'dim': 1,
                                'type': 'model',
                                'role': 'latent',
                                'prior': d_prior,
@@ -65,6 +67,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(TypeError):
             # index is has wrong type
             parameters['d'] = ParameterProperties({'index': True,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': None,
                                                    'value': None,
@@ -73,6 +76,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # index has invalid value
             parameters['d'] = ParameterProperties({'index': -1,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': None,
                                                    'value': 1.0,
@@ -107,6 +111,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # index and prior are inconsistently combined
             parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': None,
                                                    'value': None,
@@ -116,6 +121,7 @@ class TestProblem(unittest.TestCase):
             # index and value are inconsistently combined
             d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
             parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': d_prior,
                                                    'value': 1.0,

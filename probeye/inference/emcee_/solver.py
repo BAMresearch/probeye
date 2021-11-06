@@ -52,7 +52,7 @@ class EmceeSolver(ScipySolver):
         """
 
         # used for the names in the first column
-        var_names = self.problem.get_theta_names(tex=False)
+        var_names = self.problem.get_theta_names(tex=False, components=True)
 
         # compute some stats for each column (i.e., each parameter)
         mean = np.mean(posterior_samples, axis=0)
@@ -119,11 +119,16 @@ class EmceeSolver(ScipySolver):
         # draw initial samples from the parameter's priors
         logger.debug("Drawing initial samples")
         sampling_initial_positions = np.zeros(
-            (n_walkers, self.problem.n_latent_prms))
-        theta_names = self.problem.get_theta_names()
-        for i, parameter_name in enumerate(theta_names):
-            sampling_initial_positions[:, i] = self.sample_from_prior(
-                parameter_name, n_walkers)
+            (n_walkers, self.problem.n_latent_prms_dim))
+        theta_names = self.problem.get_theta_names(tex=False, components=False)
+        for parameter_name in theta_names:
+            idx = self.problem.parameters[parameter_name].index
+            idx_end = self.problem.parameters[parameter_name].index_end
+            samples = self.sample_from_prior(parameter_name, n_walkers)
+            if (idx_end - idx) == 1:
+                sampling_initial_positions[:, idx] = samples
+            else:
+                sampling_initial_positions[:, idx: idx_end] = samples
 
         # The following code is based on taralli and merely adjusted to the
         # variables in the probeye setup; see https://gitlab.com/tno-bim/taralli
@@ -133,11 +138,11 @@ class EmceeSolver(ScipySolver):
         # .................................................................... #
 
         n_rows, n_cols = sampling_initial_positions.shape
-        n_latent_prms = self.problem.n_latent_prms
+        n_latent_prms_dim = self.problem.n_latent_prms_dim
 
-        if n_cols != self.problem.n_latent_prms:
+        if n_cols != self.problem.n_latent_prms_dim:
             raise ValueError(
-                f"'sampling_initial_positions' should have {n_latent_prms} "
+                f"'sampling_initial_positions' should have {n_latent_prms_dim} "
                 f"columns (one for each latent parameter), but {n_cols} are "
                 f"provided.")
 
@@ -153,7 +158,7 @@ class EmceeSolver(ScipySolver):
         logger.debug("Setting up EnsembleSampler")
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms,
+            ndim=self.problem.n_latent_prms_dim,
             log_prob_fn=lambda x: self.logprior(x) + self.loglike(x),
             **kwargs)
 
@@ -191,6 +196,6 @@ class EmceeSolver(ScipySolver):
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it
-        var_names = self.problem.get_theta_names(tex=True)
+        var_names = self.problem.get_theta_names(tex=True, components=True)
         inference_data = az.from_emcee(sampler, var_names=var_names)
         return inference_data

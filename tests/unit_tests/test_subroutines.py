@@ -19,6 +19,7 @@ from probeye.subroutines import list2dict
 from probeye.subroutines import flatten
 from probeye.subroutines import process_spatial_coordinates
 from probeye.subroutines import translate_prms_def
+from probeye.subroutines import add_index_to_tex_prm_name
 
 class TestProblem(unittest.TestCase):
 
@@ -332,6 +333,32 @@ class TestProblem(unittest.TestCase):
         # invalid use case: list with 2-element dict
         with self.assertRaises(ValueError):
             translate_prms_def([{'sigma': 'sigma', 'mu': 'mean'}])
+
+    def test_add_index_to_tex_prm_name(self):
+        # check normal use case 1
+        computed_result = add_index_to_tex_prm_name(r'$\alpha$', 1)
+        expected_result = r'$\alpha_1$'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 2
+        computed_result = add_index_to_tex_prm_name('$\\alpha$', 2)
+        expected_result = '$\\alpha_2$'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 3
+        computed_result = add_index_to_tex_prm_name('$a$', 3)
+        expected_result = '$a_3$'
+        # check normal use case 4 (note the missing '$'-signs)
+        computed_result = add_index_to_tex_prm_name('a', 4)
+        expected_result = 'a (4)'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 5
+        computed_result = add_index_to_tex_prm_name('$a_c$', 5)
+        expected_result = '$a_c$ (5)'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 6
+        computed_result = add_index_to_tex_prm_name('$\\gamma^c$', 6)
+        expected_result = '$\\gamma^c$ (6)'
+        self.assertEqual(computed_result, expected_result)
+
 
 if __name__ == "__main__":
     unittest.main()

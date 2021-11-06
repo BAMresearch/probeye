@@ -1,10 +1,12 @@
 # third party imports
 from tabulate import tabulate
 from loguru import logger
+import numpy as np
 
 # local imports
 from probeye.subroutines import titled_table
 from probeye.subroutines import simplified_list_string
+from probeye.subroutines import len_or_one
 from probeye.definition.prior import PriorBase
 
 class Parameters(dict):
@@ -14,8 +16,8 @@ class Parameters(dict):
     associated values are ParameterProperties-objects, see below.
     """
 
-    def add_parameter(self, prm_name, prm_type, const=None, prior=None,
-                      info="No explanation provided", tex=None):
+    def add_parameter(self, prm_name, prm_type, dim=1, const=None,
+                      prior=None, info="No explanation provided", tex=None):
         """
         Adds a parameter ('const' or 'latent') to the Parameters-object. The
         main functionality of this method is to distinguish between the two
@@ -29,6 +31,8 @@ class Parameters(dict):
         prm_type : str
             Either 'model' (for a model parameter), 'prior' (for a prior
             parameter) or 'noise' (for a noise parameter).
+        dim : int, optional
+            The parameter's dimension.
         const : float or None, optional
             If the added parameter is a 'const'-parameter, the corresponding
             value has to be specified by this argument.
@@ -60,7 +64,8 @@ class Parameters(dict):
         if const is None:  # i.e. adding 'latent'-parameter
             # first, define the index of this parameter in the numeric vector
             # theta, which is given to self.loglike and self.logprior
-            prm_index = self.n_latent_prms
+            prm_index = self.n_latent_prms_dim
+            prm_dim = dim
             # the prm_value is reserved for 'const'-parameter; hence, it is set
             # to None in this case, where we are adding a 'latent'-param.
             prm_value = None
@@ -93,7 +98,7 @@ class Parameters(dict):
                 # create unique name for this prior parameter
                 new_name = f"{prior_parameter_name}_{prm_name}"
                 prior_parameter_names.append(new_name)
-                if type(value) in {float, int}:
+                if type(value) in {float, int, list, tuple, np.ndarray}:
                     # in this case, the prior-parameter is considered a 'const'-
                     # parameter and added to the problem accordingly here
                     default_info = f"{prior_type.capitalize()} "
@@ -122,6 +127,7 @@ class Parameters(dict):
             # in this case we are adding a 'const'-parameter, which means that
             # the prm_index and prm_prior values are not used here
             prm_index = None
+            prm_dim = len_or_one(const)
             prm_prior = None
             prm_value = const
             logger.debug(f"Adding constant {prm_type}-parameter "
@@ -129,6 +135,7 @@ class Parameters(dict):
 
         # add the parameter to the central parameter dictionary
         self[prm_name] = ParameterProperties({'index': prm_index,
+                                              'dim': prm_dim,
                                               'type': prm_type,
                                               'prior': prm_prior,
                                               'value': prm_value,
@@ -183,9 +190,10 @@ class Parameters(dict):
             idx_dict = {}
             idx = 0
             for prm_name, parameter in self.items():
-                if parameter.index is not None:
+                if parameter.is_latent:
+                    dim = parameter.dim
                     idx_dict[prm_name] = idx
-                    idx += 1
+                    idx += dim
             for prm_name, idx in idx_dict.items():
                 self[prm_name] = self[prm_name].changed_copy(index=idx)
 
@@ -235,9 +243,20 @@ class Parameters(dict):
         return [name for name, prm in self.items() if prm.is_latent]
 
     @property
+    def latent_prms_dims(self):
+        """Access the individual dimensions of the latent parameters."""
+        return [self[prm_name].dim for prm_name in self.latent_prms]
+
+    @property
     def n_latent_prms(self):
         """Access the number of all 'latent'-parameters as an attribute."""
         return len(self.latent_prms)
+
+    @property
+    def n_latent_prms_dim(self):
+        """Access the combined dimension of all latent parameters. This number
+           is the number of elements in the theta vector."""
+        return sum(self.latent_prms_dims)
 
     @property
     def constant_prms(self):
@@ -380,10 +399,10 @@ class ParameterProperties:
         Parameters
         ----------
         prm_dict : dict
-            The keys are 'index', 'type', 'role', 'prior', 'value', 'info' and
-            'tex', while the values are the corresponding values of these
-            properties. See also the explanations in InferenceProblem.__init__()
-            for more detailed information.
+            The keys are 'index', 'dim', 'type', 'role', 'prior', 'value',
+            'info' and 'tex', while the values are the corresponding values of
+            these properties. See also the explanations in
+            InferenceProblem.__init__() for more detailed information.
         """
         # write attributes
         self._index = prm_dict['index']
@@ -392,6 +411,16 @@ class ParameterProperties:
         self._value = prm_dict['value']
         self.info = prm_dict['info']
         self.tex = prm_dict['tex']
+
+        # the dimension (dim) attribute is only expected to be contained in the
+        # given prm_dict, if an index is specified; if no index is specified, a
+        # constant is given, which defines its dimension based on its value
+        if self._index is None:
+            # constant parameter
+            self._dim = len_or_one(self._value)
+        else:
+            # latent parameter
+            self._dim = prm_dict['dim']
 
         # whitespace in the tex strings is a problem for some plotting routines,
         # so they are replaced here by a math-command for whitespace that does
@@ -403,8 +432,8 @@ class ParameterProperties:
         self.check_consistency()
 
     # noinspection PyShadowingBuiltins
-    def changed_copy(self, index=None, type=None, prior=None, value=None,
-                     info=None, tex=None):
+    def changed_copy(self, index=None, dim=None, type=None, prior=None,
+                     value=None, info=None, tex=None):
         """
         Convenience method that simplifies changing the attributes of a
         ParameterProperties object based on creating a new instance. The reason
@@ -416,6 +445,7 @@ class ParameterProperties:
         """
         return ParameterProperties({
                     "index": index if index is not None else self._index,
+                    "dim": dim or self._dim,
                     "type": type or self._type,
                     "prior": prior or self._prior,
                     "value": value or self._value,
@@ -444,6 +474,17 @@ class ParameterProperties:
                 f"attribute must be a non-negative integer, but found a value "
                 f"of {self._index}.")
 
+        if not (type(self._dim) == int or self._dim is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._dim attribute! It must "
+                f"be of type int or None, but found {type(self._dim)}.")
+
+        if (self._dim is not None) and (self._dim < 1):
+            raise RuntimeError(
+                f"Found value < 1 for ParameterProperties._dim! This "
+                f"attribute must be an integer >= 1, but found a value "
+                f"of {self._dim}.")
+
         if self._type not in ['model', 'prior', 'noise']:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can "
@@ -455,10 +496,12 @@ class ParameterProperties:
                 f"Found invalid ParameterProperties._prior attribute! It must "
                 f"be of type PriorBase or None, but found {type(self._prior)}.")
 
-        if not (type(self._value) in [float, int] or self._value is None):
+        if not (type(self._value) in [float, int, list, tuple, np.ndarray]
+                or self._value is None):
             raise TypeError(
                 f"Found invalid ParameterProperties._value attribute! It must "
-                f"be of type float/int or None, but found {type(self._value)}.")
+                f"be of type float/int/list/tuple/numpy.ndarray or None, but "
+                f"found {type(self._value)}.")
 
         # -------------------------------- #
         #           Cross checks           #
@@ -473,9 +516,12 @@ class ParameterProperties:
                     f"{self._value}), but one of them must be None!")
             if self._prior is None:
                 raise RuntimeError(
-                    f"ParameterProperties._index and ParameterProperties._prior"
-                    f" are both given (_index={self._index} and prior="
-                    f"{self._prior}), but one of them must be None!")
+                    f"When ParameterProperties._index is not None "
+                    f"ParameterProperties._prior cannot be None!")
+            if self._dim is None:
+                raise RuntimeError(
+                    f"When ParameterProperties._index is not None "
+                    f"ParameterProperties._dim cannot be None!")
 
         else:
             # in this case, we have a constant parameter
@@ -500,6 +546,23 @@ class ParameterProperties:
         """Raise a specific error when trying to directly set self.index."""
         raise AttributeError(
             "Changing a parameter's index directly is prohibited!")
+
+    @property
+    def dim(self):
+        """Access self._dim from outside via self.dim."""
+        return self._dim
+
+    @dim.setter
+    def dim(self, value):
+        """Raise a specific error when trying to directly set self.dim."""
+        raise AttributeError(
+            "Changing a parameter's dimension (dim) directly is prohibited!")
+
+    @property
+    def index_end(self):
+        """Adds a pseudo-attribute self.index_end, which allows a convenient
+           access to the (not-inclusive) end index in the parameter vector."""
+        return self._index + self._dim
 
     @property
     def type(self):

@@ -161,13 +161,14 @@ class ScipySolver:
         """
 
         # this is going to be the start vector
-        x0 = np.zeros(self.problem.n_latent_prms)
+        x0 = np.zeros(self.problem.n_latent_prms_dim)
 
         if x0_dict:
             # in this case, the user explicitly defined the start values
             for prm_name, prm_value in x0_dict.items():
                 idx = self.problem.parameters[prm_name].index
-                x0[idx] = prm_value
+                idx_end = self.problem.parameters[prm_name].index_end
+                x0[idx: idx_end] = prm_value
         else:
             # in this case, the start values are derived from the priors; if
             # a prior i not uninformative, its mean value will be used; if a
@@ -178,16 +179,22 @@ class ScipySolver:
                 prior_name = self.problem.parameters[prm_name].prior.name
                 prior_type = self.problem.parameters[prm_name].prior.prior_type
                 idx = self.problem.parameters[prm_name].index
+                idx_end = self.problem.parameters[prm_name].index_end
+                dim = self.problem.parameters[prm_name].dim
                 if prior_type != 'uninformative':
                     prm_value = self.priors[prior_name](
                         prms, x0_prior, use_ref_prm=False)
                     prms[prm_name] = prm_value
-                    x0[idx] = prm_value
+                    x0[idx: idx_end] = prm_value
                 else:
                     # no mean value can be requested if the prior is
                     # uninformative, hence a default value is used
-                    x0[idx] = x0_default
-                x0_dict[prm_name] = x0[idx]
+                    x0[idx: idx_end] = [x0_default] * dim
+                # scalar values should not be saved as one-element-lists
+                if dim == 1:
+                    x0_dict[prm_name] = x0[idx]
+                else:
+                    x0_dict[prm_name] = x0[idx: idx_end]
 
         return x0, x0_dict
 
@@ -215,9 +222,12 @@ class ScipySolver:
         if minimize_results.success:
             theta_names = self.problem.get_theta_names(tex=False)
             n_char = max([len(name) for name in theta_names]) + 4
-            for i, theta_name in enumerate(theta_names):
+            for theta_name in theta_names:
+                idx = self.problem.parameters[theta_name].index
+                idx_end = self.problem.parameters[theta_name].index_end
                 opt_name = f"{theta_name}_opt"
-                line = f"{opt_name:{n_char}s} = {minimize_results.x[i]:.6f}"
+                opt_val = minimize_results.x[idx: idx_end]
+                line = f"{opt_name:{n_char}s} = {opt_val}"
                 if true_values:
                     line += (f" (true = {true_values[theta_name]}, "
                              f"start = {x0_dict[theta_name]})")
@@ -281,7 +291,7 @@ class ScipySolver:
         logger.debug("Deriving start values")
         x0, x0_dict = self.get_start_values(x0_dict, x0_prior, x0_default)
         logger.info("Using start values:")
-        print_dict_in_rows(x0_dict, printer=logger.info, val_fmt='.2f')
+        print_dict_in_rows(x0_dict, printer=logger.info, val_fmt=None)
 
         # this is the where the solver does its thing
         logger.info(f"Starting optimizer (using {method})")

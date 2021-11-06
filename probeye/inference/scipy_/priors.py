@@ -3,10 +3,11 @@ from scipy import stats
 
 # local imports
 from probeye.definition.prior import PriorBase
+from probeye.subroutines import len_or_one
 
 
 class PriorNormal(PriorBase):
-    """Prior class for a normal distribution."""
+    """Prior class for a uni- or multivariate normal distribution."""
 
     def __init__(self, ref_prm, prms_def, name):
         """
@@ -23,9 +24,10 @@ class PriorNormal(PriorBase):
 
     def __call__(self, prms, method, use_ref_prm=True):
         """
-        Evaluates stats.norm.<method>(x, loc, scale) or, if use_ref_prm=False
-        stats.norm.<method>(loc, scale). This function is mostly used with
-        method='logpdf' during the sampling procedure.
+        Evaluates stats.(multivariate_)norm.<method>(x, loc, scale) or, if
+        use_ref_prm=False stats.(multivariate_)norm.<method>(loc, scale). This
+        function is mostly used with method='logpdf' during the sampling
+        procedure.
 
         Parameters
         ----------
@@ -34,24 +36,37 @@ class PriorNormal(PriorBase):
         method : string
             The method of stats.norm to be evaluated (e.g. 'pdf' or 'logpdf').
         use_ref_prm : bool, optional
-            If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x'
-            must be provided in the prms dictionary. Otherwise, the evaluated
-            method is stats.norm.<method>(loc, scale).
+            If True stats.(multivariate_)norm.<method>(x, loc, scale) is
+            evaluated, hence 'x' must be provided in the prms dictionary.
+            Otherwise, the evaluated method is stats.norm.<method>(loc, scale).
 
         Returns
         -------
         float
-            The result of stats.norm.<method>(x, loc, scale) or of
-            stats.norm.<method>(loc, scale).
+            The result of stats.(multivariate_)norm.<method>(x, loc, scale) or
+            of stats.(multivariate_)norm.<method>(loc, scale).
         """
-        fun = getattr(stats.norm, method)
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        if use_ref_prm:
-            x = prms[self.ref_prm]
-            return fun(x, loc=loc, scale=scale)
+        if len_or_one(loc) == 1:
+            fun = getattr(stats.norm, method)
+            if use_ref_prm:
+                x = prms[self.ref_prm]
+                return fun(x, loc=loc, scale=scale)
+            else:
+                return fun(loc=loc, scale=scale)
         else:
-            return fun(loc=loc, scale=scale)
+            try:
+                fun = getattr(stats.multivariate_normal, method)
+            except AttributeError:
+                if method == 'mean':
+                    return loc
+            if use_ref_prm:
+                x = prms[self.ref_prm]
+                return fun(x, mean=loc, cov=scale)
+            else:
+                return fun(mean=loc, cov=scale)
+
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -74,8 +89,13 @@ class PriorNormal(PriorBase):
         """
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return stats.norm.rvs(loc=loc, scale=scale, size=size,
-                              random_state=seed)
+        if len_or_one(loc) == 1:
+            return stats.norm.rvs(
+                loc=loc, scale=scale, size=size, random_state=seed)
+        else:
+            return stats.multivariate_normal.rvs(
+                mean=loc, cov=scale, size=size, random_state=seed)
+
 
 
 class PriorLognormal(PriorBase):

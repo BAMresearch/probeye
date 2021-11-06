@@ -1,5 +1,14 @@
 # probeye changelog
 
+## 1.0.8 (2021-Nov-XX)
+### Added
+- added feature of vector-valued parameters
+- added new ParameterProperties attribute 'dim' for specifying a parameter's dimension
+- added explicitly defined Jacobian in test_linear_regression to show how a user can define the Jacobian to his forward model
+- added new integration test 'test_multivariate_prior.py' to show use of vector-valued parameters
+### Changed
+- changed PriorNormal to cover multivariate distributions
+
 ## 1.0.7 (2021-Oct-29)
 ### Added
 - added probeye header-file 'probeye.txt'

@@ -3,6 +3,9 @@ import arviz as az
 import numpy as np
 import matplotlib.pyplot as plt
 
+# local imports
+from probeye.subroutines import add_index_to_tex_prm_name
+
 
 def create_pair_plot(inference_data, problem, plot_with="arviz",
                      plot_priors=True, focus_on_posterior=False, kind="kde",
@@ -49,9 +52,6 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
 
     if plot_with == 'arviz':
 
-        # these names will appear on the axis labels
-        var_names = problem.get_theta_names(tex=True)
-
         # set default value for kde_kwargs if not given in kwargs; note that
         # this default value is mutable, so it should not be given as a default
         # argument in create_pair_plot
@@ -63,17 +63,35 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         if true_values is not None:
             reference_values = dict()
             for prm_name, value in true_values.items():
-                key = problem.parameters[prm_name].tex
-                reference_values[key] = value
+                dim = problem.parameters[prm_name].dim
+                tex = problem.parameters[prm_name].tex
+                if dim > 1:
+                    if tex in inference_data.posterior.keys():
+                        # in this case, the inference_data object contains
+                        # samples of a multidimensional parameter; the
+                        # corresponding reference values must be given in a
+                        # dictionary <tex>\n0, <tex>\n1, <tex>\n2, etc.
+                        for i in range(dim):
+                            key = f"{tex}\n{i}"
+                            reference_values[key] = value[i]
+                    else:
+                        # in this case, the samples of a multidimensional
+                        # parameter have been already decomposed, so all the
+                        # channels in the inference data are 1D
+                        for i in range(dim):
+                            key = add_index_to_tex_prm_name(tex, i + 1)
+                            reference_values[key] = value[i]
+                else:
+                    key = tex
+                    reference_values[key] = value
             kwargs['reference_values'] = reference_values
             if 'reference_values_kwargs' not in kwargs:
                 kwargs['reference_values_kwargs'] = {'marker': 'o',
                                                      'color': 'red'}
 
         # call the main plotting routine from arviz
-        axs = az.plot_pair(inference_data, var_names=var_names, marginals=True,
-                           kind=kind, figsize=figsize, textsize=textsize,
-                           **kwargs)
+        axs = az.plot_pair(inference_data, marginals=True, kind=kind,
+                           figsize=figsize, textsize=textsize, **kwargs)
 
         # by default, the y-axis of the first and last marginal plot have ticks,
         # tick-labels and axis-labels that are not meaningful to show on the
@@ -97,8 +115,13 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         if plot_priors:
 
             # add the prior-pdfs to the marginal subplots
-            prm_names = problem.get_theta_names(tex=False)
-            for i, prm_name in enumerate(prm_names):
+            prm_names = problem.get_theta_names(tex=False, components=False)
+            i = 0  # not included in for-header due to possible dim-jumps
+            for prm_name in prm_names:
+                # for multivariate priors, no priors are plotted
+                if problem.parameters[prm_name].dim > 1:
+                    i += problem.parameters[prm_name].dim
+                    continue
                 x = None
                 if focus_on_posterior:
                     x_min, x_max = axs[i, i].get_xlim()
@@ -120,6 +143,7 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                     axs[i, i].legend(posterior_handle + prior_handle,
                                      posterior_label + prior_label,
                                      loc='upper right')
+                i += 1
 
             # here, the axis of the non-marginal plots are adjusted to the new
             # axis ranges
@@ -136,7 +160,7 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
             # the following code adds legends to the marginal plots for the case
             # where no priors are supposed to be plotted
             if show_legends:
-                prm_names = problem.get_theta_names(tex=False)
+                prm_names = problem.get_theta_names(tex=False, components=True)
                 for i, prm_name in enumerate(prm_names):
                     existing_handles, existing_labels = \
                         axs[i, i].get_legend_handles_labels()
@@ -191,9 +215,8 @@ def create_posterior_plot(inference_data, problem, plot_with="arviz",
     """
 
     if plot_with == "arviz":
-        var_names = problem.get_theta_names(tex=True)
-        az.plot_posterior(inference_data, var_names=var_names, kind=kind,
-                          figsize=figsize, textsize=textsize, **kwargs)
+        az.plot_posterior(inference_data, kind=kind, figsize=figsize,
+                          textsize=textsize, **kwargs)
         plt.show()
 
     elif plot_with == 'seaborn':
@@ -235,9 +258,8 @@ def create_trace_plot(inference_data, problem, plot_with="arviz", kind="trace",
     """
 
     if plot_with == 'arviz':
-        var_names = problem.get_theta_names(tex=True)
-        az.plot_trace(inference_data, var_names=var_names, kind=kind,
-                      figsize=figsize, plot_kwargs={'textsize': textsize},
+        az.plot_trace(inference_data, kind=kind, figsize=figsize,
+                      plot_kwargs={'textsize': textsize},
                       **kwargs)
         plt.show()
 

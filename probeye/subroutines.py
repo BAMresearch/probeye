@@ -713,3 +713,42 @@ def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
             printer(f"{key:{n + 1}s} {sep} {val:{val_fmt}}")
         else:
             printer(f"{key:{n + 1}s} {sep} {val}")
+
+def add_index_to_tex_prm_name(tex, index):
+    """
+    Adds a lower index to a parameter's tex-name. This function is intended for
+    vector-valued parameters. For example: ('$a$', 1) -> '$a_1$'.
+
+    Parameters
+    ----------
+    tex : str
+        The tex-string to be modified.
+    index : int
+        The index to be added as a lower index to tex.
+
+    Returns
+    -------
+    tex_mod : str
+        The tex-string with included index.
+    """
+
+    # the math-model '$' should appear twice in the string
+    check_1 = tex.count("$") == 2
+    # the index is only added in tex-fashion
+    # if no indexes are present already
+    check_2 = not ("_" in tex)
+    check_3 = not ("^" in tex)
+
+    if check_1 and check_2 and check_3:
+        tex_list = tex.split("$")
+        # since it was checked that there are exactly 2 '$'-signs in tex, the
+        # tex_list has 3 elements, with the middle one being the string enclosed
+        # by the two '$'-signs
+        tex_list[1] = tex_list[1] + f'_{index}'
+        tex_mod = '$'.join(tex_list)
+    else:
+        # if not all checks are passed, the index is added in a way, that does
+        # not expect anything from the given tex-string
+        tex_mod = tex + f" ({index})"
+
+    return tex_mod

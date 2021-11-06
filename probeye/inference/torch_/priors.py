@@ -1,9 +1,11 @@
 # third party imports
 import pyro
 import pyro.distributions as dist
+import torch as th
 
 # local imports
 from probeye.definition.prior import PriorBase
+from probeye.subroutines import len_or_one
 
 
 class PriorNormal(PriorBase):
@@ -39,7 +41,12 @@ class PriorNormal(PriorBase):
         """
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return pyro.sample(self.ref_prm, dist.Normal(loc, scale))
+        if len_or_one(loc) == 1:
+            distribution = dist.Normal(loc, scale)
+        else:
+            distribution = dist.MultivariateNormal(
+                th.from_numpy(loc), covariance_matrix=th.from_numpy(scale))
+        return pyro.sample(self.ref_prm, distribution)
 
 
 class PriorUniform(PriorBase):

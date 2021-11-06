@@ -13,6 +13,7 @@ from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
+from probeye.subroutines import add_index_to_tex_prm_name
 
 
 class InferenceProblem:
@@ -100,9 +101,19 @@ class InferenceProblem:
         return self._parameters.n_latent_prms
 
     @property
+    def n_latent_prms_dim(self):
+        """Provides n_latent_prms_dim attribute."""
+        return self._parameters.n_latent_prms_dim
+
+    @property
     def latent_prms(self):
         """Provides latent_prms attribute."""
         return self._parameters.latent_prms
+
+    @property
+    def latent_prms_dims(self):
+        """Provides latent_prms_dims attribute."""
+        return self._parameters.latent_prms_dims
 
     @property
     def n_constant_prms(self):
@@ -263,8 +274,8 @@ class InferenceProblem:
         """
         return self.info()
 
-    def add_parameter(self, prm_name, prm_type, const=None, prior=None,
-                      info="No explanation provided", tex=None):
+    def add_parameter(self, prm_name, prm_type, dim=1, const=None,
+                      prior=None, info="No explanation provided", tex=None):
         """
         Adds a parameter ('const' or 'latent') to the inference problem. For
         more information, check out the Parameters.add_parameter method.
@@ -272,8 +283,9 @@ class InferenceProblem:
 
         # add the parameter to the central parameter dictionary; checks and
         # translations are conducted in the Parameters.add_parameter method
-        self._parameters.add_parameter(prm_name, prm_type, const=const,
-                                       prior=prior, info=info, tex=tex)
+        self._parameters.add_parameter(
+            prm_name, prm_type, dim=dim, const=const, prior=prior,
+            info=info, tex=tex)
 
     def remove_parameter(self, prm_name):
         """
@@ -339,9 +351,18 @@ class InferenceProblem:
         # and then adding it again in its new role; the role-change does not
         # impact the type ('model', 'prior' or 'noise')
         prm = self._parameters[prm_name]
+        if prm.is_const:
+            # if a constant parameter should be made latent, its dimension will
+            # be taken from its current value
+            dim = len_or_one(prm.value)
+        else:
+            # in this case, a latent parameter should be made constant; since
+            # the dim-attribute will be inferred from the given value (const)
+            # it does not need to be specified here
+            dim = None
         self.remove_parameter(prm_name)
-        self.add_parameter(prm_name, prm.type, const=const, prior=prior,
-                           info=prm.info, tex=prm.tex)
+        self.add_parameter(prm_name, prm.type, dim=dim, const=const,
+                           prior=prior, info=prm.info, tex=prm.tex)
 
     def change_parameter_info(self, prm_name, new_info=None, new_tex=None):
         """
@@ -447,7 +468,8 @@ class InferenceProblem:
         idx_list = []
         for prm_name, parameter in self._parameters.items():
             if parameter.is_latent:
-                idx_list.append(parameter.index)
+                idx_range = [*range(parameter.index, parameter.index_end)]
+                idx_list += idx_range
         assert sorted(idx_list) == list(range(len(idx_list))),\
             (f"There seems to be an inconsistency in the latent "
              f"parameter's indices. The sorted index list is: "
@@ -575,7 +597,12 @@ class InferenceProblem:
             else:
                 # in this case, the parameter is a latent parameter, and
                 # its value is read from theta
-                prms[local_name] = theta[idx]
+                idx_end = self._parameters[global_name].index_end
+                if idx == (idx_end - 1):
+                    # scalars should not be returned as one-element-lists
+                    prms[local_name] = theta[idx]
+                else:
+                    prms[local_name] = theta[idx: idx_end]
         return prms
 
     def get_experiment_names(self, forward_model_names=None, sensor_names=None,
@@ -636,7 +663,7 @@ class InferenceProblem:
 
         return relevant_experiment_names
 
-    def get_theta_names(self, tex=False):
+    def get_theta_names(self, tex=False, components=False):
         """
         Returns the parameter names of the parameter vector theta in the
         corresponding order.
@@ -646,6 +673,10 @@ class InferenceProblem:
         tex : bool, optional
             If True, the TeX-names of the parameters will be returned,
             otherwise the names as they are used in the code will be returned.
+        components : bool, optional
+            If True, parameters with dimension > 1 are returned component-wise;
+            e.g., if 'alpha' is a 2D parameter, it will be returned as 'alpha_1'
+            and 'alpha_2'. If False, only 'alpha' would be returned.
 
         Returns
         -------
@@ -656,12 +687,29 @@ class InferenceProblem:
         theta_names = []
         indices = []
         for prm_name, parameter in self._parameters.items():
-            if parameter.index is not None:
-                indices.append(parameter.index)
-                if tex and parameter.tex is not None:
-                    theta_names.append(parameter.tex)
+            if parameter.is_latent:
+                # add the parameter indices for checking later
+                idx = parameter.index
+                dim = parameter.dim
+                if components and (dim > 1):
+                    idx_end = parameter.index_end
+                    indices += [*range(idx, idx_end)]
                 else:
-                    theta_names.append(prm_name)
+                    indices.append(parameter.index)
+                # add the parameter names
+                if tex and parameter.tex is not None:
+                    if components and (dim > 1):
+                        for i in range(dim):
+                            theta_names.append(
+                                add_index_to_tex_prm_name(parameter.tex, i + 1))
+                    else:
+                        theta_names.append(parameter.tex)
+                else:
+                    if components and (dim > 1):
+                        for i in range(dim):
+                            theta_names.append(f"{prm_name}_{i + 1}")
+                    else:
+                        theta_names.append(prm_name)
         # order the theta_names according to their index-values; note that this
         # step is not necessary for insertion ordered dicts (Python 3.6+), since
         # in this case theta_names will already be in the right order
@@ -696,13 +744,19 @@ class InferenceProblem:
         theta_names = self.get_theta_names()
 
         # construct the info-string
-        s = "\n---------------------\n"
-        s += "| Theta | Parameter |\n"
-        s += "| index |   name    |\n"
-        s += "|-------------------|\n"
-        for i, prm_name in enumerate(theta_names):
-            s += f"|{i:5d} --> {prm_name:<9s}|\n"
-        s += "---------------------\n"
+        s = "\n+---------------------------+\n"
+        s += "|  Theta  |    Parameter    |\n"
+        s += "|  index  |      name       |\n"
+        s += "|---------------------------|\n"
+        for prm_name in theta_names:
+            idx = self.parameters[prm_name].index
+            dim = self.parameters[prm_name].dim
+            if dim == 1:
+                s += f"|{idx:7d} --> {prm_name:<15s}|\n"
+            else:
+                idx_str = f"{idx}-{idx + dim - 1}"
+                s += f"|{idx_str:>7s} --> {prm_name:<15s}|\n"
+        s += "+---------------------------+\n"
 
         return s
 
