@@ -947,6 +947,9 @@ class InferenceProblem:
 
         for exp_name in self._experiments.keys():
             if exp_name not in exp_names_in_noise_models:
+                # undo the adding of the experiment names
+                for noise_model in self._noise_models:
+                    noise_model.experiment_names = []
                 # one may argue, that this could also be only a warning here
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not "

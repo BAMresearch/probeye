@@ -21,10 +21,12 @@ class TestProblem(unittest.TestCase):
         p.add_parameter('a', 'model',
                         prior=('normal', {'loc': 0.0, 'scale': 1.0}))
         self.assertEqual(p.n_latent_prms, 1)
+        self.assertEqual(p.latent_prms_dims, [1])
         # add second latent parameter; n_latent_prms should be 2
         p.add_parameter('b', 'noise',
                         prior=('normal', {'loc': 0.0, 'scale': 1.0}))
         self.assertEqual(p.n_latent_prms, 2)
+        self.assertEqual(p.latent_prms_dims, [1, 1])
         # check the different properties
         self.assertEqual(p.n_prms, 6)
         self.assertEqual(
@@ -206,6 +208,9 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(set(p.constant_prms), {'loc_a', 'scale_a'})
         self.assertEqual(set(p.prms), {'a', 'loc_a', 'scale_a'})
         p.change_parameter_role('a', const=1.0)  # <-- here the role changes
+        with self.assertRaises(RuntimeError):
+            # trying to change a constant to a constant
+            p.change_parameter_role('a', const=1.0)
         self.assertEqual(set(p.latent_prms), set())
         self.assertEqual(set(p.constant_prms), {'a'})
         self.assertEqual(set(p.prms), {'a'})
@@ -237,6 +242,12 @@ class TestProblem(unittest.TestCase):
                         info='Info', tex='$a$')
         new_info, new_tex = 'New info', r'$\hat{a}$'
         p.change_parameter_info('a', new_info, new_tex=new_tex)
+        self.assertEqual(p.parameters['a'].info, new_info)
+        self.assertEqual(p.parameters['a'].tex, new_tex)
+        # check that you can just change either the info- or the tex-string
+        new_info, new_tex = 'Even newer info', r'$\hat{a}_{wow}$'
+        p.change_parameter_info('a', new_info=new_info)
+        p.change_parameter_info('a', new_tex=new_tex)
         self.assertEqual(p.parameters['a'].info, new_info)
         self.assertEqual(p.parameters['a'].tex, new_tex)
         # check call for non-existing parameter
@@ -561,9 +572,11 @@ class TestProblem(unittest.TestCase):
                                       sensors=[Sensor('y1'), Sensor('y2')])
         noise_model2 = NoiseModelBase('normal', ['s2'], sensors=[Sensor('y2')])
         noise_model3 = NoiseModelBase('normal', ['s1', 's2', 's3'],
-                                      sensors=[Sensor('y1')])
+                                      sensors=[Sensor('y1')], name='NM3')
         p.add_noise_model(noise_model1)
         p.add_noise_model(noise_model2)
+        p.add_noise_model(noise_model3)
+        # adding a noise model with similar sensor interface should not error
         p.add_noise_model(noise_model3)
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
@@ -597,7 +610,6 @@ class TestProblem(unittest.TestCase):
             'normal', 's1', sensors=[Sensor('z1'), Sensor('z2')])
         p.add_noise_model(noise_model_y1)
         p.add_noise_model(noise_model_y2)
-        p.add_noise_model(noise_model_y1y2)
         # add some experiments
         p.add_experiment('Exp_y1', sensor_values={'x': 1, 'y1': 2},
                          fwd_model_name='TestModel_y1')
@@ -607,6 +619,12 @@ class TestProblem(unittest.TestCase):
                          fwd_model_name='TestModel_y2')
         p.add_experiment('Exp_z1z2', sensor_values={'x': 7, 'z1': 8, 'z2': 9},
                          fwd_model_name='TestModel_z1z2')
+        # so far, not all noise models have been added, so there are unassigned
+        # experiments; this should lead to an error
+        with self.assertRaises(RuntimeError):
+            p.assign_experiments_to_noise_models()
+        # now we add the missing noise model
+        p.add_noise_model(noise_model_y1y2)
         # this is the call that should be tested here
         p.assign_experiments_to_noise_models()
         # now check if all experiments have been assigned correctly

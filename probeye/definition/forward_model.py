@@ -208,10 +208,7 @@ class ForwardModelBase:
                 # added the term '+ sqrt_eps' below to also cover the cases
                 # where x actually is zero (or very close to 0)
                 h = sqrt_eps * x + sqrt_eps
-                if ncomp == 1:
-                    inp_right[prm_name] = x + h
-                else:
-                    inp_right[prm_name][i] = x + h
+                inp_right[prm_name] = x + h
                 response_dict_right = self.response(inp_right)
                 for output_sensor in self.output_sensors:
                     # the simple forward scheme should be sufficient for most
