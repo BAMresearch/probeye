@@ -137,20 +137,6 @@ class EmceeSolver(ScipySolver):
         #                             Pre-process                              #
         # .................................................................... #
 
-        n_rows, n_cols = sampling_initial_positions.shape
-        n_latent_prms_dim = self.problem.n_latent_prms_dim
-
-        if n_cols != self.problem.n_latent_prms_dim:
-            raise ValueError(
-                f"'sampling_initial_positions' should have {n_latent_prms_dim} "
-                f"columns (one for each latent parameter), but {n_cols} are "
-                f"provided.")
-
-        if n_rows != n_walkers:
-            raise ValueError(
-                f"'sampling_initial_positions' should have {n_walkers} rows "
-                f"(one for each walker), but {n_rows} are provided.")
-
         random.seed(self.seed)
         np.random.seed(self.seed)
         rstate = np.random.mtrand.RandomState(self.seed)
