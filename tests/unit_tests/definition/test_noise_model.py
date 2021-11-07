@@ -108,11 +108,20 @@ class TestProblem(unittest.TestCase):
         noise_model = NormalNoiseModel({'sigma': 'std'}, Sensor('y'),
                                        noise_type='multiplicative')
         self.assertEqual(noise_model.noise_type, 'multiplicative')
+        noise_model = NormalNoiseModel({'sigma': 'std'}, Sensor('y'),
+                                       noise_type='other')
+        self.assertEqual(noise_model.noise_type, 'other')
+        noise_model = NormalNoiseModel({'mean': 'mean', 'sigma': 'std'},
+                                       Sensor('y'))
+        self.assertTrue(not noise_model.zero_mean)
         # check invalid initialization
         with self.assertRaises(ValueError):
             # invalid noise_type given
             NormalNoiseModel(
                 {'sigma': 'std'}, Sensor('y'), noise_type='invalid_type')
+        with self.assertRaises(RuntimeError):
+            # no 'std'-parameter given
+            NormalNoiseModel({'sigma': "this should be 'std'"}, Sensor('y'))
 
     def test_normal_noise_error_function(self):
         # simply check that the error_function is set correctly when the noise
@@ -128,6 +137,11 @@ class TestProblem(unittest.TestCase):
         computed_value = noise_model.error_function(ym_dict, ye_dict)
         expected_value = {'y': 1.0}
         self.assertEqual(computed_value, expected_value)
+        # the 'other' error function is not pre-defined
+        noise_model = NormalNoiseModel({'sigma': 'std'}, Sensor('y'),
+                                       noise_type='other')
+        with self.assertRaises(NotImplementedError):
+            noise_model.error_function(ym_dict, ye_dict)
 
     def test_normal_noise_error_function_additive(self):
         # check method for scalar values
@@ -157,52 +171,11 @@ class TestProblem(unittest.TestCase):
         expected_value = {'y': np.array([1.0, 0.25])}
         self.assertTrue(np.allclose(comp_value['y'], expected_value['y']))
 
-    # def test_normal_noise_loglike_contribution(self):
-    #     # prepare the first setup for the tests (all add. errors are zero)
-    #     noise_model = NormalNoiseModel({'sigma': 'std'}, 'y')
-    #     model_response_dict = {'Exp1': {'x': 1, 'y': 3},
-    #                            'Exp2': {'x': 3, 'y': 6},
-    #                            'Exp3': {'x': 5, 'y': 9}}
-    #     problem_experiments = {'Exp1': {'sensor_values': {'x': 1, 'y': 3},
-    #                                     'forward_model': 'TestModel'},
-    #                            'Exp2': {'sensor_values': {'x': 3, 'y': 6},
-    #                                     'forward_model': 'TestModel'},
-    #                            'Exp3': {'sensor_values': {'x': 5, 'y': 9},
-    #                                     'forward_model': 'TestModel'}}
-    #     # the following is usually done automatically when adding the noise
-    #     # model to the inference problem
-    #     noise_model.problem_experiments = problem_experiments
-    #     noise_model.add_experiments(['Exp1', 'Exp2', 'Exp3'])
-    #     sigma = 2.1
-    #     prms = {'sigma': sigma}
-    #     computed_result = noise_model.loglike_contribution(
-    #         model_response_dict, prms)
-    #     expected_result = 3 * (-log(sigma) - 1 / 2 * log(2 * pi))
-    #     self.assertAlmostEqual(computed_result, expected_result)
-    #
-    #     # prepare the second setup for the tests (add. errors are non-zero)
-    #     noise_model = NormalNoiseModel({'sigma': 'std'}, 'y')
-    #     model_response_dict = {'Exp1': {'x': 1, 'y': 3},
-    #                            'Exp2': {'x': 3, 'y': 6},
-    #                            'Exp3': {'x': 5, 'y': 9}}
-    #     problem_experiments = {'Exp1': {'sensor_values': {'x': 1, 'y': 4},
-    #                                     'forward_model': 'TestModel'},
-    #                            'Exp2': {'sensor_values': {'x': 3, 'y': 8},
-    #                                     'forward_model': 'TestModel'},
-    #                            'Exp3': {'sensor_values': {'x': 5, 'y': 7},
-    #                                     'forward_model': 'TestModel'}}
-    #     # the following is usually done automatically when adding the noise
-    #     # model to the inference problem
-    #     noise_model.problem_experiments = problem_experiments
-    #     noise_model.add_experiments(['Exp1', 'Exp2', 'Exp3'])
-    #     sigma = 1.1
-    #     prms = {'sigma': sigma}
-    #     computed_result = noise_model.loglike_contribution(
-    #         model_response_dict, prms)
-    #     expected_error = {'y': np.array([-1, -2, 2])}
-    #     expected_result = 3 * (-log(sigma) - 1 / 2 * log(2 * pi)) - 1 / 2 \
-    #                       * np.sum(np.square(expected_error['y'] / sigma))
-    #     self.assertAlmostEqual(computed_result, expected_result)
+    def test_normal_noise_loglike_contribution(self):
+        # the loglike-contribution is not defined in this general class
+        noise_model = NormalNoiseModel({'sigma': 'std'}, Sensor('y'))
+        with self.assertRaises(NotImplementedError):
+            noise_model.loglike_contribution({}, None)
 
 if __name__ == "__main__":
     unittest.main()
