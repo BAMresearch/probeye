@@ -469,7 +469,7 @@ class ParameterProperties:
                 f"be of type int or None, but found {type(self._index)}.")
 
         if (self._index is not None) and (self._index < 0):
-            raise RuntimeError(
+            raise ValueError(
                 f"Found negative value for ParameterProperties._index! This "
                 f"attribute must be a non-negative integer, but found a value "
                 f"of {self._index}.")
@@ -480,7 +480,7 @@ class ParameterProperties:
                 f"be of type int or None, but found {type(self._dim)}.")
 
         if (self._dim is not None) and (self._dim < 1):
-            raise RuntimeError(
+            raise ValueError(
                 f"Found value < 1 for ParameterProperties._dim! This "
                 f"attribute must be an integer >= 1, but found a value "
                 f"of {self._dim}.")
