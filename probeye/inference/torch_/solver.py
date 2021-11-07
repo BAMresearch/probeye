@@ -158,16 +158,14 @@ class PyroSolver:
                 # (non-tensor) inputs; so there needs to be a conversion which
                 # takes place here; also, the given values must be rearranged
                 # in the dict-format required by forward_model's response method
-                forward_model.inp_structure = []
                 inp = {}
-                keys = [isens.name for isens in forward_model.input_sensors] +\
-                       [*forward_model.prms_def.values()]
+                keys = forward_model.input_channel_names
                 for key, value in zip(keys, values):
                     if th.is_tensor(value):
                         inp[key] = value.detach().numpy()
                     else:
                         inp[key] = value
-                    forward_model.inp_structure.append(len_or_one(inp[key]))
+                    forward_model.input_structure[key] = len_or_one(inp[key])
 
                 # evaluate the forward model and its jacobian for the given
                 # input parameters; this is where the forward model is evaluated
@@ -261,9 +259,8 @@ class PyroSolver:
                 # entries in ctx.needs_input_grad
                 return_val = [None] * self.problem.n_latent_prms
                 j = 0
-                for i, (dim, flag) in enumerate(zip(
-                        forward_model.inp_structure, ctx.needs_input_grad)):
-                    if flag:
+                for i, dim in enumerate(forward_model.input_structure.values()):
+                    if ctx.needs_input_grad[i]:
                         return_val[i] = grad_total[j: j + dim]
                         j += dim
                     else:
@@ -307,7 +304,7 @@ class PyroSolver:
 
         Parameters
         ----------
-        theta : list[torch.Tensor]
+        theta : torch.Tensor
             A vector of pyro.samples (i.e. tensors) for which the log-likelihood
             function should be evaluated.
 
@@ -334,8 +331,8 @@ class PyroSolver:
 
         Returns
         -------
-        list[torch.Tensor]
-            The sampled values based on the latent parameter's priors.
+        ll : torch.Tensor
+            The evaluated log-likelihood function for the given theta-vector.
         """
         theta = self.get_theta_samples()
         return self.loglike(theta)
@@ -369,7 +366,8 @@ class PyroSolver:
         logger.info(
             f"Solving problem using pyro's NUTS sampler with {n_initial_steps} "
             f"+ {n_steps} samples, ...")
-        logger.info(f"... {n_walkers} chains and a step size of {step_size:.3f}")
+        logger.info(
+            f"... {n_walkers} chains and a step size of {step_size:.3f}")
         if kwargs:
             logger.info("Additional NUTS options:")
             print_dict_in_rows(kwargs, printer=logger.info)

@@ -47,6 +47,12 @@ class ForwardModelBase:
         self.input_sensors = make_list(input_sensors)
         self.output_sensors = make_list(output_sensors)
 
+        # this attribute might be used to write the forward model's input
+        # structure to; it has the same structure like the 'inp' argument of
+        # the response method, but instead of the input channel's values it
+        # states the input channels number of elements
+        self.input_structure = {ic: None for ic in self.input_channel_names}
+
         # this attributes might be used by inference engines that need a forward
         # model wrapper, which only returns numeric vectors; for reconstructing
         # the response dictionary from the numeric vector, one needs to know the
@@ -55,12 +61,17 @@ class ForwardModelBase:
         # values will be the number of elements contained in the values; for
         # example {'x': np.array([0, 0.1, 0.2]), 'a': 3.7} will have a structure
         # of {'x': 3, 'a': 1}; this attr. is not used by all inference engines
-        self.response_structure = dict()
+        self.response_structure = {os.name: None for os in self.output_sensors}
 
     @property
     def input_sensor_names(self):
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.input_sensors]
+
+    @property
+    def input_channel_names(self):
+        """Provides input_channel_names attribute."""
+        return self.input_sensor_names + [*self.prms_def.values()]
 
     @property
     def output_sensor_names(self):
