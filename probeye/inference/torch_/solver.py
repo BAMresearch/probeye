@@ -51,16 +51,17 @@ class PyroSolver:
 
         # the dictionary dependency_dict will contain all latent parameter names
         # as keys; the value of each key will be a list with latent hyper-
-        # parameters of the latent parameter's prior
+        # parameters of the latent parameter's prior; note that the dependency_
+        # dict is made an attribute, so that one can better test those routines
         logger.debug("Checking parameter's dependencies")
-        dependency_dict = dict()
+        self.dependency_dict = dict()
         for prm_name in self.problem.parameters.latent_prms:
-            dependency_dict[prm_name] = []
+            self.dependency_dict[prm_name] = []
             hyperparameters =\
                 self.problem.parameters[prm_name].prior.hyperparameters
             for prior_prm_name in hyperparameters:
                 if prior_prm_name in self.problem.parameters.latent_prms:
-                    dependency_dict[prm_name].append(prior_prm_name)
+                    self.dependency_dict[prm_name].append(prior_prm_name)
 
         # this makes sure that the items in dependency are in an order that they
         # ca be sampled from beginning (index 0) sequentially until the last
@@ -70,27 +71,28 @@ class PyroSolver:
         while not consistent:
             consistent = True
             idx_latent_dependencies =\
-                [i for i, v in enumerate(dependency_dict.values())
+                [i for i, v in enumerate(self.dependency_dict.values())
                  if len(v) > 0]
             for idx in idx_latent_dependencies:
-                key_idx = [*dependency_dict.keys()][idx]
-                for dependency in dependency_dict[key_idx]:
-                    if key_idx in dependency_dict[dependency]:
+                key_idx = [*self.dependency_dict.keys()][idx]
+                for dependency in self.dependency_dict[key_idx]:
+                    if key_idx in self.dependency_dict[dependency]:
                         raise RuntimeError(
                             f"Found circular dependency between {key_idx} and "
                             f"{dependency}!")
-                    idx_dependency = [*dependency_dict.keys()].index(dependency)
+                    idx_dependency =\
+                        [*self.dependency_dict.keys()].index(dependency)
                     if idx_dependency > idx:
                         consistent = False
-                        tuples = [*dependency_dict.items()]
+                        tuples = [*self.dependency_dict.items()]
                         tuples[idx], tuples[idx_dependency] = \
                             tuples[idx_dependency], tuples[idx]
-                        dependency_dict = dict(tuples)
+                        self.dependency_dict = dict(tuples)
 
         # translate the prior definitions to objects with computing capabilities
         logger.debug("Translating problem's priors")
         self.priors = {}
-        for prm_name in dependency_dict.keys():
+        for prm_name in self.dependency_dict:
             prior_template = self.problem.parameters[prm_name].prior
             self.priors[prior_template.ref_prm] = \
                 translate_prior_template(prior_template)
@@ -103,7 +105,7 @@ class PyroSolver:
 
         # translate the problem's forward models into torch compatible ones
         logger.debug("Wrapping problem's forward models")
-        for fwd_model_name in self.problem.forward_models.keys():
+        for fwd_model_name in self.problem.forward_models:
             setattr(self.problem.forward_models[fwd_model_name], 'call',
                     self._translate_forward_model(
                         self.problem.forward_models[fwd_model_name]))
@@ -353,7 +355,7 @@ class PyroSolver:
             The number of steps the sampler takes.
         n_initial_steps: int, optional
             The number of steps for the burn-in phase.
-        kwargs : dict
+        kwargs
             Additional keyword arguments passed to NUTS.
 
         Returns

@@ -97,7 +97,6 @@ class Parameters(dict):
             for prior_parameter_name, value in prior_dict.items():
                 # create unique name for this prior parameter
                 new_name = f"{prior_parameter_name}_{prm_name}"
-                prior_parameter_names.append(new_name)
                 if type(value) in {float, int, list, tuple, np.ndarray}:
                     # in this case, the prior-parameter is considered a 'const'-
                     # parameter and added to the problem accordingly here
@@ -108,10 +107,12 @@ class Parameters(dict):
                     # one, since the added parameter is a constant here
                     self.add_parameter(new_name, 'prior', const=value,
                                        info=default_info)
+                    prior_parameter_names.append(new_name)
                 elif type(value) is str:
                     # in this case the prior-parameter is defined as an already
                     # defined parameter with the name stated in value
                     self.confirm_that_parameter_exists(value)
+                    prior_parameter_names.append({value: new_name})
                 else:
                     raise TypeError(
                         f"The prior-parameter {new_name} is not assigned a "
