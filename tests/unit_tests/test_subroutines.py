@@ -132,6 +132,7 @@ class TestProblem(unittest.TestCase):
             list2dict(['a', 1.0])
         # the input must be of type list or dict
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             list2dict((1, 2))
 
     def test_pretty_time_delta(self):
@@ -369,7 +370,12 @@ class TestProblem(unittest.TestCase):
         log_dir = os.path.dirname(__file__)
         log_file = os.path.join(log_dir, 'logfile.txt')
         logging_setup(log_file=log_file)
-        logger.info("This text should also be written to the log-file")
+        logger.info("This text should also be written to the log-file.")
+        self.assertTrue(os.path.exists(log_file))
+        # now, check the overwrite-option
+        logger.stop()  # necessary to remove the logfile
+        logging_setup(log_file=log_file, overwrite_log_file=True)
+        logger.info("This text should be overwriting the previous one.")
         self.assertTrue(os.path.exists(log_file))
         logger.stop()  # necessary to remove the logfile
         os.remove(log_file)
@@ -390,6 +396,7 @@ class TestProblem(unittest.TestCase):
         # check normal use case 3
         computed_result = add_index_to_tex_prm_name('$a$', 3)
         expected_result = '$a_3$'
+        self.assertEqual(computed_result, expected_result)
         # check normal use case 4 (note the missing '$'-signs)
         computed_result = add_index_to_tex_prm_name('a', 4)
         expected_result = 'a (4)'

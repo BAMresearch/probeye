@@ -10,7 +10,6 @@ import sys
 
 # third party imports
 import numpy as np
-import configparser
 from loguru import logger
 from functools import partial
 
@@ -544,9 +543,8 @@ def translate_prms_def(prms_def_given):
     prms_dim = len(prms_def)
     return prms_def, prms_dim
 
-def print_probeye_header(width=100, header_file="../probeye.txt",
-                         setup_cfg="../setup.cfg", margin=5, h_symbol="=",
-                         v_symbol="#", use_logger=True):
+def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.8',
+                         margin=5, h_symbol="=", v_symbol="#", use_logger=True):
     """
     Prints the probeye header which is printed, when an inference problem is
     set up. Mostly just nice to have. The only useful information it contains
@@ -559,9 +557,10 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     header_file : str, optional
         Relative path (with respect to this file) to the txt-file that contains
         the probeye letters.
-    setup_cfg : str, optional
-        Relative path (with respect to this file) to the setup.cfg file
-        containing version number and description.
+    version : str, optional
+        States the probeye version; this should be identical to the version
+        stated in setup.cfg; however, the version cannot be read dynamically,
+        since the setup.cfg is not available after installing the package.
     margin : int, optional
         Minimum number of blank spaces at the header margins.
     h_symbol : str, optional
@@ -573,9 +572,8 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     """
 
     # define the full paths of the given files
-    file_path = os.path.dirname(__file__)
-    header_file = os.path.join(file_path, header_file)
-    setup_cfg = os.path.join(file_path, setup_cfg)
+    dir_path = os.path.dirname(__file__)
+    header_file = os.path.join(dir_path, header_file)
 
     # read in the big probeye letters
     with open(header_file, 'r') as f:
@@ -584,11 +582,11 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     # note that all lines (should) have the same length
     width_probeye = len(content[0]) - 1
 
-    # get the version and the description from the setup.cfg file
-    cfg = configparser.ConfigParser()
-    cfg.read(setup_cfg)
-    version = cfg.get('metadata', 'version')
-    description = cfg.get('metadata', 'description')
+    # this string should coincide with the one given in setup.cfg; however, it
+    # cannot be read dynamically, since the setup.cfg is not available after
+    # installing the package
+    description = 'A general framework for setting up parameter '\
+                  'estimation problems.'
 
     subtitle = f"Version {version} - {description}"
     width_subtitle = len(subtitle)

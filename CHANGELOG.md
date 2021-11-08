@@ -8,6 +8,8 @@
 - added new integration test 'test_multivariate_prior.py' to show use of vector-valued parameters
 ### Changed
 - changed PriorNormal to cover multivariate distributions
+- moved 'probeye.txt' into the probeye directory
+- the probeye_header function does not read from setup.cfg anymore (this file is not available after installing the package)
 
 ## 1.0.7 (2021-Oct-29)
 ### Added

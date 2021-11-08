@@ -22,7 +22,7 @@ class PriorNormal(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "normal distribution")
 
-    def __call__(self, prms, method, use_ref_prm=True):
+    def __call__(self, prms, method, use_ref_prm=True, **kwargs):
         """
         Evaluates stats.(multivariate_)norm.<method>(x, loc, scale) or, if
         use_ref_prm=False stats.(multivariate_)norm.<method>(loc, scale). This
@@ -39,6 +39,8 @@ class PriorNormal(PriorBase):
             If True stats.(multivariate_)norm.<method>(x, loc, scale) is
             evaluated, hence 'x' must be provided in the prms dictionary.
             Otherwise, the evaluated method is stats.norm.<method>(loc, scale).
+        kwargs : dict
+            Additional keyword arguments to pass to the specified method.
 
         Returns
         -------
@@ -52,9 +54,9 @@ class PriorNormal(PriorBase):
             fun = getattr(stats.norm, method)
             if use_ref_prm:
                 x = prms[self.ref_prm]
-                return fun(x, loc=loc, scale=scale)
+                return fun(x, loc=loc, scale=scale, **kwargs)
             else:
-                return fun(loc=loc, scale=scale)
+                return fun(loc=loc, scale=scale, **kwargs)
         else:
             try:
                 fun = getattr(stats.multivariate_normal, method)
@@ -63,10 +65,9 @@ class PriorNormal(PriorBase):
                     return loc
             if use_ref_prm:
                 x = prms[self.ref_prm]
-                return fun(x, mean=loc, cov=scale)
+                return fun(x, mean=loc, cov=scale, **kwargs)
             else:
-                return fun(mean=loc, cov=scale)
-
+                return fun(mean=loc, cov=scale, **kwargs)
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -97,7 +98,6 @@ class PriorNormal(PriorBase):
                 mean=loc, cov=scale, size=size, random_state=seed)
 
 
-
 class PriorLognormal(PriorBase):
     """Prior class for a log-normal distribution."""
 
@@ -114,7 +114,7 @@ class PriorLognormal(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "log-normal distribution")
 
-    def __call__(self, prms, method, shape=1, use_ref_prm=True):
+    def __call__(self, prms, method, shape=1, use_ref_prm=True, **kwargs):
         """
         Evaluates stats.lognorm.<method>(x, loc, scale) or, if use_ref_prm=False
         stats.lognorm.<method>(loc, scale). This function is mostly used with
@@ -134,6 +134,8 @@ class PriorLognormal(PriorBase):
             If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x'
             must be provided in the prms dictionary. Otherwise, the evaluated
             method is stats.norm.<method>(loc, scale).
+        kwargs : dict
+            Additional keyword arguments to pass to the specified method.
 
         Returns
         -------
@@ -146,9 +148,9 @@ class PriorLognormal(PriorBase):
         scale = prms[f"scale_{self.ref_prm}"]
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, shape, loc=loc, scale=scale)
+            return fun(x, shape, loc=loc, scale=scale, **kwargs)
         else:
-            return fun(shape, loc=loc, scale=scale)
+            return fun(shape, loc=loc, scale=scale, **kwargs)
 
     def generate_samples(self, prms, size, seed=None, shape=1):
         """
@@ -195,7 +197,7 @@ class PriorUniform(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "uniform distribution")
 
-    def __call__(self, prms, method, use_ref_prm=True):
+    def __call__(self, prms, method, use_ref_prm=True, **kwargs):
         """
         Evaluates stats.uniform.<method>(x, loc, scale) or, if use_ref_prm=False
         stats.uniform.<method>(loc, scale). This function is mostly used with
@@ -211,6 +213,8 @@ class PriorUniform(PriorBase):
             If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x'
             must be provided in the prms dictionary. Otherwise, the evaluated
             method is stats.norm.<method>(loc, scale).
+        kwargs : dict
+            Additional keyword arguments to pass to the specified method.
 
         Returns
         -------
@@ -223,9 +227,9 @@ class PriorUniform(PriorBase):
         high = prms[f"high_{self.ref_prm}"]
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, loc=low, scale=high-low)
+            return fun(x, loc=low, scale=high-low, **kwargs)
         else:
-            return fun(loc=low, scale=high - low)
+            return fun(loc=low, scale=high - low, **kwargs)
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -268,7 +272,7 @@ class PriorWeibull(PriorBase):
         """
         super().__init__(ref_prm, prms_def, name, "Weibull distribution")
 
-    def __call__(self, prms, method, use_ref_prm=True):
+    def __call__(self, prms, method, use_ref_prm=True, **kwargs):
         """
         Evaluates stats.weibull_min.<method>(x, loc, scale) or, if use_ref_prm=
         False, stats.weibull_min.<method>(loc, scale). This function is mostly
@@ -285,6 +289,8 @@ class PriorWeibull(PriorBase):
             If True stats.weibull_min.<method>(x, loc, scale) is evaluated,
             hence 'x' must be provided in the prms dictionary. Otherwise, the
             evaluated method is weibull_min.norm.<method>(loc, scale).
+        kwargs : dict
+            Additional keyword arguments to pass to the specified method.
 
         Returns
         -------
@@ -298,9 +304,9 @@ class PriorWeibull(PriorBase):
         scale = prms[f"scale_{self.ref_prm}"]
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, shape, loc=loc, scale=scale)
+            return fun(x, shape, loc=loc, scale=scale, **kwargs)
         else:
-            return fun(shape, loc=loc, scale=scale)
+            return fun(shape, loc=loc, scale=scale, **kwargs)
 
     def generate_samples(self, prms, size, seed=None):
         """
@@ -362,7 +368,7 @@ def translate_prior(prior_template, prior_classes=None):
             # in this case prior_classes is not None, and not of type dict
             raise TypeError(
                 f"Custom prior_classes must be given as a dictionary. However, "
-                "you provided an input of type {type(prior_classes)}.")
+                f"you provided an input of type {type(prior_classes)}.")
 
     # prepare the corresponding prior object; the following translation is
     # necessary, because prms_def must be given in form of a list, but was
