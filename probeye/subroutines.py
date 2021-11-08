@@ -687,9 +687,6 @@ def stream_to_logger(log_level):
             for line in buffer.rstrip().splitlines():
                 logger.opt(depth=1).log(self._level, line.rstrip())
 
-        def flush(self):
-            pass
-
     return StreamToLogger(log_level)
 
 def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
