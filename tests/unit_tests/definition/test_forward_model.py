@@ -42,15 +42,21 @@ class TestProblem(unittest.TestCase):
 
         # check the jacobian-method (dict-version)
         computed_result = forward_model.jacobian({**{'x': 1.0}, **prms})
-        expected_result = {'y': {'x': 2.0, 'a': 1.0, 'b': 1.0}}
+        expected_result = {'y': {'x': None,
+                                 'a': np.array([[1.0]]),
+                                 'b': np.array([[1.0]])}}
         for k1, v1 in computed_result.items():
             for k2, v2 in v1.items():
                 self.assertAlmostEqual(v2, expected_result[k1][k2], places=2)
         # check the jacobian-method (array-version)
         inp_ = {**{'x': 1.0}, **prms}
         jac_dict = forward_model.jacobian(inp_)
-        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict)
-        expected_result = np.array([[2.0, 1.0, 1.0]])
+        computed_result =\
+            forward_model.jacobian_dict_to_array(inp_, jac_dict, 3)
+        # note that the first element of the expected result is zero, because
+        # it wasn't computed; the first input channel is not a model parameter,
+        # hence its partial derivative is not evaluated
+        expected_result = np.array([[0.0, 1.0, 1.0]])
         self.assertTrue(np.allclose(computed_result, expected_result, atol=1e-3)
                         and computed_result.shape == expected_result.shape)
 
@@ -90,17 +96,27 @@ class TestProblem(unittest.TestCase):
         # check the jacobian-method (dict-version)
         computed_result = forward_model.jacobian(
             {**{'x1': 2.0, 'x2': 3.0}, **prms})
-        expected_result = {'y1': {'x1': 4.0, 'x2': 2.0, 'a': 4.0, 'b': 3.0},
-                           'y2': {'x1': 4.0, 'x2': 2.0, 'a': 4.0, 'b': 3.0}}
+        expected_result = {'y1': {'x1': None,
+                                  'x2': None,
+                                  'a': np.array([[4.0]]),
+                                  'b': np.array([[3.0]])},
+                           'y2': {'x1': None,
+                                  'x2': None,
+                                  'a': np.array([[4.0]]),
+                                  'b': np.array([[3.0]])}}
         for k1, v1 in computed_result.items():
             for k2, v2 in v1.items():
                 self.assertAlmostEqual(v2, expected_result[k1][k2], places=2)
         # check the jacobian-method (array-version)
         inp_ = {**{'x1': 2.0, 'x2': 3.0}, **prms}
         jac_dict = forward_model.jacobian(inp_)
-        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict)
-        expected_result = np.array([[4.0, 2.0, 4.0, 3.0],
-                                    [4.0, 2.0, 4.0, 3.0]])
+        computed_result =\
+            forward_model.jacobian_dict_to_array(inp_, jac_dict, 4)
+        # note that the first two elements of the expected result-rows are zero,
+        # because they weren't computed; the first two input channels are not
+        # model parameters, hence their partial derivatives are not evaluated
+        expected_result = np.array([[0.0, 0.0, 4.0, 3.0],
+                                    [0.0, 0.0, 4.0, 3.0]])
         self.assertTrue(
             np.allclose(computed_result, expected_result, atol=1e-3) and
             computed_result.shape == expected_result.shape)
