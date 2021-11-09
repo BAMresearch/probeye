@@ -105,5 +105,9 @@ class TestProblem(unittest.TestCase):
         pyro_solver.run_mcmc(n_walkers=1, n_steps=100, n_initial_steps=10,
                              target_accept_prob=0.8)
 
+        # check the warning when the problem cannot be deep-copied
+        problem.no_deepcopy_possible = (i for i in (1, 2, 3))
+        PyroSolver(problem)  # this should result in a warning
+
 if __name__ == "__main__":
     unittest.main()

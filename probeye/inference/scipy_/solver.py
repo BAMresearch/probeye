@@ -44,7 +44,12 @@ class ScipySolver:
         # a copy is created before, so that this solver routine does not have
         # side effects on the original problem; such side effects would occur
         # due to calling the assign_experiments_to_noise_models-method below
-        self.problem = cp.deepcopy(problem)
+        try:
+            self.problem = cp.deepcopy(problem)
+        except:
+            logger.warning("The inference problem could not be deep-copied! "
+                           "The original problem will be modified!")
+            self.problem = problem
         self.problem.assign_experiments_to_noise_models()
 
         # translate the prior definitions to objects with computing capabilities
