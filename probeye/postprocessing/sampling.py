@@ -102,7 +102,7 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         # call the main plotting routine from arviz
         axs = az.plot_pair(inference_data, marginals=True, kind=kind,
                            figsize=figsize, textsize=textsize,
-                           show=False, **kwargs)
+                           show=show, **kwargs)
 
         # by default, the y-axis of the first and last marginal plot have ticks,
         # tick-labels and axis-labels that are not meaningful to show on the
@@ -120,7 +120,7 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                 reference_values_kwargs = kwargs['reference_values_kwargs']
             ref_value_list = [*kwargs['reference_values'].values()]
             for i, prm_value in enumerate(ref_value_list):
-                axs[i, i].scatter(prm_value, 0, label='true value',
+                axs[i, i].scatter(prm_value, 0, label='true value', zorder=10,
                                   **reference_values_kwargs, edgecolor='black')
 
         if plot_priors:
@@ -189,9 +189,6 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         # the following command reduces the otherwise wide margins
         plt.tight_layout()
 
-        # only show if requested by user
-        if show:
-            plt.show()
         return axs
 
     elif plot_with == 'seaborn':

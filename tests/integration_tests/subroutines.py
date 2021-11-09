@@ -104,6 +104,17 @@ def run_inference_engines(problem, true_values=None, n_steps=1000,
         if is_sampling_solver:
             create_pair_plot(inference_data, problem,
                              true_values=true_values, show=False)
+            create_pair_plot(inference_data, problem, focus_on_posterior=True,
+                             kind='hexbin', true_values=true_values, show=False,
+                             marginal_kwargs={'kind': 'hist',
+                                              'hist_kwargs': {'bins': 10}})
+            create_pair_plot(inference_data, problem, plot_priors=False,
+                             kind='scatter', true_values=true_values,
+                             show=False,
+                             marginal_kwargs={'kind': 'hist',
+                                              'hist_kwargs': {'bins': 10}})
+            create_pair_plot(inference_data, problem, plot_priors=False,
+                             true_values=true_values, show=False)
             create_posterior_plot(inference_data, problem,
                                   true_values=true_values, show=False)
             create_trace_plot(inference_data, problem, show=False)

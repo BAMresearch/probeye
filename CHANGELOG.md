@@ -1,6 +1,6 @@
 # probeye changelog
 
-## 1.0.8 (2021-Nov-XX)
+## 1.0.8 (2021-Nov-09)
 ### Added
 - added feature of vector-valued parameters
 - added new ParameterProperties attribute 'dim' for specifying a parameter's dimension
@@ -10,6 +10,7 @@
 - changed PriorNormal to cover multivariate distributions
 - moved 'probeye.txt' into the probeye directory
 - the probeye_header function does not read from setup.cfg anymore (this file is not available after installing the package)
+- more plots with different options are now generated in the integration tests
 
 ## 1.0.7 (2021-Oct-29)
 ### Added
