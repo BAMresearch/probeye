@@ -12,6 +12,7 @@ from tabulate import tabulate
 
 # local imports
 from probeye.subroutines import pretty_time_delta
+from probeye.subroutines import check_for_uninformative_priors
 from probeye.inference.scipy_.solver import ScipySolver
 from probeye.subroutines import stream_to_logger, print_dict_in_rows
 
@@ -26,6 +27,8 @@ class EmceeSolver(ScipySolver):
     def __init__(self, problem, seed=1, show_progress=True):
         """See docstring of ScipySolver for information on the arguments."""
         logger.debug("Initializing EmceeSolver")
+        # check that the problem does not contain a uninformative prior
+        check_for_uninformative_priors(problem)
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
 
@@ -52,7 +55,7 @@ class EmceeSolver(ScipySolver):
         """
 
         # used for the names in the first column
-        var_names = self.problem.get_theta_names(tex=False)
+        var_names = self.problem.get_theta_names(tex=False, components=True)
 
         # compute some stats for each column (i.e., each parameter)
         mean = np.mean(posterior_samples, axis=0)
@@ -119,11 +122,16 @@ class EmceeSolver(ScipySolver):
         # draw initial samples from the parameter's priors
         logger.debug("Drawing initial samples")
         sampling_initial_positions = np.zeros(
-            (n_walkers, self.problem.n_latent_prms))
-        theta_names = self.problem.get_theta_names()
-        for i, parameter_name in enumerate(theta_names):
-            sampling_initial_positions[:, i] = self.sample_from_prior(
-                parameter_name, n_walkers)
+            (n_walkers, self.problem.n_latent_prms_dim))
+        theta_names = self.problem.get_theta_names(tex=False, components=False)
+        for parameter_name in theta_names:
+            idx = self.problem.parameters[parameter_name].index
+            idx_end = self.problem.parameters[parameter_name].index_end
+            samples = self.sample_from_prior(parameter_name, n_walkers)
+            if (idx_end - idx) == 1:
+                sampling_initial_positions[:, idx] = samples
+            else:
+                sampling_initial_positions[:, idx: idx_end] = samples
 
         # The following code is based on taralli and merely adjusted to the
         # variables in the probeye setup; see https://gitlab.com/tno-bim/taralli
@@ -132,20 +140,6 @@ class EmceeSolver(ScipySolver):
         #                             Pre-process                              #
         # .................................................................... #
 
-        n_rows, n_cols = sampling_initial_positions.shape
-        n_latent_prms = self.problem.n_latent_prms
-
-        if n_cols != self.problem.n_latent_prms:
-            raise ValueError(
-                f"'sampling_initial_positions' should have {n_latent_prms} "
-                f"columns (one for each latent parameter), but {n_cols} are "
-                f"provided.")
-
-        if n_rows != n_walkers:
-            raise ValueError(
-                f"'sampling_initial_positions' should have {n_walkers} rows "
-                f"(one for each walker), but {n_rows} are provided.")
-
         random.seed(self.seed)
         np.random.seed(self.seed)
         rstate = np.random.mtrand.RandomState(self.seed)
@@ -153,7 +147,7 @@ class EmceeSolver(ScipySolver):
         logger.debug("Setting up EnsembleSampler")
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms,
+            ndim=self.problem.n_latent_prms_dim,
             log_prob_fn=lambda x: self.logprior(x) + self.loglike(x),
             **kwargs)
 
@@ -191,6 +185,6 @@ class EmceeSolver(ScipySolver):
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it
-        var_names = self.problem.get_theta_names(tex=True)
+        var_names = self.problem.get_theta_names(tex=True, components=True)
         inference_data = az.from_emcee(sampler, var_names=var_names)
         return inference_data

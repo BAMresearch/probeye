@@ -1,10 +1,13 @@
 # standard library imports
+from loguru import logger
 import unittest
+import os
 
 # third party imports
 import numpy as np
 
 # local imports
+from probeye.definition.inference_problem import InferenceProblem
 from probeye.subroutines import len_or_one
 from probeye.subroutines import make_list
 from probeye.subroutines import underlined_string
@@ -16,9 +19,15 @@ from probeye.subroutines import unvectorize_dict_values
 from probeye.subroutines import sub_when_empty
 from probeye.subroutines import dict2list
 from probeye.subroutines import list2dict
+from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import flatten
 from probeye.subroutines import process_spatial_coordinates
 from probeye.subroutines import translate_prms_def
+from probeye.subroutines import print_probeye_header
+from probeye.subroutines import logging_setup
+from probeye.subroutines import print_dict_in_rows
+from probeye.subroutines import add_index_to_tex_prm_name
+from probeye.subroutines import check_for_uninformative_priors
 
 class TestProblem(unittest.TestCase):
 
@@ -123,6 +132,17 @@ class TestProblem(unittest.TestCase):
         # the input cannot contain numbers
         with self.assertRaises(TypeError):
             list2dict(['a', 1.0])
+        # the input must be of type list or dict
+        with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
+            list2dict((1, 2))
+
+    def test_pretty_time_delta(self):
+        # check the different output formats
+        self.assertEqual(pretty_time_delta(1), '1s')
+        self.assertEqual(pretty_time_delta(62), '1m2s')
+        self.assertEqual(pretty_time_delta(3723), '1h2m3s')
+        self.assertEqual(pretty_time_delta(93780), '1d2h3m')
 
     def test_flatten(self):
         # test for a simple nested list
@@ -165,6 +185,9 @@ class TestProblem(unittest.TestCase):
         computed_result = flatten(none_arg)
         expected_result = None
         self.assertEqual(computed_result, expected_result)
+        # check invalid input (here: invalid type)
+        with self.assertRaises(TypeError):
+            flatten((1, 2, 3))
 
     def test_process_spatial_coordinates(self):
         # check for complete None-input
@@ -297,6 +320,12 @@ class TestProblem(unittest.TestCase):
         self.assertTrue(np.allclose(coords_computed, coords_expected) and
                         coords_computed.shape == coords_expected.shape)
         self.assertEqual(order_computed, order_expected)
+        # check invalid input (here: invalid type)
+        with self.assertRaises(TypeError):
+            process_spatial_coordinates(coords=(1, 2, 3, 4, 5))
+        # check invalid input (here: inconsistent individual lengths)
+        with self.assertRaises(RuntimeError):
+            process_spatial_coordinates(x=[1], y=[1, 2])
 
     def test_translate_prms_def(self):
         # valid use case: single string
@@ -332,6 +361,66 @@ class TestProblem(unittest.TestCase):
         # invalid use case: list with 2-element dict
         with self.assertRaises(ValueError):
             translate_prms_def([{'sigma': 'sigma', 'mu': 'mean'}])
+
+    def test_print_probeye_header(self):
+        # simply check that the defaults work
+        print_probeye_header(use_logger=True)
+        print_probeye_header(use_logger=False)
+
+    def test_logging_setup(self):
+        # check that the log-file option works
+        log_dir = os.path.dirname(__file__)
+        log_file = os.path.join(log_dir, 'logfile.txt')
+        logging_setup(log_file=log_file)
+        logger.info("This text should also be written to the log-file.")
+        self.assertTrue(os.path.exists(log_file))
+        # now, check the overwrite-option
+        logger.stop()  # necessary to remove the logfile
+        logging_setup(log_file=log_file, overwrite_log_file=True)
+        logger.info("This text should be overwriting the previous one.")
+        self.assertTrue(os.path.exists(log_file))
+        logger.stop()  # necessary to remove the logfile
+        os.remove(log_file)
+
+    def test_print_dict_in_rows(self):
+        # this check covers the val_fmt options
+        print_dict_in_rows({'a': 1.2345, 'b': 3.45365}, val_fmt='.2f')
+
+    def test_add_index_to_tex_prm_name(self):
+        # check normal use case 1
+        computed_result = add_index_to_tex_prm_name(r'$\alpha$', 1)
+        expected_result = r'$\alpha_1$'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 2
+        computed_result = add_index_to_tex_prm_name('$\\alpha$', 2)
+        expected_result = '$\\alpha_2$'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 3
+        computed_result = add_index_to_tex_prm_name('$a$', 3)
+        expected_result = '$a_3$'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 4 (note the missing '$'-signs)
+        computed_result = add_index_to_tex_prm_name('a', 4)
+        expected_result = 'a (4)'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 5
+        computed_result = add_index_to_tex_prm_name('$a_c$', 5)
+        expected_result = '$a_c$ (5)'
+        self.assertEqual(computed_result, expected_result)
+        # check normal use case 6
+        computed_result = add_index_to_tex_prm_name('$\\gamma^c$', 6)
+        expected_result = '$\\gamma^c$ (6)'
+        self.assertEqual(computed_result, expected_result)
+
+    def test_check_for_uninformative_priors(self):
+        # check if the detection works as expected
+        problem = InferenceProblem("Problem with uninformative prior")
+        problem.add_parameter('sigma', 'noise',
+                              prior=('uniform', {'low': 0.1, 'high': 0.8}))
+        check_for_uninformative_priors(problem)  # no error should be raised
+        problem.add_parameter('m', 'model')  # uninformative prior
+        with self.assertRaises(RuntimeError):
+            check_for_uninformative_priors(problem)
 
 if __name__ == "__main__":
     unittest.main()

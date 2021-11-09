@@ -26,11 +26,20 @@ class TestProblem(unittest.TestCase):
                                                'tex': r"$b$"})
         c_prior = PriorBase('c', ['s'], 'c_dummy', 'normal')
         parameters['c'] = ParameterProperties({'index': 2,
+                                               'dim': 1,
                                                'type': 'model',
                                                'prior': c_prior,
                                                'value': None,
                                                'info': "...",
                                                'tex': r"$c$"})
+        # check invalid key
+        with self.assertRaises(ValueError):
+            parameters[True] = ParameterProperties({'index': None,
+                                                    'type': 'model',
+                                                    'prior': None,
+                                                    'value': 3.0,
+                                                    'info': "...",
+                                                    'tex': r"$d$"})
         # check if the role is correctly identified
         self.assertEqual(parameters['a'].role, 'const')
         self.assertEqual(parameters['c'].role, 'latent')
@@ -42,6 +51,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(ValueError):
             d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
             parameters['d'] = {'index': 3,
+                               'dim': 1,
                                'type': 'model',
                                'role': 'latent',
                                'prior': d_prior,
@@ -52,6 +62,8 @@ class TestProblem(unittest.TestCase):
         # you should not be able to set parameter attributes directly
         with self.assertRaises(AttributeError):
             parameters['a'].index = -1
+        with self.assertRaises(AttributeError):
+            parameters['a'].dim = -1
         with self.assertRaises(AttributeError):
             parameters['a'].type = -1
         with self.assertRaises(AttributeError):
@@ -65,20 +77,41 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(TypeError):
             # index is has wrong type
             parameters['d'] = ParameterProperties({'index': True,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': None,
                                                    'value': None,
                                                    'info': "...",
                                                    'tex': r"$d$"})
-        with self.assertRaises(RuntimeError):
+        with self.assertRaises(ValueError):
             # index has invalid value
             parameters['d'] = ParameterProperties({'index': -1,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': None,
                                                    'value': 1.0,
                                                    'info': "...",
                                                    'tex': r"$d$"})
-
+        with self.assertRaises(TypeError):
+            # dim is has wrong type
+            d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
+            parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': True,
+                                                   'type': 'model',
+                                                   'prior': d_prior,
+                                                   'value': None,
+                                                   'info': "...",
+                                                   'tex': r"$d$"})
+        with self.assertRaises(ValueError):
+            # dim has invalid value
+            d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
+            parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': 0,
+                                                   'type': 'model',
+                                                   'prior': d_prior,
+                                                   'value': None,
+                                                   'info': "...",
+                                                   'tex': r"$d$"})
         with self.assertRaises(RuntimeError):
             # type has invalid value
             parameters['d'] = ParameterProperties({'index': None,
@@ -103,10 +136,20 @@ class TestProblem(unittest.TestCase):
                                                    'value': True,
                                                    'info': "...",
                                                    'tex': r"$d$"})
-        
+        with self.assertRaises(RuntimeError):
+            # index and dim are not consistent
+            d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
+            parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': None,
+                                                   'type': 'model',
+                                                   'prior': d_prior,
+                                                   'value': None,
+                                                   'info': "...",
+                                                   'tex': r"$d$"})
         with self.assertRaises(RuntimeError):
             # index and prior are inconsistently combined
             parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': None,
                                                    'value': None,
@@ -116,6 +159,7 @@ class TestProblem(unittest.TestCase):
             # index and value are inconsistently combined
             d_prior = PriorBase('d', ['s'], 'd_dummy', 'normal')
             parameters['d'] = ParameterProperties({'index': 3,
+                                                   'dim': 1,
                                                    'type': 'model',
                                                    'prior': d_prior,
                                                    'value': 1.0,
@@ -127,7 +171,7 @@ class TestProblem(unittest.TestCase):
             parameters['d'] = ParameterProperties({'index': None,
                                                    'type': 'model',
                                                    'prior': d_prior,
-                                                   'value': None,
+                                                   'value': 1.0,
                                                    'info': "...",
                                                    'tex': r"$d$"})
         with self.assertRaises(RuntimeError):

@@ -47,6 +47,12 @@ class ForwardModelBase:
         self.input_sensors = make_list(input_sensors)
         self.output_sensors = make_list(output_sensors)
 
+        # this attribute might be used to write the forward model's input
+        # structure to; it has the same structure like the 'inp' argument of
+        # the response method, but instead of the input channel's values it
+        # states the input channels number of elements
+        self.input_structure = {ic: None for ic in self.input_channel_names}
+
         # this attributes might be used by inference engines that need a forward
         # model wrapper, which only returns numeric vectors; for reconstructing
         # the response dictionary from the numeric vector, one needs to know the
@@ -55,12 +61,17 @@ class ForwardModelBase:
         # values will be the number of elements contained in the values; for
         # example {'x': np.array([0, 0.1, 0.2]), 'a': 3.7} will have a structure
         # of {'x': 3, 'a': 1}; this attr. is not used by all inference engines
-        self.response_structure = dict()
+        self.response_structure = {os.name: None for os in self.output_sensors}
 
     @property
     def input_sensor_names(self):
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.input_sensors]
+
+    @property
+    def input_channel_names(self):
+        """Provides input_channel_names attribute."""
+        return self.input_sensor_names + [*self.prms_def.values()]
 
     @property
     def output_sensor_names(self):
@@ -141,24 +152,16 @@ class ForwardModelBase:
         jac_dict : dict or numpy.ndarray
             The Jacobian matrix in dict-form: The keys are the names of the
             forward model's output sensors. The values are dictionaries with the
-            forward model's input channel's names as keys and the derivatives as
-            values. For example, the element jac['y']['a'] would give the
-            derivative dy/da, and jac['y'] would give the gradient of the
-            forward model's y-computation with respect to theta (i.e., the
-            input channels) in a dictionary-format.
+            forward model's input channel's names as keys and the derivatives or
+            Nones as values. Derivatives are only provided for the model's
+            parameters, see self.prms_def. For all other input channels (e.g.,
+            measurements from an experiment) None is written to the dictionary's
+            values, since they are not required by sampling routines. To give an
+            example: the element jac['y']['a'] would give the derivative dy/da,
+            and jac['y'] would give the gradient of the forward model's
+            y-computation with respect to the input channels in a
+            dictionary-format.
         """
-        # prepare the dictionary; this structure needs to be external from the
-        # main loop below since the filling of the dictionary could only be
-        # efficiently done in the format jac_dict[prm_name][os_name] which is
-        # less readable; the format created in the implemented way is easier to
-        # to read since jac['y']['a'] corresponds to dy/da in jac['y'] is the
-        # gradient of y with respect to theta
-        jac_dict = {}
-        for output_sensor in self.output_sensors:
-            jac_dict[output_sensor.name] = {}
-            for prm_name in inp.keys():
-                jac_dict[output_sensor.name][prm_name] = None
-
         # eps is the machine precision; it is needed to compute the step size of
         # the central difference scheme below; note that this refers to single
         # precision (float32) since the processed arrays might be defined in
@@ -170,30 +173,55 @@ class ForwardModelBase:
         # the for-loop
         sqrt_eps = np.sqrt(eps)
         response_dict_center = self.response(inp)
-        inp_right = cp.copy(inp)
+        inp_right = cp.deepcopy(inp)  # required to prevent side effects
+        # prepare the dictionary; this structure needs to be external from the
+        # main loop below since the filling of the dictionary could only be
+        # efficiently done in the format jac_dict[prm_name][os_name] which is
+        # less readable; the format created in the implemented way is easier to
+        # to read since jac['y']['a'] corresponds to dy/da in jac['y'] is the
+        # gradient of y with respect to theta
+        jac_dict = {}
+        for output_sensor in self.output_sensors:
+            jac_dict[output_sensor.name] = {}
+            for prm_name in inp.keys():
+                if prm_name in self.prms_def.values():  # values are local names
+                    nrows = len_or_one(response_dict_center[output_sensor.name])
+                    ncols = len_or_one(inp[prm_name])
+                    value = np.zeros((nrows, ncols))
+                else:
+                    value = None
+                jac_dict[output_sensor.name][prm_name] = value
         for prm_name, prm_value in inp.items():
-            x = inp[prm_name]
-            # the following formula for the step size is NOT taken from the
-            # literature; in the literature, a common recommended choice for the
-            # step size h given x is not 0 is h = sqrt_eps * x, see for example
-            # https://en.wikipedia.org/wiki/Numerical_differentiation; we added
-            # the term '+ sqrt_eps' below to also cover the cases where x
-            # actually is zero (or very close to 0)
-            h = sqrt_eps * x + sqrt_eps
-            inp_right[prm_name] = x + h
-            response_dict_right = self.response(inp_right)
-            for output_sensor in self.output_sensors:
-                # the simple forward scheme should be sufficient for most
-                # applications since the Jacobian will only be used as info for
-                # choosing the next sample; for that purpose it is secondary if
-                # it contains small numerical errors
-                jac_dict[output_sensor.name][prm_name] =\
-                    (response_dict_right[output_sensor.name] -
-                     response_dict_center[output_sensor.name]) / h
-            inp_right[prm_name] = inp[prm_name]  # resetting perturbed value
+            # derivatives only need to be computed for the model's parameters,
+            # not for the input that comes from the experiments; e.g., in case
+            # of y=mx+b with parameters m, b, one does not need dy/dx
+            if prm_name not in self.prms_def.values():  # values are local names
+                continue
+            # the following loop accounts for the fact, that parameters can be
+            # multidimensional
+            ncomp = len_or_one(inp[prm_name])
+            for i, x in enumerate(np.atleast_1d(inp[prm_name])):
+                # the following formula for the step size is NOT taken from the
+                # literature; in the literature, a common recommended choice for
+                # the step size h given x is not 0 is h = sqrt_eps * x, see e.g.
+                # https://en.wikipedia.org/wiki/Numerical_differentiation; we
+                # added the term '+ sqrt_eps' below to also cover the cases
+                # where x actually is zero (or very close to 0)
+                h = sqrt_eps * x + sqrt_eps
+                inp_right[prm_name] = x + h
+                response_dict_right = self.response(inp_right)
+                for output_sensor in self.output_sensors:
+                    # the simple forward scheme should be sufficient for most
+                    # applications since the Jacobian will only be used as info
+                    # for choosing the next sample; for that purpose it is
+                    # secondary if it contains small numerical errors
+                    jac_dict[output_sensor.name][prm_name][:, i] = \
+                        (response_dict_right[output_sensor.name] -
+                         response_dict_center[output_sensor.name]) / h
+                inp_right[prm_name] = inp[prm_name]  # resetting perturbed value
         return jac_dict
 
-    def jacobian_dict_to_array(self, inp, jac_dict):
+    def jacobian_dict_to_array(self, inp, jac_dict, n_inp_dim):
         """
         Converts the Jacobian in dict-format (computed by the above 'jacobian'
         method) into a numpy array. This method is external to the above
@@ -207,6 +235,9 @@ class ForwardModelBase:
             See docstring of the 'jacobian'-method above.
         jac_dict : dict
             See docstring of the 'jacobian'-method above.
+        n_inp_dim : int
+            The added-up dimensions of the forward model's input channels, i.e.,
+            of all model parameters and other input variables.
 
         Returns
         -------
@@ -217,19 +248,28 @@ class ForwardModelBase:
         """
 
         # n1 is the number of the forward model's output sensors; n2 is the
-        # number of the forward model's input channels, i.e., the number of
-        # input sensors and the number of the forward model's parameters;
-        # finally, n3 is the maximum number of elements in the n2 input
-        # channels; the model's parameters are usually scalars, but the
+        # dimension of the forward model's input channels, i.e., the added up
+        # dimensions of the input sensors and the number of the forward model's
+        # parameters; finally, n3 is the maximum number of elements in the n2
+        # input channels; the model's parameters are usually scalars, but the
         # input sensors might be vectors with more than one element
         n1 = len(self.output_sensors)
-        n2 = len(inp)
-        n3 = max([len_or_one(v) for v in [*inp.values()]])
+        n2 = n_inp_dim
+        n3 = max([len_or_one(v) for v in inp.values()])
         jac = np.zeros((n1 * n3, n2))
-        for i, prm_dict in enumerate([*jac_dict.values()]):
+        for i, prm_dict in enumerate(jac_dict.values()):
             idx_start = i * n3
-            for j, derivative in enumerate([*prm_dict.values()]):
-                idx_end = idx_start + len_or_one(derivative)
-                jac[idx_start: idx_end, j] = derivative
-
+            j = 0
+            for derivative in prm_dict.values():
+                if derivative is None:
+                    # in this case, the input variable is not a parameter; the
+                    # corresponding column in the Jacobian will remain zero,
+                    # which is ok, since it won't be used to compute anything
+                    j += 1
+                    continue
+                nvals = derivative.shape[0]
+                ncomp = derivative.shape[1]
+                idx_end = idx_start + nvals
+                jac[idx_start: idx_end, j: j + ncomp] = derivative
+                j += ncomp
         return jac

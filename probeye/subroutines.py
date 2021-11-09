@@ -10,7 +10,6 @@ import sys
 
 # third party imports
 import numpy as np
-import configparser
 from loguru import logger
 from functools import partial
 
@@ -544,9 +543,8 @@ def translate_prms_def(prms_def_given):
     prms_dim = len(prms_def)
     return prms_def, prms_dim
 
-def print_probeye_header(width=100, header_file="../probeye.txt",
-                         setup_cfg="../setup.cfg", margin=5, h_symbol="=",
-                         v_symbol="#", use_logger=True):
+def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.8',
+                         margin=5, h_symbol="=", v_symbol="#", use_logger=True):
     """
     Prints the probeye header which is printed, when an inference problem is
     set up. Mostly just nice to have. The only useful information it contains
@@ -559,9 +557,10 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     header_file : str, optional
         Relative path (with respect to this file) to the txt-file that contains
         the probeye letters.
-    setup_cfg : str, optional
-        Relative path (with respect to this file) to the setup.cfg file
-        containing version number and description.
+    version : str, optional
+        States the probeye version; this should be identical to the version
+        stated in setup.cfg; however, the version cannot be read dynamically,
+        since the setup.cfg is not available after installing the package.
     margin : int, optional
         Minimum number of blank spaces at the header margins.
     h_symbol : str, optional
@@ -573,9 +572,8 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     """
 
     # define the full paths of the given files
-    file_path = os.path.dirname(__file__)
-    header_file = os.path.join(file_path, header_file)
-    setup_cfg = os.path.join(file_path, setup_cfg)
+    dir_path = os.path.dirname(__file__)
+    header_file = os.path.join(dir_path, header_file)
 
     # read in the big probeye letters
     with open(header_file, 'r') as f:
@@ -584,11 +582,11 @@ def print_probeye_header(width=100, header_file="../probeye.txt",
     # note that all lines (should) have the same length
     width_probeye = len(content[0]) - 1
 
-    # get the version and the description from the setup.cfg file
-    cfg = configparser.ConfigParser()
-    cfg.read(setup_cfg)
-    version = cfg.get('metadata', 'version')
-    description = cfg.get('metadata', 'description')
+    # this string should coincide with the one given in setup.cfg; however, it
+    # cannot be read dynamically, since the setup.cfg is not available after
+    # installing the package
+    description = 'A general framework for setting up parameter '\
+                  'estimation problems.'
 
     subtitle = f"Version {version} - {description}"
     width_subtitle = len(subtitle)
@@ -687,9 +685,6 @@ def stream_to_logger(log_level):
             for line in buffer.rstrip().splitlines():
                 logger.opt(depth=1).log(self._level, line.rstrip())
 
-        def flush(self):
-            pass
-
     return StreamToLogger(log_level)
 
 def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
@@ -713,3 +708,60 @@ def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
             printer(f"{key:{n + 1}s} {sep} {val:{val_fmt}}")
         else:
             printer(f"{key:{n + 1}s} {sep} {val}")
+
+def add_index_to_tex_prm_name(tex, index):
+    """
+    Adds a lower index to a parameter's tex-name. This function is intended for
+    vector-valued parameters. For example: ('$a$', 1) -> '$a_1$'.
+
+    Parameters
+    ----------
+    tex : str
+        The tex-string to be modified.
+    index : int
+        The index to be added as a lower index to tex.
+
+    Returns
+    -------
+    tex_mod : str
+        The tex-string with included index.
+    """
+
+    # the math-model '$' should appear twice in the string
+    check_1 = tex.count("$") == 2
+    # the index is only added in tex-fashion
+    # if no indexes are present already
+    check_2 = not ("_" in tex)
+    check_3 = not ("^" in tex)
+
+    if check_1 and check_2 and check_3:
+        tex_list = tex.split("$")
+        # since it was checked that there are exactly 2 '$'-signs in tex, the
+        # tex_list has 3 elements, with the middle one being the string enclosed
+        # by the two '$'-signs
+        tex_list[1] = tex_list[1] + f'_{index}'
+        tex_mod = '$'.join(tex_list)
+    else:
+        # if not all checks are passed, the index is added in a way, that does
+        # not expect anything from the given tex-string
+        tex_mod = tex + f" ({index})"
+
+    return tex_mod
+
+def check_for_uninformative_priors(problem):
+    """
+    Checks if all priors defined within a given InferenceProblem are not
+    uninformative.
+
+    Parameters
+    ----------
+    problem : InferenceProblem
+        The given problem to check.
+    """
+    for prior_name, prior_template in problem.priors.items():
+        if prior_template.prior_type == 'uninformative':
+            raise RuntimeError(f"The prior '{prior_name}' is uninformative,"
+                               f" which cannot be used by the requested "
+                               f"solver. You could change it to a "
+                               f"uniform-prior on a specified interval to "
+                               f"solver this problem.")
