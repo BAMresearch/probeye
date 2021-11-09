@@ -7,6 +7,7 @@ import os
 import numpy as np
 
 # local imports
+from probeye.definition.inference_problem import InferenceProblem
 from probeye.subroutines import len_or_one
 from probeye.subroutines import make_list
 from probeye.subroutines import underlined_string
@@ -26,6 +27,7 @@ from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import print_dict_in_rows
 from probeye.subroutines import add_index_to_tex_prm_name
+from probeye.subroutines import check_for_uninformative_priors
 
 class TestProblem(unittest.TestCase):
 
@@ -410,6 +412,15 @@ class TestProblem(unittest.TestCase):
         expected_result = '$\\gamma^c$ (6)'
         self.assertEqual(computed_result, expected_result)
 
+    def test_check_for_uninformative_priors(self):
+        # check if the detection works as expected
+        problem = InferenceProblem("Problem with uninformative prior")
+        problem.add_parameter('sigma', 'noise',
+                              prior=('uniform', {'low': 0.1, 'high': 0.8}))
+        check_for_uninformative_priors(problem)  # no error should be raised
+        problem.add_parameter('m', 'model')  # uninformative prior
+        with self.assertRaises(RuntimeError):
+            check_for_uninformative_priors(problem)
 
 if __name__ == "__main__":
     unittest.main()

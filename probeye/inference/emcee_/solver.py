@@ -12,6 +12,7 @@ from tabulate import tabulate
 
 # local imports
 from probeye.subroutines import pretty_time_delta
+from probeye.subroutines import check_for_uninformative_priors
 from probeye.inference.scipy_.solver import ScipySolver
 from probeye.subroutines import stream_to_logger, print_dict_in_rows
 
@@ -26,6 +27,8 @@ class EmceeSolver(ScipySolver):
     def __init__(self, problem, seed=1, show_progress=True):
         """See docstring of ScipySolver for information on the arguments."""
         logger.debug("Initializing EmceeSolver")
+        # check that the problem does not contain a uninformative prior
+        check_for_uninformative_priors(problem)
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
 

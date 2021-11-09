@@ -16,6 +16,7 @@ from probeye.inference.torch_.noise_models import translate_noise_model
 from probeye.subroutines import len_or_one
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
+from probeye.subroutines import check_for_uninformative_priors
 
 
 class PyroSolver:
@@ -34,6 +35,9 @@ class PyroSolver:
             example as a progress-bar) if such a feature is available.
             Otherwise, the progress will not shown.
         """
+
+        # check that the problem does not contain a uninformative prior
+        check_for_uninformative_priors(problem)
 
         # attributes from arguments
         self.show_progress = show_progress

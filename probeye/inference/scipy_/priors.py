@@ -61,8 +61,14 @@ class PriorNormal(PriorBase):
             try:
                 fun = getattr(stats.multivariate_normal, method)
             except AttributeError:
-                if method == 'mean':
+                # this try-catch construct accounts for the fact, that the
+                # multivariate normal distribution does not have a 'mean' or
+                # 'median' method
+                if method in ['mean', 'median']:
                     return loc
+                else:
+                    raise AttributeError(f"stats.multivariate_normal does "
+                                         f"not have a '{method}'-method")
             if use_ref_prm:
                 x = prms[self.ref_prm]
                 return fun(x, mean=loc, cov=scale, **kwargs)
@@ -356,6 +362,10 @@ def translate_prior(prior_template, prior_classes=None):
         An instance of a specific prior class with computing capabilities.
         Examples for such classes are given above in this file.
     """
+
+    # no translation is required for an uninformative prior
+    if prior_template.prior_type == 'uninformative':
+        return prior_template
 
     # check the prior_classes argument; it either must be None, or of type dict
     if type(prior_classes) is not dict:

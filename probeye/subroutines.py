@@ -747,3 +747,21 @@ def add_index_to_tex_prm_name(tex, index):
         tex_mod = tex + f" ({index})"
 
     return tex_mod
+
+def check_for_uninformative_priors(problem):
+    """
+    Checks if all priors defined within a given InferenceProblem are not
+    uninformative.
+
+    Parameters
+    ----------
+    problem : InferenceProblem
+        The given problem to check.
+    """
+    for prior_name, prior_template in problem.priors.items():
+        if prior_template.prior_type == 'uninformative':
+            raise RuntimeError(f"The prior '{prior_name}' is uninformative,"
+                               f" which cannot be used by the requested "
+                               f"solver. You could change it to a "
+                               f"uniform-prior on a specified interval to "
+                               f"solver this problem.")

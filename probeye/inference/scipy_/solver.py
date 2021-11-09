@@ -144,7 +144,7 @@ class ScipySolver:
             ll += noise_model.loglike_contribution(model_response, prms_noise)
         return ll
 
-    def get_start_values(self, x0_dict, x0_prior, x0_default):
+    def get_start_values(self, x0_dict=None, x0_prior='mean', x0_default=1.0):
         """
         Derives the start values for the maximum likelihood optimization run.
         For an explanation of the arguments, see self.run_max_likelihood.
@@ -289,7 +289,8 @@ class ScipySolver:
         # prepare the start value either from the given x0_dict or from the mean
         # values of the latent parameter's priors
         logger.debug("Deriving start values")
-        x0, x0_dict = self.get_start_values(x0_dict, x0_prior, x0_default)
+        x0, x0_dict = self.get_start_values(
+            x0_dict=x0_dict, x0_prior=x0_prior, x0_default=x0_default)
         logger.info("Using start values:")
         print_dict_in_rows(x0_dict, printer=logger.info, val_fmt=None)
 
