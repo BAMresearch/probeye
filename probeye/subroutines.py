@@ -543,7 +543,7 @@ def translate_prms_def(prms_def_given):
     prms_dim = len(prms_def)
     return prms_def, prms_dim
 
-def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.8',
+def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.9',
                          margin=5, h_symbol="=", v_symbol="#", use_logger=True):
     """
     Prints the probeye header which is printed, when an inference problem is

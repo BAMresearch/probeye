@@ -4,6 +4,10 @@
 ### Changed
 - extended the documentation in README.md
 
+## 1.0.9 (2021-Nov-09)
+### Changed
+- deep-copying the inference problem in the solver classes is wrapped with try/except, since not all problems can be deepcopied
+
 ## 1.0.8 (2021-Nov-09)
 ### Added
 - added feature of vector-valued parameters
