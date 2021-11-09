@@ -1,3 +1,6 @@
+# standard library
+import warnings
+
 # third party imports
 import numpy as np
 import torch as th
@@ -13,6 +16,7 @@ from probeye.inference.torch_.noise_models import translate_noise_model
 from probeye.subroutines import len_or_one
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
+from probeye.subroutines import check_for_uninformative_priors
 
 
 class PyroSolver:
@@ -32,6 +36,9 @@ class PyroSolver:
             Otherwise, the progress will not shown.
         """
 
+        # check that the problem does not contain a uninformative prior
+        check_for_uninformative_priors(problem)
+
         # attributes from arguments
         self.show_progress = show_progress
         self.seed = seed
@@ -48,16 +55,17 @@ class PyroSolver:
 
         # the dictionary dependency_dict will contain all latent parameter names
         # as keys; the value of each key will be a list with latent hyper-
-        # parameters of the latent parameter's prior
+        # parameters of the latent parameter's prior; note that the dependency_
+        # dict is made an attribute, so that one can better test those routines
         logger.debug("Checking parameter's dependencies")
-        dependency_dict = dict()
+        self.dependency_dict = dict()
         for prm_name in self.problem.parameters.latent_prms:
-            dependency_dict[prm_name] = []
+            self.dependency_dict[prm_name] = []
             hyperparameters =\
                 self.problem.parameters[prm_name].prior.hyperparameters
             for prior_prm_name in hyperparameters:
                 if prior_prm_name in self.problem.parameters.latent_prms:
-                    dependency_dict[prm_name].append(prior_prm_name)
+                    self.dependency_dict[prm_name].append(prior_prm_name)
 
         # this makes sure that the items in dependency are in an order that they
         # ca be sampled from beginning (index 0) sequentially until the last
@@ -67,27 +75,28 @@ class PyroSolver:
         while not consistent:
             consistent = True
             idx_latent_dependencies =\
-                [i for i, v in enumerate(dependency_dict.values())
+                [i for i, v in enumerate(self.dependency_dict.values())
                  if len(v) > 0]
             for idx in idx_latent_dependencies:
-                key_idx = [*dependency_dict.keys()][idx]
-                for dependency in dependency_dict[key_idx]:
-                    if key_idx in dependency_dict[dependency]:
+                key_idx = [*self.dependency_dict.keys()][idx]
+                for dependency in self.dependency_dict[key_idx]:
+                    if key_idx in self.dependency_dict[dependency]:
                         raise RuntimeError(
                             f"Found circular dependency between {key_idx} and "
                             f"{dependency}!")
-                    idx_dependency = [*dependency_dict.keys()].index(dependency)
+                    idx_dependency =\
+                        [*self.dependency_dict.keys()].index(dependency)
                     if idx_dependency > idx:
                         consistent = False
-                        tuples = [*dependency_dict.items()]
+                        tuples = [*self.dependency_dict.items()]
                         tuples[idx], tuples[idx_dependency] = \
                             tuples[idx_dependency], tuples[idx]
-                        dependency_dict = dict(tuples)
+                        self.dependency_dict = dict(tuples)
 
         # translate the prior definitions to objects with computing capabilities
         logger.debug("Translating problem's priors")
         self.priors = {}
-        for prm_name in dependency_dict.keys():
+        for prm_name in self.dependency_dict:
             prior_template = self.problem.parameters[prm_name].prior
             self.priors[prior_template.ref_prm] = \
                 translate_prior_template(prior_template)
@@ -100,7 +109,7 @@ class PyroSolver:
 
         # translate the problem's forward models into torch compatible ones
         logger.debug("Wrapping problem's forward models")
-        for fwd_model_name in self.problem.forward_models.keys():
+        for fwd_model_name in self.problem.forward_models:
             setattr(self.problem.forward_models[fwd_model_name], 'call',
                     self._translate_forward_model(
                         self.problem.forward_models[fwd_model_name]))
@@ -156,20 +165,21 @@ class PyroSolver:
                 # takes place here; also, the given values must be rearranged
                 # in the dict-format required by forward_model's response method
                 inp = {}
-                keys = [isens.name for isens in forward_model.input_sensors] +\
-                       [*forward_model.prms_def.values()]
+                keys = forward_model.input_channel_names
                 for key, value in zip(keys, values):
                     if th.is_tensor(value):
                         inp[key] = value.detach().numpy()
                     else:
                         inp[key] = value
+                    forward_model.input_structure[key] = len_or_one(inp[key])
 
                 # evaluate the forward model and its jacobian for the given
                 # input parameters; this is where the forward model is evaluated
                 # in its original setup without any tensors
                 response_dict = forward_model.response(inp)
                 jac_dict = forward_model.jacobian(inp)
-                jac_numpy = forward_model.jacobian_dict_to_array(inp, jac_dict)
+                jac_numpy = forward_model.jacobian_dict_to_array(
+                    inp, jac_dict, self.problem.n_latent_prms_dim)
 
                 # now we have the forward model's response in dict format;
                 # however, in this format it cannot be processed here, so we
@@ -253,10 +263,15 @@ class PyroSolver:
                 # an input sensor of the forward model) are not required to have
                 # their gradients evaluated, so these elements will have 'False'
                 # entries in ctx.needs_input_grad
-                return_val = tuple(
-                    None if not required else grad for required, grad
-                    in zip(ctx.needs_input_grad, th.flatten(grad_total)))
-                return return_val
+                return_val = [None] * self.problem.n_latent_prms
+                j = 0
+                for i, dim in enumerate(forward_model.input_structure.values()):
+                    if ctx.needs_input_grad[i]:
+                        return_val[i] = grad_total[j: j + dim]
+                        j += dim
+                    else:
+                        j += 1
+                return tuple(return_val)
 
         return self._only_values(Autograd.apply)
 
@@ -266,7 +281,7 @@ class PyroSolver:
 
         Returns
         -------
-        list[torch.Tensor]
+        torch.Tensor
             The sampled values based on the latent parameter's priors.
         """
         # even if a list is returned by this function, we initialize a dict here
@@ -283,8 +298,11 @@ class PyroSolver:
                     # (i.e. the hyperparameters) are simply constants
                     hyperprms_dict[name] = self.problem.parameters[name].value
             # this is where the parameter's sample is generated with pyro
-            pyro_parameter_samples[ref_prm] = prior_obj.sample(hyperprms_dict)
-        return [*pyro_parameter_samples.values()]
+            sample = prior_obj.sample(hyperprms_dict)
+            if sample.dim() == 0:
+                sample = sample.reshape(1)
+            pyro_parameter_samples[ref_prm] = sample
+        return th.cat(tuple(pyro_parameter_samples.values()))
 
     def loglike(self, theta):
         """
@@ -292,7 +310,7 @@ class PyroSolver:
 
         Parameters
         ----------
-        theta : list[torch.Tensor]
+        theta : torch.Tensor
             A vector of pyro.samples (i.e. tensors) for which the log-likelihood
             function should be evaluated.
 
@@ -319,8 +337,8 @@ class PyroSolver:
 
         Returns
         -------
-        list[torch.Tensor]
-            The sampled values based on the latent parameter's priors.
+        ll : torch.Tensor
+            The evaluated log-likelihood function for the given theta-vector.
         """
         theta = self.get_theta_samples()
         return self.loglike(theta)
@@ -341,7 +359,7 @@ class PyroSolver:
             The number of steps the sampler takes.
         n_initial_steps: int, optional
             The number of steps for the burn-in phase.
-        kwargs : dict
+        kwargs
             Additional keyword arguments passed to NUTS.
 
         Returns
@@ -354,7 +372,8 @@ class PyroSolver:
         logger.info(
             f"Solving problem using pyro's NUTS sampler with {n_initial_steps} "
             f"+ {n_steps} samples, ...")
-        logger.info(f"... {n_walkers} chains and a step size of {step_size:.3f}")
+        logger.info(
+            f"... {n_walkers} chains and a step size of {step_size:.3f}")
         if kwargs:
             logger.info("Additional NUTS options:")
             print_dict_in_rows(kwargs, printer=logger.info)
@@ -378,6 +397,17 @@ class PyroSolver:
         mcmc.run()
         end = time.time()
 
+        # the following modification of the mcmc-object is necessary in cases
+        # (that occur so far only when using prior-priors) where the samples
+        # of a 1D parameter are saved in a 3D tensor instead of a 2D tensor;
+        # note that only a reshape of the data occurs without changing the
+        # samples themselves
+        for prm_name, samples in mcmc._samples.items():
+            if len(samples.shape) > 2 and \
+                    self.problem.parameters[prm_name].dim == 1:
+                mcmc._samples[prm_name] = \
+                    th.reshape(mcmc._samples[prm_name], samples.shape[:2])
+
         # log out the results of the process
         runtime_str = pretty_time_delta(end - start)
         logger.info(f"Sampling of the posterior distribution completed: "
@@ -390,11 +420,17 @@ class PyroSolver:
         self.raw_results = mcmc
 
         # translate the results to a common data structure and return it
-        var_names = self.problem.get_theta_names(tex=False)
-        var_names_tex = self.problem.get_theta_names(tex=True)
+        var_names = self.problem.get_theta_names(tex=False, components=False)
+        var_names_tex = self.problem.get_theta_names(tex=True, components=False)
         name_dict = {var_name: var_name_tex for var_name, var_name_tex
                      in zip(var_names, var_names_tex)}
-        inference_data = az.from_pyro(mcmc)
+        # the following warning-filter is intended to hide the
+        # DepreciationWarning that is currently always raised in the
+        # arviz.from_pyro method due to using np.bool instead of bool; as soon
+        # as this issue is fixed within arviz, the warning-filter can be removed
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            inference_data = az.from_pyro(mcmc, log_likelihood=False)
         inference_data.rename(name_dict, groups='posterior', inplace=True)
 
         return inference_data
