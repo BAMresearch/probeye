@@ -67,5 +67,9 @@ class TestProblem(unittest.TestCase):
         # argument-pipeline works
         scipy_solver.run_max_likelihood(solver_options={'jac': None})
 
+        # check the warning when the problem cannot be deep-copied
+        problem.no_deepcopy_possible = (i for i in (1, 2, 3))
+        ScipySolver(problem)  # this should result in a warning
+
 if __name__ == "__main__":
     unittest.main()

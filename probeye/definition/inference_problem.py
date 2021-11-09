@@ -221,7 +221,7 @@ class InferenceProblem:
 
         # list the forward models that have been defined within the problem
         rows = [(name, simplified_list_string([*model.prms_def.keys()]),
-                simplified_list_string([*model.prms_def.values()]))
+                 simplified_list_string([*model.prms_def.values()]))
                 for name, model in self._forward_models.items()]
         headers = ["Model name", "Global parameters", "Local parameters"]
         fwd_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
@@ -296,7 +296,7 @@ class InferenceProblem:
         prm_name : str
             The name of the parameter to be removed.
         """
-        
+
         # checks/additional actions are done by Parameters' __delitem__ method
         del self._parameters[prm_name]
 
@@ -387,7 +387,7 @@ class InferenceProblem:
             new_tex = self._parameters[prm_name].tex
 
         # change the info/tex-string
-        self._parameters[prm_name] =\
+        self._parameters[prm_name] = \
             self._parameters[prm_name].changed_copy(info=new_info, tex=new_tex)
 
     def change_constant(self, prm_name, new_value):
@@ -411,7 +411,7 @@ class InferenceProblem:
                 f"The parameter '{prm_name}' is not a constant!"
             )
         # change the parameter's value
-        self._parameters[prm_name] =\
+        self._parameters[prm_name] = \
             self._parameters[prm_name].changed_copy(value=new_value)
 
     def check_problem_consistency(self):
@@ -422,23 +422,23 @@ class InferenceProblem:
 
         # check if the central components have been added to the problem:
         # parameters, forward models, noise models and experiments
-        assert len(self._parameters) != 0,\
+        assert len(self._parameters) != 0, \
             "The problem does not contain any parameters!"
-        assert len(self._forward_models) != 0,\
-                   "The problem does not contain any forward models!"
-        assert len(self._noise_models) != 0,\
-                   "The problem does not contain any noise models!"
-        assert len(self._experiments) != 0,\
-                   "The problem does not contain any experiments!"
+        assert len(self._forward_models) != 0, \
+            "The problem does not contain any forward models!"
+        assert len(self._noise_models) != 0, \
+            "The problem does not contain any noise models!"
+        assert len(self._experiments) != 0, \
+            "The problem does not contain any experiments!"
 
         # check if all parameters of the forward model(s) appear in
         # self._parameters and if they have the correct type
         for forward_model in self._forward_models.values():
             for model_prm in forward_model.prms_def.keys():
-                assert model_prm in self._parameters,\
+                assert model_prm in self._parameters, \
                     (f"The forward model parameter '{model_prm}' "
                      f"is not defined within the problem!")
-                assert self._parameters[model_prm].type == "model",\
+                assert self._parameters[model_prm].type == "model", \
                     (f"The forward model parameter '{model_prm}' "
                      f"is not of type 'model'!")
 
@@ -446,10 +446,10 @@ class InferenceProblem:
         # and if they have the correct type
         for noise_model in self._noise_models:
             for noise_prm in noise_model.prms_def.keys():
-                assert noise_prm in self._parameters,\
+                assert noise_prm in self._parameters, \
                     (f"The noise model parameter '{noise_prm}' "
                      f"is not defined within the problem!")
-                assert self._parameters[noise_prm].type == "noise",\
+                assert self._parameters[noise_prm].type == "noise", \
                     (f"The noise model parameter '{noise_prm}' "
                      f"is not of type 'noise'!")
 
@@ -457,10 +457,10 @@ class InferenceProblem:
         # their parameters; each one of them must appear in self._parameters
         for prior_obj in self.priors.values():
             for prior_prm in prior_obj.hyperparameters.keys():
-                assert prior_prm in self._parameters,\
+                assert prior_prm in self._parameters, \
                     (f"The prior parameter '{prior_prm}' "
                      f"is not defined within the problem!")
-                assert self._parameters[prior_prm].type == "prior",\
+                assert self._parameters[prior_prm].type == "prior", \
                     (f"The prior parameter '{prior_prm}' "
                      f"is not of type 'prior'!")
 
@@ -470,7 +470,7 @@ class InferenceProblem:
             if parameter.is_latent:
                 idx_range = [*range(parameter.index, parameter.index_end)]
                 idx_list += idx_range
-        assert sorted(idx_list) == list(range(len(idx_list))),\
+        assert sorted(idx_list) == list(range(len(idx_list))), \
             (f"There seems to be an inconsistency in the latent "
              f"parameter's indices. The sorted index list is: "
              f"{sorted(idx_list)}")
@@ -982,15 +982,21 @@ class InferenceProblem:
         logger.debug(f"Transforming experimental data using f = '{f.__name__}'")
 
         # the original problem shall not be touched, so we create a copy here
-        # to which the transformation will be applied
-        self_copy = cp.deepcopy(self)
+        # to which the transformation will be applied; however, sometimes this
+        # is not possible, hence the try-except frame
+        try:
+            self_copy = cp.deepcopy(self)
+        except:
+            logger.warning("The inference problem could not be deep-copied! "
+                           "The original problem will be modified!")
+            self_copy = self
 
         # transform the sensor values from the experiments by applying the
         # specified function with the given arguments to them
         for exp_name in self_copy._experiments.keys():
             sensor_values = self_copy._experiments[exp_name]['sensor_values']
             for sensor_name in sensor_values.keys():
-                sensor_values[sensor_name] =\
+                sensor_values[sensor_name] = \
                     f(sensor_values[sensor_name], *args, **kwargs)
 
         return self_copy

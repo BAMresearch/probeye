@@ -4,6 +4,10 @@
 ### Changed
 - revised arviz-based post-processing routine in create_posterior_plot, create_trace_plot
 
+## 1.0.9 (2021-Nov-09)
+### Changed
+- deep-copying the inference problem in the solver classes is wrapped with try/except, since not all problems can be deepcopied
+
 ## 1.0.8 (2021-Nov-09)
 ### Added
 - added feature of vector-valued parameters
