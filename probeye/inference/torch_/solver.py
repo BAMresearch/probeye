@@ -397,6 +397,17 @@ class PyroSolver:
         mcmc.run()
         end = time.time()
 
+        # the following modification of the mcmc-object is necessary in cases
+        # (that occur so far only when using prior-priors) where the samples
+        # of a 1D parameter are saved in a 3D tensor instead of a 2D tensor;
+        # note that only a reshape of the data occurs without changing the
+        # samples themselves
+        for prm_name, samples in mcmc._samples.items():
+            if len(samples.shape) > 2 and \
+                    self.problem.parameters[prm_name].dim == 1:
+                mcmc._samples[prm_name] = \
+                    th.reshape(mcmc._samples[prm_name], samples.shape[:2])
+
         # log out the results of the process
         runtime_str = pretty_time_delta(end - start)
         logger.info(f"Sampling of the posterior distribution completed: "

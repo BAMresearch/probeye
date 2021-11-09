@@ -22,7 +22,7 @@ class TestProblem(unittest.TestCase):
             def response(self, inp):
                 return {'y': inp['m'] * inp['x'] + inp['b']}
 
-        # define parameters with a circular dependency between loc_m and m
+        # define parameters with with an uninformative prior
         problem = InferenceProblem("Problem with uninformative prior")
         problem.add_parameter('m', 'model')  # uninformative prior
         problem.add_parameter('b', 'model',

@@ -33,6 +33,9 @@ class TestProblem(unittest.TestCase):
         prms = {'loc_a': [0., 0.], 'scale_a': [1., 1.]}
         sample = prior_normal(prms, method='rvs', use_ref_prm=False, size=10)
         self.assertEqual(len(sample), 10)
+        # test requesting an invalid method
+        with self.assertRaises(AttributeError):
+            prior_normal(prms, method='invalid method')
 
     def test_prior_lognormal(self):
         prior_lognormal = PriorLognormal(
