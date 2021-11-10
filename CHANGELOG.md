@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 1.0.11 (2021-Nov-10)
+### Added
+- added summary attribute to solver classes
+
 ## 1.0.10 (2021-Nov-10)
 ### Changed
 - the evaluate_model_response method was moved from InferenceProblem to the solver classes
