@@ -371,6 +371,8 @@ class ScipySolver:
         # return-value of this method; however, for other solver they differ;
         # hence, this attribute is set here only for consistency reasons
         self.raw_results = minimize_results
+        self.summary = {'success': minimize_results.success,
+                        'theta_opt': minimize_results.x}
 
         # some convenient printout with respect to the solver's results
         self.summarize_ml_results(minimize_results, true_values, x0_dict)
