@@ -70,8 +70,8 @@ class EmceeSolver(ScipySolver):
 
         # assemble the summary array
         col_names = ["", "mean", "median", "sd", "5%", "95%"]
-        row_names = np.array(var_names).reshape(-1, 1)
-        tab = np.hstack((row_names,
+        row_names = np.array(var_names)
+        tab = np.hstack((row_names.reshape(-1, 1),
                          mean.reshape(-1, 1),
                          median.reshape(-1, 1),
                          sd.reshape(-1, 1),
@@ -80,11 +80,11 @@ class EmceeSolver(ScipySolver):
 
         # print the generated table, and return a summary dict for later use
         print(tabulate(tab, headers=col_names, floatfmt=".2f"))
-        return {'mean': {name: val for name, val in zip(mean, row_names)},
-                'median': {name: val for name, val in zip(median, row_names)},
-                'sd':  {name: val for name, val in zip(sd, row_names)},
-                'q05': {name: val for name, val in zip(quantile_05, row_names)},
-                'q95': {name: val for name, val in zip(quantile_95, row_names)}}
+        return {'mean': {name: val for name, val in zip(row_names, mean)},
+                'median': {name: val for name, val in zip(row_names, median)},
+                'sd':  {name: val for name, val in zip(row_names, sd)},
+                'q05': {name: val for name, val in zip(row_names, quantile_05)},
+                'q95': {name: val for name, val in zip(row_names, quantile_95)}}
 
     def run_mcmc(self, n_walkers=20, n_steps=1000, n_initial_steps=100,
                  **kwargs):
@@ -181,7 +181,7 @@ class EmceeSolver(ScipySolver):
         logger.info("Summary of sampling results")
         posterior_samples = sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger('INFO')):
-            self.emcee_summary(posterior_samples)
+            self.summary = self.emcee_summary(posterior_samples)
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it
