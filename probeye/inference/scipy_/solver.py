@@ -10,7 +10,7 @@ from loguru import logger
 # local imports
 from probeye.inference.scipy_.priors import translate_prior
 from probeye.inference.scipy_.noise_models import translate_noise_model
-from probeye.subroutines import print_dict_in_rows
+from probeye.subroutines import print_dict_in_rows, make_list
 
 
 class ScipySolver:
@@ -63,6 +63,63 @@ class ScipySolver:
         self.noise_models = []
         for noise_model_base in self.problem.noise_models:
             self.noise_models.append(translate_noise_model(noise_model_base))
+
+    def evaluate_model_response(self, theta, experiment_names=None):
+        """
+        Evaluates the model response for each forward model for the given
+        parameter vector theta and the given experiments.
+
+        Parameters
+        ----------
+        theta : array_like
+            A numeric vector for which the model responses should be evaluated.
+            Which parameters these numbers refer to can be checked by calling
+            self.theta_explanation() once the problem is set up.
+        experiment_names : str, list[str] or None, optional
+            Contains the names of all or some of the experiments added to the
+            inference  problem. If this argument is None (which is a common use
+            case) then all experiments defined in the problem (self.experiments)
+            are used. The names provided here define the experiments that the
+            forward model is evaluated for.
+
+        Returns
+        -------
+        model_response_dict : dict
+            The first key is the name of the experiment. The values are dicts
+            which contain the forward model's output sensor's names as keys
+            have the corresponding model responses as values.
+        """
+
+        # if experiments is not further specified all experiments added to the
+        # problem will be accounted for when computing the model error
+        if experiment_names is None:
+            experiment_names = [*self.problem.experiments.keys()]
+        else:
+            # make sure that a given string is converted into a list
+            experiment_names = make_list(experiment_names)
+
+        # first, loop over all forward models, and then, over all experiments
+        # that are associated with the corresponding model
+        model_response_dict = {}
+        for fwd_name, forward_model in self.problem.forward_models.items():
+            # get the model parameters for the considered forward model
+            prms_model = self.problem.get_parameters(
+                theta, forward_model.prms_def)
+            # get all experiments referring to the considered forward model
+            relevant_experiment_names = self.problem.get_experiment_names(
+                forward_model_names=fwd_name, experiment_names=experiment_names)
+            # evaluate the forward model for each relevant experiment
+            for exp_name in relevant_experiment_names:
+                exp_dict = self.problem.experiments[exp_name]
+                # prepare the model input values from the experimental data
+                sensor_values = exp_dict['sensor_values']
+                exp_inp = {input_sensor.name: sensor_values[input_sensor.name]
+                           for input_sensor in forward_model.input_sensors}
+                inp = {**exp_inp, **prms_model}  # adds the two dictionaries
+                # finally, evaluate the forward model for this experiment
+                model_response_dict[exp_name] = forward_model(inp)
+
+        return model_response_dict
 
     def logprior(self, theta):
         """
@@ -140,7 +197,7 @@ class ScipySolver:
         ll = 0.0
         for noise_model in self.noise_models:
             # compute the model response for the noise model's experiment_names
-            model_response = self.problem.evaluate_model_response(
+            model_response = self.evaluate_model_response(
                 theta, noise_model.experiment_names)
             # get the parameter values for the noise model's parameters
             prms_noise = self.problem.get_parameters(

@@ -13,7 +13,7 @@ import contextlib
 # local imports
 from probeye.inference.torch_.priors import translate_prior_template
 from probeye.inference.torch_.noise_models import translate_noise_model
-from probeye.subroutines import len_or_one
+from probeye.subroutines import len_or_one, make_list
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
 from probeye.subroutines import check_for_uninformative_priors
@@ -47,8 +47,10 @@ class PyroSolver:
         self.raw_results = None
 
         # the problem is copied, and in the copy, the experimental data is
-        # reformatted from numpy-arrays to torch-tensors
-        self.problem = problem.transform_experimental_data(f=th.from_numpy)
+        # reformatted from numpy-arrays to torch-tensors; note that the first
+        # command makes sure that also scalars are converted to numpy-arrays
+        self.problem = problem.transform_experimental_data(f=np.atleast_1d)
+        self.problem = self.problem.transform_experimental_data(f=th.from_numpy)
 
         # each noise model must be connected to the relevant experiment_names
         self.problem.assign_experiments_to_noise_models()
@@ -109,10 +111,11 @@ class PyroSolver:
 
         # translate the problem's forward models into torch compatible ones
         logger.debug("Wrapping problem's forward models")
+        self.wrapped_forward_models = {}
         for fwd_model_name in self.problem.forward_models:
-            setattr(self.problem.forward_models[fwd_model_name], 'call',
-                    self._translate_forward_model(
-                        self.problem.forward_models[fwd_model_name]))
+            self.wrapped_forward_models[fwd_model_name] =\
+                self._translate_forward_model(
+                        self.problem.forward_models[fwd_model_name])
 
     @staticmethod
     def _only_values(func):
@@ -275,6 +278,74 @@ class PyroSolver:
 
         return self._only_values(Autograd.apply)
 
+    def evaluate_model_response(self, theta, experiment_names=None):
+        """
+        Evaluates the model response for each forward model for the given
+        parameter vector theta and the given experiments.
+
+        Parameters
+        ----------
+        theta : array_like
+            A numeric vector for which the model responses should be evaluated.
+            Which parameters these numbers refer to can be checked by calling
+            self.theta_explanation() once the problem is set up.
+        experiment_names : str, list[str] or None, optional
+            Contains the names of all or some of the experiments added to the
+            inference  problem. If this argument is None (which is a common use
+            case) then all experiments defined in the problem (self.experiments)
+            are used. The names provided here define the experiments that the
+            forward model is evaluated for.
+
+        Returns
+        -------
+        model_response_dict : dict
+            The first key is the name of the experiment. The values are dicts
+            which contain the forward model's output sensor's names as keys
+            have the corresponding model responses as values.
+        """
+
+        # if experiments is not further specified all experiments added to the
+        # problem will be accounted for when computing the model error
+        if experiment_names is None:
+            experiment_names = [*self.problem.experiments.keys()]
+        else:
+            # make sure that a given string is converted into a list
+            experiment_names = make_list(experiment_names)
+
+        # first, loop over all forward models, and then, over all experiments
+        # that are associated with the corresponding model
+        model_response_dict = {}
+        for fwd_name, fwd_model_wrapped in self.wrapped_forward_models.items():
+            forward_model = self.problem.forward_models[fwd_name]
+            # get the model parameters for the considered forward model
+            prms_model = self.problem.get_parameters(
+                theta, forward_model.prms_def)
+            # get all experiments referring to the considered forward model
+            relevant_experiment_names = self.problem.get_experiment_names(
+                forward_model_names=fwd_name, experiment_names=experiment_names)
+            # evaluate the forward model for each relevant experiment
+            for exp_name in relevant_experiment_names:
+                exp_dict = self.problem.experiments[exp_name]
+                # prepare the model input values from the experimental data
+                sensor_values = exp_dict['sensor_values']
+                exp_inp = {input_sensor.name: sensor_values[input_sensor.name]
+                           for input_sensor in forward_model.input_sensors}
+                inp = {**exp_inp, **prms_model}  # adds the two dictionaries
+                # finally, evaluate the forward model for this experiment; note
+                # that the additional effort here is necessary, since the
+                # wrapped forward model returns a numeric vector that still has
+                # to be translated to the dictionary format
+                response = fwd_model_wrapped(inp)
+                res = forward_model.response_structure
+                i = 0
+                for key in forward_model.response_structure.keys():
+                    n_numbers = forward_model.response_structure[key]
+                    res[key] = response[i:i + n_numbers]
+                    i += n_numbers
+                model_response_dict[exp_name] = res
+
+        return model_response_dict
+
     def get_theta_samples(self):
         """
         Provides a list of latent-parameter samples in form of torch.Tensors.
@@ -323,7 +394,7 @@ class PyroSolver:
         # model and sum it all up
         for noise_model in self.noise_models:
             # compute the model response for the noise model's experiment_names
-            model_response = self.problem.evaluate_model_response(
+            model_response = self.evaluate_model_response(
                 theta, noise_model.experiment_names)
             # get the tensors for the noise model's parameters
             prms_noise = self.problem.get_parameters(
