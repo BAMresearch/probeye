@@ -4,6 +4,12 @@
 ### Changed
 - revised arviz-based post-processing routine in create_posterior_plot, create_trace_plot
 
+## 1.0.10 (2021-Nov-10)
+### Changed
+- the evaluate_model_response method was moved from InferenceProblem to the solver classes
+### Added
+- added integration test for maximum likelihood estimation with uninformative priors
+
 ## 1.0.9 (2021-Nov-09)
 ### Changed
 - deep-copying the inference problem in the solver classes is wrapped with try/except, since not all problems can be deepcopied
