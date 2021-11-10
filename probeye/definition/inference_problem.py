@@ -808,62 +808,6 @@ class InferenceProblem:
         # under the given forward model name
         self._forward_models[name] = forward_model
 
-    def evaluate_model_response(self, theta, experiment_names=None):
-        """
-        Evaluates the model response for each forward model for the given
-        parameter vector theta and the given experiments.
-
-        Parameters
-        ----------
-        theta : array_like
-            A numeric vector for which the model responses should be evaluated.
-            Which parameters these numbers refer to can be checked by calling
-            self.theta_explanation() once the problem is set up.
-        experiment_names : str, list[str] or None, optional
-            Contains the names of all or some of the experiments added to the
-            inference  problem. If this argument is None (which is a common use
-            case) then all experiments defined in the problem (self.experiments)
-            are used. The names provided here define the experiments that the
-            forward model is evaluated for.
-
-        Returns
-        -------
-        model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
-        """
-
-        # if experiments is not further specified all experiments added to the
-        # problem will be accounted for when computing the model error
-        if experiment_names is None:
-            experiment_names = [*self._experiments.keys()]
-        else:
-            # make sure that a given string is converted into a list
-            experiment_names = make_list(experiment_names)
-
-        # first, loop over all forward models, and then, over all experiments
-        # that are associated with the corresponding model
-        model_response_dict = {}
-        for fwd_name, forward_model in self._forward_models.items():
-            # get the model parameters for the considered forward model
-            prms_model = self.get_parameters(theta, forward_model.prms_def)
-            # get all experiments referring to the considered forward model
-            relevant_experiment_names = self.get_experiment_names(
-                forward_model_names=fwd_name, experiment_names=experiment_names)
-            # evaluate the forward model for each relevant experiment
-            for exp_name in relevant_experiment_names:
-                exp_dict = self._experiments[exp_name]
-                # prepare the model input values from the experimental data
-                sensor_values = exp_dict['sensor_values']
-                exp_inp = {input_sensor.name: sensor_values[input_sensor.name]
-                           for input_sensor in forward_model.input_sensors}
-                inp = {**exp_inp, **prms_model}  # adds the two dictionaries
-                # finally, evaluate the forward model for this experiment
-                model_response_dict[exp_name] = forward_model(inp)
-
-        return model_response_dict
-
     def add_noise_model(self, noise_model):
         """
         Adds a noise model to the inference problem.

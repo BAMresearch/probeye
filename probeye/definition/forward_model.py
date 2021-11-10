@@ -101,36 +101,7 @@ class ForwardModelBase:
 
     def __call__(self, inp):
         """
-        Evaluates the forward model either via calling the original or the
-        wrapped response method, depending on the current definition of the
-        call-method. This method is equivalent to calling self.response as long
-        as the call-method was not overwritten. If it was overwritten, however,
-        this method (the __call__-method) makes sure, that the returned value
-        has the same format as the returned value by the response-method. See
-        self.response for a docstring on its parameters/return values.
-        """
-        res_ori = self.call(inp)
-        if type(res_ori) is dict:
-            # in this case it is assumed that res_ori is the dictionary returned
-            # by the response-method
-            res = res_ori
-        else:
-            # in this case, the returned value is assumed to be a numeric vector
-            # which needs to be translated back to the dictionary structure
-            res = self.response_structure
-            i = 0
-            for key in self.response_structure.keys():
-                n_numbers = self.response_structure[key]
-                res[key] = res_ori[i:i + n_numbers]
-                i += n_numbers
-        return res
-
-    def call(self, inp):
-        """
-        This function can be used by inference engines to wrap the forward
-        model's response. This can be done by overwriting this method by one
-        that might do something before and after calling self.response(inp).
-        See self.response for a docstring on its parameters/return values.
+        Calls the self.response method. Shortens internal forward model calls.
         """
         return self.response(inp)
 
