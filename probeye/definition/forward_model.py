@@ -170,7 +170,6 @@ class ForwardModelBase:
                 continue
             # the following loop accounts for the fact, that parameters can be
             # multidimensional
-            ncomp = len_or_one(inp[prm_name])
             for i, x in enumerate(np.atleast_1d(inp[prm_name])):
                 # the following formula for the step size is NOT taken from the
                 # literature; in the literature, a common recommended choice for

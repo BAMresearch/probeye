@@ -3,6 +3,7 @@ import warnings
 
 # third party imports
 import numpy as np
+import pyro.infer.mcmc.util
 import torch as th
 from pyro.infer import NUTS, MCMC
 import arviz as az
@@ -43,8 +44,9 @@ class PyroSolver:
         self.show_progress = show_progress
         self.seed = seed
 
-        # the following attribute will be set after the solver was run
+        # the following attributes will be set after the solver was run
         self.raw_results = None
+        self.summary = None
 
         # the problem is copied, and in the copy, the experimental data is
         # reformatted from numpy-arrays to torch-tensors; note that the first
@@ -489,6 +491,28 @@ class PyroSolver:
         with contextlib.redirect_stdout(stream_to_logger('INFO')):
             mcmc.summary()
         self.raw_results = mcmc
+
+        # create a summary dictionary similar to the one created by EmceeSolver
+        self.summary = {'mean': {},
+                        'median': {},
+                        'sd': {},
+                        'q05': {},
+                        'q95': {}}
+        stat_name_map = {'mean': 'mean',
+                         'median': 'median',
+                         'std': 'sd',
+                         '5.0%': 'q05',
+                         '95.0%': 'q95'}
+        for prm_name, prm_summary_dict in \
+                pyro.infer.mcmc.util.summary(mcmc._samples).items():
+            for stat, val in prm_summary_dict.items():
+                if stat in stat_name_map:
+                    if val.numel() == 1:
+                        val_conv = float(val)
+                    else:
+                        # this is for vector parameters
+                        val_conv = val.numpy()
+                    self.summary[stat_name_map[stat]][prm_name] = val_conv
 
         # translate the results to a common data structure and return it
         var_names = self.problem.get_theta_names(tex=False, components=False)
