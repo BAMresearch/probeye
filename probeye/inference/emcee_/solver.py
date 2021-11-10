@@ -181,7 +181,7 @@ class EmceeSolver(ScipySolver):
         logger.info("Summary of sampling results")
         posterior_samples = sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger('INFO')):
-            self.emcee_summary(posterior_samples)
+            self.summary = self.emcee_summary(posterior_samples)
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it

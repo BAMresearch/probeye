@@ -37,8 +37,9 @@ class ScipySolver:
         self.show_progress = show_progress
         self.seed = seed
 
-        # the following attribute will be set after the solver was run
+        # the following attributes will be set after the solver was run
         self.raw_results = None
+        self.summary = None
 
         # each noise model must be connected to the relevant experiment_names;
         # a copy is created before, so that this solver routine does not have
