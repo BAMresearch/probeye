@@ -509,55 +509,6 @@ class TestProblem(unittest.TestCase):
             test_model_2 = ForwardModelBase('a', Sensor('x'), Sensor('y'))
             p.add_forward_model('TestModel_2', test_model_2)
 
-    def test_evaluate_model_response(self):
-        # prepare for checks
-        p = InferenceProblem("TestProblem")
-        p.add_parameter('a0', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-        p.add_parameter('a1', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-        p.add_parameter('a2', 'model', prior=('normal', {'loc': 0, 'scale': 1}))
-
-        class FwdModel(ForwardModelBase):
-            def __call__(self, inp):
-                x = inp['x']
-                a0 = inp['a0']
-                a1 = inp['a1']
-                a2 = inp['a2']
-                return {'y': a0 + a1 * x + a2 * x ** 2}
-
-        # add forward model
-        fwd_model = FwdModel(['a0', 'a1', 'a2'], Sensor('x'), Sensor('y'))
-        p.add_forward_model('FwdModel', fwd_model)
-        # add experiment_names
-        p.add_experiment('Exp1', sensor_values={'x': 1, 'y': 2},
-                         fwd_model_name='FwdModel')
-        p.add_experiment('Exp2', sensor_values={'x': 2, 'y': 3},
-                         fwd_model_name='FwdModel')
-        p.add_experiment('Exp3', sensor_values={'x': [1, 2], 'y': [1, 2]},
-                         fwd_model_name='FwdModel')
-        # perform a check for all experiments
-        a0_value, a1_value, a2_value = 1, 2, 3
-        theta = np.array([a0_value, a1_value, a2_value])
-        computed_result = p.evaluate_model_response(theta)
-        expected_result = {'Exp1': {'y': 6},
-                           'Exp2': {'y': 17},
-                           'Exp3': {'y': np.array([6, 17])}}
-        # check for each item, because the last contains an array, which results
-        # in an error is you do assertEqual on the whole thing
-        self.assertEqual(computed_result['Exp1'], expected_result['Exp1'])
-        self.assertEqual(computed_result['Exp2'], expected_result['Exp2'])
-        self.assertEqual(computed_result['Exp3']['y'][0],
-                         expected_result['Exp3']['y'][0])
-        self.assertEqual(computed_result['Exp3']['y'][1],
-                         expected_result['Exp3']['y'][1])
-        # perform a check for a subset of experiments
-        computed_result = p.evaluate_model_response(
-            theta, experiment_names='Exp3')
-        expected_result = {'Exp3': {'y': np.array([6, 17])}}
-        self.assertEqual(computed_result['Exp3']['y'][0],
-                         expected_result['Exp3']['y'][0])
-        self.assertEqual(computed_result['Exp3']['y'][1],
-                         expected_result['Exp3']['y'][1])
-
     def test_add_noise_model(self):
         # check correct use
         p = InferenceProblem("TestProblem")
