@@ -1,4 +1,4 @@
 # subpackage imports
-from probeye import definition
-from probeye import inference
-from probeye import postprocessing
+from probeye import definition, inference, postprocessing
+
+__version__ = "1.0.11"
