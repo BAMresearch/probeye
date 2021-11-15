@@ -20,9 +20,15 @@ pip install .
 ```
 ````
 
-````{tab} Developer
+````{tab} Developer (Windows)
 ```bash
 pip install -e .[tests,lint_type_checks,docs]
+```
+````
+
+````{tab} Developer (Linux)
+```bash
+pip install --user ".[tests,lint_type_checks,docs]"
 ```
 ````
 
