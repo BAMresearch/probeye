@@ -106,7 +106,7 @@ class ForwardModelBase:
             "define this method, so you can evaluate your model."
         )
 
-    def __call__(self, inp: dict) -> dict:
+    def __call__(self, inp):
         """
         Calls the self.response method. Shortens internal forward model calls.
         """
@@ -197,10 +197,10 @@ class ForwardModelBase:
 
     def jacobian_dict_to_array(
         self,
-        inp,
-        jac_dict,
-        n_inp_dim,
-    ):
+        inp: dict,
+        jac_dict: dict,
+        n_inp_dim: int,
+    ) -> np.ndarray:
         """
         Converts the Jacobian in dict-format (computed by the above 'jacobian' method)
         into a numpy array. This method is external to the above 'jacobian' method, so
