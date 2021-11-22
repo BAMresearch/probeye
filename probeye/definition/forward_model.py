@@ -1,10 +1,10 @@
 # standard library
-# from typing import Union
+from typing import Union, List
 import copy as cp
 import numpy as np
 
 # local imports
-# from probeye.definition.sensor import Sensor
+from probeye.definition.sensor import Sensor
 from probeye.subroutines import translate_prms_def
 from probeye.subroutines import make_list
 from probeye.subroutines import len_or_one
@@ -20,9 +20,9 @@ class ForwardModelBase:
 
     def __init__(
         self,
-        prms_def_,
-        input_sensors,
-        output_sensors,
+        prms_def_: Union[str, List[str], dict],
+        input_sensors: Union[Sensor, List[Sensor]],
+        output_sensors: Union[Sensor, List[Sensor]],
     ):
         """
         Parameters
@@ -70,17 +70,17 @@ class ForwardModelBase:
         self.response_structure = {os.name: None for os in self.output_sensors}
 
     @property
-    def input_sensor_names(self) -> list[str]:
+    def input_sensor_names(self) -> List[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.input_sensors]
 
     @property
-    def input_channel_names(self) -> list[str]:
+    def input_channel_names(self) -> List[str]:
         """Provides input_channel_names attribute."""
         return self.input_sensor_names + [*self.prms_def.values()]
 
     @property
-    def output_sensor_names(self) -> list[str]:
+    def output_sensor_names(self) -> List[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
 
