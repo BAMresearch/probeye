@@ -32,6 +32,7 @@ jobs:
     strategy:
       matrix:
         python-version: [ 3.6, 3.7, 3.8, 3.9 ]
+
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -44,7 +45,8 @@ jobs:
       - name: Test with pytest
         run: |
           # grab the coverage output and also print it to the sreen
-          COVERAGE_REPORT=$(coverage run -m pytest && coverage report -m)
+          COVERAGE_REPORT=$(coverage run -m pytest && coverage report -m | \
+            tee /dev/stderr)
           # extract the percentage of the total coverage, e.g. `75%`
           COVERAGE_PCT=$(echo $COVERAGE_REPORT | \
             grep -oP "TOTAL\s+\d+\s+\d+\s+(\d+%)" | grep -oP "\d+%")
