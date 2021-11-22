@@ -1,5 +1,4 @@
-# This workflow runs on
-#  * a `push` to any branch
+# This workflow runs on a `push` to any branch
 
 name: CI
 
@@ -8,9 +7,9 @@ on:
 
 jobs:
 
-  # Code formatting
+  # Code formatting check (black)
   lint:
-    name: Code formatting with using black
+    name: Code formatting check using black
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
