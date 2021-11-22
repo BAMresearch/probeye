@@ -7,23 +7,15 @@ on:
   push:
 
 jobs:
-  # Lint and type checking
-  lint_and_type_check:
-    name: Lint and type check
+  
+  # Code formatting
+  lint:
+    name: Code formatting with using black
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python 3.9
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.9
-      - name: Install dependencies
-        run: |
-          pip install pre-commit
-      - name: Lint and type check
-        run: |
-          pre-commit run --all-files --verbose --show-diff-on-failure
+      - uses: psf/black@stable
+
   # Unit test and coverage
   test:
     name: Test on Python ${{ matrix.python-version }}
@@ -31,7 +23,6 @@ jobs:
     strategy:
       matrix:
         python-version: [ 3.6, 3.7, 3.8, 3.9 ]
-
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
