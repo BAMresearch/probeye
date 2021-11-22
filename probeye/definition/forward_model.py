@@ -106,7 +106,7 @@ class ForwardModelBase:
             "define this method, so you can evaluate your model."
         )
 
-    def __call__(self, inp):
+    def __call__(self, inp: dict) -> dict:
         """
         Calls the self.response method. Shortens internal forward model calls.
         """
