@@ -2,53 +2,19 @@
 import numpy as np
 
 # local imports
-from probeye.subroutines import process_spatial_coordinates
+from probeye.subroutines import process_spatiotemporal_coordinates
 
 
-class SpatialExponentialCorrelationModel:
+class SpatiotemporalExponentialCorrelationModel:
     """
     Represents a spatial correlation model with an exponential kernel. It
     contains the functionality to compute the covariance matrix over a static
     (i.e. constant for all experiments) grid of coordinates in 1D, 2D or 3D.
     """
 
-    def __init__(self, x=None, y=None, z=None, coords=None,
-                 order=('x', 'y', 'z')):
-        """
-        Parameter
-        ---------
-        x : float, int, numpy.ndarray, None, optional
-            Positional x-coordinate. When given, coords must be None.
-        y : float, int, numpy.ndarray, None, optional
-            Positional y-coordinate. When given, coords must be None.
-        z : float, int, numpy.ndarray, None, optional
-            Positional z-coordinate. When given, coords must be None.
-        coords : numpy.ndarray, optional
-            Some or all of the coordinates x, y, z concatenated as an array.
-            Each row corresponds to one coordinate. For example, row 1 might
-            contain all x-coordinates. Which row corresponds to which coordinate
-            is defined via the order-argument. When the coords-argument is
-            given, all 3 arguments x, y and z must be None.
-        order : tuple[str], optional
-            Only relevant when coords is given. Defines which row in coords
-            corresponds to which coordinate. For example, order=('x', 'y', 'z')
-            means that the 1st row are x-coordinates, the 2nd row are y-coords
-            and the 3rd row are the z-coordinates.
-        """
-        # translate the spatial input to a coords-array
-        self.coords, self._order = process_spatial_coordinates(
-            x=x, y=y, z=z, coords=coords, order=order)
-        self.n_coords, self.n = self.coords.shape
+    def __init__(self, position_arrays):
 
-        # on position (i, j) in self.distance array will be denoted the distance
-        # between point i with coords[i, :] and point j with coords[j, :]
-        distance_array = np.zeros((self.n, self.n))
-        for i in range(self.n_coords):
-            v = self.coords[i, :]
-            v_in_columns = np.tile(v.reshape((self.n, -1)), self.n)
-            v_in_rows = v_in_columns.transpose()  # each row is v
-            distance_array += np.square(v_in_columns - v_in_rows)
-        self.distance_array = np.sqrt(distance_array)
+        self.distance_array = self.compute_distance_array(position_arrays)
 
     @staticmethod
     def check_prms(prms):
@@ -77,6 +43,21 @@ class SpatialExponentialCorrelationModel:
             return False
         return True
 
+    def compute_distance_array(self, position_arrays):
+        """
+        Computes the distance (in terms space and time) of each measurement to
+        all other measurements. The result is a matrix with a zero-diagonal.
+        """
+
+        first_key = [*position_arrays.keys()][0]
+        distance_array = np.zeros(position_arrays[first_key].shape)
+        for v, position_array in position_arrays.items():
+            distance_array +=\
+                np.power(position_array - position_array.transpose(), 2)
+        distance_array = np.sqrt(distance_array)
+
+        return distance_array
+
     def __call__(self, prms):
         """
         Returns the covariance matrix based on the correlation model.
@@ -86,12 +67,23 @@ class SpatialExponentialCorrelationModel:
         prms : dict
             Contains the names of the correlation model's parameters as keys
             and the corresponding numeric values as values.
+        corr_data : dict, None, optional
+            Measurements of a single experiment, via which the correlation
+            between two model errors (i.e., model response vs. measurement) is
+            computed. The keys are the sensor names, and the values the sensor
+            values. Note that corr_data only contains those sensor values that
+            can generally change from experiment to experiment. Sensor values
+            that are fix over all experiments (e.g., the position of a strain
+            gauge) should be passed via the corresponding arguments during the
+            initialization of this correlation model (i.e., in __init__).
 
         Returns
         -------
-        numpy.ndarray
-            The covariance matrix based on the given parameters. The shape of
-            this array is (self.n, self.n).
+        cov : numpy.ndarray
+            The covariance matrix based on the given parameters.
         """
+        # this is the correlation matrix based on an exponential model
         corr = np.exp(-self.distance_array / prms['l_corr'])
-        return prms['std'] ** 2 * corr
+        # and finally, this is the covariance matrix assuming constant std dev.
+        cov = prms['std'] ** 2 * corr
+        return cov

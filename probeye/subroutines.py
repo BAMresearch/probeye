@@ -430,8 +430,8 @@ def flatten(arg):
         arg_flat = list(flatten_generator(arg))
     return arg_flat
 
-def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
-                                order=('x', 'y', 'z')):
+def process_spatiotemporal_coordinates(x=None, y=None, z=None, t=None,
+                                       coords=None, order=('x', 'y', 'z', 't')):
     """
     x : float, int, numpy.ndarray, None, optional
         Positional x-coordinate. When given, the coords-argument must be None.
@@ -439,6 +439,8 @@ def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
         Positional y-coordinate. When given, the coords-argument must be None.
     z : float, int, numpy.ndarray, None, optional
         Positional z-coordinate. When given, the coords-argument must be None.
+    t : float, int, numpy.ndarray, None, optional
+            Points in time. When given, coords must be None.
     coords : numpy.ndarray, optional
         Some or all of the coordinates x, y, z concatenated as an array. Each
         row corresponds to one coordinate. For example, row 1 might contain all
@@ -463,13 +465,15 @@ def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
     """
 
     # the following check should cover the option that no spatial input is given
-    if (x is None) and (y is None) and (z is None) and (coords is None):
+    if (x is None) and (y is None) and (z is None) and \
+            (t is None) and (coords is None):
         return np.array([]), []
 
     # convert all single-coordinate inputs to flat numpy arrays
     x = np.array(flatten(x)) if x is not None else None
     y = np.array(flatten(y)) if y is not None else None
     z = np.array(flatten(z)) if z is not None else None
+    t = np.array(flatten(t)) if t is not None else None
 
     # derive the number of given coordinate vectors and points
     if coords is not None:
@@ -481,7 +485,7 @@ def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
             # points is the length of rows
             n_coords, n_points = coords.shape
     else:
-        n_points_list = [len(v) for v in [x, y, z] if v is not None]
+        n_points_list = [len(v) for v in [x, y, z, t] if v is not None]
         n_points_set = set(n_points_list)
         if len(n_points_set) == 1:
             n_coords = len(n_points_list)
@@ -765,3 +769,22 @@ def check_for_uninformative_priors(problem):
                                f"solver. You could change it to a "
                                f"uniform-prior on a specified interval to "
                                f"solver this problem.")
+
+def get_dictionary_depth(d):
+    """
+    Computes the depth of a nested dictionary recursively. Modified from
+    https://www.geeksforgeeks.org/python-find-depth-of-a-dictionary/.
+
+    Parameters
+    ----------
+    d : dict
+        The dictionary, the depth should be computed of.
+
+    Returns
+    -------
+    int
+        The depth of the given dictionary d.
+    """
+    if isinstance(d, dict):
+        return 1 + (max(map(get_dictionary_depth, d.values())) if d else 0)
+    return 0

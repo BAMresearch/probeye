@@ -2,73 +2,49 @@
 import numpy as np
 
 # local imports
+from probeye.subroutines import len_or_one
 from probeye.definition.noise_model import NormalNoiseModel
 from probeye.inference.scipy_.correlation_models import \
-    SpatialExponentialCorrelationModel
+    SpatiotemporalExponentialCorrelationModel
 
 
 class NormalNoise(NormalNoiseModel):
 
-    def __init__(self, target_sensor, prms_def, name=None, corr=None,
-                 corr_model='exp', noise_type='additive'):
+    def __init__(self, prms_def, sensors, experiment_names=None,
+                 problem_experiments=None, name=None, corr_static='',
+                 corr_dynamic='', corr_model='exp', corr_dict=None,
+                 noise_type='additive'):
         """
-        Parameters
-        ----------
-        target_sensor : obj[Sensor]
-            The sensor, the noise refers to. Note that this is not a sensor's
-            name but a Sensor object. This object must contain the spatial
-            information that is referred to in corr. For example, if corr is set
-            to 'xy' then target_sensor must have a x and a y attribute that
-            contain coordinate vectors of similar lengths.
-        prms_def : {str, list, dict}
-            Contains the noise model's parameter names. The list may only
-            contain strings or one-element dictionaries. It could look, for
-            example, like [{'a': 'm'}, 'b']. The one-element dictionaries
-            account for the possibility to define a local name for a latent
-            parameter that is different from the global name. In the example
-            above, the latent parameter with the global name 'a' will be
-            referred to as 'm' within the noise model. So, the one-element dicts
-            have the meaning {<global name>: <local name>}. String-elements are
-            interpreted as having similar local and global names. Note that the
-            local-name option will not be required most of the times. The input
-            from global to local name can also be provided as a dict. In the
-            example above it would look like {'a': 'm', 'b': 'b'}.
-        name : {str, None}, optional
-            Unique name of the noise model. This name is None, if the user does
-            not specify it when adding the noise model to the problem. It is
-            then named automatically before starting the inference engine.
-        corr : {'x', 'y', 'z', 'xy', 'xz', 'yz', 'xyz', None}, optional
-            Spatial coordinates to be considered when setting up the covariance
-            matrix. For example, when 'x' is chosen, the distance between two
-            points i and j is computed as |xi - xj|. If 'xz' is chosen, this
-            distance would be computed as sqrt((xi-xj)**2 + (zi-zj)**2). If None
-            is chosen, no spatial correlation will be considered.
-        corr_model : {'exp'}, optional
-            Defines the correlation function the covariance matrix will be based
-            on. Currently, there is only the one optional of an exponential
-            model ('exp'). More might be added in future versions. This argument
-            has no effect if corr is set to None.
-        noise_type : {'additive', 'multiplicative', 'other'}, optional
-            Defines if the model error is computed by [prediction - measurement]
-            ('additive') or via [prediction/measurement-1] ('multiplicative') or
-            in some 'other' i.e., non-standard fashion.
+        For a detailed explanation of the input arguments check out the
+        docstring given in probeye/definition/noise_models.py:NoiseModelBase.
+        The only additional argument is 'problem_experiments' which is a
+        pointer to InferenceProblem._experiments (a dictionary of all the
+        problem's experiments).
         """
 
         # initialize the super-class (NormalNoiseModel) based on the given input
-        super().__init__(prms_def=prms_def, sensors=target_sensor, name=name,
-                         corr=corr, corr_model=corr_model,
-                         noise_type=noise_type)
+        super().__init__(prms_def, sensors, experiment_names=experiment_names,
+                         name=name, corr_static=corr_static,
+                         corr_dynamic=corr_dynamic, corr_model=corr_model,
+                         corr_dict=corr_dict, noise_type=noise_type)
 
-        # the target_sensor is not an attribute of the super-class
-        self.target_sensor = target_sensor
+        # problem_experiments is an attribute not set by the parent-class
+        self.problem_experiments = problem_experiments
 
-        # correlation related attributes
-        self.corr = corr
-        self.corr_model = corr_model
-        if self.corr is not None:
+        # the two attributes n_static and n_dynamic contain the number of
+        # rows/columns the distance array would need to have if there were
+        # only the provided static/dynamic correlation variables; both numbers
+        # must be either identical, or - if they are not - one of them must be
+        # zero (e.g. (8, 8), (0, 9), (17, 0) but not e.g. (18, 11))
+        self.n_static, self.n_dynamic = self.process_correlation_definition()
+        self.n = max(self.n_static, self.n_dynamic)
+
+        if self.corr:
+            # in this case, correlation is considered in the noise model
+            self.position_arrays = self.generate_distance_array()
             if self.corr_model == 'exp':
-                self.cov = SpatialExponentialCorrelationModel(
-                    coords=target_sensor.coords, order=list(self.corr))
+                self.cov = SpatiotemporalExponentialCorrelationModel(
+                    self.position_arrays)
                 self.loglike_contribution = \
                     self.loglike_contribution_with_correlation
             else:
@@ -77,8 +53,112 @@ class NormalNoise(NormalNoiseModel):
                     f"for requested correlation model.\n Currently available "
                     f"options are: 'exp' for an exponential model.")
         else:
+            # in this case, no correlation is considered in the noise model
+            self.cov = None
             self.loglike_contribution =\
                 self.loglike_contribution_without_correlation
+
+    def process_correlation_definition(self):
+
+        # the following variables will be derived below
+        n_static = 0
+        n_dynamic = 0
+
+        if self.corr_static:
+            # check that each of the noise model's sensors has the specified
+            # correlation variables as attributes
+            first_exp_name = [*self.experiment_names.keys()][0]
+            for v in self.corr_static:
+                attribute = self.corr_dict[first_exp_name][v]
+                sensor_value = None
+                for sensor in self.sensors:
+                    if not hasattr(sensor, attribute):
+                        raise AttributeError(
+                            f"Sensor '{sensor.name}' does not have an "
+                            f"attribute '{attribute}' as implied by the "
+                            f"correlation definition.")
+                    sensor_value_new = getattr(sensor, attribute)
+                    if sensor_value is not None:
+                        if sensor_value != sensor_value_new:
+                            raise RuntimeError(
+                                f"The static correlation variable '{v}' "
+                                f"varies between the sensors of the noise "
+                                f"model. They must be similar.")
+
+            # compute how many columns (rows) the quadratic distance array must
+            # have if there was only the static and no dynamic correlation data
+            attribute = self.corr_dict[first_exp_name][self.corr_static[0]]
+            corr_data_length = len_or_one(getattr(self.sensors[0], attribute))
+            n_static = corr_data_length * self.n_experiments * self.n_sensors
+
+        if self.corr_dynamic:
+            # check that each experiment assigned to this noise model has
+            # the specified dynamic correlation variables as sensor values
+            for exp_name in self.experiment_names:
+                experiment = self.problem_experiments[exp_name]
+                sensor_values = experiment['sensor_values']
+                for v in self.corr_dynamic:
+                    key = self.corr_dict[exp_name][v]
+                    if key not in sensor_values:
+                        raise KeyError(
+                            f"Experiment '{exp_name}' does not contain sensor "
+                            f"values for '{key}' (alias of '{v}') as implied "
+                            f"by the correlation definition.")
+            # compute how many columns (rows) the quadratic distance array must
+            # have if there was only the dynamic and no static correlation data
+            for exp_name in self.experiment_names:
+                experiment = self.problem_experiments[exp_name]
+                sensor_values = experiment['sensor_values']
+                v = sensor_values[self.corr_dict[exp_name][
+                    self.corr_dynamic[0]]]
+                n_dynamic_exp = len_or_one(v)
+                if n_static > 0:
+                    if n_dynamic_exp != n_static:
+                        raise RuntimeError(
+                            f"Encountered dynamic correlation data "
+                            f"'{self.corr_dynamic[0]}' in experiment '"
+                            f"{exp_name}' with a length {n_dynamic_exp} which "
+                            f"does not agree with the length of the static "
+                            f"correlation variables {n_static} defined within "
+                            f"the noise model.")
+                n_dynamic += len_or_one(v) * self.n_sensors
+
+        return n_static, n_dynamic
+
+    def generate_distance_array(self):
+
+        position_arrays = {v: np.zeros((self.n, self.n))
+                           for v in list(self.corr)}
+        for v in self.corr:
+            idx = 0
+            for exp_name in self.experiment_names:
+                if v in self.corr_dynamic:
+                    experiment = self.problem_experiments[exp_name]
+                    key = self.corr_dict[exp_name][v]
+                    data = experiment['sensor_values'][key]
+                else:
+                    attribute = self.corr_dict[exp_name][v]
+                    data = getattr(self.sensors[0], key)
+                m = len_or_one(data)
+                for sensor in self.sensors:
+                    position_arrays[v][idx: idx + m, :] =\
+                        np.tile(data.reshape((m, -1)), self.n)
+                    idx += m
+        return position_arrays
+
+
+
+    def get_correlation_data(self):
+        corr_data = None
+        if self.corr:
+            corr_data = {}
+            for exp_name in self.experiment_names:
+                corr_data[exp_name] = {}
+                for corr_var in self.corr_dynamic:
+                    corr_data[exp_name][corr_var] =\
+                        self.problem_experiments[exp_name]['sensor_values'][
+                            self.corr_sensor_dict[corr_var]]
+        return corr_data
 
     def loglike_contribution_without_correlation(self, model_response, prms):
         """
@@ -86,7 +166,7 @@ class NormalNoise(NormalNoiseModel):
         Check out the docstring there for additional information.
         """
         # compute the model error; note that this mode has exactly one sensor
-        model_error_vector = self.error(model_response)[self.target_sensor.name]
+        model_error_vector = self.error_vector(model_response)
         # the precision 'prec' is defined as the inverse of the variance, hence
         # prec = 1 / sigma**2 where sigma denotes the standard deviation
         std = prms['std']
@@ -106,9 +186,9 @@ class NormalNoise(NormalNoiseModel):
         Parameters
         ----------
         model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
+            The keys are the names of the experiments. The values are dicts
             which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
+            and have the corresponding model responses as values.
         prms : dict
             Contains the names of the correlation model's parameters as keys
             and the corresponding numeric values as values.
@@ -130,26 +210,15 @@ class NormalNoise(NormalNoiseModel):
         # its evaluation can result in
         if not self.cov.check_prms(prms):
             return worst_value
-        # since the covariance matrix is the same for all experiments in the
-        # noise model, values derived from it (its inverse and determinant) are
-        # computed before entering the loop over the noise model's experiments
+
         cov_matrix = self.cov(prms)
         inv_cov_matrix = np.linalg.inv(cov_matrix)
-        # the following command computes the natural log and the sign of the
-        # matrix cov_matrix; note that cov_matrix is positive definite, hence
-        # the sign will always be positive and therefore isn't requested here
+        n = cov_matrix.shape[0]
         _, log_det_cov_matrix = np.linalg.slogdet(cov_matrix)
-        n = self.cov.n  # number of data points recorded by the sensor
-        n_exp = len(self.experiment_names)
-        # the term in the first parenthesis is added by each experiment in the
-        # loop; this is why we can pre-compute it outside the loop
-        ll = n_exp * (-(n * np.log(2 * np.pi) + log_det_cov_matrix) / 2)
-        for exp_name in self.experiment_names:
-            exp_dict = self.problem_experiments[exp_name]
-            ym = model_response_dict[exp_name]
-            ye = exp_dict['sensor_values']
-            error = self.error_function(ym, ye)[self.target_sensor.name]
-            ll += -np.dot(error, inv_cov_matrix.dot(error)) / 2
+        ll = self.n_experiments * (-(n * np.log(2 * np.pi) +
+                                     log_det_cov_matrix) / 2)
+        error = self.error_vector(model_response_dict)
+        ll += -np.dot(error, inv_cov_matrix.dot(error)) / 2
         return ll
 
 def translate_noise_model(noise_base):
@@ -162,8 +231,8 @@ def translate_noise_model(noise_base):
     Parameters
     ----------
     noise_base : obj[NoiseBase]
-        An instance of NoiseBase which contains basic information on the noise
-        model but no computing-methods.
+        An instance of NoiseBase (or the child-class NormalNoiseModel) which
+        contains basic information on the noise model but no computing-methods.
 
     Returns
     -------
@@ -177,12 +246,15 @@ def translate_noise_model(noise_base):
 
     # this is where the translation happens
     noise_object = noise_classes[noise_base.dist](
-        target_sensor=noise_base.sensors[0], prms_def=noise_base.prms_def,
-        name=noise_base.name, corr=noise_base.corr,
-        corr_model=noise_base.corr_model, noise_type=noise_base.noise_type)
-
-    # here, we take the assigned experiments from the base object
-    noise_object.experiment_names = noise_base.experiment_names
-    noise_object.problem_experiments = noise_base.problem_experiments
+        noise_base.prms_def,
+        noise_base.sensors,
+        experiment_names=noise_base.experiment_names,
+        problem_experiments=noise_base.problem_experiments,
+        name=noise_base.name,
+        corr_static=noise_base.corr_static,
+        corr_dynamic=noise_base.corr_dynamic,
+        corr_model=noise_base.corr_model,
+        corr_dict=noise_base.corr_dict,
+        noise_type=noise_base.noise_type)
 
     return noise_object

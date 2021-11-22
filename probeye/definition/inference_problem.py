@@ -538,15 +538,6 @@ class InferenceProblem:
                     f"'{output_sensor.name}' is not provided by the given "
                     f"experiment '{exp_name}'!")
 
-        # check if all sensor_values have the same lengths
-        vector_lengths = set()
-        for sensor_name, values in sensor_values.items():
-            vector_lengths.add(len_or_one(values))
-        if len(vector_lengths) > 1:
-            raise RuntimeError(
-                f"The sensor values must be all scalars or vectors of the same "
-                f"length. However, found the lengths {vector_lengths}.")
-
         # check that vector-valued sensor_values are given as numpy-arrays; if
         # not (e.g. if lists or tuples are given) change them to numpy-ndarrays
         sensor_values_numpy = cp.copy(sensor_values)
@@ -817,6 +808,10 @@ class InferenceProblem:
         noise_model : obj[NoiseModelBase]
             The noise model object, e.g. from NormalNoise. Check out noise.py to
             see some noise model classes.
+        experiments : str, list[str], None, optional
+            Defines the experiments (by their names) the added noise model
+            refers to. If None is given, the experiments will be assigned
+            automatically based on the noise model's sensor interface.
         """
 
         # check if the noise model has been assigned a name; if not, assign one
@@ -867,12 +862,15 @@ class InferenceProblem:
         n_experiments_defined = len(self._experiments)
         n_experiments_noise = 0
         for noise_model in self._noise_models:
-            # get the experiments that contain all of the noise model's sensors
-            experiment_names = self.get_experiment_names(
-                sensor_names=noise_model.sensor_names)
-            n_experiments_noise += len(experiment_names)
-            # add the relevant experiment names to the noise model
-            noise_model.add_experiments(experiment_names)
+            if noise_model.assign_experiments_automatically:
+                # get experiments that contain all of the noise model's sensors
+                experiment_names = self.get_experiment_names(
+                    sensor_names=noise_model.sensor_names)
+                n_experiments_noise += len(experiment_names)
+                # add the relevant experiment names to the noise model
+                noise_model.add_experiments(experiment_names)
+            else:
+                n_experiments_noise += len(noise_model.experiment_names)
 
         # check if there is the same number of experiments over all noise models
         # as defined for the inference problem
