@@ -13,16 +13,28 @@ class NormalNoise(NormalNoiseModel):
     that currently, there are no correlation capabilities defined.
     """
 
-    def __init__(self, target_sensor, prms_def, name=None, corr=None,
-                 corr_model='exp', noise_type='additive'):
+    def __init__(
+        self,
+        target_sensor,
+        prms_def,
+        name=None,
+        corr=None,
+        corr_model="exp",
+        noise_type="additive",
+    ):
         """
         For information on most of the above arguments check out the docstring
         of the parent class's __init__ method.
         """
         # initialize the super-class (NormalNoiseModel) based on the given input
-        super().__init__(prms_def=prms_def, sensors=target_sensor, name=name,
-                         corr=corr, corr_model=corr_model,
-                         noise_type=noise_type)
+        super().__init__(
+            prms_def=prms_def,
+            sensors=target_sensor,
+            name=name,
+            corr=corr,
+            corr_model=corr_model,
+            noise_type=noise_type,
+        )
 
         # the following attributes are not considered in the parent class
         self.target_sensor = target_sensor
@@ -51,11 +63,12 @@ class NormalNoise(NormalNoiseModel):
         for exp_name in self.experiment_names:
             exp_dict = self.problem_experiments[exp_name]
             ym_dict = model_response_dict[exp_name]
-            ye_dict = exp_dict['sensor_values']
+            ye_dict = exp_dict["sensor_values"]
             me_dict = self.error_function(ym_dict, ye_dict)
-            model_error_dict =\
-                {name: th.cat((model_error_dict[name], me_dict[name]))
-                 for name in self.sensor_names}
+            model_error_dict = {
+                name: th.cat((model_error_dict[name], me_dict[name]))
+                for name in self.sensor_names
+            }
         return model_error_dict
 
     def sample_cond_likelihood(self, model_response, prms):
@@ -69,12 +82,12 @@ class NormalNoise(NormalNoiseModel):
         prms : ParameterList-object
             Dictionary-like object containing parameter name:value pairs.
         """
-        std = prms['std']
-        mean = 0.0 if self.zero_mean else prms['mean']
+        std = prms["std"]
+        mean = 0.0 if self.zero_mean else prms["mean"]
         # compute the model error; note that this mode has exactly one sensor
         model_error_vector = self.error(model_response)[self.target_sensor.name]
-        pyro.sample(f'lkl_{self.name}', dist.Normal(mean, std),
-                    obs=model_error_vector)
+        pyro.sample(f"lkl_{self.name}", dist.Normal(mean, std), obs=model_error_vector)
+
 
 def translate_noise_model(noise_base):
     """
@@ -97,13 +110,17 @@ def translate_noise_model(noise_base):
     """
 
     # this is the noise classes currently defined (see code above)
-    noise_classes = {'normal': NormalNoise}
+    noise_classes = {"normal": NormalNoise}
 
     # this is where the translation happens
     noise_object = noise_classes[noise_base.dist](
-        target_sensor=noise_base.sensors[0], prms_def=noise_base.prms_def,
-        name=noise_base.name, corr=noise_base.corr,
-        corr_model=noise_base.corr_model, noise_type=noise_base.noise_type)
+        target_sensor=noise_base.sensors[0],
+        prms_def=noise_base.prms_def,
+        name=noise_base.name,
+        corr=noise_base.corr,
+        corr_model=noise_base.corr_model,
+        noise_type=noise_base.noise_type,
+    )
 
     # here, we take the assigned experiments from the base object
     noise_object.experiment_names = noise_base.experiment_names

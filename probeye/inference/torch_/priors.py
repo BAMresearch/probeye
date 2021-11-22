@@ -45,7 +45,8 @@ class PriorNormal(PriorBase):
             distribution = dist.Normal(loc, scale)
         else:
             distribution = dist.MultivariateNormal(
-                th.from_numpy(loc), covariance_matrix=th.from_numpy(scale))
+                th.from_numpy(loc), covariance_matrix=th.from_numpy(scale)
+            )
         return pyro.sample(self.ref_prm, distribution)
 
 
@@ -84,6 +85,7 @@ class PriorUniform(PriorBase):
         high = prms[f"high_{self.ref_prm}"]
         return pyro.sample(self.ref_prm, dist.Uniform(low, high))
 
+
 def translate_prior_template(prior_template):
     """
     Translate a given instance of PriorBase (which is essentially just a
@@ -104,16 +106,19 @@ def translate_prior_template(prior_template):
     """
 
     # this dictionary contains the classes from above in this file
-    prior_classes = {'normal': PriorNormal,
-                     'uniform': PriorUniform}
+    prior_classes = {"normal": PriorNormal, "uniform": PriorUniform}
 
     # prepare the corresponding prior object; the following translation is
     # necessary, because prms_def must be given in form of a list, but was
     # already translated to a dictionary when instantiating the PriorBase
     # objects; hence prior_template.prms_def is a dictionary
-    prms_def = [{key: value} for key, value in prior_template.prms_def.items()
-                if key != prior_template.ref_prm]
+    prms_def = [
+        {key: value}
+        for key, value in prior_template.prms_def.items()
+        if key != prior_template.ref_prm
+    ]
     prior_object = prior_classes[prior_template.prior_type](
-        prior_template.ref_prm, prms_def, prior_template.name)
+        prior_template.ref_prm, prms_def, prior_template.name
+    )
 
     return prior_object

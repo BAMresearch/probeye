@@ -97,7 +97,8 @@ class ForwardModelBase:
         """
         raise NotImplementedError(
             "Your model does not have a proper 'response'-method yet. You need "
-            "to define this method, so you can evaluate your model.")
+            "to define this method, so you can evaluate your model."
+        )
 
     def __call__(self, inp):
         """
@@ -185,9 +186,10 @@ class ForwardModelBase:
                     # applications since the Jacobian will only be used as info
                     # for choosing the next sample; for that purpose it is
                     # secondary if it contains small numerical errors
-                    jac_dict[output_sensor.name][prm_name][:, i] = \
-                        (response_dict_right[output_sensor.name] -
-                         response_dict_center[output_sensor.name]) / h
+                    jac_dict[output_sensor.name][prm_name][:, i] = (
+                        response_dict_right[output_sensor.name]
+                        - response_dict_center[output_sensor.name]
+                    ) / h
                 inp_right[prm_name] = inp[prm_name]  # resetting perturbed value
         return jac_dict
 
@@ -240,6 +242,6 @@ class ForwardModelBase:
                 nvals = derivative.shape[0]
                 ncomp = derivative.shape[1]
                 idx_end = idx_start + nvals
-                jac[idx_start: idx_end, j: j + ncomp] = derivative
+                jac[idx_start:idx_end, j : j + ncomp] = derivative
                 j += ncomp
         return jac

@@ -26,10 +26,17 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-
-    def test_prior_calibration(self, n_steps=200, n_initial_steps=100,
-                               n_walkers=20, plot=False, show_progress=False,
-                               run_scipy=True, run_emcee=True, run_torch=True):
+    def test_prior_calibration(
+        self,
+        n_steps=200,
+        n_initial_steps=100,
+        n_walkers=20,
+        plot=False,
+        show_progress=False,
+        run_scipy=True,
+        run_emcee=True,
+        run_torch=True,
+    ):
         """
         Integration test for the problem described at the top of this file.
 
@@ -91,9 +98,9 @@ class TestProblem(unittest.TestCase):
 
         class LinearModel(ForwardModelBase):
             def response(self, inp):
-                x = inp['x']
-                a = inp['a']
-                b = inp['b']
+                x = inp["x"]
+                a = inp["a"]
+                b = inp["b"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = a * x + b
@@ -104,40 +111,48 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem(
-            "Linear model with normal noise and prior-prior")
+        problem = InferenceProblem("Linear model with normal noise and prior-prior")
 
         # add all parameters to the problem
-        problem.add_parameter('loc_a', 'prior',
-                              info="Location parameter of normal prior for 'a'",
-                              tex=r"$\mu_a^\mathrm{prior}$",
-                              prior=('uniform', {'low': low_loc_a,
-                                                 'high': high_loc_a}))
-        problem.add_parameter('a', 'model',
-                              info="Slope of the graph",
-                              tex="$a$",
-                              prior=('normal', {'loc': 'loc_a',
-                                                'scale': scale_a}))
-        problem.add_parameter('b', 'model',
-                              info="Intersection of graph with y-axis",
-                              tex='$b$',
-                              prior=('normal', {'loc': loc_b,
-                                                'scale': scale_b}))
-        problem.add_parameter('sigma', 'noise',
-                              info="Std. dev, of 0-mean noise model",
-                              tex=r"$\sigma$",
-                              prior=('uniform', {'low': low_sigma,
-                                                 'high': high_sigma}))
+        problem.add_parameter(
+            "loc_a",
+            "prior",
+            info="Location parameter of normal prior for 'a'",
+            tex=r"$\mu_a^\mathrm{prior}$",
+            prior=("uniform", {"low": low_loc_a, "high": high_loc_a}),
+        )
+        problem.add_parameter(
+            "a",
+            "model",
+            info="Slope of the graph",
+            tex="$a$",
+            prior=("normal", {"loc": "loc_a", "scale": scale_a}),
+        )
+        problem.add_parameter(
+            "b",
+            "model",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+        )
+        problem.add_parameter(
+            "sigma",
+            "noise",
+            info="Std. dev, of 0-mean noise model",
+            tex=r"$\sigma$",
+            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+        )
 
         # add the forward model to the problem
         isensor = Sensor("x")
         osensor = Sensor("y")
-        linear_model = LinearModel(['a', 'b'], [isensor], [osensor])
+        linear_model = LinearModel(["a", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor))
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        )
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -146,23 +161,25 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal noise with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model(
-            {isensor.name: x_test, 'a': a_true, 'b': b_true})[osensor.name]
+        y_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
+            osensor.name
+        ]
         y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
         # add the experimental data
-        problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
-                               sensor_values={isensor.name: x_test,
-                                              osensor.name: y_test})
+        problem.add_experiment(
+            f"TestSeries_1",
+            fwd_model_name="LinearModel",
+            sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
 
         # give problem overview
         problem.info()
 
         # plot the true and noisy data
         if plot:
-            plt.scatter(x_test, y_test, label='measured data',
-                        s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label='true', c="black")
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
             plt.xlabel(isensor.name)
             plt.ylabel(osensor.name)
             plt.legend()
@@ -175,14 +192,20 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {'loc_a': a_true, 'a': a_true, 'b': b_true,
-                       'sigma': sigma_noise}
-        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
-                              n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              show_progress=show_progress,
-                              run_scipy=run_scipy, run_emcee=run_emcee,
-                              run_torch=run_torch)
+        true_values = {"loc_a": a_true, "a": a_true, "b": b_true, "sigma": sigma_noise}
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

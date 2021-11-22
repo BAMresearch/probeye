@@ -8,10 +8,20 @@ from probeye.subroutines import len_or_one
 from probeye.subroutines import add_index_to_tex_prm_name
 
 
-def create_pair_plot(inference_data, problem, plot_with="arviz",
-                     plot_priors=True, focus_on_posterior=False, kind="kde",
-                     figsize=(9, 9), textsize=10, true_values=None,
-                     show_legends=True, show=True, **kwargs):
+def create_pair_plot(
+    inference_data,
+    problem,
+    plot_with="arviz",
+    plot_priors=True,
+    focus_on_posterior=False,
+    kind="kde",
+    figsize=(9, 9),
+    textsize=10,
+    true_values=None,
+    show_legends=True,
+    show=True,
+    **kwargs,
+):
     """
     Creates a pair-plot for the given inference data using arviz.
 
@@ -60,14 +70,16 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
         The subplots of the created plot.
     """
 
-    if plot_with == 'arviz':
+    if plot_with == "arviz":
 
         # set default value for kde_kwargs if not given in kwargs; note that
         # this default value is mutable, so it should not be given as a default
         # argument in create_pair_plot
-        if 'kde_kwargs' not in kwargs:
-            kwargs['kde_kwargs'] = {'contourf_kwargs': {"alpha": 0},
-                                    'contour_kwargs': {"colors": None}}
+        if "kde_kwargs" not in kwargs:
+            kwargs["kde_kwargs"] = {
+                "contourf_kwargs": {"alpha": 0},
+                "contour_kwargs": {"colors": None},
+            }
 
         # process true_values if specified
         if true_values is not None:
@@ -94,34 +106,45 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                 else:
                     key = tex
                     reference_values[key] = value
-            kwargs['reference_values'] = reference_values
-            if 'reference_values_kwargs' not in kwargs:
-                kwargs['reference_values_kwargs'] = {'marker': 'o',
-                                                     'color': 'red'}
+            kwargs["reference_values"] = reference_values
+            if "reference_values_kwargs" not in kwargs:
+                kwargs["reference_values_kwargs"] = {"marker": "o", "color": "red"}
 
         # call the main plotting routine from arviz
-        axs = az.plot_pair(inference_data, marginals=True, kind=kind,
-                           figsize=figsize, textsize=textsize,
-                           show=show, **kwargs)
+        axs = az.plot_pair(
+            inference_data,
+            marginals=True,
+            kind=kind,
+            figsize=figsize,
+            textsize=textsize,
+            show=show,
+            **kwargs,
+        )
 
         # by default, the y-axis of the first and last marginal plot have ticks,
         # tick-labels and axis-labels that are not meaningful to show on the
         # y-axis; hence, we remove them here
         for i in [0, -1]:
-            axs[i, i].yaxis.set_ticks_position('none')
+            axs[i, i].yaxis.set_ticks_position("none")
             axs[i, i].yaxis.set_ticklabels([])
             axs[i, i].yaxis.set_visible(False)
 
         # adds a reference value in each marginal plot; for some reason this is
         # not done by arviz.pair_plot when passing 'reference_values'
-        if 'reference_values' in kwargs:
+        if "reference_values" in kwargs:
             reference_values_kwargs = None
-            if 'reference_values_kwargs' in kwargs:
-                reference_values_kwargs = kwargs['reference_values_kwargs']
-            ref_value_list = [*kwargs['reference_values'].values()]
+            if "reference_values_kwargs" in kwargs:
+                reference_values_kwargs = kwargs["reference_values_kwargs"]
+            ref_value_list = [*kwargs["reference_values"].values()]
             for i, prm_value in enumerate(ref_value_list):
-                axs[i, i].scatter(prm_value, 0, label='true value', zorder=10,
-                                  **reference_values_kwargs, edgecolor='black')
+                axs[i, i].scatter(
+                    prm_value,
+                    0,
+                    label="true value",
+                    zorder=10,
+                    **reference_values_kwargs,
+                    edgecolor="black",
+                )
 
         if plot_priors:
 
@@ -141,19 +164,21 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
                 # if they are represented as lines
                 if axs[i, i].lines:
                     posterior_handle = [axs[i, i].lines[0]]
-                    posterior_label = ['posterior']
+                    posterior_label = ["posterior"]
                 else:
                     # this is for the case, when the posterior is not shown as
                     # a line, but for example as a histogram etc.
                     posterior_handle, posterior_label = [], []
                 problem.parameters[prm_name].prior.plot(
-                    axs[i, i], problem.parameters, x=x)
+                    axs[i, i], problem.parameters, x=x
+                )
                 if show_legends:
-                    prior_handle, prior_label =\
-                        axs[i, i].get_legend_handles_labels()
-                    axs[i, i].legend(posterior_handle + prior_handle,
-                                     posterior_label + prior_label,
-                                     loc='upper right')
+                    prior_handle, prior_label = axs[i, i].get_legend_handles_labels()
+                    axs[i, i].legend(
+                        posterior_handle + prior_handle,
+                        posterior_label + prior_label,
+                        loc="upper right",
+                    )
                 i += 1
 
             # here, the axis of the non-marginal plots are adjusted to the new
@@ -173,40 +198,56 @@ def create_pair_plot(inference_data, problem, plot_with="arviz",
             if show_legends:
                 prm_names = problem.get_theta_names(tex=False, components=True)
                 for i, prm_name in enumerate(prm_names):
-                    existing_handles, existing_labels = \
-                        axs[i, i].get_legend_handles_labels()
+                    existing_handles, existing_labels = axs[
+                        i, i
+                    ].get_legend_handles_labels()
                     if axs[i, i].lines:
                         posterior_handle = [axs[i, i].lines[0]]
-                        posterior_label = ['posterior']
+                        posterior_label = ["posterior"]
                     else:
                         # this is for the case, when the posterior is not shown
                         # as a line, but for example as a histogram etc.
                         posterior_handle, posterior_label = [], []
-                    axs[i, i].legend(posterior_handle + existing_handles,
-                                     posterior_label + existing_labels,
-                                     loc='upper right')
+                    axs[i, i].legend(
+                        posterior_handle + existing_handles,
+                        posterior_label + existing_labels,
+                        loc="upper right",
+                    )
 
         # the following command reduces the otherwise wide margins
         plt.tight_layout()
 
         return axs
 
-    elif plot_with == 'seaborn':
+    elif plot_with == "seaborn":
         raise NotImplementedError(
-            "The plot-creation with seaborn has not been implemented yet.")
+            "The plot-creation with seaborn has not been implemented yet."
+        )
 
-    elif plot_with == 'matplotlib':
+    elif plot_with == "matplotlib":
         raise NotImplementedError(
-            "The plot-creation with matplotlib has not been implemented yet.")
+            "The plot-creation with matplotlib has not been implemented yet."
+        )
 
     else:
         raise RuntimeError(
             f"Invalid 'plot_with' argument: '{plot_with}'. Available options "
-            f"are currently 'arviz', 'seaborn', 'matplotlib'")
+            f"are currently 'arviz', 'seaborn', 'matplotlib'"
+        )
 
-def create_posterior_plot(inference_data, problem, plot_with="arviz",
-                          kind="hist", figsize=(10, 3), textsize=10,
-                          hdi_prob=0.95, true_values=None, show=True, **kwargs):
+
+def create_posterior_plot(
+    inference_data,
+    problem,
+    plot_with="arviz",
+    kind="hist",
+    figsize=(10, 3),
+    textsize=10,
+    hdi_prob=0.95,
+    true_values=None,
+    show=True,
+    **kwargs,
+):
     """
     Creates a posterior-plot for the given inference data using arviz.
 
@@ -256,28 +297,46 @@ def create_posterior_plot(inference_data, problem, plot_with="arviz",
                 else:
                     for true_value in true_values[var_name]:
                         ref_val.append(true_value)
-            kwargs['ref_val'] = ref_val
+            kwargs["ref_val"] = ref_val
 
         # call the main plotting routine from arviz and return the axes object
-        return az.plot_posterior(inference_data, kind=kind,
-                                 figsize=figsize, textsize=textsize,
-                                 hdi_prob=hdi_prob, show=show, **kwargs)
+        return az.plot_posterior(
+            inference_data,
+            kind=kind,
+            figsize=figsize,
+            textsize=textsize,
+            hdi_prob=hdi_prob,
+            show=show,
+            **kwargs,
+        )
 
-    elif plot_with == 'seaborn':
+    elif plot_with == "seaborn":
         raise NotImplementedError(
-            "The plot-creation with seaborn has not been implemented yet.")
+            "The plot-creation with seaborn has not been implemented yet."
+        )
 
-    elif plot_with == 'matplotlib':
+    elif plot_with == "matplotlib":
         raise NotImplementedError(
-            "The plot-creation with matplotlib has not been implemented yet.")
+            "The plot-creation with matplotlib has not been implemented yet."
+        )
 
     else:
         raise RuntimeError(
             f"Invalid 'plot_with' argument: '{plot_with}'. Available options "
-            f"are currently 'arviz', 'seaborn', 'matplotlib'")
+            f"are currently 'arviz', 'seaborn', 'matplotlib'"
+        )
 
-def create_trace_plot(inference_data, problem, plot_with="arviz", kind="trace",
-                      figsize=(10, 6), textsize=10, show=True, **kwargs):
+
+def create_trace_plot(
+    inference_data,
+    problem,
+    plot_with="arviz",
+    kind="trace",
+    figsize=(10, 6),
+    textsize=10,
+    show=True,
+    **kwargs,
+):
     """
     Creates a trace-plot for the given inference data using arviz.
 
@@ -310,27 +369,31 @@ def create_trace_plot(inference_data, problem, plot_with="arviz", kind="trace",
         The subplots of the created plot.
     """
 
-    if plot_with == 'arviz':
+    if plot_with == "arviz":
 
         # set default value for kde_kwargs if not given in kwargs; note that
         # this default value is mutable, so it should not be given as a default
         # argument in create_pair_plot
-        if 'plot_kwargs' not in kwargs:
-            kwargs['plot_kwargs'] = {'textsize': textsize}
+        if "plot_kwargs" not in kwargs:
+            kwargs["plot_kwargs"] = {"textsize": textsize}
 
         # call the main plotting routine from arviz and return the axes object
-        return az.plot_trace(inference_data, kind=kind, figsize=figsize,
-                             show=show, **kwargs)
+        return az.plot_trace(
+            inference_data, kind=kind, figsize=figsize, show=show, **kwargs
+        )
 
-    elif plot_with == 'seaborn':
+    elif plot_with == "seaborn":
         raise NotImplementedError(
-            "The plot-creation with seaborn has not been implemented yet.")
+            "The plot-creation with seaborn has not been implemented yet."
+        )
 
-    elif plot_with == 'matplotlib':
+    elif plot_with == "matplotlib":
         raise NotImplementedError(
-            "The plot-creation with matplotlib has not been implemented yet.")
+            "The plot-creation with matplotlib has not been implemented yet."
+        )
 
     else:
         raise RuntimeError(
             f"Invalid 'plot_with' argument: '{plot_with}'. Available options "
-            f"are currently 'arviz', 'seaborn', 'matplotlib'")
+            f"are currently 'arviz', 'seaborn', 'matplotlib'"
+        )

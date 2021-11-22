@@ -6,9 +6,16 @@ from probeye.subroutines import make_list, translate_prms_def
 
 
 class NoiseModelBase:
-
-    def __init__(self, dist, prms_def, sensors, name=None, corr=None,
-                 corr_model=None, noise_type='additive'):
+    def __init__(
+        self,
+        dist,
+        prms_def,
+        sensors,
+        name=None,
+        corr=None,
+        corr_model=None,
+        noise_type="additive",
+    ):
         """
         Parameters
         ----------
@@ -87,24 +94,27 @@ class NoiseModelBase:
         forward_models = set()
         for exp_name in experiment_names:
             exp_dict = self.problem_experiments[exp_name]
-            forward_models.add(exp_dict['forward_model'])
-            sensor_names_exp = [*exp_dict['sensor_values'].keys()]
+            forward_models.add(exp_dict["forward_model"])
+            sensor_names_exp = [*exp_dict["sensor_values"].keys()]
             for sensor_name in self.sensor_names:
                 if sensor_name not in sensor_names_exp:
                     raise RuntimeError(
                         f"Experiment '{exp_name}' does not contain a sensor "
                         f"'{sensor_name}' which is required for the evaluation "
-                        f"of the noise model.")
+                        f"of the noise model."
+                    )
         # check if the given experiments all refer to one forward model
         if len(forward_models) > 1:
             raise RuntimeError(
-                f"The given experiments refer to more than one forward model!")
+                f"The given experiments refer to more than one forward model!"
+            )
         # check if one of the given experiments have been added before
         for exp_name in experiment_names:
             if exp_name in self.experiment_names:
                 raise RuntimeError(
                     f"The experiment '{exp_name}' has already been added to "
-                    f"this noise model. Something might be wrong here.")
+                    f"this noise model. Something might be wrong here."
+                )
         self.experiment_names += experiment_names
 
     def error(self, model_response_dict):
@@ -132,11 +142,12 @@ class NoiseModelBase:
         for exp_name in self.experiment_names:
             exp_dict = self.problem_experiments[exp_name]
             ym_dict = model_response_dict[exp_name]
-            ye_dict = exp_dict['sensor_values']
+            ye_dict = exp_dict["sensor_values"]
             me_dict = self.error_function(ym_dict, ye_dict)
-            model_error_dict =\
-                {name: np.append(model_error_dict[name], me_dict[name])
-                 for name in self.sensor_names}
+            model_error_dict = {
+                name: np.append(model_error_dict[name], me_dict[name])
+                for name in self.sensor_names
+            }
 
         return model_error_dict
 
@@ -157,8 +168,7 @@ class NoiseModelBase:
             The computed model error for the model's output sensor_values.
         """
         # for each sensor, its own error metric is used to compute the error
-        error_dict = {name: ym_dict[name] - ye_dict[name]
-                      for name in self.sensor_names}
+        error_dict = {name: ym_dict[name] - ye_dict[name] for name in self.sensor_names}
         return error_dict
 
     def error_function_multiplicative(self, ym_dict, ye_dict):
@@ -179,8 +189,9 @@ class NoiseModelBase:
             The computed model error for the model's output sensor_values.
         """
         # for each sensor, its own error metric is used to compute the error
-        error_dict = {name: ym_dict[name] / ye_dict[name] - 1.0
-                      for name in self.sensor_names}
+        error_dict = {
+            name: ym_dict[name] / ye_dict[name] - 1.0 for name in self.sensor_names
+        }
         return error_dict
 
     def error_function_other(self, ym_dict, ye_dict):
@@ -191,7 +202,8 @@ class NoiseModelBase:
         """
         raise NotImplementedError(
             "Your model does not have an non-standard error_function-method "
-            "yet. If you want to use it, you need to implement it first.")
+            "yet. If you want to use it, you need to implement it first."
+        )
 
     def loglike_contribution(self, model_response_dict, prms):
         """
@@ -213,8 +225,9 @@ class NoiseModelBase:
             The evaluated log-likelihood function.
         """
         raise NotImplementedError(
-            "Your model does not have a loglike_contribution-method. You " +
-            "need to define this method so you can evaluate your noise model.")
+            "Your model does not have a loglike_contribution-method. You "
+            + "need to define this method so you can evaluate your noise model."
+        )
 
 
 class NormalNoiseModel(NoiseModelBase):
@@ -222,24 +235,39 @@ class NormalNoiseModel(NoiseModelBase):
     A general Gaussian (normal) noise model with or without correlations.
     """
 
-    def __init__(self, prms_def, sensors, name=None, corr=None, corr_model=None,
-                 noise_type='additive'):
+    def __init__(
+        self,
+        prms_def,
+        sensors,
+        name=None,
+        corr=None,
+        corr_model=None,
+        noise_type="additive",
+    ):
         """
         See docstring of NoiseModelBase for information on the input arguments.
         """
 
         # initialize the base class with given input
-        super().__init__('normal', prms_def, sensors, name=name, corr=corr,
-                         corr_model=corr_model, noise_type=noise_type)
+        super().__init__(
+            "normal",
+            prms_def,
+            sensors,
+            name=name,
+            corr=corr,
+            corr_model=corr_model,
+            noise_type=noise_type,
+        )
 
         # check that at the standard deviation is provided (this can be either
         # as a constant or a latent parameter, but it has to be given)
-        if 'std' not in [*self.prms_def.values()]:
+        if "std" not in [*self.prms_def.values()]:
             raise RuntimeError(
-                "The standard deviation 'std' was not provided in prms_def!")
+                "The standard deviation 'std' was not provided in prms_def!"
+            )
 
         # the mean value(s) do not have to be stated explicitly; if they are not
         # given, the are assumed to be zero
         self.zero_mean = True
-        if 'mean' in [*self.prms_def.values()]:
+        if "mean" in [*self.prms_def.values()]:
             self.zero_mean = False

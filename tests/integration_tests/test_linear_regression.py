@@ -24,10 +24,17 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-
-    def test_linear_regression(self, n_steps=200, n_initial_steps=100,
-                               n_walkers=20, plot=False, show_progress=False,
-                               run_scipy=True, run_emcee=True, run_torch=True):
+    def test_linear_regression(
+        self,
+        n_steps=200,
+        n_initial_steps=100,
+        n_walkers=20,
+        plot=False,
+        show_progress=False,
+        run_scipy=True,
+        run_emcee=True,
+        run_torch=True,
+    ):
         """
         Integration test for the problem described at the top of this file.
 
@@ -85,12 +92,11 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class LinearModel(ForwardModelBase):
-
             def response(self, inp):
                 # this method *must* be provided by the user
-                x = inp['x']
-                m = inp['m']
-                b = inp['b']
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = m * x + b
@@ -99,15 +105,14 @@ class TestProblem(unittest.TestCase):
             def jacobian(self, inp):
                 # this method *can* be provided by the user; if not provided
                 # the jacobian will be approximated by finite differences
-                x = inp['x']  # vector
+                x = inp["x"]  # vector
                 one = np.ones((len(x), 1))
                 jacobian = {}
                 for os in self.output_sensors:
                     # partial derivatives must only be stated for the model
                     # parameters; all other input must be flagged by None;
                     # note: partial derivatives must be given as column vectors
-                    jacobian[os.name] = {'x': None,
-                                         'm': x.reshape(-1, 1), 'b': one}
+                    jacobian[os.name] = {"x": None, "m": x.reshape(-1, 1), "b": one}
                 return jacobian
 
         # ==================================================================== #
@@ -130,21 +135,27 @@ class TestProblem(unittest.TestCase):
         # argument specifies the parameter's prior; note that this definition
         # of a prior will result in the initialization of constant parameters of
         # type 'prior' in the background
-        problem.add_parameter('a', 'model',
-                              tex="$a$",
-                              info="Slope of the graph",
-                              prior=('normal', {'loc': loc_a,
-                                                'scale': scale_a}))
-        problem.add_parameter('b', 'model',
-                              info="Intersection of graph with y-axis",
-                              tex='$b$',
-                              prior=('normal', {'loc': loc_b,
-                                                'scale': scale_b}))
-        problem.add_parameter('sigma', 'noise',
-                              tex=r"$\sigma$",
-                              info="Std. dev, of 0-mean noise model",
-                              prior=('uniform', {'low': low_sigma,
-                                                 'high': high_sigma}))
+        problem.add_parameter(
+            "a",
+            "model",
+            tex="$a$",
+            info="Slope of the graph",
+            prior=("normal", {"loc": loc_a, "scale": scale_a}),
+        )
+        problem.add_parameter(
+            "b",
+            "model",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+        )
+        problem.add_parameter(
+            "sigma",
+            "noise",
+            tex=r"$\sigma$",
+            info="Std. dev, of 0-mean noise model",
+            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+        )
 
         # add the forward model to the problem; note that the first positional
         # argument [{'a': 'm'}, 'b'] passed to LinearModel defines the forward
@@ -162,12 +173,13 @@ class TestProblem(unittest.TestCase):
         # it is done with the forward model's parameter 'b' below
         isensor = Sensor("x")
         osensor = Sensor("y")
-        linear_model = LinearModel([{'a': 'm'}, 'b'], [isensor], [osensor])
+        linear_model = LinearModel([{"a": "m"}, "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor))
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        )
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -177,22 +189,24 @@ class TestProblem(unittest.TestCase):
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_true = linear_model.response(
-            {isensor.name: x_test, 'm': a_true, 'b': b_true})[osensor.name]
+            {isensor.name: x_test, "m": a_true, "b": b_true}
+        )[osensor.name]
         y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
         # add the experimental data
-        problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
-                               sensor_values={isensor.name: x_test,
-                                              osensor.name: y_test})
+        problem.add_experiment(
+            f"TestSeries_1",
+            fwd_model_name="LinearModel",
+            sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
 
         # give problem overview
         problem.info()
 
         # plot the true and noisy data
         if plot:
-            plt.scatter(x_test, y_test, label='measured data',
-                        s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label='true', c="black")
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
             plt.xlabel(isensor.name)
             plt.ylabel(osensor.name)
             plt.legend()
@@ -205,13 +219,20 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting
-        true_values = {'a': a_true, 'b': b_true, 'sigma': sigma_noise}
-        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
-                              n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              show_progress=show_progress,
-                              run_scipy=run_scipy, run_emcee=run_emcee,
-                              run_torch=run_torch)
+        true_values = {"a": a_true, "b": b_true, "sigma": sigma_noise}
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

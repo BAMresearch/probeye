@@ -3,14 +3,21 @@ import numpy as np
 
 # local imports
 from probeye.definition.noise_model import NormalNoiseModel
-from probeye.inference.scipy_.correlation_models import \
-    SpatialExponentialCorrelationModel
+from probeye.inference.scipy_.correlation_models import (
+    SpatialExponentialCorrelationModel,
+)
 
 
 class NormalNoise(NormalNoiseModel):
-
-    def __init__(self, target_sensor, prms_def, name=None, corr=None,
-                 corr_model='exp', noise_type='additive'):
+    def __init__(
+        self,
+        target_sensor,
+        prms_def,
+        name=None,
+        corr=None,
+        corr_model="exp",
+        noise_type="additive",
+    ):
         """
         Parameters
         ----------
@@ -55,9 +62,14 @@ class NormalNoise(NormalNoiseModel):
         """
 
         # initialize the super-class (NormalNoiseModel) based on the given input
-        super().__init__(prms_def=prms_def, sensors=target_sensor, name=name,
-                         corr=corr, corr_model=corr_model,
-                         noise_type=noise_type)
+        super().__init__(
+            prms_def=prms_def,
+            sensors=target_sensor,
+            name=name,
+            corr=corr,
+            corr_model=corr_model,
+            noise_type=noise_type,
+        )
 
         # the target_sensor is not an attribute of the super-class
         self.target_sensor = target_sensor
@@ -66,19 +78,19 @@ class NormalNoise(NormalNoiseModel):
         self.corr = corr
         self.corr_model = corr_model
         if self.corr is not None:
-            if self.corr_model == 'exp':
+            if self.corr_model == "exp":
                 self.cov = SpatialExponentialCorrelationModel(
-                    coords=target_sensor.coords, order=list(self.corr))
-                self.loglike_contribution = \
-                    self.loglike_contribution_with_correlation
+                    coords=target_sensor.coords, order=list(self.corr)
+                )
+                self.loglike_contribution = self.loglike_contribution_with_correlation
             else:
                 raise ValueError(
                     f"Encountered unknown flag '{self.corr_model}' "
                     f"for requested correlation model.\n Currently available "
-                    f"options are: 'exp' for an exponential model.")
+                    f"options are: 'exp' for an exponential model."
+                )
         else:
-            self.loglike_contribution =\
-                self.loglike_contribution_without_correlation
+            self.loglike_contribution = self.loglike_contribution_without_correlation
 
     def loglike_contribution_without_correlation(self, model_response, prms):
         """
@@ -89,8 +101,8 @@ class NormalNoise(NormalNoiseModel):
         model_error_vector = self.error(model_response)[self.target_sensor.name]
         # the precision 'prec' is defined as the inverse of the variance, hence
         # prec = 1 / sigma**2 where sigma denotes the standard deviation
-        std = prms['std']
-        mean = 0.0 if self.zero_mean else prms['mean']
+        std = prms["std"]
+        mean = 0.0 if self.zero_mean else prms["mean"]
         prec = 1.0 / std ** 2.0
         # evaluate the Gaussian log-PDF with zero mean and a variance of
         # 1/prec for each error term and sum them up
@@ -98,8 +110,9 @@ class NormalNoise(NormalNoiseModel):
         ll -= 0.5 * prec * np.sum(np.square(model_error_vector - mean))
         return ll
 
-    def loglike_contribution_with_correlation(self, model_response_dict, prms,
-                                              worst_value=-np.infty):
+    def loglike_contribution_with_correlation(
+        self, model_response_dict, prms, worst_value=-np.infty
+    ):
         """
         Evaluates the log-likelihood for the noise model's experiments.
 
@@ -147,10 +160,11 @@ class NormalNoise(NormalNoiseModel):
         for exp_name in self.experiment_names:
             exp_dict = self.problem_experiments[exp_name]
             ym = model_response_dict[exp_name]
-            ye = exp_dict['sensor_values']
+            ye = exp_dict["sensor_values"]
             error = self.error_function(ym, ye)[self.target_sensor.name]
             ll += -np.dot(error, inv_cov_matrix.dot(error)) / 2
         return ll
+
 
 def translate_noise_model(noise_base):
     """
@@ -173,13 +187,17 @@ def translate_noise_model(noise_base):
     """
 
     # this is the noise classes currently defined (see code above)
-    noise_classes = {'normal': NormalNoise}
+    noise_classes = {"normal": NormalNoise}
 
     # this is where the translation happens
     noise_object = noise_classes[noise_base.dist](
-        target_sensor=noise_base.sensors[0], prms_def=noise_base.prms_def,
-        name=noise_base.name, corr=noise_base.corr,
-        corr_model=noise_base.corr_model, noise_type=noise_base.noise_type)
+        target_sensor=noise_base.sensors[0],
+        prms_def=noise_base.prms_def,
+        name=noise_base.name,
+        corr=noise_base.corr,
+        corr_model=noise_base.corr_model,
+        noise_type=noise_base.noise_type,
+    )
 
     # here, we take the assigned experiments from the base object
     noise_object.experiment_names = noise_base.experiment_names

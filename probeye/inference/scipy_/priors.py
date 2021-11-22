@@ -64,11 +64,13 @@ class PriorNormal(PriorBase):
                 # this try-catch construct accounts for the fact, that the
                 # multivariate normal distribution does not have a 'mean' or
                 # 'median' method
-                if method in ['mean', 'median']:
+                if method in ["mean", "median"]:
                     return loc
                 else:
-                    raise AttributeError(f"stats.multivariate_normal does "
-                                         f"not have a '{method}'-method")
+                    raise AttributeError(
+                        f"stats.multivariate_normal does "
+                        f"not have a '{method}'-method"
+                    )
             if use_ref_prm:
                 x = prms[self.ref_prm]
                 return fun(x, mean=loc, cov=scale, **kwargs)
@@ -97,11 +99,11 @@ class PriorNormal(PriorBase):
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
         if len_or_one(loc) == 1:
-            return stats.norm.rvs(
-                loc=loc, scale=scale, size=size, random_state=seed)
+            return stats.norm.rvs(loc=loc, scale=scale, size=size, random_state=seed)
         else:
             return stats.multivariate_normal.rvs(
-                mean=loc, cov=scale, size=size, random_state=seed)
+                mean=loc, cov=scale, size=size, random_state=seed
+            )
 
 
 class PriorLognormal(PriorBase):
@@ -183,8 +185,9 @@ class PriorLognormal(PriorBase):
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
 
-        return stats.lognorm.rvs(shape, loc=loc, scale=scale, size=size,
-                                 random_state=seed)
+        return stats.lognorm.rvs(
+            shape, loc=loc, scale=scale, size=size, random_state=seed
+        )
 
 
 class PriorUniform(PriorBase):
@@ -233,7 +236,7 @@ class PriorUniform(PriorBase):
         high = prms[f"high_{self.ref_prm}"]
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, loc=low, scale=high-low, **kwargs)
+            return fun(x, loc=low, scale=high - low, **kwargs)
         else:
             return fun(loc=low, scale=high - low, **kwargs)
 
@@ -258,8 +261,9 @@ class PriorUniform(PriorBase):
         """
         low = prms[f"low_{self.ref_prm}"]
         high = prms[f"high_{self.ref_prm}"]
-        return stats.uniform.rvs(loc=low, scale=high-low, size=size,
-                                 random_state=seed)
+        return stats.uniform.rvs(
+            loc=low, scale=high - low, size=size, random_state=seed
+        )
 
 
 class PriorWeibull(PriorBase):
@@ -336,8 +340,10 @@ class PriorWeibull(PriorBase):
         shape = prms[f"shape_{self.ref_prm}"]
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        return stats.weibull_min.rvs(shape, loc=loc, scale=scale, size=size,
-                                     random_state=seed)
+        return stats.weibull_min.rvs(
+            shape, loc=loc, scale=scale, size=size, random_state=seed
+        )
+
 
 def translate_prior(prior_template, prior_classes=None):
     """
@@ -364,29 +370,36 @@ def translate_prior(prior_template, prior_classes=None):
     """
 
     # no translation is required for an uninformative prior
-    if prior_template.prior_type == 'uninformative':
+    if prior_template.prior_type == "uninformative":
         return prior_template
 
     # check the prior_classes argument; it either must be None, or of type dict
     if type(prior_classes) is not dict:
         if prior_classes is None:
-            prior_classes = {'normal': PriorNormal,
-                             'lognormal': PriorLognormal,
-                             'uniform': PriorUniform,
-                             'weibull': PriorWeibull}
+            prior_classes = {
+                "normal": PriorNormal,
+                "lognormal": PriorLognormal,
+                "uniform": PriorUniform,
+                "weibull": PriorWeibull,
+            }
         else:
             # in this case prior_classes is not None, and not of type dict
             raise TypeError(
                 f"Custom prior_classes must be given as a dictionary. However, "
-                f"you provided an input of type {type(prior_classes)}.")
+                f"you provided an input of type {type(prior_classes)}."
+            )
 
     # prepare the corresponding prior object; the following translation is
     # necessary, because prms_def must be given in form of a list, but was
     # already translated to a dictionary when instantiating the PriorBase
     # objects; hence prior_template.prms_def is a dictionary
-    prms_def = [{key: value} for key, value in prior_template.prms_def.items()
-                if key != prior_template.ref_prm]
+    prms_def = [
+        {key: value}
+        for key, value in prior_template.prms_def.items()
+        if key != prior_template.ref_prm
+    ]
     prior_object = prior_classes[prior_template.prior_type](
-        prior_template.ref_prm, prms_def, prior_template.name)
+        prior_template.ref_prm, prms_def, prior_template.name
+    )
 
     return prior_object

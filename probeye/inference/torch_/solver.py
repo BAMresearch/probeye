@@ -65,8 +65,7 @@ class PyroSolver:
         self.dependency_dict = dict()
         for prm_name in self.problem.parameters.latent_prms:
             self.dependency_dict[prm_name] = []
-            hyperparameters =\
-                self.problem.parameters[prm_name].prior.hyperparameters
+            hyperparameters = self.problem.parameters[prm_name].prior.hyperparameters
             for prior_prm_name in hyperparameters:
                 if prior_prm_name in self.problem.parameters.latent_prms:
                     self.dependency_dict[prm_name].append(prior_prm_name)
@@ -78,23 +77,25 @@ class PyroSolver:
         consistent = False
         while not consistent:
             consistent = True
-            idx_latent_dependencies =\
-                [i for i, v in enumerate(self.dependency_dict.values())
-                 if len(v) > 0]
+            idx_latent_dependencies = [
+                i for i, v in enumerate(self.dependency_dict.values()) if len(v) > 0
+            ]
             for idx in idx_latent_dependencies:
                 key_idx = [*self.dependency_dict.keys()][idx]
                 for dependency in self.dependency_dict[key_idx]:
                     if key_idx in self.dependency_dict[dependency]:
                         raise RuntimeError(
                             f"Found circular dependency between {key_idx} and "
-                            f"{dependency}!")
-                    idx_dependency =\
-                        [*self.dependency_dict.keys()].index(dependency)
+                            f"{dependency}!"
+                        )
+                    idx_dependency = [*self.dependency_dict.keys()].index(dependency)
                     if idx_dependency > idx:
                         consistent = False
                         tuples = [*self.dependency_dict.items()]
-                        tuples[idx], tuples[idx_dependency] = \
-                            tuples[idx_dependency], tuples[idx]
+                        tuples[idx], tuples[idx_dependency] = (
+                            tuples[idx_dependency],
+                            tuples[idx],
+                        )
                         self.dependency_dict = dict(tuples)
 
         # translate the prior definitions to objects with computing capabilities
@@ -102,8 +103,9 @@ class PyroSolver:
         self.priors = {}
         for prm_name in self.dependency_dict:
             prior_template = self.problem.parameters[prm_name].prior
-            self.priors[prior_template.ref_prm] = \
-                translate_prior_template(prior_template)
+            self.priors[prior_template.ref_prm] = translate_prior_template(
+                prior_template
+            )
 
         # translate the general noise model objects into solver specific ones
         logger.debug("Translating problem's noise models")
@@ -115,9 +117,9 @@ class PyroSolver:
         logger.debug("Wrapping problem's forward models")
         self.wrapped_forward_models = {}
         for fwd_model_name in self.problem.forward_models:
-            self.wrapped_forward_models[fwd_model_name] =\
-                self._translate_forward_model(
-                        self.problem.forward_models[fwd_model_name])
+            self.wrapped_forward_models[fwd_model_name] = self._translate_forward_model(
+                self.problem.forward_models[fwd_model_name]
+            )
 
     @staticmethod
     def _only_values(func):
@@ -129,8 +131,10 @@ class PyroSolver:
         requires the numeric values of inp given as positional arguments. This
         pre-processing step is done by this function wrapper.
         """
+
         def wrapper(inp):
             return func(*inp.values())
+
         return wrapper
 
     def _translate_forward_model(self, forward_model):
@@ -146,7 +150,6 @@ class PyroSolver:
         """
 
         class Autograd(th.autograd.Function):
-
             @staticmethod
             def forward(ctx, *values):
                 """
@@ -184,7 +187,8 @@ class PyroSolver:
                 response_dict = forward_model.response(inp)
                 jac_dict = forward_model.jacobian(inp)
                 jac_numpy = forward_model.jacobian_dict_to_array(
-                    inp, jac_dict, self.problem.n_latent_prms_dim)
+                    inp, jac_dict, self.problem.n_latent_prms_dim
+                )
 
                 # now we have the forward model's response in dict format;
                 # however, in this format it cannot be processed here, so we
@@ -198,7 +202,7 @@ class PyroSolver:
                     n_elements = len_or_one(value)
                     idx_start = i * n3
                     idx_end = idx_start + n_elements
-                    response_numpy[idx_start: idx_end] = value
+                    response_numpy[idx_start:idx_end] = value
                     response_structure[key] = n_elements
                 forward_model.response_structure = response_structure
 
@@ -272,7 +276,7 @@ class PyroSolver:
                 j = 0
                 for i, dim in enumerate(forward_model.input_structure.values()):
                     if ctx.needs_input_grad[i]:
-                        return_val[i] = grad_total[j: j + dim]
+                        return_val[i] = grad_total[j : j + dim]
                         j += dim
                     else:
                         j += 1
@@ -320,18 +324,20 @@ class PyroSolver:
         for fwd_name, fwd_model_wrapped in self.wrapped_forward_models.items():
             forward_model = self.problem.forward_models[fwd_name]
             # get the model parameters for the considered forward model
-            prms_model = self.problem.get_parameters(
-                theta, forward_model.prms_def)
+            prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
             # get all experiments referring to the considered forward model
             relevant_experiment_names = self.problem.get_experiment_names(
-                forward_model_names=fwd_name, experiment_names=experiment_names)
+                forward_model_names=fwd_name, experiment_names=experiment_names
+            )
             # evaluate the forward model for each relevant experiment
             for exp_name in relevant_experiment_names:
                 exp_dict = self.problem.experiments[exp_name]
                 # prepare the model input values from the experimental data
-                sensor_values = exp_dict['sensor_values']
-                exp_inp = {input_sensor.name: sensor_values[input_sensor.name]
-                           for input_sensor in forward_model.input_sensors}
+                sensor_values = exp_dict["sensor_values"]
+                exp_inp = {
+                    input_sensor.name: sensor_values[input_sensor.name]
+                    for input_sensor in forward_model.input_sensors
+                }
                 inp = {**exp_inp, **prms_model}  # adds the two dictionaries
                 # finally, evaluate the forward model for this experiment; note
                 # that the additional effort here is necessary, since the
@@ -342,7 +348,7 @@ class PyroSolver:
                 i = 0
                 for key in forward_model.response_structure.keys():
                     n_numbers = forward_model.response_structure[key]
-                    res[key] = response[i:i + n_numbers]
+                    res[key] = response[i : i + n_numbers]
                     i += n_numbers
                 model_response_dict[exp_name] = res
 
@@ -397,10 +403,10 @@ class PyroSolver:
         for noise_model in self.noise_models:
             # compute the model response for the noise model's experiment_names
             model_response = self.evaluate_model_response(
-                theta, noise_model.experiment_names)
+                theta, noise_model.experiment_names
+            )
             # get the tensors for the noise model's parameters
-            prms_noise = self.problem.get_parameters(
-                theta, noise_model.prms_def)
+            prms_noise = self.problem.get_parameters(theta, noise_model.prms_def)
             # evaluate the loglike-contribution for the noise model
             noise_model.sample_cond_likelihood(model_response, prms_noise)
 
@@ -416,8 +422,9 @@ class PyroSolver:
         theta = self.get_theta_samples()
         return self.loglike(theta)
 
-    def run_mcmc(self, n_walkers=1, n_steps=300, n_initial_steps=30,
-                   step_size=0.1, **kwargs):
+    def run_mcmc(
+        self, n_walkers=1, n_steps=300, n_initial_steps=30, step_size=0.1, **kwargs
+    ):
         """
         Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
@@ -444,9 +451,9 @@ class PyroSolver:
         # log which solver is used
         logger.info(
             f"Solving problem using pyro's NUTS sampler with {n_initial_steps} "
-            f"+ {n_steps} samples, ...")
-        logger.info(
-            f"... {n_walkers} chains and a step size of {step_size:.3f}")
+            f"+ {n_steps} samples, ..."
+        )
+        logger.info(f"... {n_walkers} chains and a step size of {step_size:.3f}")
         if kwargs:
             logger.info("Additional NUTS options:")
             print_dict_in_rows(kwargs, printer=logger.info)
@@ -462,11 +469,13 @@ class PyroSolver:
 
         # this is where the actual sampling happens
         start = time.time()
-        mcmc = MCMC(kernel,
-                    num_samples=n_steps,
-                    warmup_steps=n_initial_steps,
-                    num_chains=n_walkers,
-                    disable_progbar=not self.show_progress)
+        mcmc = MCMC(
+            kernel,
+            num_samples=n_steps,
+            warmup_steps=n_initial_steps,
+            num_chains=n_walkers,
+            disable_progbar=not self.show_progress,
+        )
         mcmc.run()
         end = time.time()
 
@@ -476,35 +485,36 @@ class PyroSolver:
         # note that only a reshape of the data occurs without changing the
         # samples themselves
         for prm_name, samples in mcmc._samples.items():
-            if len(samples.shape) > 2 and \
-                    self.problem.parameters[prm_name].dim == 1:
-                mcmc._samples[prm_name] = \
-                    th.reshape(mcmc._samples[prm_name], samples.shape[:2])
+            if len(samples.shape) > 2 and self.problem.parameters[prm_name].dim == 1:
+                mcmc._samples[prm_name] = th.reshape(
+                    mcmc._samples[prm_name], samples.shape[:2]
+                )
 
         # log out the results of the process
         runtime_str = pretty_time_delta(end - start)
-        logger.info(f"Sampling of the posterior distribution completed: "
-                    f"{n_steps} steps and {n_walkers} chains.")
+        logger.info(
+            f"Sampling of the posterior distribution completed: "
+            f"{n_steps} steps and {n_walkers} chains."
+        )
         logger.info(f"Total run-time (including warmup): {runtime_str}.")
         logger.info("")
         logger.info("Summary of sampling results")
-        with contextlib.redirect_stdout(stream_to_logger('INFO')):
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):
             mcmc.summary()
         self.raw_results = mcmc
 
         # create a summary dictionary similar to the one created by EmceeSolver
-        self.summary = {'mean': {},
-                        'median': {},
-                        'sd': {},
-                        'q05': {},
-                        'q95': {}}
-        stat_name_map = {'mean': 'mean',
-                         'median': 'median',
-                         'std': 'sd',
-                         '5.0%': 'q05',
-                         '95.0%': 'q95'}
-        for prm_name, prm_summary_dict in \
-                pyro.infer.mcmc.util.summary(mcmc._samples).items():
+        self.summary = {"mean": {}, "median": {}, "sd": {}, "q05": {}, "q95": {}}
+        stat_name_map = {
+            "mean": "mean",
+            "median": "median",
+            "std": "sd",
+            "5.0%": "q05",
+            "95.0%": "q95",
+        }
+        for prm_name, prm_summary_dict in pyro.infer.mcmc.util.summary(
+            mcmc._samples
+        ).items():
             for stat, val in prm_summary_dict.items():
                 if stat in stat_name_map:
                     if val.numel() == 1:
@@ -517,8 +527,10 @@ class PyroSolver:
         # translate the results to a common data structure and return it
         var_names = self.problem.get_theta_names(tex=False, components=False)
         var_names_tex = self.problem.get_theta_names(tex=True, components=False)
-        name_dict = {var_name: var_name_tex for var_name, var_name_tex
-                     in zip(var_names, var_names_tex)}
+        name_dict = {
+            var_name: var_name_tex
+            for var_name, var_name_tex in zip(var_names, var_names_tex)
+        }
         # the following warning-filter is intended to hide the
         # DepreciationWarning that is currently always raised in the
         # arviz.from_pyro method due to using np.bool instead of bool; as soon
@@ -526,6 +538,6 @@ class PyroSolver:
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             inference_data = az.from_pyro(mcmc, log_likelihood=False)
-        inference_data.rename(name_dict, groups='posterior', inplace=True)
+        inference_data.rename(name_dict, groups="posterior", inplace=True)
 
         return inference_data

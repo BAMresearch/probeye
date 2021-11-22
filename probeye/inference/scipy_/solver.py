@@ -48,8 +48,10 @@ class ScipySolver:
         try:
             self.problem = cp.deepcopy(problem)
         except:
-            logger.warning("The inference problem could not be deep-copied! "
-                           "The original problem will be modified!")
+            logger.warning(
+                "The inference problem could not be deep-copied! "
+                "The original problem will be modified!"
+            )
             self.problem = problem
         self.problem.assign_experiments_to_noise_models()
 
@@ -104,18 +106,20 @@ class ScipySolver:
         model_response_dict = {}
         for fwd_name, forward_model in self.problem.forward_models.items():
             # get the model parameters for the considered forward model
-            prms_model = self.problem.get_parameters(
-                theta, forward_model.prms_def)
+            prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
             # get all experiments referring to the considered forward model
             relevant_experiment_names = self.problem.get_experiment_names(
-                forward_model_names=fwd_name, experiment_names=experiment_names)
+                forward_model_names=fwd_name, experiment_names=experiment_names
+            )
             # evaluate the forward model for each relevant experiment
             for exp_name in relevant_experiment_names:
                 exp_dict = self.problem.experiments[exp_name]
                 # prepare the model input values from the experimental data
-                sensor_values = exp_dict['sensor_values']
-                exp_inp = {input_sensor.name: sensor_values[input_sensor.name]
-                           for input_sensor in forward_model.input_sensors}
+                sensor_values = exp_dict["sensor_values"]
+                exp_inp = {
+                    input_sensor.name: sensor_values[input_sensor.name]
+                    for input_sensor in forward_model.input_sensors
+                }
                 inp = {**exp_inp, **prms_model}  # adds the two dictionaries
                 # finally, evaluate the forward model for this experiment
                 model_response_dict[exp_name] = forward_model(inp)
@@ -141,7 +145,7 @@ class ScipySolver:
         lp = 0.0
         for prior in self.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
-            lp += prior(prms, 'logpdf')
+            lp += prior(prms, "logpdf")
         return lp
 
     def sample_from_prior(self, prm_name, size):
@@ -170,10 +174,11 @@ class ScipySolver:
         # the prior's prior parameters and so forth
         theta_aux = [0] * self.problem.parameters.n_latent_prms
         for prior_prm_name in prior.hyperparameters.keys():
-            if self.problem.parameters[prior_prm_name].role == 'latent':
+            if self.problem.parameters[prior_prm_name].role == "latent":
                 samples = self.sample_from_prior(prior_prm_name, size)
-                theta_aux[self.problem.parameters[prior_prm_name].index] =\
-                    np.mean(samples)
+                theta_aux[self.problem.parameters[prior_prm_name].index] = np.mean(
+                    samples
+                )
         prms = self.problem.get_parameters(theta_aux, prior.hyperparameters)
         return prior.generate_samples(prms, size)
 
@@ -199,15 +204,15 @@ class ScipySolver:
         for noise_model in self.noise_models:
             # compute the model response for the noise model's experiment_names
             model_response = self.evaluate_model_response(
-                theta, noise_model.experiment_names)
+                theta, noise_model.experiment_names
+            )
             # get the parameter values for the noise model's parameters
-            prms_noise = self.problem.get_parameters(
-                theta, noise_model.prms_def)
+            prms_noise = self.problem.get_parameters(theta, noise_model.prms_def)
             # evaluate the loglike-contribution for the noise model
             ll += noise_model.loglike_contribution(model_response, prms_noise)
         return ll
 
-    def get_start_values(self, x0_dict=None, x0_prior='mean', x0_default=1.0):
+    def get_start_values(self, x0_dict=None, x0_prior="mean", x0_default=1.0):
         """
         Derives the start values for the maximum likelihood optimization run.
         For an explanation of the arguments, see self.run_max_likelihood.
@@ -231,7 +236,7 @@ class ScipySolver:
             for prm_name, prm_value in x0_dict.items():
                 idx = self.problem.parameters[prm_name].index
                 idx_end = self.problem.parameters[prm_name].index_end
-                x0[idx: idx_end] = prm_value
+                x0[idx:idx_end] = prm_value
         else:
             # in this case, the start values are derived from the priors; if
             # a prior i not uninformative, its mean value will be used; if a
@@ -244,20 +249,21 @@ class ScipySolver:
                 idx = self.problem.parameters[prm_name].index
                 idx_end = self.problem.parameters[prm_name].index_end
                 dim = self.problem.parameters[prm_name].dim
-                if prior_type != 'uninformative':
+                if prior_type != "uninformative":
                     prm_value = self.priors[prior_name](
-                        prms, x0_prior, use_ref_prm=False)
+                        prms, x0_prior, use_ref_prm=False
+                    )
                     prms[prm_name] = prm_value
-                    x0[idx: idx_end] = prm_value
+                    x0[idx:idx_end] = prm_value
                 else:
                     # no mean value can be requested if the prior is
                     # uninformative, hence a default value is used
-                    x0[idx: idx_end] = [x0_default] * dim
+                    x0[idx:idx_end] = [x0_default] * dim
                 # scalar values should not be saved as one-element-lists
                 if dim == 1:
                     x0_dict[prm_name] = x0[idx]
                 else:
-                    x0_dict[prm_name] = x0[idx: idx_end]
+                    x0_dict[prm_name] = x0[idx:idx_end]
 
         return x0, x0_dict
 
@@ -270,14 +276,16 @@ class ScipySolver:
 
         # the first part of the summary contains process information
         n_char_message = len(minimize_results.message)
-        msg = (f"\nResults of maximum likelihood estimation\n"
-               f"{'=' * n_char_message}\n"
-               f"{minimize_results.message}\n"
-               f"{'-' * n_char_message}\n"
-               f"Number of iterations:           {minimize_results.nit}\n"
-               f"Number of function evaluations: {minimize_results.nfev}\n"
-               f"{'-' * n_char_message}")
-        for line in msg.split('\n'):
+        msg = (
+            f"\nResults of maximum likelihood estimation\n"
+            f"{'=' * n_char_message}\n"
+            f"{minimize_results.message}\n"
+            f"{'-' * n_char_message}\n"
+            f"Number of iterations:           {minimize_results.nit}\n"
+            f"Number of function evaluations: {minimize_results.nfev}\n"
+            f"{'-' * n_char_message}"
+        )
+        for line in msg.split("\n"):
             logger.info(line)
 
         # the second part shows the actual results and compares them with the
@@ -289,19 +297,27 @@ class ScipySolver:
                 idx = self.problem.parameters[theta_name].index
                 idx_end = self.problem.parameters[theta_name].index_end
                 opt_name = f"{theta_name}_opt"
-                opt_val = minimize_results.x[idx: idx_end]
+                opt_val = minimize_results.x[idx:idx_end]
                 line = f"{opt_name:{n_char}s} = {opt_val}"
                 if true_values:
-                    line += (f" (true = {true_values[theta_name]}, "
-                             f"start = {x0_dict[theta_name]})")
+                    line += (
+                        f" (true = {true_values[theta_name]}, "
+                        f"start = {x0_dict[theta_name]})"
+                    )
                 else:
                     line += f" (start = {x0_dict[theta_name]})"
                 logger.info(line)
-        logger.info('')  # empty line for visual buffer
+        logger.info("")  # empty line for visual buffer
 
-    def run_max_likelihood(self, x0_dict=None, x0_prior='mean', x0_default=1.0,
-                           true_values=None, method='Nelder-Mead',
-                           solver_options=None):
+    def run_max_likelihood(
+        self,
+        x0_dict=None,
+        x0_prior="mean",
+        x0_default=1.0,
+        true_values=None,
+        method="Nelder-Mead",
+        solver_options=None,
+    ):
         """
         Finds values for an InferenceProblem's latent parameters that maximize
         the problem's likelihood function. The used method is scipy's minimize
@@ -353,7 +369,8 @@ class ScipySolver:
         # values of the latent parameter's priors
         logger.debug("Deriving start values")
         x0, x0_dict = self.get_start_values(
-            x0_dict=x0_dict, x0_prior=x0_prior, x0_default=x0_default)
+            x0_dict=x0_dict, x0_prior=x0_prior, x0_default=x0_default
+        )
         logger.info("Using start values:")
         print_dict_in_rows(x0_dict, printer=logger.info, val_fmt=None)
 
@@ -364,15 +381,16 @@ class ScipySolver:
             print_dict_in_rows(solver_options, printer=logger.info)
         else:
             logger.info("No solver options specified")
-        minimize_results = minimize(
-            fun, x0, method=method, options=solver_options)
+        minimize_results = minimize(fun, x0, method=method, options=solver_options)
 
         # note that in this case, the raw solver result is identical with the
         # return-value of this method; however, for other solver they differ;
         # hence, this attribute is set here only for consistency reasons
         self.raw_results = minimize_results
-        self.summary = {'success': minimize_results.success,
-                        'theta_opt': minimize_results.x}
+        self.summary = {
+            "success": minimize_results.success,
+            "theta_opt": minimize_results.x,
+        }
 
         # some convenient printout with respect to the solver's results
         self.summarize_ml_results(minimize_results, true_values, x0_dict)

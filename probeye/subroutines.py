@@ -21,6 +21,7 @@ logger.opt = partial(logger.opt, colors=True)
 #                                 Subroutines                                  #
 # ============================================================================ #
 
+
 def len_or_one(obj):
     """
     Returns the length of an object or 1 if no length is defined.
@@ -37,7 +38,7 @@ def len_or_one(obj):
         attribute; the latter case is mostly intended for scalar numbers
 
     """
-    if hasattr(obj, '__len__'):
+    if hasattr(obj, "__len__"):
         # the following check is necessary, since the len-function applied to a
         # numpy array of format numpy.array(1) results in a TypeError
         if type(obj) is np.ndarray:
@@ -49,6 +50,7 @@ def len_or_one(obj):
             return len(obj)
     else:
         return 1
+
 
 def make_list(arg):
     """
@@ -73,6 +75,7 @@ def make_list(arg):
     else:
         new_arg = [copy(arg)]
     return new_arg
+
 
 def underlined_string(string, symbol="=", n_empty_start=1, n_empty_end=1):
     """
@@ -103,8 +106,8 @@ def underlined_string(string, symbol="=", n_empty_start=1, n_empty_end=1):
     result_string = empty_lines_start + result_string + empty_lines_end
     return result_string
 
-def titled_table(title_str, table_str, symbol='-', n_empty_start=1,
-                 n_empty_end=0):
+
+def titled_table(title_str, table_str, symbol="-", n_empty_start=1, n_empty_end=0):
     """
     Adds an underlined title string to a given table string. The line, that
     underlines the title will be as long as the longest line of the table.
@@ -128,14 +131,20 @@ def titled_table(title_str, table_str, symbol='-', n_empty_start=1,
         An underlined title, followed by a table.
     """
     # get the number of characters in the given table's longest line
-    max_line_length = max([len(line) for line in table_str.split('\n')])
+    max_line_length = max([len(line) for line in table_str.split("\n")])
     # now, simply concatenate the different lines
-    result_string = n_empty_start * '\n' +\
-                    title_str + '\n' +\
-                    max_line_length * symbol + '\n' +\
-                    table_str + '\n' +\
-                    n_empty_end * '\n'
+    result_string = (
+        n_empty_start * "\n"
+        + title_str
+        + "\n"
+        + max_line_length * symbol
+        + "\n"
+        + table_str
+        + "\n"
+        + n_empty_end * "\n"
+    )
     return result_string
+
 
 def replace_string_chars(string, replace=None, remove=None):
     """
@@ -163,8 +172,9 @@ def replace_string_chars(string, replace=None, remove=None):
     # finally, remove characters as requested
     if remove is not None:
         for char in remove:
-            string = string.replace(char, '')
+            string = string.replace(char, "")
     return string
+
 
 def simplified_list_string(list_):
     """
@@ -183,9 +193,9 @@ def simplified_list_string(list_):
     simplified_list_str : string
         The list_'s __str__ method's return string without brackets and quotes.
     """
-    simplified_list_str = replace_string_chars(
-        str(list_), remove=['[', ']', "'"])
+    simplified_list_str = replace_string_chars(str(list_), remove=["[", "]", "'"])
     return simplified_list_str
+
 
 def simplified_dict_string(dict_):
     """
@@ -206,8 +216,10 @@ def simplified_dict_string(dict_):
         no braces and the colon will be replaced with an equal sign.
     """
     simplified_dict_str = replace_string_chars(
-        str(dict_), remove=['{', '}', "'"], replace={': ': '='})
+        str(dict_), remove=["{", "}", "'"], replace={": ": "="}
+    )
     return simplified_dict_str
+
 
 def unvectorize_dict_values(dict_):
     """
@@ -231,14 +243,12 @@ def unvectorize_dict_values(dict_):
     # all values must be iterable
     dict_copy = copy(dict_)
     for key, value in dict_.items():
-        if not hasattr(value, '__len__'):
+        if not hasattr(value, "__len__"):
             dict_copy[key] = [value]
 
     # check if all lengths are the same
     if len({len(vector) for vector in dict_copy.values()}) != 1:
-        raise RuntimeError(
-            "The values of the dictionary have different lengths!"
-        )
+        raise RuntimeError("The values of the dictionary have different lengths!")
 
     # create the result list
     vector_length = len([*dict_copy.values()][0])
@@ -251,6 +261,7 @@ def unvectorize_dict_values(dict_):
         result_list.append(atom_dict)
 
     return result_list
+
 
 def sub_when_empty(string, empty_str="-"):
     """
@@ -271,13 +282,13 @@ def sub_when_empty(string, empty_str="-"):
         (when 'string' is empty)
     """
     if type(string) is not str:
-        raise TypeError(
-            f"Input must be of type string. Found: type '{type(string)}'")
+        raise TypeError(f"Input must be of type string. Found: type '{type(string)}'")
     if len(string) > 0:
         result_string = string
     else:
         result_string = empty_str
     return result_string
+
 
 def dict2list(dict_):
     """
@@ -296,11 +307,13 @@ def dict2list(dict_):
     """
     if type(dict_) != dict:
         raise TypeError(
-            f"Input argument must be of type 'dict', found '{type(dict_)}'.")
+            f"Input argument must be of type 'dict', found '{type(dict_)}'."
+        )
     list_ = []
     for key, value in dict_.items():
         list_.append({key: value})
     return list_
+
 
 def list2dict(list_dict):
     """
@@ -350,6 +363,7 @@ def list2dict(list_dict):
             )
     return dict_
 
+
 def pretty_time_delta(seconds):
     """
     Converts number of seconds into a human friendly time string. Source: https:
@@ -379,6 +393,7 @@ def pretty_time_delta(seconds):
     else:
         return "%s%ds" % (sign_string, seconds)
 
+
 def flatten_generator(items):
     """
     Yield items from any nested iterable. This solution is modified from a
@@ -402,6 +417,7 @@ def flatten_generator(items):
         else:
             yield x
 
+
 def flatten(arg):
     """
     Flattens and returns the given input argument.
@@ -424,14 +440,18 @@ def flatten(arg):
         arg_flat = [arg]
     else:
         if arg_type not in [list, np.ndarray]:
-            raise TypeError(f"The argument must be either None or of type list "
-                            f"numpy.ndarray, float or int. Found type "
-                            f"{arg_type} however.")
+            raise TypeError(
+                f"The argument must be either None or of type list "
+                f"numpy.ndarray, float or int. Found type "
+                f"{arg_type} however."
+            )
         arg_flat = list(flatten_generator(arg))
     return arg_flat
 
-def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
-                                order=('x', 'y', 'z')):
+
+def process_spatial_coordinates(
+    x=None, y=None, z=None, coords=None, order=("x", "y", "z")
+):
     """
     x : float, int, numpy.ndarray, None, optional
         Positional x-coordinate. When given, the coords-argument must be None.
@@ -474,8 +494,10 @@ def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
     # derive the number of given coordinate vectors and points
     if coords is not None:
         if not type(coords) is np.ndarray:
-            raise TypeError(f"The argument 'coords' must be of type "
-                            f"numpy.ndarray. Found {type(coords)} however.")
+            raise TypeError(
+                f"The argument 'coords' must be of type "
+                f"numpy.ndarray. Found {type(coords)} however."
+            )
         else:
             # each row corresponds to one coordinate, so the number of given
             # points is the length of rows
@@ -489,7 +511,8 @@ def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
         else:
             raise RuntimeError(
                 f"Found inconsistent lengths in given coordinate "
-                f"vectors: {n_points_list}!")
+                f"vectors: {n_points_list}!"
+            )
 
     # derive the coords array and the corresponding order-vector to be returned;
     # note that the repeated if-else clause here should improve readability
@@ -510,6 +533,7 @@ def process_spatial_coordinates(x=None, y=None, z=None, coords=None,
                 row_idx += 1
 
     return coords, adjusted_order
+
 
 def translate_prms_def(prms_def_given):
     """
@@ -543,8 +567,16 @@ def translate_prms_def(prms_def_given):
     prms_dim = len(prms_def)
     return prms_def, prms_dim
 
-def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
-                         margin=5, h_symbol="=", v_symbol="#", use_logger=True):
+
+def print_probeye_header(
+    width=100,
+    header_file="probeye.txt",
+    version="1.0.12",
+    margin=5,
+    h_symbol="=",
+    v_symbol="#",
+    use_logger=True,
+):
     """
     Prints the probeye header which is printed, when an inference problem is
     set up. Mostly just nice to have. The only useful information it contains
@@ -576,7 +608,7 @@ def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
     header_file = os.path.join(dir_path, header_file)
 
     # read in the big probeye letters
-    with open(header_file, 'r') as f:
+    with open(header_file, "r") as f:
         content = f.readlines()
     # this is the width of the read in 'probeye' in terms of number of chars;
     # note that all lines (should) have the same length
@@ -585,22 +617,22 @@ def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
     # this string should coincide with the one given in setup.cfg; however, it
     # cannot be read dynamically, since the setup.cfg is not available after
     # installing the package
-    description = 'A general framework for setting up parameter '\
-                  'estimation problems.'
+    description = "A general framework for setting up parameter " "estimation problems."
 
     subtitle = f"Version {version} - {description}"
     width_subtitle = len(subtitle)
 
     # choose a width so that the margin on one side is at least 'margin'
-    width_used = max((width, width_probeye + 2 * (margin + 1),
-                      width_subtitle + 2 * margin + 1))
+    width_used = max(
+        (width, width_probeye + 2 * (margin + 1), width_subtitle + 2 * margin + 1)
+    )
 
     # assemble the header
     outer_frame_line = f"{v_symbol} {h_symbol * (width_used - 4)} {v_symbol}"
     inner_frame_line = f"{v_symbol}{' ' * (width_used - 2)}{v_symbol}"
     lines = [outer_frame_line, inner_frame_line]
     for line in content:
-        clean_line = line.replace('\n', '')
+        clean_line = line.replace("\n", "")
         lines.append(f"{v_symbol}{clean_line:^{width_used - 2}s}{v_symbol}")
     lines.append(inner_frame_line)
     lines.append(outer_frame_line)
@@ -615,11 +647,17 @@ def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
         for line in lines:
             logger.info(line)
     else:
-        print('\n' + '\n'.join(lines))
+        print("\n" + "\n".join(lines))
 
-def logging_setup(log_level_stdout='INFO', log_level_file='DEBUG',
-                  log_format=None, log_file=None, overwrite_log_file=True,
-                  **kwargs):
+
+def logging_setup(
+    log_level_stdout="INFO",
+    log_level_file="DEBUG",
+    log_format=None,
+    log_file=None,
+    overwrite_log_file=True,
+    **kwargs,
+):
     """
     Sets up the loguru logger for listening to the inference problem.
 
@@ -642,20 +680,21 @@ def logging_setup(log_level_stdout='INFO', log_level_file='DEBUG',
         Additional keyword arguments passed to logger.add (for file and stdout).
     """
     if not log_format:
-        log_format =\
-            ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
-             '<level>{level: <8}</level> | '
-             '<level>{message:100s}</level> | '
-             '<cyan>{name}</cyan>:'
-             '<cyan>{function}</cyan>:'
-             '<cyan>{line}</cyan>')
+        log_format = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+            "<level>{level: <8}</level> | "
+            "<level>{message:100s}</level> | "
+            "<cyan>{name}</cyan>:"
+            "<cyan>{function}</cyan>:"
+            "<cyan>{line}</cyan>"
+        )
     logger.remove()  # just in case there still exists another logger
     logger.add(sys.stdout, format=log_format, level=log_level_stdout, **kwargs)
     if log_file:
         if os.path.isfile(log_file) and overwrite_log_file:
             os.remove(log_file)
-        logger.add(
-            log_file, format=log_format, level=log_level_file, **kwargs)
+        logger.add(log_file, format=log_format, level=log_level_file, **kwargs)
+
 
 def stream_to_logger(log_level):
     """
@@ -687,6 +726,7 @@ def stream_to_logger(log_level):
 
     return StreamToLogger(log_level)
 
+
 def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
     """
     Prints a dictionary with key-value pairs in rows.
@@ -708,6 +748,7 @@ def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
             printer(f"{key:{n + 1}s} {sep} {val:{val_fmt}}")
         else:
             printer(f"{key:{n + 1}s} {sep} {val}")
+
 
 def add_index_to_tex_prm_name(tex, index):
     """
@@ -739,14 +780,15 @@ def add_index_to_tex_prm_name(tex, index):
         # since it was checked that there are exactly 2 '$'-signs in tex, the
         # tex_list has 3 elements, with the middle one being the string enclosed
         # by the two '$'-signs
-        tex_list[1] = tex_list[1] + f'_{index}'
-        tex_mod = '$'.join(tex_list)
+        tex_list[1] = tex_list[1] + f"_{index}"
+        tex_mod = "$".join(tex_list)
     else:
         # if not all checks are passed, the index is added in a way, that does
         # not expect anything from the given tex-string
         tex_mod = tex + f" ({index})"
 
     return tex_mod
+
 
 def check_for_uninformative_priors(problem):
     """
@@ -759,9 +801,11 @@ def check_for_uninformative_priors(problem):
         The given problem to check.
     """
     for prior_name, prior_template in problem.priors.items():
-        if prior_template.prior_type == 'uninformative':
-            raise RuntimeError(f"The prior '{prior_name}' is uninformative,"
-                               f" which cannot be used by the requested "
-                               f"solver. You could change it to a "
-                               f"uniform-prior on a specified interval to "
-                               f"solver this problem.")
+        if prior_template.prior_type == "uninformative":
+            raise RuntimeError(
+                f"The prior '{prior_name}' is uninformative,"
+                f" which cannot be used by the requested "
+                f"solver. You could change it to a "
+                f"uniform-prior on a specified interval to "
+                f"solver this problem."
+            )

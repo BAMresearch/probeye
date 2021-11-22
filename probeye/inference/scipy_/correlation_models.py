@@ -12,8 +12,7 @@ class SpatialExponentialCorrelationModel:
     (i.e. constant for all experiments) grid of coordinates in 1D, 2D or 3D.
     """
 
-    def __init__(self, x=None, y=None, z=None, coords=None,
-                 order=('x', 'y', 'z')):
+    def __init__(self, x=None, y=None, z=None, coords=None, order=("x", "y", "z")):
         """
         Parameter
         ---------
@@ -37,7 +36,8 @@ class SpatialExponentialCorrelationModel:
         """
         # translate the spatial input to a coords-array
         self.coords, self._order = process_spatial_coordinates(
-            x=x, y=y, z=z, coords=coords, order=order)
+            x=x, y=y, z=z, coords=coords, order=order
+        )
         self.n_coords, self.n = self.coords.shape
 
         # on position (i, j) in self.distance array will be denoted the distance
@@ -69,11 +69,11 @@ class SpatialExponentialCorrelationModel:
         """
         # if no correlation is defined in the noise model, l_corr will not be
         # provided in the input for the log-likelihood contribution
-        if 'l_corr' in prms:
-            if prms['l_corr'] <= 0:
+        if "l_corr" in prms:
+            if prms["l_corr"] <= 0:
                 return False
         # sigma, however, must always be passed
-        if prms['std'] <= 0:
+        if prms["std"] <= 0:
             return False
         return True
 
@@ -93,5 +93,5 @@ class SpatialExponentialCorrelationModel:
             The covariance matrix based on the given parameters. The shape of
             this array is (self.n, self.n).
         """
-        corr = np.exp(-self.distance_array / prms['l_corr'])
-        return prms['std'] ** 2 * corr
+        corr = np.exp(-self.distance_array / prms["l_corr"])
+        return prms["std"] ** 2 * corr

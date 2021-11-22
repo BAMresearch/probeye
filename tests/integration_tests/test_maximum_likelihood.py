@@ -24,7 +24,6 @@ from probeye.inference.scipy_.solver import ScipySolver
 
 
 class TestProblem(unittest.TestCase):
-
     def test_maximum_likelihood(self, plot=False):
         """
         Integration test for the problem described at the top of this file.
@@ -59,12 +58,11 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class LinearModel(ForwardModelBase):
-
             def response(self, inp):
                 # this method *must* be provided by the user
-                x = inp['x']
-                m = inp['m']
-                b = inp['b']
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = m * x + b
@@ -86,19 +84,20 @@ class TestProblem(unittest.TestCase):
         # parameter's of the forward model, 'prior' for prior parameters and
         # 'noise' for parameters of the noise model); the tex argument is states
         # a tex-string for the parameter which is only used for plotting
-        problem.add_parameter('m', 'model', tex="$m$")
-        problem.add_parameter('b', 'model', tex="$b$")
-        problem.add_parameter('sigma', 'noise', tex=r"$\sigma$")
+        problem.add_parameter("m", "model", tex="$m$")
+        problem.add_parameter("b", "model", tex="$b$")
+        problem.add_parameter("sigma", "noise", tex=r"$\sigma$")
 
         # add the forward model to the problem
         isensor = Sensor("x")
         osensor = Sensor("y")
-        linear_model = LinearModel(['m', 'b'], [isensor], [osensor])
+        linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma': 'std'}, sensors=osensor))
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        )
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -108,22 +107,24 @@ class TestProblem(unittest.TestCase):
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_true = linear_model.response(
-            {isensor.name: x_test, 'm': m_true, 'b': b_true})[osensor.name]
+            {isensor.name: x_test, "m": m_true, "b": b_true}
+        )[osensor.name]
         y_test = np.random.normal(loc=y_true, scale=sigma_noise)
 
         # add the experimental data
-        problem.add_experiment(f'TestSeries_1', fwd_model_name="LinearModel",
-                               sensor_values={isensor.name: x_test,
-                                              osensor.name: y_test})
+        problem.add_experiment(
+            f"TestSeries_1",
+            fwd_model_name="LinearModel",
+            sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
 
         # give problem overview
         problem.info()
 
         # plot the true and noisy data
         if plot:
-            plt.scatter(x_test, y_test, label='measured data',
-                        s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label='true', c="black")
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
             plt.xlabel(isensor.name)
             plt.ylabel(osensor.name)
             plt.legend()
@@ -136,9 +137,10 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting
-        true_values = {'m': m_true, 'b': b_true, 'sigma': sigma_noise}
+        true_values = {"m": m_true, "b": b_true, "sigma": sigma_noise}
         scipy_solver = ScipySolver(problem)
         scipy_solver.run_max_likelihood(true_values=true_values)
+
 
 if __name__ == "__main__":
     unittest.main()

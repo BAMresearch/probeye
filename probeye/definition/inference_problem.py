@@ -82,7 +82,7 @@ class InferenceProblem:
 
         # log probeye header and first message
         print_probeye_header()
-        logger.debug('')  # for visual separation
+        logger.debug("")  # for visual separation
         logger.debug(f"Initialized inference problem: '{self.name}'")
 
     @property
@@ -168,11 +168,13 @@ class InferenceProblem:
     @property
     def priors(self):
         """Provides the problem's prior-dictionary which is derived from the
-           latent parameters in the self.parameters dictionary. The keys are the
-           priors names, while the values are the prior-objects."""
-        return {parameter_properties.prior.name: parameter_properties.prior
-                for parameter_properties in self.parameters.values()
-                if parameter_properties.is_latent}
+        latent parameters in the self.parameters dictionary. The keys are the
+        priors names, while the values are the prior-objects."""
+        return {
+            parameter_properties.prior.name: parameter_properties.prior
+            for parameter_properties in self.parameters.values()
+            if parameter_properties.is_latent
+        }
 
     @property
     def noise_models(self):
@@ -189,8 +191,9 @@ class InferenceProblem:
         """Access self._experiments from outside via self.experiments."""
         return self._experiments
 
-    def info(self, include_experiments=False, tablefmt="presto",
-             check_consistency=True):
+    def info(
+        self, include_experiments=False, tablefmt="presto", check_consistency=True
+    ):
         """
         Either prints the problem definition to the console (print_it=True) or
         just returns the generated string without printing it (print_it=False).
@@ -220,20 +223,30 @@ class InferenceProblem:
         title_string = underlined_string(title, n_empty_start=1)
 
         # list the forward models that have been defined within the problem
-        rows = [(name, simplified_list_string([*model.prms_def.keys()]),
-                 simplified_list_string([*model.prms_def.values()]))
-                for name, model in self._forward_models.items()]
+        rows = [
+            (
+                name,
+                simplified_list_string([*model.prms_def.keys()]),
+                simplified_list_string([*model.prms_def.values()]),
+            )
+            for name, model in self._forward_models.items()
+        ]
         headers = ["Model name", "Global parameters", "Local parameters"]
         fwd_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        fwd_string = titled_table('Forward models', fwd_table)
+        fwd_string = titled_table("Forward models", fwd_table)
 
         # include information on the defined priors
-        rows = [(name, simplified_list_string([*prior.prms_def.keys()]),
-                 simplified_list_string([*prior.prms_def.values()]))
-                for name, prior in self.priors.items()]
+        rows = [
+            (
+                name,
+                simplified_list_string([*prior.prms_def.keys()]),
+                simplified_list_string([*prior.prms_def.values()]),
+            )
+            for name, prior in self.priors.items()
+        ]
         headers = ["Prior name", "Global parameters", "Local parameters"]
         prior_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prior_str = titled_table('Priors', prior_table)
+        prior_str = titled_table("Priors", prior_table)
 
         # provide various information on the problem's parameters
         prm_string = self._parameters.parameter_overview(tablefmt=tablefmt)
@@ -242,19 +255,18 @@ class InferenceProblem:
 
         # include the information on the theta interpretation
         theta_string = "\nTheta interpretation"
-        theta_string += self.theta_explanation(
-            check_consistency=check_consistency)
+        theta_string += self.theta_explanation(check_consistency=check_consistency)
 
         # print information on added experiments if requested
         if include_experiments:
             rows = []
             for name, exp_dict in self._experiments.items():
-                dict_atoms = unvectorize_dict_values(exp_dict['sensor_values'])
+                dict_atoms = unvectorize_dict_values(exp_dict["sensor_values"])
                 for dict_atom in dict_atoms:
                     rows.append((name, simplified_dict_string(dict_atom)))
             headers = ["Name", "Sensor values"]
             exp_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-            exp_str = titled_table('Added experiments', exp_table)
+            exp_str = titled_table("Added experiments", exp_table)
         else:
             exp_str = ""
 
@@ -263,7 +275,7 @@ class InferenceProblem:
         full_string += theta_string + exp_str
 
         # log and return the string
-        for line in full_string.split('\n'):
+        for line in full_string.split("\n"):
             logger.info(line)
         return full_string
 
@@ -274,8 +286,16 @@ class InferenceProblem:
         """
         return self.info()
 
-    def add_parameter(self, prm_name, prm_type, dim=1, const=None,
-                      prior=None, info="No explanation provided", tex=None):
+    def add_parameter(
+        self,
+        prm_name,
+        prm_type,
+        dim=1,
+        const=None,
+        prior=None,
+        info="No explanation provided",
+        tex=None,
+    ):
         """
         Adds a parameter ('const' or 'latent') to the inference problem. For
         more information, check out the Parameters.add_parameter method.
@@ -284,8 +304,8 @@ class InferenceProblem:
         # add the parameter to the central parameter dictionary; checks and
         # translations are conducted in the Parameters.add_parameter method
         self._parameters.add_parameter(
-            prm_name, prm_type, dim=dim, const=const, prior=prior,
-            info=info, tex=tex)
+            prm_name, prm_type, dim=dim, const=const, prior=prior, info=info, tex=tex
+        )
 
     def remove_parameter(self, prm_name):
         """
@@ -329,13 +349,13 @@ class InferenceProblem:
         # exactly one of the const and prior key word arguments must be given
         if const is not None and prior is not None:
             raise RuntimeError(
-                f"You must specify either the 'const' or the 'prior' key " +
-                f"argument. You have specified both."
+                f"You must specify either the 'const' or the 'prior' key "
+                + f"argument. You have specified both."
             )
         if const is None and prior is None:
             raise RuntimeError(
-                f"You must specify either the 'const' or the 'prior' key " +
-                f"argument. You have specified none."
+                f"You must specify either the 'const' or the 'prior' key "
+                + f"argument. You have specified none."
             )
         # raise an error if the role change would not change the role
         if self._parameters[prm_name].is_const and (prior is None):
@@ -361,8 +381,15 @@ class InferenceProblem:
             # it does not need to be specified here
             dim = None
         self.remove_parameter(prm_name)
-        self.add_parameter(prm_name, prm.type, dim=dim, const=const,
-                           prior=prior, info=prm.info, tex=prm.tex)
+        self.add_parameter(
+            prm_name,
+            prm.type,
+            dim=dim,
+            const=const,
+            prior=prior,
+            info=prm.info,
+            tex=prm.tex,
+        )
 
     def change_parameter_info(self, prm_name, new_info=None, new_tex=None):
         """
@@ -387,8 +414,9 @@ class InferenceProblem:
             new_tex = self._parameters[prm_name].tex
 
         # change the info/tex-string
-        self._parameters[prm_name] = \
-            self._parameters[prm_name].changed_copy(info=new_info, tex=new_tex)
+        self._parameters[prm_name] = self._parameters[prm_name].changed_copy(
+            info=new_info, tex=new_tex
+        )
 
     def change_constant(self, prm_name, new_value):
         """
@@ -407,12 +435,11 @@ class InferenceProblem:
 
         # check if the given parameter is a constant
         if self._parameters[prm_name].is_latent:
-            raise RuntimeError(
-                f"The parameter '{prm_name}' is not a constant!"
-            )
+            raise RuntimeError(f"The parameter '{prm_name}' is not a constant!")
         # change the parameter's value
-        self._parameters[prm_name] = \
-            self._parameters[prm_name].changed_copy(value=new_value)
+        self._parameters[prm_name] = self._parameters[prm_name].changed_copy(
+            value=new_value
+        )
 
     def check_problem_consistency(self):
         """
@@ -422,47 +449,56 @@ class InferenceProblem:
 
         # check if the central components have been added to the problem:
         # parameters, forward models, noise models and experiments
-        assert len(self._parameters) != 0, \
-            "The problem does not contain any parameters!"
-        assert len(self._forward_models) != 0, \
-            "The problem does not contain any forward models!"
-        assert len(self._noise_models) != 0, \
-            "The problem does not contain any noise models!"
-        assert len(self._experiments) != 0, \
-            "The problem does not contain any experiments!"
+        assert (
+            len(self._parameters) != 0
+        ), "The problem does not contain any parameters!"
+        assert (
+            len(self._forward_models) != 0
+        ), "The problem does not contain any forward models!"
+        assert (
+            len(self._noise_models) != 0
+        ), "The problem does not contain any noise models!"
+        assert (
+            len(self._experiments) != 0
+        ), "The problem does not contain any experiments!"
 
         # check if all parameters of the forward model(s) appear in
         # self._parameters and if they have the correct type
         for forward_model in self._forward_models.values():
             for model_prm in forward_model.prms_def.keys():
-                assert model_prm in self._parameters, \
-                    (f"The forward model parameter '{model_prm}' "
-                     f"is not defined within the problem!")
-                assert self._parameters[model_prm].type == "model", \
-                    (f"The forward model parameter '{model_prm}' "
-                     f"is not of type 'model'!")
+                assert model_prm in self._parameters, (
+                    f"The forward model parameter '{model_prm}' "
+                    f"is not defined within the problem!"
+                )
+                assert self._parameters[model_prm].type == "model", (
+                    f"The forward model parameter '{model_prm}' "
+                    f"is not of type 'model'!"
+                )
 
         # check if all parameters of the noise model appear in self._parameters
         # and if they have the correct type
         for noise_model in self._noise_models:
             for noise_prm in noise_model.prms_def.keys():
-                assert noise_prm in self._parameters, \
-                    (f"The noise model parameter '{noise_prm}' "
-                     f"is not defined within the problem!")
-                assert self._parameters[noise_prm].type == "noise", \
-                    (f"The noise model parameter '{noise_prm}' "
-                     f"is not of type 'noise'!")
+                assert noise_prm in self._parameters, (
+                    f"The noise model parameter '{noise_prm}' "
+                    f"is not defined within the problem!"
+                )
+                assert self._parameters[noise_prm].type == "noise", (
+                    f"The noise model parameter '{noise_prm}' "
+                    f"is not of type 'noise'!"
+                )
 
         # check if all prior objects in self.priors are consistent in terms of
         # their parameters; each one of them must appear in self._parameters
         for prior_obj in self.priors.values():
             for prior_prm in prior_obj.hyperparameters.keys():
-                assert prior_prm in self._parameters, \
-                    (f"The prior parameter '{prior_prm}' "
-                     f"is not defined within the problem!")
-                assert self._parameters[prior_prm].type == "prior", \
-                    (f"The prior parameter '{prior_prm}' "
-                     f"is not of type 'prior'!")
+                assert prior_prm in self._parameters, (
+                    f"The prior parameter '{prior_prm}' "
+                    f"is not defined within the problem!"
+                )
+                assert self._parameters[prior_prm].type == "prior", (
+                    f"The prior parameter '{prior_prm}' " f"is not of type 'prior'!"
+                )
 
         # check the indices of the latent parameters
         idx_list = []
@@ -470,10 +506,11 @@ class InferenceProblem:
             if parameter.is_latent:
                 idx_range = [*range(parameter.index, parameter.index_end)]
                 idx_list += idx_range
-        assert sorted(idx_list) == list(range(len(idx_list))), \
-            (f"There seems to be an inconsistency in the latent "
-             f"parameter's indices. The sorted index list is: "
-             f"{sorted(idx_list)}")
+        assert sorted(idx_list) == list(range(len(idx_list))), (
+            f"There seems to be an inconsistency in the latent "
+            f"parameter's indices. The sorted index list is: "
+            f"{sorted(idx_list)}"
+        )
 
         # check the consistency of each parameter
         for parameter in self._parameters.values():
@@ -529,14 +566,16 @@ class InferenceProblem:
                 raise RuntimeError(
                     f"The forward model's ({fwd_model_name}) input sensor "
                     f"'{input_sensor.name}' is not provided by the given "
-                    f"experiment '{exp_name}'!")
+                    f"experiment '{exp_name}'!"
+                )
         output_sensors = self._forward_models[fwd_model_name].output_sensors
         for output_sensor in output_sensors:
             if output_sensor.name not in experiment_sensors:
                 raise RuntimeError(
                     f"The forward model's ({fwd_model_name}) output sensor "
                     f"'{output_sensor.name}' is not provided by the given "
-                    f"experiment '{exp_name}'!")
+                    f"experiment '{exp_name}'!"
+                )
 
         # check if all sensor_values have the same lengths
         vector_lengths = set()
@@ -545,24 +584,29 @@ class InferenceProblem:
         if len(vector_lengths) > 1:
             raise RuntimeError(
                 f"The sensor values must be all scalars or vectors of the same "
-                f"length. However, found the lengths {vector_lengths}.")
+                f"length. However, found the lengths {vector_lengths}."
+            )
 
         # check that vector-valued sensor_values are given as numpy-arrays; if
         # not (e.g. if lists or tuples are given) change them to numpy-ndarrays
         sensor_values_numpy = cp.copy(sensor_values)
         for sensor_name, values in sensor_values.items():
-            if hasattr(values, '__len__'):
+            if hasattr(values, "__len__"):
                 if not isinstance(values, np.ndarray):
                     sensor_values_numpy[sensor_name] = np.array(values)
 
         # throw warning when the experiment name was defined before
         if exp_name in self._experiments.keys():
-            logger.warning(f"Experiment '{exp_name}' is already defined "
-                           f"and will be overwritten!")
+            logger.warning(
+                f"Experiment '{exp_name}' is already defined "
+                f"and will be overwritten!"
+            )
 
         # add the experiment to the central dictionary
-        self._experiments[exp_name] = {'sensor_values': sensor_values_numpy,
-                                       'forward_model': fwd_model_name}
+        self._experiments[exp_name] = {
+            "sensor_values": sensor_values_numpy,
+            "forward_model": fwd_model_name,
+        }
 
     def get_parameters(self, theta, prm_def):
         """
@@ -602,11 +646,12 @@ class InferenceProblem:
                     # scalars should not be returned as one-element-lists
                     prms[local_name] = theta[idx]
                 else:
-                    prms[local_name] = theta[idx: idx_end]
+                    prms[local_name] = theta[idx:idx_end]
         return prms
 
-    def get_experiment_names(self, forward_model_names=None, sensor_names=None,
-                             experiment_names=None):
+    def get_experiment_names(
+        self, forward_model_names=None, sensor_names=None, experiment_names=None
+    ):
         """
         Extracts the names of all experiments which refer to a given list of
         forward models and/or to a given list of sensor names from a given list
@@ -631,7 +676,8 @@ class InferenceProblem:
         # at least one of forward_model_names and sensor_names must be given
         if (forward_model_names is None) and (sensor_names is None):
             raise RuntimeError(
-                f"You did not specify any forward model(s) or sensor name(s).")
+                f"You did not specify any forward model(s) or sensor name(s)."
+            )
 
         # if experiments is not further specified it is assumed that all given
         # experiments should be used
@@ -646,7 +692,7 @@ class InferenceProblem:
             forward_model_names = make_list(forward_model_names)
             for exp_name in experiment_names:
                 exp_dict = self._experiments[exp_name]
-                fwd_model_name = exp_dict['forward_model']
+                fwd_model_name = exp_dict["forward_model"]
                 if fwd_model_name in forward_model_names:
                     relevant_experiment_names.append(exp_name)
             experiment_names = relevant_experiment_names
@@ -657,7 +703,7 @@ class InferenceProblem:
             sensor_names = make_list(sensor_names)
             for exp_name in experiment_names:
                 exp_dict = self._experiments[exp_name]
-                exp_sensors = [*exp_dict['sensor_values'].keys()]
+                exp_sensors = [*exp_dict["sensor_values"].keys()]
                 if all([s in exp_sensors for s in sensor_names]):
                     relevant_experiment_names.append(exp_name)
 
@@ -701,7 +747,8 @@ class InferenceProblem:
                     if components and (dim > 1):
                         for i in range(dim):
                             theta_names.append(
-                                add_index_to_tex_prm_name(parameter.tex, i + 1))
+                                add_index_to_tex_prm_name(parameter.tex, i + 1)
+                            )
                     else:
                         theta_names.append(parameter.tex)
                 else:
@@ -789,7 +836,8 @@ class InferenceProblem:
             raise RuntimeError(
                 f"The given name '{name}' for the forward model has already "
                 f"been used for another forward model. Please choose another "
-                f"name.")
+                f"name."
+            )
 
         # check if the given forward model has an output sensor with a name that
         # is already used for an output sensor of another forward model
@@ -802,7 +850,8 @@ class InferenceProblem:
                         f"an output sensor in the already defined forward "
                         f"model '{existing_name}'.\nPlease choose a different "
                         f"name for output sensor '{output_sensor}' in forward "
-                        f"model '{name}'.")
+                        f"model '{name}'."
+                    )
 
         # add the given forward model to the internal forward model dictionary
         # under the given forward model name
@@ -822,8 +871,10 @@ class InferenceProblem:
         # check if the noise model has been assigned a name; if not, assign one
         if noise_model.name is None:
             noise_model.name = f"noise_model_{len(self.noise_models)}"
-            logger.debug(f"Adding noise model '{noise_model.name}' "
-                         f"(name assigned automatically)")
+            logger.debug(
+                f"Adding noise model '{noise_model.name}' "
+                f"(name assigned automatically)"
+            )
         else:
             logger.debug(f"Adding noise model '{noise_model.name}'")
 
@@ -832,22 +883,23 @@ class InferenceProblem:
         for prm_name in noise_model.prms_def:
             if prm_name not in self._parameters.keys():
                 raise RuntimeError(
-                    f"The noise model parameter '{prm_name}' has not been " +
-                    f"defined yet.\nYou have to add all noise model " +
-                    f"parameters to the problem before adding the noise " +
-                    f"model.\nYou can use the 'add_parameter' method for " +
-                    f"this purpose."
+                    f"The noise model parameter '{prm_name}' has not been "
+                    + f"defined yet.\nYou have to add all noise model "
+                    + f"parameters to the problem before adding the noise "
+                    + f"model.\nYou can use the 'add_parameter' method for "
+                    + f"this purpose."
                 )
 
         # check if the given noise model has the same sensors as one of the
         # existing noise models (this does not make the problem inconsistent
         # but I don't know an example where this would make sense)
         for existing_noise_model in self._noise_models:
-            if set(existing_noise_model.sensor_names) == \
-                    set(noise_model.sensor_names):
-                logger.warning(f"A noise model with an identical sensor "
-                               f"interface {noise_model.sensor_names} has "
-                               f"already been defined in this problem!")
+            if set(existing_noise_model.sensor_names) == set(noise_model.sensor_names):
+                logger.warning(
+                    f"A noise model with an identical sensor "
+                    f"interface {noise_model.sensor_names} has "
+                    f"already been defined in this problem!"
+                )
 
         # add the problem's experiments to the noise model (this is just a
         # pointer!) for noise_model-internal checks
@@ -869,7 +921,8 @@ class InferenceProblem:
         for noise_model in self._noise_models:
             # get the experiments that contain all of the noise model's sensors
             experiment_names = self.get_experiment_names(
-                sensor_names=noise_model.sensor_names)
+                sensor_names=noise_model.sensor_names
+            )
             n_experiments_noise += len(experiment_names)
             # add the relevant experiment names to the noise model
             noise_model.add_experiments(experiment_names)
@@ -897,7 +950,8 @@ class InferenceProblem:
                 # one may argue, that this could also be only a warning here
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not "
-                    f"appear in any of the noise models!")
+                    f"appear in any of the noise models!"
+                )
 
     def transform_experimental_data(self, f, args=(), **kwargs):
         """
@@ -931,16 +985,19 @@ class InferenceProblem:
         try:
             self_copy = cp.deepcopy(self)
         except:
-            logger.warning("The inference problem could not be deep-copied! "
-                           "The original problem will be modified!")
+            logger.warning(
+                "The inference problem could not be deep-copied! "
+                "The original problem will be modified!"
+            )
             self_copy = self
 
         # transform the sensor values from the experiments by applying the
         # specified function with the given arguments to them
         for exp_name in self_copy._experiments.keys():
-            sensor_values = self_copy._experiments[exp_name]['sensor_values']
+            sensor_values = self_copy._experiments[exp_name]["sensor_values"]
             for sensor_name in sensor_values.keys():
-                sensor_values[sensor_name] = \
-                    f(sensor_values[sensor_name], *args, **kwargs)
+                sensor_values[sensor_name] = f(
+                    sensor_values[sensor_name], *args, **kwargs
+                )
 
         return self_copy

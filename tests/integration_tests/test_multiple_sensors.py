@@ -27,10 +27,17 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-
-    def test_multiple_sensors(self, n_steps=200, n_initial_steps=100,
-                              n_walkers=20, plot=False, show_progress=False,
-                              run_scipy=True, run_emcee=True, run_torch=True):
+    def test_multiple_sensors(
+        self,
+        n_steps=200,
+        n_initial_steps=100,
+        n_walkers=20,
+        plot=False,
+        show_progress=False,
+        run_scipy=True,
+        run_emcee=True,
+        run_torch=True,
+    ):
         """
         Integration test for the problem described at the top of this file.
 
@@ -102,10 +109,10 @@ class TestProblem(unittest.TestCase):
 
         class LinearModel(ForwardModelBase):
             def response(self, inp):
-                t = inp['time']
-                A = inp['A']
-                B = inp['B']
-                const = inp['const']
+                t = inp["time"]
+                A = inp["A"]
+                B = inp["B"]
+                const = inp["const"]
                 response = dict()
                 for os in self.output_sensors:
                     response[os.name] = A * os.x + B * t + const
@@ -119,49 +126,63 @@ class TestProblem(unittest.TestCase):
         problem = InferenceProblem("Linear model with three noise models")
 
         # add all parameters to the problem
-        problem.add_parameter('A', 'model',
-                              prior=('normal', {'loc': loc_A,
-                                                'scale': scale_A}),
-                              info="Slope of the graph",
-                              tex="$A$")
-        problem.add_parameter('B', 'model',
-                              prior=('normal', {'loc': loc_B,
-                                                'scale': scale_B}),
-                              info="Intersection of graph with y-axis",
-                              tex='$B$')
-        problem.add_parameter('sigma_1', 'noise',
-                              prior=('uniform', {'low': low_S1,
-                                                 'high': high_S1}),
-                              info="Std. dev. of zero-mean noise model for S1",
-                              tex=r"$\sigma_1$")
-        problem.add_parameter('sigma_2', 'noise',
-                              prior=('uniform', {'low': low_S2,
-                                                 'high': high_S2}),
-                              info="Std. dev. of zero-mean noise model for S1",
-                              tex=r"$\sigma_2$")
-        problem.add_parameter('sigma_3', 'noise',
-                              prior=('uniform', {'low': low_S3,
-                                                 'high': high_S3}),
-                              info="Std. dev. of zero-mean noise model for S1",
-                              tex=r"$\sigma_3$")
-        problem.add_parameter('c', 'model', const=c)
+        problem.add_parameter(
+            "A",
+            "model",
+            prior=("normal", {"loc": loc_A, "scale": scale_A}),
+            info="Slope of the graph",
+            tex="$A$",
+        )
+        problem.add_parameter(
+            "B",
+            "model",
+            prior=("normal", {"loc": loc_B, "scale": scale_B}),
+            info="Intersection of graph with y-axis",
+            tex="$B$",
+        )
+        problem.add_parameter(
+            "sigma_1",
+            "noise",
+            prior=("uniform", {"low": low_S1, "high": high_S1}),
+            info="Std. dev. of zero-mean noise model for S1",
+            tex=r"$\sigma_1$",
+        )
+        problem.add_parameter(
+            "sigma_2",
+            "noise",
+            prior=("uniform", {"low": low_S2, "high": high_S2}),
+            info="Std. dev. of zero-mean noise model for S1",
+            tex=r"$\sigma_2$",
+        )
+        problem.add_parameter(
+            "sigma_3",
+            "noise",
+            prior=("uniform", {"low": low_S3, "high": high_S3}),
+            info="Std. dev. of zero-mean noise model for S1",
+            tex=r"$\sigma_3$",
+        )
+        problem.add_parameter("c", "model", const=c)
 
         # add the forward model to the problem
         isensor = Sensor("time")
         osensor1 = Sensor("y1", x=pos_s1)
         osensor2 = Sensor("y2", x=pos_s2)
         osensor3 = Sensor("y3", x=pos_s3)
-        linear_model = LinearModel(['A', 'B', {'c': 'const'}], [isensor],
-                                   [osensor1, osensor2, osensor3])
+        linear_model = LinearModel(
+            ["A", "B", {"c": "const"}], [isensor], [osensor1, osensor2, osensor3]
+        )
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise models to the problem
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma_1': 'std'}, sensors=osensor1))
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma_2': 'std'}, sensors=osensor2))
-        problem.add_noise_model(NormalNoiseModel(
-            prms_def={'sigma_3': 'std'}, sensors=osensor3))
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
+        )
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
+        )
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
+        )
 
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
@@ -169,21 +190,25 @@ class TestProblem(unittest.TestCase):
 
         # add the experimental data
         np.random.seed(1)
-        sd_dict = {osensor1.name: sd_S1_true,
-                   osensor2.name: sd_S2_true,
-                   osensor3.name: sd_S3_true}
+        sd_dict = {
+            osensor1.name: sd_S1_true,
+            osensor2.name: sd_S2_true,
+            osensor3.name: sd_S3_true,
+        }
 
         def generate_data(n_time_steps, n=None):
             time_steps = np.linspace(0, 1, n_time_steps)
-            inp = {'A': A_true, 'B': B_true, 'const': c, 'time': time_steps}
+            inp = {"A": A_true, "B": B_true, "const": c, "time": time_steps}
             sensors = linear_model(inp)
             for key, val in sensors.items():
-                sensors[key] = val + np.random.normal(0.0, sd_dict[key],
-                                                      size=n_time_steps)
+                sensors[key] = val + np.random.normal(
+                    0.0, sd_dict[key], size=n_time_steps
+                )
             sensors[isensor.name] = time_steps
-            problem.add_experiment(f'TestSeries_{n}',
-                                   sensor_values=sensors,
-                                   fwd_model_name='LinearModel')
+            problem.add_experiment(
+                f"TestSeries_{n}", sensor_values=sensors, fwd_model_name="LinearModel"
+            )
+
         for n_exp, n_t in enumerate([101, 51]):
             generate_data(n_t, n=n_exp)
 
@@ -196,14 +221,26 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {'A': A_true, 'B': B_true, 'sigma_1': sd_S1_true,
-                       'sigma_2': sd_S2_true, 'sigma_3': sd_S3_true}
-        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
-                              n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              show_progress=show_progress,
-                              run_scipy=run_scipy, run_emcee=run_emcee,
-                              run_torch=run_torch)
+        true_values = {
+            "A": A_true,
+            "B": B_true,
+            "sigma_1": sd_S1_true,
+            "sigma_2": sd_S2_true,
+            "sigma_3": sd_S3_true,
+        }
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

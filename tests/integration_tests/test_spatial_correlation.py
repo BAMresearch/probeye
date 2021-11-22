@@ -27,16 +27,23 @@ from probeye.definition.noise_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
-from probeye.inference.scipy_.correlation_models import \
-    SpatialExponentialCorrelationModel
+from probeye.inference.scipy_.correlation_models import (
+    SpatialExponentialCorrelationModel,
+)
 
 
 class TestProblem(unittest.TestCase):
-
-    def test_spatial_correlation(self, n_steps=200, n_initial_steps=100,
-                                 n_walkers=20, plot=False, show_progress=False,
-                                 run_scipy=True, run_emcee=True,
-                                 run_torch=False):
+    def test_spatial_correlation(
+        self,
+        n_steps=200,
+        n_initial_steps=100,
+        n_walkers=20,
+        plot=False,
+        show_progress=False,
+        run_scipy=True,
+        run_emcee=True,
+        run_torch=False,
+    ):
         """
         Integration test for the problem described at the top of this file.
 
@@ -67,8 +74,10 @@ class TestProblem(unittest.TestCase):
         """
 
         if run_torch:
-            raise RuntimeError("The pyro-solver is not available yet for "
-                               "forward models including correlations.")
+            raise RuntimeError(
+                "The pyro-solver is not available yet for "
+                "forward models including correlations."
+            )
 
         # ==================================================================== #
         #                          Set numeric values                          #
@@ -105,8 +114,8 @@ class TestProblem(unittest.TestCase):
 
         class LinearModel(ForwardModelBase):
             def response(self, inp):
-                a = inp['a']
-                b = inp['b']
+                a = inp["a"]
+                b = inp["b"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = a * os.x.flatten() + b
@@ -132,26 +141,34 @@ class TestProblem(unittest.TestCase):
         # argument specifies the parameter's prior; note that this definition
         # of a prior will result in the initialization of constant parameters of
         # type 'prior' in the background
-        problem.add_parameter('a', 'model',
-                              tex="$a$",
-                              info="Slope of the graph",
-                              prior=('normal', {'loc': loc_a,
-                                                'scale': scale_a}))
-        problem.add_parameter('b', 'model',
-                              info="Intersection of graph with y-axis",
-                              tex='$b$',
-                              prior=('normal', {'loc': loc_b,
-                                                'scale': scale_b}))
-        problem.add_parameter('sigma', 'noise',
-                              tex=r"$\sigma$",
-                              info="Std. dev, of 0-mean noise model",
-                              prior=('uniform', {'low': low_sigma,
-                                                 'high': high_sigma}))
-        problem.add_parameter('l_corr', 'noise',
-                              tex=r"$l_\mathrm{corr}$",
-                              info="Correlation length of correlation model",
-                              prior=('uniform', {'low': low_l_corr,
-                                                 'high': high_l_corr}))
+        problem.add_parameter(
+            "a",
+            "model",
+            tex="$a$",
+            info="Slope of the graph",
+            prior=("normal", {"loc": loc_a, "scale": scale_a}),
+        )
+        problem.add_parameter(
+            "b",
+            "model",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+        )
+        problem.add_parameter(
+            "sigma",
+            "noise",
+            tex=r"$\sigma$",
+            info="Std. dev, of 0-mean noise model",
+            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+        )
+        problem.add_parameter(
+            "l_corr",
+            "noise",
+            tex=r"$l_\mathrm{corr}$",
+            info="Correlation length of correlation model",
+            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
+        )
 
         # add the forward model to the problem; note that the first positional
         # argument [{'a': 'm'}, 'b'] passed to LinearModel defines the forward
@@ -169,13 +186,16 @@ class TestProblem(unittest.TestCase):
         # it is done with the forward model's parameter 'b' below
         x_test = np.linspace(0.0, 1.0, n_points)
         osensor = Sensor("y", x=x_test)
-        linear_model = LinearModel(['a', 'b'], [], [osensor])
+        linear_model = LinearModel(["a", "b"], [], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
         # add the noise model to the problem
         noise_model = NormalNoiseModel(
-            sensors=osensor, corr='x', corr_model='exp',
-            prms_def=[{'sigma': 'std'}, 'l_corr'])
+            sensors=osensor,
+            corr="x",
+            corr_model="exp",
+            prms_def=[{"sigma": "std"}, "l_corr"],
+        )
         problem.add_noise_model(noise_model)
 
         # ==================================================================== #
@@ -186,25 +206,29 @@ class TestProblem(unittest.TestCase):
         # true values will be the mean values for sampling from a multivariate
         # normal distribution
         np.random.seed(seed)
-        y_true = linear_model({'a': a_true, 'b': b_true})[osensor.name]
+        y_true = linear_model({"a": a_true, "b": b_true})[osensor.name]
 
         # create the covariance matrix
         correlation_model = SpatialExponentialCorrelationModel(x=osensor.x)
-        cov = correlation_model({'std': sigma, 'l_corr': l_corr})
+        cov = correlation_model({"std": sigma, "l_corr": l_corr})
 
         # now generate the noisy test data including correlations; we assume
         # here that there are n_experiments test series
         for i in range(n_experiments):
             y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
-            problem.add_experiment(f'Test_{i}', fwd_model_name="LinearModel",
-                                   sensor_values={osensor.name: y_test})
+            problem.add_experiment(
+                f"Test_{i}",
+                fwd_model_name="LinearModel",
+                sensor_values={osensor.name: y_test},
+            )
             if plot:
-                plt.scatter(x_test, y_test, label=f'measured data (test {i+1})',
-                            s=10, zorder=10)
+                plt.scatter(
+                    x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
+                )
         # finish the plot
         if plot:
-            plt.plot(x_test, y_true, label='true model', c="black", linewidth=3)
-            plt.xlabel('x')
+            plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
+            plt.xlabel("x")
             plt.ylabel(osensor.name)
             plt.legend()
             plt.tight_layout()
@@ -216,14 +240,20 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {'a': a_true, 'b': b_true, 'sigma': sigma,
-                       'l_corr': l_corr}
-        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
-                              n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              show_progress=show_progress,
-                              run_scipy=run_scipy, run_emcee=run_emcee,
-                              run_torch=run_torch)
+        true_values = {"a": a_true, "b": b_true, "sigma": sigma, "l_corr": l_corr}
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

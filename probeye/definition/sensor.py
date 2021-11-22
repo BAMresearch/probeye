@@ -12,8 +12,17 @@ class Sensor:
     derived from this one.
     """
 
-    def __init__(self, name, measurand='not defined', unit='not defined',
-                 x=None, y=None, z=None, coords=None, order=('x', 'y', 'z')):
+    def __init__(
+        self,
+        name,
+        measurand="not defined",
+        unit="not defined",
+        x=None,
+        y=None,
+        z=None,
+        coords=None,
+        order=("x", "y", "z"),
+    ):
         """
         Parameters
         ----------
@@ -52,7 +61,8 @@ class Sensor:
 
         # translate the input to a coords-array
         self.coords, self._order = process_spatial_coordinates(
-            x=x, y=y, z=z, coords=coords, order=order)
+            x=x, y=y, z=z, coords=coords, order=order
+        )
 
         # this contains the information which row contains which coordinate
         self.index_dict = {coord: i for i, coord in enumerate(self._order)}
@@ -60,17 +70,17 @@ class Sensor:
     @property
     def x(self):
         """Provides x-coords as attribute without copying them from coords."""
-        return self.coords[self.index_dict['x']] if 'x' in self._order else None
+        return self.coords[self.index_dict["x"]] if "x" in self._order else None
 
     @property
     def y(self):
         """Provides y-coords as attribute without copying them from coords."""
-        return self.coords[self.index_dict['y']] if 'y' in self._order else None
+        return self.coords[self.index_dict["y"]] if "y" in self._order else None
 
     @property
     def z(self):
         """Provides z-coords as attribute without copying them from coords."""
-        return self.coords[self.index_dict['z']] if 'z' in self._order else None
+        return self.coords[self.index_dict["z"]] if "z" in self._order else None
 
     @property
     def order(self):

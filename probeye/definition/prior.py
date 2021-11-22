@@ -45,7 +45,8 @@ class PriorBase:
         # parameter names, which however is not intended to be used for priors
         self.hyperparameters, _ = translate_prms_def(prms_def)
         self.prms_def, _ = translate_prms_def(
-            [ref_prm] + [*self.hyperparameters.values()])
+            [ref_prm] + [*self.hyperparameters.values()]
+        )
 
     def __str__(self):
         """
@@ -59,8 +60,7 @@ class PriorBase:
         s = f"{self.prior_type} for '{self.ref_prm}', prms={self.prms_def}"
         return s
 
-    def plot(self, ax, prms,  x=None, n_points=200, n_sigma=2,
-             color='darkorange'):
+    def plot(self, ax, prms, x=None, n_points=200, n_sigma=2, color="darkorange"):
         """
         Plots the prior-pdf to a given axis object.
 
@@ -83,7 +83,7 @@ class PriorBase:
             The line-color of the prior-pdf's graph.
         """
 
-        if self.prior_type == 'normal':
+        if self.prior_type == "normal":
             mu = prms[self.prms_def[f"loc_{self.ref_prm}"]].value
             sigma = prms[self.prms_def[f"scale_{self.ref_prm}"]].value
             # proceed, only if both values are constants and not latent
@@ -91,12 +91,13 @@ class PriorBase:
             if mu and sigma:
                 if x is None:
                     x = np.linspace(
-                        mu - n_sigma * sigma, mu + n_sigma * sigma, n_points)
+                        mu - n_sigma * sigma, mu + n_sigma * sigma, n_points
+                    )
                 y = 1 / (sigma * np.sqrt(2 * np.pi))
                 y *= np.exp(-0.5 * ((x - mu) / sigma) ** 2)
-                ax.plot(x, y, label='prior', color=color)
+                ax.plot(x, y, label="prior", color=color)
 
-        elif self.prior_type == 'uniform':
+        elif self.prior_type == "uniform":
             a = prms[self.prms_def[f"low_{self.ref_prm}"]].value
             b = prms[self.prms_def[f"high_{self.ref_prm}"]].value
             # proceed, only if both values are constants and not latent
@@ -110,4 +111,4 @@ class PriorBase:
                 else:
                     y[0] = 0 if (x[0] <= a) else y[1]
                     y[-1] = 0 if (x[-1] >= b) else y[-2]
-                ax.plot(x, y, label='prior', color=color)
+                ax.plot(x, y, label="prior", color=color)

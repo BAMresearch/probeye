@@ -71,23 +71,28 @@ class EmceeSolver(ScipySolver):
         # assemble the summary array
         col_names = ["", "mean", "median", "sd", "5%", "95%"]
         row_names = np.array(var_names)
-        tab = np.hstack((row_names.reshape(-1, 1),
-                         mean.reshape(-1, 1),
-                         median.reshape(-1, 1),
-                         sd.reshape(-1, 1),
-                         quantile_05.reshape(-1, 1),
-                         quantile_95.reshape(-1, 1)))
+        tab = np.hstack(
+            (
+                row_names.reshape(-1, 1),
+                mean.reshape(-1, 1),
+                median.reshape(-1, 1),
+                sd.reshape(-1, 1),
+                quantile_05.reshape(-1, 1),
+                quantile_95.reshape(-1, 1),
+            )
+        )
 
         # print the generated table, and return a summary dict for later use
         print(tabulate(tab, headers=col_names, floatfmt=".2f"))
-        return {'mean': {name: val for name, val in zip(row_names, mean)},
-                'median': {name: val for name, val in zip(row_names, median)},
-                'sd':  {name: val for name, val in zip(row_names, sd)},
-                'q05': {name: val for name, val in zip(row_names, quantile_05)},
-                'q95': {name: val for name, val in zip(row_names, quantile_95)}}
+        return {
+            "mean": {name: val for name, val in zip(row_names, mean)},
+            "median": {name: val for name, val in zip(row_names, median)},
+            "sd": {name: val for name, val in zip(row_names, sd)},
+            "q05": {name: val for name, val in zip(row_names, quantile_05)},
+            "q95": {name: val for name, val in zip(row_names, quantile_95)},
+        }
 
-    def run_mcmc(self, n_walkers=20, n_steps=1000, n_initial_steps=100,
-                 **kwargs):
+    def run_mcmc(self, n_walkers=20, n_steps=1000, n_initial_steps=100, **kwargs):
         """
         Runs the emcee-sampler for the InferenceProblem the EmceeSolver was
         initialized with and returns the results as an arviz InferenceData obj.
@@ -112,7 +117,8 @@ class EmceeSolver(ScipySolver):
         # log which solver is used
         logger.info(
             f"Solving problem using emcee sampler with {n_initial_steps} + "
-            f"{n_steps} samples and {n_walkers} walkers")
+            f"{n_steps} samples and {n_walkers} walkers"
+        )
         if kwargs:
             logger.info("Additional options:")
             print_dict_in_rows(kwargs, printer=logger.info)
@@ -122,7 +128,8 @@ class EmceeSolver(ScipySolver):
         # draw initial samples from the parameter's priors
         logger.debug("Drawing initial samples")
         sampling_initial_positions = np.zeros(
-            (n_walkers, self.problem.n_latent_prms_dim))
+            (n_walkers, self.problem.n_latent_prms_dim)
+        )
         theta_names = self.problem.get_theta_names(tex=False, components=False)
         for parameter_name in theta_names:
             idx = self.problem.parameters[parameter_name].index
@@ -131,7 +138,7 @@ class EmceeSolver(ScipySolver):
             if (idx_end - idx) == 1:
                 sampling_initial_positions[:, idx] = samples
             else:
-                sampling_initial_positions[:, idx: idx_end] = samples
+                sampling_initial_positions[:, idx:idx_end] = samples
 
         # The following code is based on taralli and merely adjusted to the
         # variables in the probeye setup; see https://gitlab.com/tno-bim/taralli
@@ -149,7 +156,8 @@ class EmceeSolver(ScipySolver):
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms_dim,
             log_prob_fn=lambda x: self.logprior(x) + self.loglike(x),
-            **kwargs)
+            **kwargs,
+        )
 
         sampler.random_state = rstate
 
@@ -162,25 +170,27 @@ class EmceeSolver(ScipySolver):
         state = sampler.run_mcmc(
             initial_state=sampling_initial_positions,
             nsteps=n_initial_steps,
-            progress=self.show_progress)
+            progress=self.show_progress,
+        )
         sampler.reset()
 
         # .................................................................... #
         #                      Sampling of the posterior                       #
         # .................................................................... #
         sampler.run_mcmc(
-            initial_state=state, nsteps=n_steps, progress=self.show_progress)
+            initial_state=state, nsteps=n_steps, progress=self.show_progress
+        )
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
         logger.info(
             f"Sampling of the posterior distribution completed: {n_steps} steps"
-            f" and {n_walkers} walkers.")
-        logger.info(
-            f"Total run-time (including initial sampling): {runtime_str}.")
+            f" and {n_walkers} walkers."
+        )
+        logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
         logger.info("")
         logger.info("Summary of sampling results")
         posterior_samples = sampler.get_chain(flat=True)
-        with contextlib.redirect_stdout(stream_to_logger('INFO')):
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):
             self.summary = self.emcee_summary(posterior_samples)
         self.raw_results = sampler
 
