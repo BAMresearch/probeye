@@ -1,8 +1,10 @@
 # standard library
+#from typing import Union
 import copy as cp
 import numpy as np
 
 # local imports
+#from probeye.definition.sensor import Sensor
 from probeye.subroutines import translate_prms_def
 from probeye.subroutines import make_list
 from probeye.subroutines import len_or_one
@@ -82,7 +84,7 @@ class ForwardModelBase:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
 
-    def response(self, inp):
+    def response(self, inp: dict) -> dict:
         """
         Evaluates the model response and provides computed results for all of the
         model's output sensors. This method must be overwritten by the user.
@@ -104,13 +106,13 @@ class ForwardModelBase:
             "define this method, so you can evaluate your model."
         )
 
-    def __call__(self, inp):
+    def __call__(self, inp: dict) -> dict:
         """
         Calls the self.response method. Shortens internal forward model calls.
         """
         return self.response(inp)
 
-    def jacobian(self, inp):
+    def jacobian(self, inp: dict) -> dict:
         """
         Numerically computes the Jacobian matrix of the forward model and returns it in
         form of a dictionary. Note that this method should be overwritten, if there is a
@@ -195,10 +197,10 @@ class ForwardModelBase:
 
     def jacobian_dict_to_array(
         self,
-        inp,
-        jac_dict,
-        n_inp_dim,
-    ):
+        inp: dict,
+        jac_dict: dict,
+        n_inp_dim: int,
+    ) -> np.ndarray:
         """
         Converts the Jacobian in dict-format (computed by the above 'jacobian' method)
         into a numpy array. This method is external to the above 'jacobian' method, so
