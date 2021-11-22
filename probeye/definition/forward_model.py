@@ -70,21 +70,21 @@ class ForwardModelBase:
         self.response_structure = {os.name: None for os in self.output_sensors}
 
     @property
-    def input_sensor_names(self):
+    def input_sensor_names(self) -> list[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.input_sensors]
 
     @property
-    def input_channel_names(self):
+    def input_channel_names(self) -> list[str]:
         """Provides input_channel_names attribute."""
         return self.input_sensor_names + [*self.prms_def.values()]
 
     @property
-    def output_sensor_names(self):
+    def output_sensor_names(self) -> list[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
 
-    def response(self, inp):
+    def response(self, inp: dict) -> dict:
         """
         Evaluates the model response and provides computed results for all of the
         model's output sensors. This method must be overwritten by the user.
@@ -112,7 +112,7 @@ class ForwardModelBase:
         """
         return self.response(inp)
 
-    def jacobian(self, inp):
+    def jacobian(self, inp: dict) -> dict:
         """
         Numerically computes the Jacobian matrix of the forward model and returns it in
         form of a dictionary. Note that this method should be overwritten, if there is a
