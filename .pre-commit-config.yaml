@@ -10,7 +10,6 @@ repos:
   rev: v0.910
   hooks:
     - id: mypy
-      args: ['probeye', '--ignore-missing-imports']
 
 - repo: https://github.com/psf/black
   rev: 21.5b2
