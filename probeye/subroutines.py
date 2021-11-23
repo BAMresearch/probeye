@@ -13,10 +13,6 @@ import numpy as np
 from loguru import logger
 from functools import partial
 
-logger = logger.opt(colors=True)
-logger.opt = partial(logger.opt, colors=True)
-
-
 # ============================================================================ #
 #                                 Subroutines                                  #
 # ============================================================================ #
@@ -788,3 +784,20 @@ def get_dictionary_depth(d):
     if isinstance(d, dict):
         return 1 + (max(map(get_dictionary_depth, d.values())) if d else 0)
     return 0
+
+
+def compute_reduction_array(array):
+    n = array.shape[0]
+    a = np.eye(n)
+    rows_to_remove = []
+    for i, reference_row in enumerate(array):
+        rows_to_add = []
+        for j, row_to_check in enumerate(array[i+1:], start=i+1):
+            if np.allclose(row_to_check, reference_row):
+                rows_to_add.append(j)
+        for row_idx in rows_to_add:
+            a[i] += a[row_idx]
+        a[i] /= 1 + len(rows_to_add)
+        rows_to_remove += rows_to_add
+    a = np.delete(a, rows_to_remove, axis=0)
+    return a, rows_to_remove

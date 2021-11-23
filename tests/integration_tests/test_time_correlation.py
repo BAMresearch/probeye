@@ -17,7 +17,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 class TestProblem(unittest.TestCase):
 
-    def test_time_correlation(self, n_steps=1000, n_initial_steps=100,
+    def test_time_correlation(self, n_steps=5000, n_initial_steps=100,
                               n_walkers=20, plot=True, show_progress=True,
                               run_scipy=False, run_emcee=True, run_torch=False):
         """
@@ -104,11 +104,11 @@ class TestProblem(unittest.TestCase):
                               info="Std. dev, of normal 0-mean noise model",
                               prior=('uniform', {'low': low_sigma,
                                                  'high': high_sigma}))
-        # problem.add_parameter('l_corr', 'noise',
-        #                       tex=r"$l_\mathrm{corr}$",
-        #                       info="Correlation length of correlation model",
-        #                       prior=('uniform', {'low': low_l_corr,
-        #                                          'high': high_l_corr}))
+        problem.add_parameter('l_corr', 'noise',
+                              tex=r"$l_\mathrm{corr}$",
+                              info="Correlation length of correlation model",
+                              prior=('uniform', {'low': low_l_corr,
+                                                 'high': high_l_corr}))
 
         # add the forward model to the problem
         isensor1 = Sensor("t")
@@ -198,7 +198,7 @@ class TestProblem(unittest.TestCase):
 
         # test data for first test with two trackers
         v0_test_1 = 20.0
-        time_test_1_tracker_1 = np.arange(0.1, 5, 1.0)
+        time_test_1_tracker_1 = np.arange(0, 5, 1.0)
         y_test_1_tracker_1 = forward_process(time_test_1_tracker_1, v0_test_1)
         y_test_1_tracker_1 = np.random.normal(
             loc=y_test_1_tracker_1, scale=sd_noise_tracker_1)
@@ -209,7 +209,7 @@ class TestProblem(unittest.TestCase):
 
         # test data for second test with two trackers
         v0_test_2 = 25.0
-        time_test_2_tracker_1 = np.arange(0.03, 6, 0.7)
+        time_test_2_tracker_1 = np.arange(0, 6, 0.7)
         y_test_2_tracker_1 = forward_process(time_test_2_tracker_1, v0_test_2)
         y_test_2_tracker_1 = np.random.normal(
             loc=y_test_2_tracker_1, scale=sd_noise_tracker_1)
@@ -266,15 +266,14 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         noise_model = NormalNoiseModel(
-            sensors=osensor,# corr_dynamic='t', corr_model='exp',
-            prms_def=[{'sigma': 'std'}],#, 'l_corr'],
+            sensors=osensor, corr_dynamic='t', corr_model='exp',
+            prms_def=[{'sigma': 'std'}, 'l_corr'],
             experiment_names=['Trajectory_1_Tracker_1',
                               'Trajectory_1_Tracker_2'])
         problem.add_noise_model(noise_model)
-
         noise_model = NormalNoiseModel(
-            sensors=osensor,# corr_dynamic='t', corr_model='exp',
-            prms_def=[{'sigma': 'std'}],#, 'l_corr'],
+            sensors=osensor, corr_dynamic='t', corr_model='exp',
+            prms_def=[{'sigma': 'std'}, 'l_corr'],
             experiment_names=['Trajectory_2_Tracker_1',
                               'Trajectory_2_Tracker_2'])
         problem.add_noise_model(noise_model)
