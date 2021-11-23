@@ -156,7 +156,7 @@ class ForwardModelBase:
         # corresponds to dy/da in jac['y'] is the gradient of y with respect to theta
         jac_dict = {}  # type: Dict[str, dict]
         for output_sensor in self.output_sensors:
-            jac_dict[output_sensor.name] = {}  # type: Dict[str, np.ndarray]
+            jac_dict[output_sensor.name] = {}
             for prm_name in inp.keys():
                 if prm_name in self.prms_def.values():  # values are local names
                     nrows = len_or_one(response_dict_center[output_sensor.name])
