@@ -154,9 +154,9 @@ class ForwardModelBase:
         # the format jac_dict[prm_name][os_name] which is less readable; the format
         # created in the implemented way is easier to to read since jac['y']['a']
         # corresponds to dy/da in jac['y'] is the gradient of y with respect to theta
-        jac_dict = {}
+        jac_dict = {}  # type: Dict[str, dict]
         for output_sensor in self.output_sensors:
-            jac_dict[output_sensor.name] = {}
+            jac_dict[output_sensor.name] = {}  # type: Dict[str, np.ndarray]
             for prm_name in inp.keys():
                 if prm_name in self.prms_def.values():  # values are local names
                     nrows = len_or_one(response_dict_center[output_sensor.name])
