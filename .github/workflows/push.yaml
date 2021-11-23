@@ -20,7 +20,7 @@ jobs:
           python-version: 3.9
       - name: Install dependencies
         run: |
-          pip install pre-commit types-tabulate
+          pip install pre-commit
       - name: Lint and type check
         run: |
           pre-commit run --all-files --verbose --show-diff-on-failure
