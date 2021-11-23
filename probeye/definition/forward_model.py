@@ -1,5 +1,5 @@
 # standard library
-from typing import Union, List
+from typing import Union, List, Dict
 import copy as cp
 import numpy as np
 
@@ -106,13 +106,13 @@ class ForwardModelBase:
             "define this method, so you can evaluate your model."
         )
 
-    def __call__(self, inp: dict) -> dict:
+    def __call__(self, inp: dict) -> Dict[str, dict]:
         """
         Calls the self.response method. Shortens internal forward model calls.
         """
         return self.response(inp)
 
-    def jacobian(self, inp: dict) -> dict:
+    def jacobian(self, inp: dict) -> Dict[str, dict]:
         """
         Numerically computes the Jacobian matrix of the forward model and returns it in
         form of a dictionary. Note that this method should be overwritten, if there is a
