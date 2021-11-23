@@ -161,7 +161,7 @@ class ForwardModelBase:
                 if prm_name in self.prms_def.values():  # values are local names
                     nrows = len_or_one(response_dict_center[output_sensor.name])
                     ncols = len_or_one(inp[prm_name])
-                    value = np.zeros((nrows, ncols))
+                    value = np.zeros((nrows, ncols))  # type: Union[np.ndarray, None]
                 else:
                     value = None
                 jac_dict[output_sensor.name][prm_name] = value

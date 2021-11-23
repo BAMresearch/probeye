@@ -11,11 +11,6 @@ import sys
 # third party imports
 import numpy as np
 from loguru import logger
-from functools import partial
-
-logger = logger.opt(colors=True)
-logger.opt = partial(logger.opt, colors=True)
-
 
 # ============================================================================ #
 #                                 Subroutines                                  #
