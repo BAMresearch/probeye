@@ -6,14 +6,17 @@ import numpy as np
 
 # local imports
 from probeye.inference.scipy_.correlation_models import \
-    SpatialExponentialCorrelationModel
+    SpatiotemporalExponentialCorrelationModel
 
 
 class TestProblem(unittest.TestCase):
 
     def test_check_prms(self):
-        x_test = np.linspace(0.0, 1.0, 10)
-        scm = SpatialExponentialCorrelationModel(x=x_test)
+        n = 10
+        x_test = np.linspace(0.0, 1.0, n)
+        position_array = np.tile(x_test.reshape((n, -1)), n)
+        position_arrays = {'x': position_array}
+        scm = SpatiotemporalExponentialCorrelationModel(position_arrays)
         self.assertTrue(not scm.check_prms({'l_corr': -1., 'std': 1.}))
         self.assertTrue(not scm.check_prms({'l_corr': 1., 'std': -1.}))
 

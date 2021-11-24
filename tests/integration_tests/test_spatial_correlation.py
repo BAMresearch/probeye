@@ -28,15 +28,14 @@ from probeye.definition.noise_model import NormalNoiseModel
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
 from probeye.inference.scipy_.correlation_models import \
-    SpatialExponentialCorrelationModel
+    SpatiotemporalExponentialCorrelationModel
 
 
 class TestProblem(unittest.TestCase):
 
     def test_spatial_correlation(self, n_steps=200, n_initial_steps=100,
                                  n_walkers=20, plot=False, show_progress=False,
-                                 run_scipy=True, run_emcee=True,
-                                 run_torch=False):
+                                 run_scipy=True, run_emcee=True, run_torch=False):
         """
         Integration test for the problem described at the top of this file.
 
@@ -172,12 +171,6 @@ class TestProblem(unittest.TestCase):
         linear_model = LinearModel(['a', 'b'], [], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the noise model to the problem
-        noise_model = NormalNoiseModel(
-            sensors=osensor, corr='x', corr_model='exp',
-            prms_def=[{'sigma': 'std'}, 'l_corr'])
-        problem.add_noise_model(noise_model)
-
         # ==================================================================== #
         #                Add test data to the Inference Problem                #
         # ==================================================================== #
@@ -188,16 +181,24 @@ class TestProblem(unittest.TestCase):
         np.random.seed(seed)
         y_true = linear_model({'a': a_true, 'b': b_true})[osensor.name]
 
-        # create the covariance matrix
-        correlation_model = SpatialExponentialCorrelationModel(x=osensor.x)
+        # create the covariance matrix (this is just for the test data generation)
+        x_position_array = np.tile(osensor.x.reshape((n_points, -1)), n_points)
+        position_arrays = {'x': x_position_array}
+        correlation_model = SpatiotemporalExponentialCorrelationModel(position_arrays)
         cov = correlation_model({'std': sigma, 'l_corr': l_corr})
 
         # now generate the noisy test data including correlations; we assume
         # here that there are n_experiments test series
         for i in range(n_experiments):
+            exp_name = f'Test_{i}'
             y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
-            problem.add_experiment(f'Test_{i}', fwd_model_name="LinearModel",
+            problem.add_experiment(exp_name, fwd_model_name="LinearModel",
                                    sensor_values={osensor.name: y_test})
+            # add the noise model to the problem
+            noise_model = NormalNoiseModel(
+                sensors=osensor, corr_static='x', corr_model='exp',
+                experiment_names=exp_name, prms_def=[{'sigma': 'std'}, 'l_corr'])
+            problem.add_noise_model(noise_model)
             if plot:
                 plt.scatter(x_test, y_test, label=f'measured data (test {i+1})',
                             s=10, zorder=10)

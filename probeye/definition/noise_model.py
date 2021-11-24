@@ -119,7 +119,7 @@ class NoiseModelBase:
             self.experiment_names = make_list(experiment_names)
             self.assign_experiments_automatically = False
         else:
-            self.experiment_names = None
+            self.experiment_names = []
             self.assign_experiments_automatically = True
 
         # correlation-related attributes
@@ -176,6 +176,8 @@ class NoiseModelBase:
                 f"Found invalid correlation model '{self.corr_model}' in the "
                 f"correlation definition. Currently, valid correlation models "
                 f"are: {valid_corr_models}.")
+
+    def prepare_corr_dict(self):
         # check the correlation dictionary (corr_dict); note that this dict
         # can have two different structures, see the explanation in __init__
         if self.corr_dict is None:

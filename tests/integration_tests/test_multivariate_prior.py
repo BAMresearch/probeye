@@ -25,9 +25,9 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 class TestProblem(unittest.TestCase):
 
-    def test_linear_regression(self, n_steps=200, n_initial_steps=100,
-                               n_walkers=20, plot=False, show_progress=False,
-                               run_scipy=True, run_emcee=True, run_torch=True):
+    def test_multivariate_prior(self, n_steps=200, n_initial_steps=100,
+                                n_walkers=20, plot=False, show_progress=False,
+                                run_scipy=True, run_emcee=True, run_torch=True):
         """
         Integration test for the problem described at the top of this file.
 

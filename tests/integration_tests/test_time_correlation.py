@@ -17,8 +17,8 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 class TestProblem(unittest.TestCase):
 
-    def test_time_correlation(self, n_steps=5000, n_initial_steps=100,
-                              n_walkers=20, plot=True, show_progress=True,
+    def test_time_correlation(self, n_steps=1000, n_initial_steps=100,
+                              n_walkers=20, plot=False, show_progress=False,
                               run_scipy=False, run_emcee=True, run_torch=False):
         """
         Integration test for the problem described at the top of this file.

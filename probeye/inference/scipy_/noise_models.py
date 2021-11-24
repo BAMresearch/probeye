@@ -82,7 +82,7 @@ class NormalNoise(NormalNoiseModel):
         if self.corr_static:
             # check that each of the noise model's sensors has the specified
             # correlation variables as attributes
-            first_exp_name = [*self.experiment_names.keys()][0]
+            first_exp_name = self.experiment_names[0]
             for v in self.corr_static:
                 attribute = self.corr_dict[first_exp_name][v]
                 sensor_value = None
@@ -158,7 +158,7 @@ class NormalNoise(NormalNoiseModel):
                     data = experiment["sensor_values"][key]
                 else:
                     attribute = self.corr_dict[exp_name][v]
-                    data = getattr(self.sensors[0], key)
+                    data = getattr(self.sensors[0], attribute)
                 m = len_or_one(data)
                 for sensor in self.sensors:
                     position_arrays[v][idx : idx + m, :] = np.tile(
@@ -223,10 +223,10 @@ class NormalNoise(NormalNoiseModel):
         inv_cov_matrix = np.linalg.inv(cov_matrix)
         n = cov_matrix.shape[0]
         _, log_det_cov_matrix = np.linalg.slogdet(cov_matrix)
-        ll = self.n_experiments * (-(n * np.log(2 * np.pi) + log_det_cov_matrix) / 2)
         error_vector = self.error_vector(model_response_dict)
         error_vector_red = np.dot(self.cov.reduction_array, error_vector)
-        ll += -np.dot(error_vector_red, inv_cov_matrix.dot(error_vector_red)) / 2
+        ll = -0.5 * (n * np.log(2 * np.pi) + log_det_cov_matrix +
+                     np.dot(error_vector_red, inv_cov_matrix.dot(error_vector_red)))
         return ll
 
 

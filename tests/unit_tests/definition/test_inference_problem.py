@@ -344,10 +344,6 @@ class TestProblem(unittest.TestCase):
             # forward model's output sensor not provided by experiment
             p.add_experiment('Experiment_3', sensor_values={'x': 1},
                              fwd_model_name='TestModel')
-        with self.assertRaises(RuntimeError):
-            # sensor values with different lengths
-            p.add_experiment('Experiment_3', fwd_model_name='TestModel',
-                             sensor_values={'x': [1, 2], 'y': 1})
         # check that sensor_value lists are transformed to numpy arrays
         p.add_experiment('Experiment_3', fwd_model_name='TestModel',
                          sensor_values={'x': [1, 2], 'y': [2, 3]})

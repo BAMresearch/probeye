@@ -13,15 +13,13 @@ class NormalNoise(NormalNoiseModel):
     that currently, there are no correlation capabilities defined.
     """
 
-    def __init__(self, target_sensor, prms_def, name=None, corr=None,
-                 corr_model='exp', noise_type='additive'):
+    def __init__(self, target_sensor, prms_def, name=None, noise_type='additive'):
         """
         For information on most of the above arguments check out the docstring
         of the parent class's __init__ method.
         """
         # initialize the super-class (NormalNoiseModel) based on the given input
         super().__init__(prms_def=prms_def, sensors=target_sensor, name=name,
-                         corr=corr, corr_model=corr_model,
                          noise_type=noise_type)
 
         # the following attributes are not considered in the parent class
@@ -102,8 +100,7 @@ def translate_noise_model(noise_base):
     # this is where the translation happens
     noise_object = noise_classes[noise_base.dist](
         target_sensor=noise_base.sensors[0], prms_def=noise_base.prms_def,
-        name=noise_base.name, corr=noise_base.corr,
-        corr_model=noise_base.corr_model, noise_type=noise_base.noise_type)
+        name=noise_base.name, noise_type=noise_base.noise_type)
 
     # here, we take the assigned experiments from the base object
     noise_object.experiment_names = noise_base.experiment_names

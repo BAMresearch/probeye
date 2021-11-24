@@ -871,6 +871,7 @@ class InferenceProblem:
                 noise_model.add_experiments(experiment_names)
             else:
                 n_experiments_noise += len(noise_model.experiment_names)
+            noise_model.prepare_corr_dict()
 
         # check if there is the same number of experiments over all noise models
         # as defined for the inference problem
