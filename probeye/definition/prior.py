@@ -7,6 +7,8 @@ import matplotlib
 
 # local imports
 from probeye.subroutines import translate_prms_def
+
+# this is required to prevent a circular import-structure
 if TYPE_CHECKING:
     from probeye.definition.parameter import Parameters
 
@@ -74,7 +76,7 @@ class PriorBase:
     def plot(
         self,
         ax: matplotlib.axes,
-        prms: 'Parameters',
+        prms: "Parameters",
         x: Optional[np.ndarray] = None,
         n_points: int = 200,
         n_sigma: Union[int, float] = 2,

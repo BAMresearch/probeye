@@ -68,7 +68,7 @@ class ParameterProperties:
         value: Union[int, float, np.ndarray, None] = None,
         info: Optional[str] = None,
         tex: Optional[str] = None,
-    ) -> 'ParameterProperties':
+    ) -> "ParameterProperties":
         """
         Convenience method that simplifies changing the attributes of a
         ParameterProperties object based on creating a new instance. The reason for this
