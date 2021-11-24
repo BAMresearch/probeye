@@ -1,0 +1,242 @@
+@prefix : <http://www.semanticweb.org/aklawonn/ontologies/2021/8/untitled-ontology-30#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xml: <http://www.w3.org/XML/1998/namespace> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@base <http://www.w3.org/2002/07/owl#> .
+
+[ rdf:type owl:Ontology ;
+   owl:imports <http://purl.obolibrary.org/obo/bfo/2019-08-26/bfo.owl> ,
+               <http://purl.obolibrary.org/obo/iao/2020-12-09/iao.owl>
+ ] .
+
+#################################################################
+#    Object Properties
+#################################################################
+
+###  http://www.co-ode.org/ontologies/ont.owl#has_interpretation
+<http://www.co-ode.org/ontologies/ont.owl#has_interpretation> rdf:type owl:ObjectProperty ;
+                                                              rdfs:subPropertyOf <http://purl.obolibrary.org/obo/RO_0000053> ;
+                                                              owl:inverseOf <http://www.co-ode.org/ontologies/ont.owl#interpretation_of> ;
+                                                              rdfs:domain <http://purl.obolibrary.org/obo/BFO_0000004> ;
+                                                              rdfs:range <http://www.co-ode.org/ontologies/ont.owl#interpretation> ;
+                                                              <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                              rdfs:label "has interpretation"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#interpretation_of
+<http://www.co-ode.org/ontologies/ont.owl#interpretation_of> rdf:type owl:ObjectProperty ;
+                                                             rdfs:subPropertyOf <http://purl.obolibrary.org/obo/RO_0000052> ;
+                                                             <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                             rdfs:label "interpretation of"@en .
+
+
+#################################################################
+#    Classes
+#################################################################
+
+###  http://www.co-ode.org/ontologies/ont.owl#Affine_invariant_Markov_chain_Monte_Carlo_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#Affine_invariant_Markov_chain_Monte_Carlo_algorithm> rdf:type owl:Class ;
+                                                                                               rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#Markov_chain_Monte_Carlo_algorithm> ;
+                                                                                               <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                                               rdfs:label "Affine invariant Markov chain Monte Carlo algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#Gibbs_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#Gibbs_algorithm> rdf:type owl:Class ;
+                                                           rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#Markov_chain_Monte_Carlo_algorithm> ;
+                                                           <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                           rdfs:label "Gibbs algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#Markov_chain_Monte_Carlo_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#Markov_chain_Monte_Carlo_algorithm> rdf:type owl:Class ;
+                                                                              rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#sampling_based_inference_algorithm> ;
+                                                                              <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                              rdfs:label "Markov chain Monte Carlo algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#Metropolis_Hastings_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#Metropolis_Hastings_algorithm> rdf:type owl:Class ;
+                                                                         rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#Markov_chain_Monte_Carlo_algorithm> ;
+                                                                         <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                         rdfs:label "Metropolis Hastings algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#forward_model
+<http://www.co-ode.org/ontologies/ont.owl#forward_model> rdf:type owl:Class ;
+                                                         rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#numeric_input_output_software_method> ;
+                                                         <http://purl.obolibrary.org/obo/IAO_0000115> "A numeric input output software method that describes a real-world process."@en ;
+                                                         <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                         rdfs:label "forward model"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#input_output_software_method
+<http://www.co-ode.org/ontologies/ont.owl#input_output_software_method> rdf:type owl:Class ;
+                                                                        rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000591> ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000115> "A software method that requires input arguments and returns some output when evaluated."@en ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                        rdfs:label "input output software method"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#interpretation
+<http://www.co-ode.org/ontologies/ont.owl#interpretation> rdf:type owl:Class ;
+                                                          rdfs:subClassOf <http://purl.obolibrary.org/obo/BFO_0000017> ;
+                                                          <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                          rdfs:label "interpretation"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#mathematical_function_evaluation
+<http://www.co-ode.org/ontologies/ont.owl#mathematical_function_evaluation> rdf:type owl:Class ;
+                                                                            rdfs:subClassOf <http://purl.obolibrary.org/obo/OBI_0000011> ;
+                                                                            <http://purl.obolibrary.org/obo/IAO_0000115> "A planned process the plan specification of which is a numeric input-output software method."@en ;
+                                                                            <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                            rdfs:label "mathematical function evaluation"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#maximum_a-posteriori_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#maximum_a-posteriori_algorithm> rdf:type owl:Class ;
+                                                                          rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#optimization_based_inference_algorithm> ;
+                                                                          <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                          rdfs:label "maximum a-posteriori algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#maximum_likelihood_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#maximum_likelihood_algorithm> rdf:type owl:Class ;
+                                                                        rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#optimization_based_inference_algorithm> ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                        rdfs:label "maximum likelihood algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#numeric_constant
+<http://www.co-ode.org/ontologies/ont.owl#numeric_constant> rdf:type owl:Class ;
+                                                            rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000029> ;
+                                                            <http://purl.obolibrary.org/obo/IAO_0000115> "A numeral that specifies the number it denotes by value."@en ;
+                                                            <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                            rdfs:label "numeric constant"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#numeric_input_output_software_method
+<http://www.co-ode.org/ontologies/ont.owl#numeric_input_output_software_method> rdf:type owl:Class ;
+                                                                                rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#input_output_software_method> ;
+                                                                                <http://purl.obolibrary.org/obo/IAO_0000115> "An input output software method the input arguments and returned outputs of which are numeric."@en ;
+                                                                                <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                                rdfs:label "numeric input output software method"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#numeric_variable
+<http://www.co-ode.org/ontologies/ont.owl#numeric_variable> rdf:type owl:Class ;
+                                                            rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000029> ;
+                                                            <http://purl.obolibrary.org/obo/IAO_0000115> "A numeral that does not specify its number by value but is associated with a specified number-domain from which is must be chosen."@en ;
+                                                            <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                            rdfs:label "numeric variable"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#optimization_based_inference_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#optimization_based_inference_algorithm> rdf:type owl:Class ;
+                                                                                  rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000064> ;
+                                                                                  rdfs:label "optimization based inference algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#parameter
+<http://www.co-ode.org/ontologies/ont.owl#parameter> rdf:type owl:Class ;
+                                                     rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#numeric_variable> ;
+                                                     <http://purl.obolibrary.org/obo/IAO_0000115> "A variable that is associated with a prior function (evaluation)."@en ;
+                                                     <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                     rdfs:label "parameter"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#parameter_estimation_problem
+<http://www.co-ode.org/ontologies/ont.owl#parameter_estimation_problem> rdf:type owl:Class ;
+                                                                        rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000115> "An information content entity that describes parametric methods and corresponding data to estimate the method's parameters."@en ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                        rdfs:label "parameter estimation problem"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#parameter_estimation_process
+<http://www.co-ode.org/ontologies/ont.owl#parameter_estimation_process> rdf:type owl:Class ;
+                                                                        rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000030> ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                        rdfs:label "parameter estimatin process"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#posterior_density_function
+<http://www.co-ode.org/ontologies/ont.owl#posterior_density_function> rdf:type owl:Class ;
+                                                                      owl:equivalentClass [ owl:intersectionOf ( <http://www.co-ode.org/ontologies/ont.owl#probability_density_function>
+                                                                                                                 [ rdf:type owl:Restriction ;
+                                                                                                                   owl:onProperty <http://www.co-ode.org/ontologies/ont.owl#has_interpretation> ;
+                                                                                                                   owl:someValuesFrom <http://www.co-ode.org/ontologies/ont.owl#posterior_knowledge>
+                                                                                                                 ]
+                                                                                                               ) ;
+                                                                                            rdf:type owl:Class
+                                                                                          ] ;
+                                                                      rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#probability_density_function> ;
+                                                                      <http://purl.obolibrary.org/obo/IAO_0000115> "A probability density function that is associated with a parameter and the return value of which reflects the likelihood of the associated parameter after executing the parameter estimation process."@en ;
+                                                                      <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                      rdfs:label "posterior density function"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#posterior_knowledge
+<http://www.co-ode.org/ontologies/ont.owl#posterior_knowledge> rdf:type owl:Class ;
+                                                               rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#interpretation> ;
+                                                               <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                               rdfs:label "posterior knowledge"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#prior_density_function
+<http://www.co-ode.org/ontologies/ont.owl#prior_density_function> rdf:type owl:Class ;
+                                                                  owl:equivalentClass [ owl:intersectionOf ( <http://www.co-ode.org/ontologies/ont.owl#probability_density_function>
+                                                                                                             [ rdf:type owl:Restriction ;
+                                                                                                               owl:onProperty <http://www.co-ode.org/ontologies/ont.owl#has_interpretation> ;
+                                                                                                               owl:someValuesFrom <http://www.co-ode.org/ontologies/ont.owl#prior_knowledge>
+                                                                                                             ]
+                                                                                                           ) ;
+                                                                                        rdf:type owl:Class
+                                                                                      ] ;
+                                                                  rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#probability_density_function> ;
+                                                                  <http://purl.obolibrary.org/obo/IAO_0000115> "A probability density function that is associated with a parameter and the return value of which reflects the likelihood of the associated parameter before executing the parameter estimation process."@en ;
+                                                                  <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                  rdfs:label "prior density function"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#prior_knowledge
+<http://www.co-ode.org/ontologies/ont.owl#prior_knowledge> rdf:type owl:Class ;
+                                                           rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#interpretation> ;
+                                                           <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                           rdfs:label "prior knowledge"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#probability_density_function
+<http://www.co-ode.org/ontologies/ont.owl#probability_density_function> rdf:type owl:Class ;
+                                                                        rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#numeric_input_output_software_method> ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000115> "A numeric input output software method that returns a positive number which is interpreted as the likelihood of the provided input."@en ;
+                                                                        <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                        rdfs:label "probability density function"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#sampling_based_inference_algorithm
+<http://www.co-ode.org/ontologies/ont.owl#sampling_based_inference_algorithm> rdf:type owl:Class ;
+                                                                              rdfs:subClassOf <http://purl.obolibrary.org/obo/IAO_0000064> ;
+                                                                              <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                              rdfs:label "sampling based inference algorithm"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#univariate_normal_density_function
+<http://www.co-ode.org/ontologies/ont.owl#univariate_normal_density_function> rdf:type owl:Class ;
+                                                                              rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#probability_density_function> ;
+                                                                              <http://purl.obolibrary.org/obo/IAO_0000115> "A probability density function that describes a normal distribution of one scalar variable."@en ;
+                                                                              <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                              rdfs:label "univariate normal density function"@en .
+
+
+###  http://www.co-ode.org/ontologies/ont.owl#univariate_uniform_density_function
+<http://www.co-ode.org/ontologies/ont.owl#univariate_uniform_density_function> rdf:type owl:Class ;
+                                                                               rdfs:subClassOf <http://www.co-ode.org/ontologies/ont.owl#probability_density_function> ;
+                                                                               <http://purl.obolibrary.org/obo/IAO_0000115> "A probability density function that describes a uniform distribution of one scalar variable."@en ;
+                                                                               <http://purl.obolibrary.org/obo/IAO_0000117> "PERSON: Alexander Klawonn"@en ;
+                                                                               rdfs:label "univaraite uniform density function"@en .
+
+
+###  Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi
