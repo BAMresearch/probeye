@@ -1,7 +1,12 @@
 # standard library
+import os
 import copy as cp
+import urllib
 
 # third party imports
+import owlready2
+from rdflib import URIRef, Graph
+from rdflib.namespace import RDF
 from tabulate import tabulate
 from loguru import logger
 import numpy as np
@@ -944,3 +949,54 @@ class InferenceProblem:
                     f(sensor_values[sensor_name], *args, **kwargs)
 
         return self_copy
+
+    def export_to_rdf(
+            self,
+            ttl_file: str,
+            owl_basename: str = "parameter_estimation_ontology.owl",
+            namespace: str = "http://www.parameter_estimation_ontology.org",
+    ):
+        """
+        Exports the inference problem to an rdf-file according to the referenced
+        parameter estimation ontology.
+
+        Parameter
+        ---------
+        ttl_file
+            Path to the file (turtle-format) the knowledge graph should be written to.
+        owl_basename
+            The basename plus extension of the owl-file that contains the parameter
+            estimation ontology. This file must be contained in the probeye directory
+            one level above the directory of this file.
+        namespace
+            The namespace used in the owl-file for the classes of the parameter
+            estimation ontology. Currently, this is just a dummy placeholder.
+        """
+
+        # get the full path of the owl-file (it is stored in the probeye directory)
+        dir_path = os.path.dirname(__file__)
+        owl_dir = os.path.join(dir_path, '..')
+        owl_file = os.path.join(owl_dir, owl_basename)
+        assert os.path.isfile(owl_file), f"Could not find the owl-file at '{owl_file}'"
+
+        # load the ontology from file and set the namespace
+        owlready2.get_ontology(owl_file).load()
+        peo = owlready2.get_namespace(namespace)
+
+        # instantiate the knowledge graph
+        graph = Graph()
+
+        # add all of the constant parameters to the graph
+        for name in self.constant_prms:
+            graph.add((URIRef(urllib.parse.unquote(peo.numeric_constant(name).iri)),
+                       RDF.type,
+                       URIRef(urllib.parse.unquote(peo.numeric_constant.iri))))
+
+        # add all of the latent parameters to the graph
+        for name in self.latent_prms:
+            graph.add((URIRef(urllib.parse.unquote(peo.parameter(name).iri)),
+                       RDF.type,
+                       URIRef(urllib.parse.unquote(peo.parameter.iri))))
+
+        # print the triples to a file
+        graph.serialize(destination=ttl_file, format="turtle")

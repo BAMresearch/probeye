@@ -133,3 +133,4 @@ dmypy.json
 
 # Ontology stuff
 catalog-*.xml
+*.ttl
