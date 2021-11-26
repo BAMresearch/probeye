@@ -701,6 +701,7 @@ def logging_setup(
 
 class StreamToLogger:
     """This class is required by stream_to_logger defined right below."""
+
     def __init__(self, level):
         self._level = level
 
