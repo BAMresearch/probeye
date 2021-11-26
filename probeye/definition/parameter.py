@@ -282,7 +282,7 @@ class Parameters(dict):
         self,
         prm_name: str,
         prm_type: str,
-        dim: int = 1,
+        dim: Optional[int] = 1,
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",

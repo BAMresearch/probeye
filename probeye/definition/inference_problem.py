@@ -296,7 +296,7 @@ class InferenceProblem:
         self,
         prm_name: str,
         prm_type: str,
-        dim: int = 1,
+        dim: Optional[int] = 1,
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",
@@ -385,7 +385,7 @@ class InferenceProblem:
         if prm.is_const:
             # if a constant parameter should be made latent, its dimension will be taken
             # from its current value
-            dim = len_or_one(prm.value)
+            dim = len_or_one(prm.value)  # type: Union[int, None]
         else:
             # in this case, a latent parameter should be made constant; since the dim-
             # attribute will be inferred from the given value (const) it does not need
