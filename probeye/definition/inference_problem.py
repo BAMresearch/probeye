@@ -5,7 +5,8 @@ import urllib
 
 # third party imports
 import owlready2
-from rdflib import URIRef, Graph
+import rdflib
+from rdflib import URIRef, Graph, Literal
 from rdflib.namespace import RDF
 from tabulate import tabulate
 from loguru import logger
@@ -986,17 +987,41 @@ class InferenceProblem:
         # instantiate the knowledge graph
         graph = Graph()
 
+        # this function will simplifies the following code
+        def iri(s: str) -> rdflib.term.URIRef:
+            return URIRef(urllib.parse.unquote(s.iri))
+
         # add all of the constant parameters to the graph
-        for name in self.constant_prms:
-            graph.add((URIRef(urllib.parse.unquote(peo.numeric_constant(name).iri)),
-                       RDF.type,
-                       URIRef(urllib.parse.unquote(peo.numeric_constant.iri))))
+        for const_name in self.constant_prms:
+            const_value = self._parameters[const_name].value
+            const_instance = iri(peo.numeric_constant(const_name))
+            graph.add((const_instance, RDF.type, iri(peo.numeric_constant)))
+            graph.add((const_instance, iri(peo.has_value), Literal(const_value)))
 
         # add all of the latent parameters to the graph
-        for name in self.latent_prms:
-            graph.add((URIRef(urllib.parse.unquote(peo.parameter(name).iri)),
-                       RDF.type,
-                       URIRef(urllib.parse.unquote(peo.parameter.iri))))
+        for prm_name in self.latent_prms:
+
+            # prepare instance used below
+            prior_name = self._parameters[prm_name].prior.name
+            prm_instance = iri(peo.parameter(prm_name))
+            prior_instance = iri(peo.prior_density_function(prior_name))
+            intpr_instance = iri(peo.prior_knowledge("educated_guess"))
+
+            # add the instances to the graph
+            graph.add((prm_instance, RDF.type, iri(peo.parameter)))
+            graph.add((prior_instance, RDF.type, iri(peo.probability_density_function)))
+            graph.add((intpr_instance, RDF.type, iri(peo.prior_knowledge)))
+
+            # connect the instances with each other
+            graph.add((prior_instance, iri(peo.has_interpretation), intpr_instance))
+            graph.add((prm_instance, iri(peo.has_prior), prior_instance))
+            graph.add((prior_instance, iri(peo.has_input_argument), prm_instance))
+            for hyperparameter in self._parameters[prm_name].prior.hyperparameters:
+                if hyperparameter in self.constant_prms:
+                    instance = iri(peo.numeric_constant(hyperparameter))
+                else:
+                    instance = iri(peo.parameter(hyperparameter))
+                graph.add((prior_instance, iri(peo.has_input_argument), instance))
 
         # print the triples to a file
         graph.serialize(destination=ttl_file, format="turtle")

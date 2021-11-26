@@ -158,7 +158,6 @@ class TestProblem(unittest.TestCase):
         dir_path = os.path.dirname(__file__)
         ttl_file = os.path.join(dir_path, 'test_rdf_export.ttl')
         problem.export_to_rdf(ttl_file)
-        print(ttl_file)
 
         # remove the created file again if requested
         if cleanup and os.path.isfile(ttl_file):
