@@ -75,7 +75,7 @@ class PriorBase:
 
     def plot(
         self,
-        ax: matplotlib.axes,
+        ax: "matplotlib.axes",
         prms: "Parameters",
         x: Optional[np.ndarray] = None,
         n_points: int = 200,

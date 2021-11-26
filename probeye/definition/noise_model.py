@@ -214,9 +214,9 @@ class NoiseModelBase:
         Parameters
         ----------
         model_response_dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
         prms
             Dictionary containing parameter name:value pairs.
 
@@ -260,15 +260,15 @@ class NormalNoiseModel(NoiseModelBase):
             noise_type=noise_type,
         )
 
-        # check that at the standard deviation is provided (this can be either
-        # as a constant or a latent parameter, but it has to be given)
+        # check that at the standard deviation is provided (this can be either as a
+        # constant or a latent parameter, but it has to be given)
         if "std" not in [*self.prms_def.values()]:
             raise RuntimeError(
                 "The standard deviation 'std' was not provided in prms_def!"
             )
 
-        # the mean value(s) do not have to be stated explicitly; if they are not
-        # given, the are assumed to be zero
+        # the mean value(s) do not have to be stated explicitly; if they are not given,
+        # the are assumed to be zero
         self.zero_mean = True
         if "mean" in [*self.prms_def.values()]:
             self.zero_mean = False
