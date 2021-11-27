@@ -57,7 +57,7 @@ class ForwardModelBase:
         # it has the same structure like the 'inp' argument of the response method, but
         # instead of the input channel's values it states the input channels number of
         # elements
-        self.input_structure = {ic: None for ic in self.input_channel_names}
+        self.input_structure = {ic: 0 for ic in self.input_channel_names}
 
         # this attributes might be used by inference engines that need a forward model
         # wrapper, which only returns numeric vectors; for reconstructing the response
@@ -67,7 +67,7 @@ class ForwardModelBase:
         # of elements contained in the values; e.g., {'x': np.array([0, 0.1, 0.2]),
         # 'a': 3.7} will have a structure  of {'x': 3, 'a': 1}; this attr. is not used
         # by all inference engines
-        self.response_structure = {os.name: None for os in self.output_sensors}
+        self.response_structure = {os.name: 0 for os in self.output_sensors}
 
     @property
     def input_sensor_names(self) -> List[str]:

@@ -6,6 +6,7 @@ import copy as cp
 from tabulate import tabulate
 from loguru import logger
 import numpy as np
+import torch as th
 
 # local imports
 from probeye.definition.parameter import Parameters
@@ -622,7 +623,9 @@ class InferenceProblem:
             "forward_model": fwd_model_name,
         }
 
-    def get_parameters(self, theta: np.ndarray, prm_def: dict) -> dict:
+    def get_parameters(
+        self, theta: Union[np.ndarray, th.Tensor], prm_def: dict
+    ) -> dict:
         """
         Extracts the numeric values for given parameters from the parameter vector theta
         and the constant parameters of the problem.

@@ -1,3 +1,7 @@
+# standard library imports
+from typing import Union, List, Optional, TYPE_CHECKING
+
+
 # third party imports
 import torch as th
 import pyro
@@ -5,6 +9,10 @@ import pyro.distributions as dist
 
 # local imports
 from probeye.definition.noise_model import NormalNoiseModel
+
+# imports only needed for type hints
+if TYPE_CHECKING:
+    from probeye.definition.sensor import Sensor
 
 
 class NormalNoise(NormalNoiseModel):
@@ -15,12 +23,12 @@ class NormalNoise(NormalNoiseModel):
 
     def __init__(
         self,
-        target_sensor,
-        prms_def,
-        name=None,
-        corr=None,
-        corr_model="exp",
-        noise_type="additive",
+        target_sensor: "Sensor",
+        prms_def: Union[str, List[str], dict],
+        name: Optional[str] = None,
+        corr: Optional[str] = None,
+        corr_model: Optional[str] = "exp",
+        noise_type: str = "additive",
     ):
         """
         For information on most of the above arguments check out the docstring
@@ -39,21 +47,23 @@ class NormalNoise(NormalNoiseModel):
         # the following attributes are not considered in the parent class
         self.target_sensor = target_sensor
 
-    def error(self, model_response_dict):
+    def error(self, model_response_dict: dict) -> dict:
         """
-        Computes the model error for all of the noise model's experiments and
-        returns them in a dictionary that is sorted by output sensor_values.
+        Computes the model error for all of the noise model's experiments and returns
+        them in a dictionary that is sorted by output sensor_values.
+
         Parameters
         ----------
-        model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
         Returns
         -------
-        model_error : dict
-            A dictionary with the keys being the noise model's sensor names, and
-            torch.Tensors representing the model errors as values.
+        model_error
+            A dictionary with the keys being the noise model's sensor names, and torch.
+            Tensors representing the model errors as values.
         """
 
         # prepare the dictionary keys
@@ -71,16 +81,16 @@ class NormalNoise(NormalNoiseModel):
             }
         return model_error_dict
 
-    def sample_cond_likelihood(self, model_response, prms):
+    def sample_cond_likelihood(self, model_response: dict, prms: dict) -> pyro.sample:
         """
         Creates a likelihood-sample conditioned on the observed errors.
 
-        model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
-        prms : ParameterList-object
-            Dictionary-like object containing parameter name:value pairs.
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+        prms
+            Contains parameter name:value pairs.
         """
         std = prms["std"]
         mean = 0.0 if self.zero_mean else prms["mean"]
@@ -89,22 +99,21 @@ class NormalNoise(NormalNoiseModel):
         pyro.sample(f"lkl_{self.name}", dist.Normal(mean, std), obs=model_error_vector)
 
 
-def translate_noise_model(noise_base):
+def translate_noise_model(noise_base: NormalNoiseModel) -> NormalNoise:
     """
-    Translates a given instance of NoiseBase (which is essentially just a
-    description of the noise model without computing-methods) to a specific
-    noise model object which does contain computing-methods (e.g. compute the
-    log-likelihood contribution).
+    Translates a given instance of NoiseBase (which is essentially just a description
+    of the noise model without computing-methods) to a specific noise model object which
+    does contain computing-methods (e.g. compute the log-likelihood contribution).
 
     Parameters
     ----------
-    noise_base : obj[NoiseBase]
+    noise_base
         An instance of NoiseBase which contains basic information on the noise
         model but no computing-methods.
 
     Returns
     -------
-    noise_object : obj[NoiseBase]
+    noise_object
         An instance of a specific noise model class with computing capabilities.
         Examples for such classes are given above in this file.
     """
