@@ -18,7 +18,7 @@ class NoiseModelBase:
         name: Optional[str] = None,
         corr: Optional[str] = None,
         corr_model: Optional[str] = None,
-        noise_type: Optional[str] = "additive",
+        noise_type: str = "additive",
     ):
         """
         Parameters
@@ -206,7 +206,9 @@ class NoiseModelBase:
             "you want to use it, you need to implement it first."
         )
 
-    def loglike_contribution(self, model_response_dict: dict, prms: dict) -> float:
+    def loglike_contribution(
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
         """
         Evaluates the log-likelihood function for the given model error and the given
         noise parameter vector. This method has to be overwritten.
@@ -219,6 +221,11 @@ class NoiseModelBase:
             corresponding model responses as values.
         prms
             Dictionary containing parameter name:value pairs.
+        worst_value
+            This value is returned when this method does not result in a numeric value.
+            This might happen for example when the given parameters are not valid (for
+            example in case of a negative standard deviation). The returned value in
+            such cases should represent the worst possible value of the contribution.
 
         Returns
         -------
@@ -243,7 +250,7 @@ class NormalNoiseModel(NoiseModelBase):
         name: Optional[str] = None,
         corr: Optional[str] = None,
         corr_model: Optional[str] = None,
-        noise_type: Optional[str] = "additive",
+        noise_type: str = "additive",
     ):
         """
         See docstring of NoiseModelBase for information on the input arguments.
