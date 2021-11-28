@@ -1048,7 +1048,7 @@ class InferenceProblem:
 
         # this function will simplifies the following code
         def iri(s: str) -> rdflib.term.URIRef:
-            return URIRef(urllib.parse.unquote(s.iri))
+            return URIRef(urllib.parse.unquote(s.iri))  # type: ignore
 
         # add all of the constant parameters to the graph
         for const_name in self.constant_prms:
