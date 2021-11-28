@@ -1011,10 +1011,10 @@ class InferenceProblem:
         return self_copy
 
     def export_to_rdf(
-            self,
-            ttl_file: str,
-            owl_basename: str = "parameter_estimation_ontology.owl",
-            namespace: str = "http://www.parameter_estimation_ontology.org",
+        self,
+        ttl_file: str,
+        owl_basename: str = "parameter_estimation_ontology.owl",
+        namespace: str = "http://www.parameter_estimation_ontology.org",
     ):
         """
         Exports the inference problem to an rdf-file according to the referenced
@@ -1035,7 +1035,7 @@ class InferenceProblem:
 
         # get the full path of the owl-file (it is stored in the probeye directory)
         dir_path = os.path.dirname(__file__)
-        owl_dir = os.path.join(dir_path, '..')
+        owl_dir = os.path.join(dir_path, "..")
         owl_file = os.path.join(owl_dir, owl_basename)
         assert os.path.isfile(owl_file), f"Could not find the owl-file at '{owl_file}'"
 
