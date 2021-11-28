@@ -51,9 +51,9 @@ class TestProblem(unittest.TestCase):
         inp_ = {**{"x": 1.0}, **prms}
         jac_dict = forward_model.jacobian(inp_)
         computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict, 3)
-        # note that the first element of the expected result is zero, because
-        # it wasn't computed; the first input channel is not a model parameter,
-        # hence its partial derivative is not evaluated
+        # note that the first element of the expected result is zero, because it wasn't
+        # computed; the first input channel is not a model parameter, hence its partial
+        # derivative is not evaluated
         expected_result = np.array([[0.0, 1.0, 1.0]])
         self.assertTrue(
             np.allclose(computed_result, expected_result, atol=1e-3)
@@ -116,9 +116,9 @@ class TestProblem(unittest.TestCase):
         inp_ = {**{"x1": 2.0, "x2": 3.0}, **prms}
         jac_dict = forward_model.jacobian(inp_)
         computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict, 4)
-        # note that the first two elements of the expected result-rows are zero,
-        # because they weren't computed; the first two input channels are not
-        # model parameters, hence their partial derivatives are not evaluated
+        # note that the first two elements of the expected result-rows are zero, because
+        # they weren't computed; the first two input channels are not model parameters,
+        # hence their partial derivatives are not evaluated
         expected_result = np.array([[0.0, 0.0, 4.0, 3.0], [0.0, 0.0, 4.0, 3.0]])
         self.assertTrue(
             np.allclose(computed_result, expected_result, atol=1e-3)

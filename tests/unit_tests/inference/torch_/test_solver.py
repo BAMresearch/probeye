@@ -68,8 +68,8 @@ class TestProblem(unittest.TestCase):
             def response(self, inp):
                 return {"y": inp["m"] * inp["x"] + inp["b"]}
 
-        # define parameters where 'm' depends on 'loc_m', but 'loc_m' is added
-        # after 'm', so that it has to be corrected for pyro to work
+        # define parameters where 'm' depends on 'loc_m', but 'loc_m' is added after
+        # 'm', so that it has to be corrected for pyro to work
         problem = InferenceProblem("Problem with circular dependency")
         problem.add_parameter(
             "loc_m", "prior", prior=("uniform", {"low": 2.0, "high": 3.0})
@@ -113,8 +113,8 @@ class TestProblem(unittest.TestCase):
         expected_result = {"loc_m": [], "b": [], "sigma": [], "m": ["loc_m"]}
         self.assertEqual(computed_result, expected_result)
         # additionally check that the actual sampling works; note that the
-        # target_accept_prob argument is stated here to check if it works to
-        # pass additional keyword arguments to the run_mcmc method
+        # target_accept_prob argument is stated here to check if it works to pass
+        # additional keyword arguments to the run_mcmc method
         pyro_solver.run_mcmc(
             n_walkers=1, n_steps=100, n_initial_steps=10, target_accept_prob=0.8
         )
@@ -170,8 +170,8 @@ class TestProblem(unittest.TestCase):
             "Exp3": {"y": np.array([6, 17])},
         }
 
-        # check for each item, because the last contains an array, which results
-        # in an error is you do assertEqual on the whole thing
+        # check for each item, because the last contains an array, which results in an
+        # error is you do assertEqual on the whole thing
         self.assertEqual(computed_result["Exp1"], expected_result["Exp1"])
         self.assertEqual(computed_result["Exp2"], expected_result["Exp2"])
         self.assertEqual(

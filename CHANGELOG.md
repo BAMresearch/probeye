@@ -1,8 +1,8 @@
 # probeye changelog
 
-## 1.0.12 (2021-Nov-??)
+## 1.0.12 (2021-Nov-11)
 ### Changed
-- modified code format according to standard black
+- modified code format according to standard black and introduced type hints
 
 ## 1.0.11 (2021-Nov-10)
 ### Added

@@ -43,8 +43,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(len_or_one([1]), 1)
         self.assertEqual(len_or_one([1, 2]), 2)
         self.assertEqual(len_or_one([1, 2, 3]), 3)
-        # check for the weird numpy case (the object np.array(1.0) does have
-        # len-method, but when you do len(np.array(1.0)) you get an error)
+        # check for the weird numpy case (the object np.array(1.0) does have len-method,
+        # but when you do len(np.array(1.0)) you get an error)
         self.assertEqual(len_or_one(np.array(1.0)), 1)
 
     def test_make_list(self):

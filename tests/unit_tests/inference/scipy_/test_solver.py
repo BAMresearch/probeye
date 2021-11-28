@@ -66,9 +66,9 @@ class TestProblem(unittest.TestCase):
         for key, val in x0_dict.items():
             self.assertAlmostEqual(val, expected_x0_dict[key])
 
-        # check that the solver can be run now; note that the additional solver
-        # option is a default value, and only provided to check that this
-        # argument-pipeline works
+        # check that the solver can be run now; note that the additional solver option
+        # is a default value, and only provided to check that this argument-pipeline
+        # works
         scipy_solver.run_max_likelihood(solver_options={"jac": None})
 
         # check the warning when the problem cannot be deep-copied
@@ -122,8 +122,8 @@ class TestProblem(unittest.TestCase):
             "Exp3": {"y": np.array([6, 17])},
         }
 
-        # check for each item, because the last contains an array, which results
-        # in an error is you do assertEqual on the whole thing
+        # check for each item, because the last contains an array, which results in an
+        # error is you do assertEqual on the whole thing
         self.assertEqual(computed_result["Exp1"], expected_result["Exp1"])
         self.assertEqual(computed_result["Exp2"], expected_result["Exp2"])
         self.assertEqual(

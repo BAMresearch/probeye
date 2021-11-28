@@ -41,8 +41,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(set(p.noise_prms), {"b"})
 
     def test_info(self):
-        # simply check that no errors occur when info-method is called; the
-        # output that is usually printed is redirected
+        # simply check that no errors occur when info-method is called; the output that
+        # is usually printed is redirected
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
@@ -57,8 +57,8 @@ class TestProblem(unittest.TestCase):
         p.info(include_experiments=True, tablefmt="plain", check_consistency=False)
         sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
-            # the problem is not consistent yet (e.g. no forward model defined
-            # yet), so the consistency_check will raise an error
+            # the problem is not consistent yet (e.g. no forward model defined yet), so
+            # the consistency_check will raise an error
             p.info(include_experiments=True, tablefmt="presto", check_consistency=True)
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
@@ -236,8 +236,8 @@ class TestProblem(unittest.TestCase):
             set(p.constant_prms),
             {"loc_a", "s", "low_scale_a", "high_scale_a", "low_sigma", "high_sigma"},
         )
-        # check removing a latent parameter; note that removing a latent
-        # parameter leads to the removal of all its prior parameters
+        # check removing a latent parameter; note that removing a latent parameter leads
+        # to the removal of all its prior parameters
         self.assertEqual(set(p.latent_prms), {"scale_a", "sigma", "a"})
         # check that indexes are as expected
         self.assertEqual(p.parameters["scale_a"].index, 0)
@@ -590,8 +590,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(computed_result, expected_result)
 
     def test_theta_explanation(self):
-        # simply check that no errors occur when theta_explanation is called;
-        # the output that is usually printed is redirected
+        # simply check that no errors occur when theta_explanation is called; the output
+        # that is usually printed is redirected
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))

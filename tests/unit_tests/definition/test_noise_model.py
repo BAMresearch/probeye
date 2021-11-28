@@ -33,8 +33,8 @@ class TestProblem(unittest.TestCase):
             "Exp5": {"sensor_values": {"x": 7, "y": 8}, "forward_model": "TestModel"},
             "Exp6": {"sensor_values": {"x": 7, "y": 8}, "forward_model": "OtherModel"},
         }
-        # the following is usually done automatically when adding the noise
-        # model to the inference problem
+        # the following is usually done automatically when adding the noise model to the
+        # inference problem
         noise_template.problem_experiments = problem_experiments
         # perform some simple tests for valid usage
         noise_template.add_experiments("Exp1")
@@ -57,8 +57,8 @@ class TestProblem(unittest.TestCase):
         noise_template = NoiseModelBase(
             "normal", ["bias", "sigma"], [Sensor("y1"), Sensor("y2")]
         )
-        # in the NoiseModelBase class the error_function is just a dummy,
-        # so we need to define it to be able to test the error-method
+        # in the NoiseModelBase class the error_function is just a dummy, so we need to
+        # define it to be able to test the error-method
         noise_template.error_function = lambda d1, d2: {
             name: d1[name] - d2[name] for name in noise_template.sensor_names
         }
@@ -81,8 +81,8 @@ class TestProblem(unittest.TestCase):
                 "forward_model": "TestModel",
             },
         }
-        # the following is usually done automatically when adding the noise
-        # model to the inference problem
+        # the following is usually done automatically when adding the noise model to the
+        # inference problem
         noise_template.problem_experiments = problem_experiments
         noise_template.add_experiments(["Exp1", "Exp2", "Exp3"])
         # now we can call the error-method
@@ -120,8 +120,8 @@ class TestProblem(unittest.TestCase):
             NormalNoiseModel({"sigma": "this should be 'std'"}, Sensor("y"))
 
     def test_normal_noise_error_function(self):
-        # simply check that the error_function is set correctly when the noise
-        # model is initialized
+        # simply check that the error_function is set correctly when the noise model is
+        # initialized
         ym_dict, ye_dict = {"y": 4}, {"y": 2}
         noise_model = NormalNoiseModel(
             {"sigma": "std"}, Sensor("y"), noise_type="additive"
