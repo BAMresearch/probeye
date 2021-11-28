@@ -1,10 +1,7 @@
-# ============================================================================ #
-#                                   Imports                                    #
-# ============================================================================ #
-
 # standard library imports
 from copy import copy
-from typing import Iterable
+from typing import Iterable, Union, List, Tuple, Any, Optional, Generator, Callable
+from typing import TYPE_CHECKING
 import os
 import sys
 
@@ -13,29 +10,30 @@ import numpy as np
 from loguru import logger
 from functools import partial
 
-# ============================================================================ #
-#                                 Subroutines                                  #
-# ============================================================================ #
+# local imports for type checking
+if TYPE_CHECKING:  # pragma: no cover
+    from probeye.definition.inference_problem import InferenceProblem
 
-def len_or_one(obj):
+
+def len_or_one(obj: Any) -> int:
     """
     Returns the length of an object or 1 if no length is defined.
 
     Parameters
     ----------
-    obj : obj
-        Most of the time this will be a list/tuple or a single scalar number.
+    obj
+        Most of the time this will be a list/tuple or a single scalar number. But
+        generally, it can be anything.
 
     Returns
     -------
-    int
-        The length of the given list/tuple etc. or 1, if obj has no __len__
-        attribute; the latter case is mostly intended for scalar numbers
+        The length of the given list/tuple etc. or 1, if obj has no __len__-attribute;
+        the latter case is mostly intended for scalar numbers.
 
     """
-    if hasattr(obj, '__len__'):
-        # the following check is necessary, since the len-function applied to a
-        # numpy array of format numpy.array(1) results in a TypeError
+    if hasattr(obj, "__len__"):
+        # the following check is necessary, since the len-function applied to a numpy
+        # array of format numpy.array(1) results in a TypeError
         if type(obj) is np.ndarray:
             if not obj.shape:
                 return 1
@@ -46,23 +44,24 @@ def len_or_one(obj):
     else:
         return 1
 
-def make_list(arg):
+
+def make_list(arg: Any) -> list:
     """
-    Converts a given argument into a list, if it is not a list or tuple. The
-    typical use case for this method is to convert a single string into a list
-    with this string as its only element, e.g. make_list('sigma') = ['sigma'].
+    Converts a given argument into a list, if it is not a list or tuple. The typical use
+    case for this method is to convert a single string into a list with this string as
+    its only element, e.g. make_list('sigma') = ['sigma'].
 
     Parameters
     ----------
-    arg : obj
-        Essentially anything. Most of the time this might be a string or a list
-        of strings or a tuple of strings.
+    arg
+        Essentially anything. Most of the time this might be a string or a list of
+        strings or a tuple of strings.
 
     Returns
     -------
-    new_arg : list[obj]
-        Either arg if it is of type list or tuple, or a list with arg as its
-        only element if arg is not of type list or tuple.
+    new_arg
+        Either arg if it is of type list or tuple, or a list with arg as its only
+        element if arg is not of type list or tuple.
     """
     if type(arg) in [list, tuple]:
         new_arg = arg
@@ -70,26 +69,29 @@ def make_list(arg):
         new_arg = [copy(arg)]
     return new_arg
 
-def underlined_string(string, symbol="=", n_empty_start=1, n_empty_end=1):
+
+def underlined_string(
+    string: str, symbol: str = "=", n_empty_start: int = 1, n_empty_end: int = 1
+) -> str:
     """
     Adds a line made of 'symbol'-characters under a given string and returns it.
 
     Parameters
     ----------
-    string : string
+    string
         The string that should be underlined.
-    symbol : string
+    symbol
         A single character the line should be 'made' of.
-    n_empty_start : int, optional
+    n_empty_start
         Number of empty lines added before the underlined string.
-    n_empty_end : int, optional
+    n_empty_end
         Number of empty lines added after the underlined string.
 
     Returns
     -------
-    result_string : string
-        The generated string representing an underlined string, possibly with
-        empty lines added before/after.
+    result_string
+        The generated string representing an underlined string, possibly with empty
+        lines added before/after.
     """
     n_chars = len(string)
     underline_string = n_chars * symbol
@@ -99,57 +101,71 @@ def underlined_string(string, symbol="=", n_empty_start=1, n_empty_end=1):
     result_string = empty_lines_start + result_string + empty_lines_end
     return result_string
 
-def titled_table(title_str, table_str, symbol='-', n_empty_start=1,
-                 n_empty_end=0):
+
+def titled_table(
+    title_str: str,
+    table_str: str,
+    symbol: str = "-",
+    n_empty_start: int = 1,
+    n_empty_end: int = 0,
+) -> str:
     """
-    Adds an underlined title string to a given table string. The line, that
-    underlines the title will be as long as the longest line of the table.
+    Adds an underlined title string to a given table string. The line, that underlines
+    the title will be as long as the longest line of the table.
 
     Parameters
     ----------
-    title_str : string
+    title_str
         The title to be put on top of the table.
-    table_str : string
+    table_str
         The string representing the table. For example generated using tabulate.
-    symbol : string
+    symbol
         A single character the line should be 'made' of.
-    n_empty_start : int, optional
+    n_empty_start
         Number of empty lines added before the title.
-    n_empty_end : int, optional
+    n_empty_end
         Number of empty lines added after the table string.
 
     Returns
     -------
-    result_string : string
+    result_string
         An underlined title, followed by a table.
     """
     # get the number of characters in the given table's longest line
-    max_line_length = max([len(line) for line in table_str.split('\n')])
+    max_line_length = max([len(line) for line in table_str.split("\n")])
     # now, simply concatenate the different lines
-    result_string = n_empty_start * '\n' +\
-                    title_str + '\n' +\
-                    max_line_length * symbol + '\n' +\
-                    table_str + '\n' +\
-                    n_empty_end * '\n'
+    result_string = (
+        n_empty_start * "\n"
+        + title_str
+        + "\n"
+        + max_line_length * symbol
+        + "\n"
+        + table_str
+        + "\n"
+        + n_empty_end * "\n"
+    )
     return result_string
 
-def replace_string_chars(string, replace=None, remove=None):
+
+def replace_string_chars(
+    string: str, replace: Optional[dict] = None, remove: Optional[list] = None
+) -> str:
     """
     Removes and replaces characters from a given string according to the input.
 
     Parameters
     ----------
-    string : string
+    string
         The string to be modified.
-    replace : dict, optional
+    replace
         The keys are the characters to be replaced, the values are stating their
         replacements.
-    remove : list, optional
+    remove
         A list of characters to be removed from the given string.
 
     Returns
     -------
-     string : string
+     string
         The modified string with removed/replaced characters.
     """
     # first, do the replacements
@@ -159,82 +175,83 @@ def replace_string_chars(string, replace=None, remove=None):
     # finally, remove characters as requested
     if remove is not None:
         for char in remove:
-            string = string.replace(char, '')
+            string = string.replace(char, "")
     return string
 
-def simplified_list_string(list_):
+
+def simplified_list_string(list_: list) -> str:
     """
-    Given a list, it returns the string returned by its __str__ method, where
-    some characters are removed for a slightly easier to read printout. Example:
-    the list ['a', 1.2] is usually printed as '['a', 1.2]'. Here, it will be
-    converted into the string 'a, 1.2' (no brackets, and no quotes).
+    Given a list, it returns the string returned by its __str__ method, where some
+    characters are removed for a slightly easier to read printout. Example: the list
+    ['a', 1.2] is usually printed as '['a', 1.2]'. Here, it will be converted into the
+    string 'a, 1.2' (no brackets, and no quotes).
 
     Parameters
     ----------
-    list_ : list
+    list_
         Some list to be printed.
 
     Returns
     -------
-    simplified_list_str : string
+    simplified_list_str
         The list_'s __str__ method's return string without brackets and quotes.
     """
-    simplified_list_str = replace_string_chars(
-        str(list_), remove=['[', ']', "'"])
+    simplified_list_str = replace_string_chars(str(list_), remove=["[", "]", "'"])
     return simplified_list_str
 
-def simplified_dict_string(dict_):
+
+def simplified_dict_string(dict_: dict) -> str:
     """
-    Given a dictionary, it returns the string returned by its __str__ method,
-    where some characters are removed for a slightly easier to read printout.
-    Example: the dict {'a': 1.2} is usually printed as '{'a': 1.2, 'b': 2.1}'.
-    Here, it will be converted into the string 'a=1.2, b=2.1'.
+    Given a dictionary, it returns the string returned by its __str__ method, where some
+    characters are removed for a slightly easier to read printout. For example: the dict
+    {'a': 1.2} is usually printed as '{'a': 1.2, 'b': 2.1}'. Here, it will be converted
+    into the string 'a=1.2, b=2.1'.
 
     Parameters
     ----------
-    dict_ : dict
+    dict_
         Some dictionary to be printed.
 
     Returns
     -------
-    simplified_dict_str : string
-        Modified version of dict_'s __str__ method's return string (no quotes,
-        no braces and the colon will be replaced with an equal sign.
+    simplified_dict_str
+        Modified version of dict_'s __str__ method's return string (no quotes, no braces
+        and the colon will be replaced with an equal sign.
     """
     simplified_dict_str = replace_string_chars(
-        str(dict_), remove=['{', '}', "'"], replace={': ': '='})
+        str(dict_), remove=["{", "}", "'"], replace={": ": "="}
+    )
     return simplified_dict_str
 
-def unvectorize_dict_values(dict_):
+
+def unvectorize_dict_values(dict_: dict) -> list:
     """
-    Takes a dict with items like <name>: <vector> and converts it into a list,
-    where each element is a 'fraction' or the whole dictionary. The following
-    example will illustrate it: {'x': [1, 2, 3], 'y': [4, 5, 6]} will be
-    converted into [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, {'x': 3, 'y': 6}].
+    Takes a dict with items like <name>: <vector> and converts it into a list, where
+    each element is a 'fraction' or the whole dictionary. The following example will
+    illustrate it: {'x': [1, 2, 3], 'y': [4, 5, 6]} will be converted into
+    [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, {'x': 3, 'y': 6}].
 
     Parameters
     ----------
-    dict_ : dict
-        The dictionary that should be converted. All values must be 1D arrays
-        of the same length.
+    dict_
+        The dictionary that should be converted. All values must be 1D arrays of the
+        same length.
 
     Returns
     -------
-    result_list : list
+    result_list
         The 'un-vectorized' dictionary. Check out the example above.
     """
 
     # all values must be iterable
     dict_copy = copy(dict_)
     for key, value in dict_.items():
-        if not hasattr(value, '__len__'):
+        if not hasattr(value, "__len__"):
             dict_copy[key] = [value]
 
     # check if all lengths are the same
     if len({len(vector) for vector in dict_copy.values()}) != 1:
-        raise RuntimeError(
-            "The values of the dictionary have different lengths!"
-        )
+        raise RuntimeError("The values of the dictionary have different lengths!")
 
     # create the result list
     vector_length = len([*dict_copy.values()][0])
@@ -248,72 +265,75 @@ def unvectorize_dict_values(dict_):
 
     return result_list
 
-def sub_when_empty(string, empty_str="-"):
+
+def sub_when_empty(string: str, empty_str: str = "-") -> str:
     """
-    Just returns a given string if it is not empty. If it is empty though, a
-    default string is returned instead.
+    Just returns a given string if it is not empty. If it is empty though, a default
+    string is returned instead.
 
     Parameters
     ----------
-    string : string
+    string
         The string to check if it is empty or not
-    empty_str : string, optional
+    empty_str
         The string to be returned if the given string is empty
 
     Returns
     -------
-    result_string : string
-        Either the given string (when 'string' is not empty) or the empty_str
-        (when 'string' is empty)
+    result_string
+        Either the given string (when 'string' is not empty) or the empty_str (when
+        'string' is empty)
     """
     if type(string) is not str:
-        raise TypeError(
-            f"Input must be of type string. Found: type '{type(string)}'")
+        raise TypeError(f"Input must be of type string. Found: type '{type(string)}'")
     if len(string) > 0:
         result_string = string
     else:
         result_string = empty_str
     return result_string
 
-def dict2list(dict_):
+
+def dict2list(dict_: dict) -> list:
     """
     Converts a dict into a list of key-value dictionaries and returns it.
 
     Parameters
     ----------
-    dict_ : dict
+    dict_
         Some dictionary to be converted.
 
     Returns
     -------
-    list_ : list
+    list_
         Each element is a dict with one key-value pair. These key-value pairs
         are those contained in dict_.
     """
     if type(dict_) != dict:
         raise TypeError(
-            f"Input argument must be of type 'dict', found '{type(dict_)}'.")
+            f"Input argument must be of type 'dict', found '{type(dict_)}'."
+        )
     list_ = []
     for key, value in dict_.items():
         list_.append({key: value})
     return list_
 
-def list2dict(list_dict):
+
+def list2dict(list_dict: Union[list, dict]) -> dict:
     """
-    Converts a list into a specific dictionary. The list may only contain
-    strings or one-element dictionaries. For example [{'a': 'm'}, 'b'] will be
-    converted into {'a': 'm', 'b': 'b'}.
+    Converts a list into a specific dictionary. The list may only contain strings or
+    one-element dictionaries. For example [{'a': 'm'}, 'b'] will be converted into
+    {'a': 'm', 'b': 'b'}.
 
     Parameters
     ----------
-    list_dict : list or dict
+    list_dict
         If it's a list it may only contain strings or one-element dictionaries.
 
     Returns
     -------
-    dict_ : dict
-        Strings are mapped to themselves, while one-element dictionaries are
-        simply added to this result dictionary.
+    dict_
+        Strings are mapped to themselves, while one-element dictionaries are simply
+        added to this result dictionary.
     """
     # check the given input
     if type(list_dict) not in [list, dict]:
@@ -323,11 +343,11 @@ def list2dict(list_dict):
         )
     if type(list_dict) is dict:
         # convert the dict to a list, so it can be checked by this function
-        list_ = dict2list(copy(list_dict))
+        list_ = dict2list(copy(list_dict))  # type: Union[list, dict]
     else:
         list_ = copy(list_dict)
     # convert the list to a dictionary
-    dict_ = {}
+    dict_ = {}  # type: dict
     for element in list_:
         element_type = type(element)
         if element_type == dict:
@@ -346,19 +366,19 @@ def list2dict(list_dict):
             )
     return dict_
 
-def pretty_time_delta(seconds):
+
+def pretty_time_delta(seconds: Union[float, int]) -> str:
     """
     Converts number of seconds into a human friendly time string. Source: https:
     //gist.github.com/thatalextaylor/7408395#file-1-python-pretty-time-delta-py
 
     Parameters
     ----------
-    seconds : float, int
+    seconds
         The given number of seconds to be converted,.
 
     Returns
     -------
-    str
         Human friendly time difference in string format.
     """
     sign_string = "-" if seconds < 0 else ""
@@ -375,15 +395,16 @@ def pretty_time_delta(seconds):
     else:
         return "%s%ds" % (sign_string, seconds)
 
-def flatten_generator(items):
+
+def flatten_generator(items: Union[list, np.ndarray]) -> Generator:
     """
-    Yield items from any nested iterable. This solution is modified from a
-    recipe in Beazley, D. and B. Jones. Recipe 4.14, Python Cookbook 3rd Ed.,
-    O'Reilly Media Inc. Sebastopol, CA: 2013.
+    Yield items from any nested iterable. This solution is modified from a recipe in
+    Beazley, D. and B. Jones. Recipe 4.14, Python Cookbook 3rd Ed., O'Reilly Media Inc.
+    Sebastopol, CA: 2013.
 
     Parameters
     ----------
-    items : Iterable
+    items
         A list, tuple, numpy.ndarray, etc. that should be flattened.
 
     Returns
@@ -392,51 +413,63 @@ def flatten_generator(items):
         Can be translated to a list by applying list(...) on it.
     """
     for x in items:
-        if isinstance(x, Iterable) and not isinstance(x, (str, bytes)):
+        if type(x) in [list, tuple, np.ndarray] and not isinstance(x, (str, bytes)):
             for sub_x in flatten_generator(x):
                 yield sub_x
         else:
             yield x
 
-def flatten(arg):
+
+def flatten(arg: Union[list, np.ndarray, float, int, None]) -> Union[list, None]:
     """
     Flattens and returns the given input argument.
 
     Parameters
     ----------
-    arg : list, numpy.ndarray, float, int, None
+    arg
         The list/array that should be flattened.
 
     Returns
     -------
-    arg_flat : list, None
-        The flattened list/numpy.ndarray is the input is not None. Otherwise,
-        None is returned.
+    arg_flat
+        The flattened list/numpy.ndarray is the input is not None. Otherwise, None is
+        returned.
     """
     arg_type = type(arg)
     if arg is None:
         arg_flat = arg
     elif arg_type in [float, int]:
         arg_flat = [arg]
+    elif arg_type in [list, np.ndarray]:
+        arg_flat = list(flatten_generator(arg))  # type: ignore
     else:
-        if arg_type not in [list, np.ndarray]:
-            raise TypeError(f"The argument must be either None or of type list "
-                            f"numpy.ndarray, float or int. Found type "
-                            f"{arg_type} however.")
-        arg_flat = list(flatten_generator(arg))
+        raise TypeError(
+            f"The argument must be either None or of type list numpy.ndarray, "
+            f"float or int. Found type '{arg_type}' however."
+        )
     return arg_flat
 
-def process_spatiotemporal_coordinates(x=None, y=None, z=None, t=None,
-                                       coords=None, order=('x', 'y', 'z', 't')):
+def process_spatial_coordinates(
+    x: Union[float, int, np.ndarray, None] = None,
+    y: Union[float, int, np.ndarray, None] = None,
+    z: Union[float, int, np.ndarray, None] = None,
+    t: Union[float, int, np.ndarray, None] = None,
+    coords: Optional[np.ndarray] = None,
+    order: tuple = ("x", "y", "z", "t"),
+) -> Tuple[np.ndarray, List[str]]:
     """
-    x : float, int, numpy.ndarray, None, optional
+    Converts given spatial data from a flexible format into a standardized format.
+
+    Parameters
+    ----------
+    x
         Positional x-coordinate. When given, the coords-argument must be None.
-    y : float, int, numpy.ndarray, None, optional
+    y
         Positional y-coordinate. When given, the coords-argument must be None.
-    z : float, int, numpy.ndarray, None, optional
+    z
         Positional z-coordinate. When given, the coords-argument must be None.
-    t : float, int, numpy.ndarray, None, optional
-            Points in time. When given, coords must be None.
+    t
+        Points in time. When given, coords must be None.
     coords : numpy.ndarray, optional
         Some or all of the coordinates x, y, z concatenated as an array. Each
         row corresponds to one coordinate. For example, row 1 might contain all
@@ -451,13 +484,13 @@ def process_spatiotemporal_coordinates(x=None, y=None, z=None, t=None,
 
     Returns
     -------
-    coords : numpy.ndarray
-        An array with as many columns as coordinates are given, and as many rows
-        as points are given. For example if 10 points with x and z coordinates
-        are given, then coords would have a shape of (2, 10).
-    adjusted_order : list[str]
-        Describes which coordinates are described by the rows of the returned
-        coords. In the example given above, adjusted_order would be ['x', 'z'].
+    coords
+        An array with as many columns as coordinates are given, and as many rows as
+        points are given. For example if 10 points with x and z coordinates are given,
+        then coords would have a shape of (2, 10).
+    adjusted_order
+        Describes which coordinates are described by the rows of the returned coords.
+        In the example given above, adjusted_order would be ['x', 'z'].
     """
 
     # the following check should cover the option that no spatial input is given
@@ -474,11 +507,13 @@ def process_spatiotemporal_coordinates(x=None, y=None, z=None, t=None,
     # derive the number of given coordinate vectors and points
     if coords is not None:
         if not type(coords) is np.ndarray:
-            raise TypeError(f"The argument 'coords' must be of type "
-                            f"numpy.ndarray. Found {type(coords)} however.")
+            raise TypeError(
+                f"The argument 'coords' must be of type numpy.ndarray. Found "
+                f"{type(coords)} however."
+            )
         else:
-            # each row corresponds to one coordinate, so the number of given
-            # points is the length of rows
+            # each row corresponds to one coordinate, so the number of given points is
+            # the length of rows
             n_coords, n_points = coords.shape
     else:
         n_points_list = [len(v) for v in [x, y, z, t] if v is not None]
@@ -489,17 +524,18 @@ def process_spatiotemporal_coordinates(x=None, y=None, z=None, t=None,
         else:
             raise RuntimeError(
                 f"Found inconsistent lengths in given coordinate "
-                f"vectors: {n_points_list}!")
+                f"vectors: {n_points_list}!"
+            )
 
-    # derive the coords array and the corresponding order-vector to be returned;
-    # note that the repeated if-else clause here should improve readability
+    # derive the coords array and the corresponding order-vector to be returned; note
+    # that the repeated if-else clause here should improve readability
     if coords is not None:
-        # it is assumed here that the first n_coords elements from the order-
-        # vector correspond to the n_coords rows of the given coords-argument
+        # it is assumed here that the first n_coords elements from the order-vector
+        # correspond to the n_coords rows of the given coords-argument
         adjusted_order = list(order[:n_coords])
     else:
-        # in this case the order-vector might have to be trimmed; for example if
-        # x and z are given, the 'y' from the order vector has to be removed
+        # in this case the order-vector might have to be trimmed; for example if x and
+        # z are given, the 'y' from the order vector has to be removed
         coords = np.zeros((n_coords, n_points))
         adjusted_order = []
         row_idx = 0
@@ -511,28 +547,27 @@ def process_spatiotemporal_coordinates(x=None, y=None, z=None, t=None,
 
     return coords, adjusted_order
 
-def translate_prms_def(prms_def_given):
+
+def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, int]:
     """
     Translates the prms_def argument which is used by several sub-modules (e.g.
-    ForwardModelBase, NoiseModelBase, PriorBase) into a default format. The
-    prms_def argument specifies the local/global names of the parameters used by
-    a sub-module.
+    ForwardModelBase, NoiseModelBase, PriorBase) into a default format. The prms_def-
+    argument specifies the local/global names of the parameters used by a sub-module.
 
     Parameters
     ----------
-    prms_def_given : {str, list, dict}
-        Either a single string, a dictionary with global names as keys and local
-        names as values, or a list, the elements of which are either strings or
-        1-element dictionaries, where the latter would again contain one global
-        name as key and one local name as value. Valid examples are: 'sigma',
-        ['sigma'], ['sigma', 'beta'], ['sigma', {'beta': 'b'}],
-        {'sigma': 'sigma', 'beta': 'b'}.
+    prms_def_given
+        Either a single string, a dictionary with global names as keys and local names
+        as values, or a list, the elements of which are either strings or 1-element
+        dictionaries, where the latter would again contain one global name as key and
+        one local name as value. Valid examples are: 'sigma', ['sigma'], ['sigma',
+        'beta'], ['sigma', {'beta': 'b'}], {'sigma': 'sigma', 'beta': 'b'}.
 
     Returns
     -------
-    prms_def : dict
+    prms_def
         Contains global names as keys and local names as values.
-    prms_dim : int
+    prms_dim
         The number of items in prms_def.
     """
     prms_def_copy = copy(prms_def_given)
@@ -543,31 +578,39 @@ def translate_prms_def(prms_def_given):
     prms_dim = len(prms_def)
     return prms_def, prms_dim
 
-def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
-                         margin=5, h_symbol="=", v_symbol="#", use_logger=True):
+
+def print_probeye_header(
+    width: int = 100,
+    header_file: str = "probeye.txt",
+    version: str = "1.0.12",
+    margin: int = 5,
+    h_symbol: str = "=",
+    v_symbol: str = "#",
+    use_logger: bool = True,
+):
     """
-    Prints the probeye header which is printed, when an inference problem is
-    set up. Mostly just nice to have. The only useful information it contains
-    is the version number of the package.
+    Prints the probeye header which is printed, when an inference problem is set up.
+    Mostly just nice to have. The only useful information it contains is the version
+    number of the package.
 
     Parameters
     ----------
-    width : int, optional
+    width
         The width (i.e., number of characters) the header should have.
-    header_file : str, optional
-        Relative path (with respect to this file) to the txt-file that contains
-        the probeye letters.
-    version : str, optional
-        States the probeye version; this should be identical to the version
-        stated in setup.cfg; however, the version cannot be read dynamically,
-        since the setup.cfg is not available after installing the package.
-    margin : int, optional
+    header_file
+        Relative path (with respect to this file) to the txt-file that contains the
+        probeye letters.
+    version
+        States the probeye version; this should be identical to the version stated in
+        setup.cfg; however, the version cannot be read dynamically, since the setup.cfg
+        is not available after installing the package.
+    margin
         Minimum number of blank spaces at the header margins.
-    h_symbol : str, optional
+    h_symbol
         The symbol used to 'draw' the horizontal frame line.
-    v_symbol : str, optional
+    v_symbol
         The symbol used to 'draw' the vertical frame line.
-    use_logger : bool, optional
+    use_logger
         When True, the header will be logged, otherwise just printed.
     """
 
@@ -576,31 +619,29 @@ def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
     header_file = os.path.join(dir_path, header_file)
 
     # read in the big probeye letters
-    with open(header_file, 'r') as f:
+    with open(header_file, "r") as f:
         content = f.readlines()
-    # this is the width of the read in 'probeye' in terms of number of chars;
-    # note that all lines (should) have the same length
+    # this is the width of the read in 'probeye' in terms of number of chars; note that
+    # all lines (should) have the same length
     width_probeye = len(content[0]) - 1
 
-    # this string should coincide with the one given in setup.cfg; however, it
-    # cannot be read dynamically, since the setup.cfg is not available after
-    # installing the package
-    description = 'A general framework for setting up parameter '\
-                  'estimation problems.'
-
+    # this string should coincide with the one given in setup.cfg; however, it cannot be
+    # read dynamically since the setup.cfg is not available after installing the package
+    description = "A general framework for setting up parameter " "estimation problems."
     subtitle = f"Version {version} - {description}"
     width_subtitle = len(subtitle)
 
     # choose a width so that the margin on one side is at least 'margin'
-    width_used = max((width, width_probeye + 2 * (margin + 1),
-                      width_subtitle + 2 * margin + 1))
+    width_used = max(
+        (width, width_probeye + 2 * (margin + 1), width_subtitle + 2 * margin + 1)
+    )
 
     # assemble the header
     outer_frame_line = f"{v_symbol} {h_symbol * (width_used - 4)} {v_symbol}"
     inner_frame_line = f"{v_symbol}{' ' * (width_used - 2)}{v_symbol}"
     lines = [outer_frame_line, inner_frame_line]
     for line in content:
-        clean_line = line.replace('\n', '')
+        clean_line = line.replace("\n", "")
         lines.append(f"{v_symbol}{clean_line:^{width_used - 2}s}{v_symbol}")
     lines.append(inner_frame_line)
     lines.append(outer_frame_line)
@@ -615,91 +656,105 @@ def print_probeye_header(width=100, header_file="probeye.txt", version='1.0.11',
         for line in lines:
             logger.info(line)
     else:
-        print('\n' + '\n'.join(lines))
+        print("\n" + "\n".join(lines))
 
-def logging_setup(log_level_stdout='INFO', log_level_file='DEBUG',
-                  log_format=None, log_file=None, overwrite_log_file=True,
-                  **kwargs):
+
+def logging_setup(
+    log_level_stdout: str = "INFO",
+    log_level_file: str = "DEBUG",
+    log_format: Optional[str] = None,
+    log_file: Optional[str] = None,
+    overwrite_log_file: bool = True,
+    **kwargs,
+):
     """
     Sets up the loguru logger for listening to the inference problem.
 
     Parameters
     ----------
-    log_level_stdout : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
-        Defines the level of the logging output to stdout.
-    log_level_file : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
-        Defines the level of the logging output to a log file.
-    log_format : None, str, optional
+    log_level_stdout
+        Defines the level of the logging output to stdout. Common choices are 'DEBUG',
+        'INFO', 'WARNING', and 'ERROR'.
+    log_level_file
+        Defines the level of the logging output to a log file. Common choices are again
+        'DEBUG', 'INFO', 'WARNING', and 'ERROR'.
+    log_format
         A format string defining the logging output. If this argument is
         set to None, a default format will be used.
-    log_file : None, str, optional
+    log_file
         Path to the log-file, if the logging should be printed to file. If
         None is given, no logging-file will be created.
-    overwrite_log_file : bool, optional
+    overwrite_log_file
         When True, a specified log-file will be overwritten. Otherwise,
         the generated logging will appended to a given log-file.
-    kwargs : dict
+    kwargs
         Additional keyword arguments passed to logger.add (for file and stdout).
     """
     if not log_format:
-        log_format =\
-            ('<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | '
-             '<level>{level: <8}</level> | '
-             '<level>{message:100s}</level> | '
-             '<cyan>{name}</cyan>:'
-             '<cyan>{function}</cyan>:'
-             '<cyan>{line}</cyan>')
+        log_format = (
+            "<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | "
+            "<level>{level: <8}</level> | "
+            "<level>{message:100s}</level> | "
+            "<cyan>{name}</cyan>:"
+            "<cyan>{function}</cyan>:"
+            "<cyan>{line}</cyan>"
+        )
     logger.remove()  # just in case there still exists another logger
     logger.add(sys.stdout, format=log_format, level=log_level_stdout, **kwargs)
     if log_file:
         if os.path.isfile(log_file) and overwrite_log_file:
             os.remove(log_file)
-        logger.add(
-            log_file, format=log_format, level=log_level_file, **kwargs)
+        logger.add(log_file, format=log_format, level=log_level_file, **kwargs)
 
-def stream_to_logger(log_level):
+
+class StreamToLogger:
+    """This class is required by stream_to_logger defined right below."""
+
+    def __init__(self, level):
+        self._level = level
+
+    def write(self, buffer):
+        for line in buffer.rstrip().splitlines():
+            logger.opt(depth=1).log(self._level, line.rstrip())
+
+
+def stream_to_logger(log_level: str) -> StreamToLogger:
     """
-    Returns a stream-object that can be used to redirect a function's print
-    output to the logger. Taken from the section 'Capturing standard stdout ...'
-    of https://loguru.readthedocs.io/en/stable/resources/recipes.html.
+    Returns a stream-object that can be used to redirect a function's print output to
+    the logger. Taken from the section 'Capturing standard stdout ...' of
+    https://loguru.readthedocs.io/en/stable/resources/recipes.html.
 
     Parameters
     ----------
-    log_level : {'DEBUG', 'INFO', 'WARNING', 'ERROR'}, optional
-        Defines the log level the streamed output will be associated with.
+    log_level
+        Defines the log level the streamed output will be associated with. Common
+        choices are 'DEBUG', 'INFO', 'WARNING', and 'ERROR'.
 
     Returns
     -------
-    obj[StreamToLogger]
         This object should be used as follows:
         import contextlib
         with contextlib.redirect_stdout(stream_to_logger('INFO')):
             <function that prints something>
     """
-
-    class StreamToLogger:
-        def __init__(self, level):
-            self._level = level
-
-        def write(self, buffer):
-            for line in buffer.rstrip().splitlines():
-                logger.opt(depth=1).log(self._level, line.rstrip())
-
     return StreamToLogger(log_level)
 
-def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
+
+def print_dict_in_rows(
+    d: dict, printer: Callable = print, sep: str = "=", val_fmt: Optional[str] = None
+):
     """
     Prints a dictionary with key-value pairs in rows.
 
     Parameters
     ----------
-    d : dict
+    d
         The dictionary to print.
-    printer : callable, optional
+    printer
         Function used for printing. For example 'print' or 'logger.info'.
-    sep : str, optional
+    sep
         The character printed between key and value.
-    val_fmt : str, optional
+    val_fmt
         A format string used for printing the dictionary's values.
     """
     n = max([len(key) for key in d.keys()])
@@ -709,21 +764,22 @@ def print_dict_in_rows(d, printer=print, sep="=", val_fmt=None):
         else:
             printer(f"{key:{n + 1}s} {sep} {val}")
 
-def add_index_to_tex_prm_name(tex, index):
+
+def add_index_to_tex_prm_name(tex: str, index: int) -> str:
     """
-    Adds a lower index to a parameter's tex-name. This function is intended for
-    vector-valued parameters. For example: ('$a$', 1) -> '$a_1$'.
+    Adds a lower index to a parameter's tex-name. This function is intended for vector-
+    valued parameters. For example: ('$a$', 1) -> '$a_1$'.
 
     Parameters
     ----------
-    tex : str
+    tex
         The tex-string to be modified.
-    index : int
+    index
         The index to be added as a lower index to tex.
 
     Returns
     -------
-    tex_mod : str
+    tex_mod
         The tex-string with included index.
     """
 
@@ -736,26 +792,26 @@ def add_index_to_tex_prm_name(tex, index):
 
     if check_1 and check_2 and check_3:
         tex_list = tex.split("$")
-        # since it was checked that there are exactly 2 '$'-signs in tex, the
-        # tex_list has 3 elements, with the middle one being the string enclosed
-        # by the two '$'-signs
-        tex_list[1] = tex_list[1] + f'_{index}'
-        tex_mod = '$'.join(tex_list)
+        # since it was checked that there are exactly 2 '$'-signs in tex, the tex_list
+        # has 3 elements, with the middle one being the string enclosed by the two
+        # '$'-signs
+        tex_list[1] = tex_list[1] + f"_{index}"
+        tex_mod = "$".join(tex_list)
     else:
-        # if not all checks are passed, the index is added in a way, that does
-        # not expect anything from the given tex-string
+        # if not all checks are passed, the index is added in a way, that does not
+        # expect anything from the given tex-string
         tex_mod = tex + f" ({index})"
 
     return tex_mod
 
-def check_for_uninformative_priors(problem):
+
+def check_for_uninformative_priors(problem: "InferenceProblem"):
     """
-    Checks if all priors defined within a given InferenceProblem are not
-    uninformative.
+    Checks if all priors defined within a given InferenceProblem are not uninformative.
 
     Parameters
     ----------
-    problem : InferenceProblem
+    problem
         The given problem to check.
     """
     for prior_name, prior_template in problem.priors.items():

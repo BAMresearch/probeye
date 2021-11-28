@@ -1,3 +1,6 @@
+# standard library
+from typing import Union, Optional, Tuple
+
 # third party imports
 import numpy as np
 
@@ -41,8 +44,8 @@ class SpatiotemporalExponentialCorrelationModel:
         -------
             True, when all values are valid. False otherwise.
         """
-        # if no correlation is defined in the noise model, l_corr will not be
-        # provided in the input for the log-likelihood contribution
+        # if no correlation is defined in the noise model, l_corr will not be provided
+        # in the input for the log-likelihood contribution
         if "l_corr" in prms:
             if prms["l_corr"] <= 0:
                 return False
@@ -83,7 +86,7 @@ class SpatiotemporalExponentialCorrelationModel:
         distance_array = np.sqrt(distance_array)
 
         return distance_array
-
+      
     def __call__(self, prms: dict) -> np.ndarray:
         """
         Returns the covariance matrix based on the correlation model.

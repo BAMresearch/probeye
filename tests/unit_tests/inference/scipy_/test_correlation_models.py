@@ -5,12 +5,12 @@ import unittest
 import numpy as np
 
 # local imports
-from probeye.inference.scipy_.correlation_models import \
-    SpatiotemporalExponentialCorrelationModel
+from probeye.inference.scipy_.correlation_models import (
+    SpatiotemporalExponentialCorrelationModel,
+)
 
 
 class TestProblem(unittest.TestCase):
-
     def test_check_prms(self):
         n = 10
         x_test = np.linspace(0.0, 1.0, n)

@@ -11,7 +11,6 @@ from probeye.inference.scipy_.noise_models import NormalNoise
 
 
 class TestProblem(unittest.TestCase):
-
     def test_normal_noise_init(self):
         x_test = np.linspace(0.0, 1.0, 10)
         osensor = Sensor("y", x=x_test)

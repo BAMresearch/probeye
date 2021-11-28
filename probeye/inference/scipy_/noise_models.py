@@ -1,3 +1,6 @@
+# standard library imports
+from typing import Union, List, Optional, TYPE_CHECKING
+
 # third party imports
 import numpy as np
 
@@ -8,6 +11,9 @@ from probeye.inference.scipy_.correlation_models import (
     SpatiotemporalExponentialCorrelationModel,
 )
 
+# imports only needed for type hints
+if TYPE_CHECKING:  # pragma: no cover
+    from probeye.definition.sensor import Sensor
 
 class NormalNoise(NormalNoiseModel):
     def __init__(
@@ -167,10 +173,12 @@ class NormalNoise(NormalNoiseModel):
                     idx += m
         return position_arrays
 
-    def loglike_contribution_without_correlation(self, model_response, prms):
+    def loglike_contribution_without_correlation(
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
         """
-        This method overwrites the corresponding method of the parent class.
-        Check out the docstring there for additional information.
+        This method overwrites the corresponding method of the parent class. Check out
+        the docstring there for additional information.
         """
         # compute the model error; note that this mode has exactly one sensor
         model_error_vector = self.error_vector(model_response)
@@ -179,15 +187,15 @@ class NormalNoise(NormalNoiseModel):
         std = prms["std"]
         mean = 0.0 if self.zero_mean else prms["mean"]
         prec = 1.0 / std ** 2.0
-        # evaluate the Gaussian log-PDF with zero mean and a variance of
-        # 1/prec for each error term and sum them up
+        # evaluate the Gaussian log-PDF with zero mean and a variance of 1/prec for
+        # each error term and sum them up
         ll = -len(model_error_vector) / 2 * np.log(2 * np.pi / prec)
         ll -= 0.5 * prec * np.sum(np.square(model_error_vector - mean))
         return ll
 
     def loglike_contribution_with_correlation(
-        self, model_response_dict, prms, worst_value=-np.infty
-    ):
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
         """
         Evaluates the log-likelihood for the noise model's experiments.
 
@@ -209,13 +217,12 @@ class NormalNoise(NormalNoiseModel):
 
         Returns
         -------
-        ll : float
+        ll
             The evaluated log-likelihood function.
         """
-        # before computing the covariance matrix, check if the given parameter
-        # values are valid; if not, the computation of the log-likelihood
-        # contribution is stopped right away while returning the worst value
-        # its evaluation can result in
+        # before computing the covariance matrix, check if the given parameter values
+        # are valid; if not, the computation of the log-like contribution is stopped
+        # right away while returning the worst value its evaluation can result in
         if not self.cov.check_prms(prms):
             return worst_value
 
@@ -244,7 +251,7 @@ def translate_noise_model(noise_base):
 
     Returns
     -------
-    noise_object : obj[NoiseBase]
+    noise_object
         An instance of a specific noise model class with computing capabilities.
         Examples for such classes are given above in this file.
     """

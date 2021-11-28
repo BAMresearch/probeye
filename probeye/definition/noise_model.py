@@ -1,3 +1,6 @@
+# standard library
+from typing import Union, List, Optional
+
 # third party imports
 import numpy as np
 
@@ -132,7 +135,7 @@ class NoiseModelBase:
 
         # as soon as defined, this attribute will be a pointer to the inference
         # problems experiments (it will be used for consistency checks)
-        self.problem_experiments = {}
+        self.problem_experiments = {}  # type: dict
 
         # set the error_function depending on the noise-type
         if noise_type == "additive":
@@ -207,60 +210,63 @@ class NoiseModelBase:
                 corr_dict[exp_name] = self.corr_dict
             self.corr_dict = corr_dict
 
-    def add_experiments(self, experiment_names_):
+    def add_experiments(self, experiment_names_: Union[str, List[str]]):
         """
-        Adds experiment names to the noise model. When the noise model is
-        evaluated it will only be evaluated for those experiments added here.
+        Adds experiment names to the noise model. When the noise model is evaluated it
+        will only be evaluated for those experiments added here.
 
         Parameters
         ----------
-        experiment_names_ : str, list[str]
-            Names (strings) of experiments from the InferenceProblem that should
-            be added to the noise model.
+        experiment_names_
+            Names (strings) of experiments from the InferenceProblem that should be
+            added to the noise model.
         """
-        # check if the given experiments are compatible with the noise model
-        # with respect to the sensors
+        # check if the given experiments are compatible with the noise model with
+        # respect to the sensors
         experiment_names = make_list(experiment_names_)
         forward_models = set()
         for exp_name in experiment_names:
             exp_dict = self.problem_experiments[exp_name]
-            forward_models.add(exp_dict['forward_model'])
-            sensor_names_exp = [*exp_dict['sensor_values'].keys()]
+            forward_models.add(exp_dict["forward_model"])
+            sensor_names_exp = [*exp_dict["sensor_values"].keys()]
             for sensor_name in self.sensor_names:
                 if sensor_name not in sensor_names_exp:
                     raise RuntimeError(
                         f"Experiment '{exp_name}' does not contain a sensor "
-                        f"'{sensor_name}' which is required for the evaluation "
-                        f"of the noise model.")
+                        f"'{sensor_name}' which is required for the evaluation of the "
+                        f"noise model."
+                    )
         # check if the given experiments all refer to one forward model
         if len(forward_models) > 1:
             raise RuntimeError(
-                f"The given experiments refer to more than one forward model!")
+                f"The given experiments refer to more than one forward model!"
+            )
         # check if one of the given experiments have been added before
         for exp_name in experiment_names:
             if exp_name in self.experiment_names:
                 raise RuntimeError(
-                    f"The experiment '{exp_name}' has already been added to "
-                    f"this noise model. Something might be wrong here.")
+                    f"The experiment '{exp_name}' has already been added to this noise "
+                    f"model. Something might be wrong here."
+                )
         self.experiment_names += experiment_names
 
-    def error(self, model_response_dict):
+    def error(self, model_response_dict: dict) -> dict:
         """
-        Computes the model error for all of the noise model's experiments and
-        returns them in a dictionary that is sorted by output sensor_values.
+        Computes the model error for all of the noise model's experiments and returns
+        them in a dictionary that is sorted by output sensor_values.
 
         Parameters
         ----------
-        model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
 
         Returns
         -------
-        model_error : dict
-            A dictionary with the keys being the noise model's sensor names, and
-            1D numpy arrays representing the model errors as values.
+        model_error
+            A dictionary with the keys being the noise model's sensor names, and 1D
+            numpy arrays representing the model errors as values.
         """
         # prepare the dictionary keys
         model_error_dict = {name: np.array([]) for name in self.sensor_names}
@@ -269,11 +275,12 @@ class NoiseModelBase:
         for exp_name in self.experiment_names:
             exp_dict = self.problem_experiments[exp_name]
             ym_dict = model_response_dict[exp_name]
-            ye_dict = exp_dict['sensor_values']
+            ye_dict = exp_dict["sensor_values"]
             me_dict = self.error_function(ym_dict, ye_dict)
-            model_error_dict =\
-                {name: np.append(model_error_dict[name], me_dict[name])
-                 for name in self.sensor_names}
+            model_error_dict = {
+                name: np.append(model_error_dict[name], me_dict[name])
+                for name in self.sensor_names
+            }
 
         return model_error_dict
 
@@ -312,75 +319,82 @@ class NoiseModelBase:
 
         Parameters
         ----------
-        ym_dict : dict
+        ym_dict
             The computed values for the model's output sensor_values.
-        ye_dict : dict
+        ye_dict
             The measured values for the model's output sensor_values.
 
         Returns
         -------
-        error_dict : dict
+        error_dict
             The computed model error for the model's output sensor_values.
         """
         # for each sensor, its own error metric is used to compute the error
-        error_dict = {name: ym_dict[name] - ye_dict[name]
-                      for name in self.sensor_names}
+        error_dict = {name: ym_dict[name] - ye_dict[name] for name in self.sensor_names}
         return error_dict
 
-    def error_function_multiplicative(self, ym_dict, ye_dict):
+    def error_function_multiplicative(self, ym_dict: dict, ye_dict: dict) -> dict:
         """
-        Evaluates the multiplicative model error for each of the noise model's
-        sensors.
+        Evaluates the multiplicative model error for each of the noise model's sensors.
 
         Parameters
         ----------
-        ym_dict : dict
+        ym_dict
             The computed values for the model's output sensor_values.
-        ye_dict : dict
+        ye_dict
             The measured values for the model's output sensor_values.
 
         Returns
         -------
-        error_dict : dict
+        error_dict
             The computed model error for the model's output sensor_values.
         """
         # for each sensor, its own error metric is used to compute the error
-        error_dict = {name: ym_dict[name] / ye_dict[name] - 1.0
-                      for name in self.sensor_names}
+        error_dict = {
+            name: ym_dict[name] / ye_dict[name] - 1.0 for name in self.sensor_names
+        }
         return error_dict
 
-    def error_function_other(self, ym_dict, ye_dict):
+    def error_function_other(self, ym_dict: dict, ye_dict: dict) -> dict:
         """
-        Non-standard error function self.error_function will point to when
-        self.noise_type is set to 'other'. See self.error_function for more
-        information.
+        Non-standard error function self.error_function will point to when self.
+        noise_type is set to 'other'. See self.error_function for more information.
         """
         raise NotImplementedError(
-            "Your model does not have an non-standard error_function-method "
-            "yet. If you want to use it, you need to implement it first.")
+            "Your model does not have an non-standard error_function-method yet. If "
+            "you want to use it, you need to implement it first."
+        )
 
-    def loglike_contribution(self, model_response_dict, prms):
+    def loglike_contribution(
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
         """
-        Evaluates the log-likelihood function for the given model error and
-        the given noise parameter vector. This method has to be overwritten.
+        Evaluates the log-likelihood function for the given model error and the given
+        noise parameter vector. This method has to be overwritten.
 
         Parameters
         ----------
-        model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
-        prms : ParameterList-object
-            Dictionary-like object containing parameter name:value pairs.
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+        prms
+            Dictionary containing parameter name:value pairs.
+        worst_value
+            This value is returned when this method does not result in a numeric value.
+            This might happen for example when the given parameters are not valid (for
+            example in case of a negative standard deviation). The returned value in
+            such cases should represent the worst possible value of the contribution.
 
         Returns
         -------
-        ll : float
+        ll
             The evaluated log-likelihood function.
         """
         raise NotImplementedError(
-            "Your model does not have a loglike_contribution-method. You " +
-            "need to define this method so you can evaluate your noise model.")
+            "Your model does not have a loglike_contribution-method. You need to "
+            "define this method so you can evaluate your noise model."
+        )
 
 
 class NormalNoiseModel(NoiseModelBase):
@@ -412,10 +426,11 @@ class NormalNoiseModel(NoiseModelBase):
         # that 'std' has to be used as the local name
         if 'std' not in [*self.prms_def.values()]:
             raise RuntimeError(
-                "The standard deviation 'std' was not provided in prms_def!")
+                "The standard deviation 'std' was not provided in prms_def!"
+            )
 
-        # the mean value(s) do not have to be stated explicitly; if they are not
-        # given, the are assumed to be zero
+        # the mean value(s) do not have to be stated explicitly; if they are not given,
+        # the are assumed to be zero
         self.zero_mean = True
-        if 'mean' in [*self.prms_def.values()]:
+        if "mean" in [*self.prms_def.values()]:
             self.zero_mean = False

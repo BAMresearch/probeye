@@ -1,15 +1,15 @@
 """
 Linear regression example with spatial correlation model
---------------------------------------------------------------------------------
-The n data points (y1, y2, ..., yn) generated for this example are sampled from
-an n-variate normal distribution with mean values given by yi = a * xi + b with
-a, b being the model parameters and x1, x2, ..., xi, ..., xn being predefined
-spatial x-coordinates ranging from 0 to 1. The data points (y1, y2, ..., yn) are
-not independent but correlated. The corresponding covariance matrix is defined
-based on an exponential correlation function parameterized by the const standard
-deviation sigma of the n-variate normal distribution and a correlation length
-l_corr. Hence, the full model has four parameters a, b, sigma, l_corr, all of
-which are inferred in this example using emcee-sampling.
+----------------------------------------------------------------------------------------
+The n data points (y1, y2, ..., yn) generated for this example are sampled from an
+n-variate normal distribution with mean values given by yi = a * xi + b with a, b being
+the model parameters and x1, x2, ..., xi, ..., xn being predefined spatial x-coordinates
+ranging from 0 to 1. The data points (y1, y2, ..., yn) are not independent but
+correlated. The corresponding covariance matrix is defined based on an exponential
+correlation function parameterized by the const standard deviation sigma of the
+n-variate normal distribution and a correlation length l_corr. Hence, the full model has
+four parameters a, b, sigma, l_corr, all of which are inferred in this example using
+emcee-sampling.
 """
 
 # standard library
@@ -27,51 +27,61 @@ from probeye.definition.noise_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
-from probeye.inference.scipy_.correlation_models import \
-    SpatiotemporalExponentialCorrelationModel
+from probeye.inference.scipy_.correlation_models import (
+    SpatiotemporalExponentialCorrelationModel,
+)
 
 
 class TestProblem(unittest.TestCase):
-
-    def test_spatial_correlation(self, n_steps=200, n_initial_steps=100,
-                                 n_walkers=20, plot=False, show_progress=False,
-                                 run_scipy=True, run_emcee=True, run_torch=False):
+    def test_spatial_correlation(
+        self,
+        n_steps: int = 200,
+        n_initial_steps: int = 100,
+        n_walkers: int = 20,
+        plot: bool = False,
+        show_progress: bool = False,
+        run_scipy: bool = True,
+        run_emcee: bool = True,
+        run_torch: bool = False,
+    ):
         """
         Integration test for the problem described at the top of this file.
 
         Parameters
         ----------
-        n_steps : int, optional
-            Number of steps (samples) to run. Note that the default number is
-            rather low just so the test does not take too long.
-        n_initial_steps : int, optional
+        n_steps
+            Number of steps (samples) to run. Note that the default number is rather low
+            just so the test does not take too long.
+        n_initial_steps
             Number of steps for initial (burn-in) sampling.
-        n_walkers : int, optional
+        n_walkers
             Number of walkers used by the estimator.
-        plot : bool, optional
-            If True, the data and the posterior distributions are plotted. This
-            is deactivated by default, so that the test does not stop until the
-            generated plots are closed.
-        show_progress : bool, optional
+        plot
+            If True, the data and the posterior distributions are plotted. This is
+            deactivated by default, so that the test does not stop until the generated
+            plots are closed.
+        show_progress
             If True, progress-bars will be shown, if available.
-        run_scipy : bool, optional
+        run_scipy
             If True, the problem is solved with scipy (maximum likelihood est).
             Otherwise, no maximum likelihood estimate is derived.
-        run_emcee : bool, optional
-            If True, the problem is solved with the emcee solver. Otherwise,
-            the emcee solver will not be used.
-        run_torch : bool, optional
-            If True, the problem is solved with the pyro/torch_ solver.
-            Otherwise, the pyro/torch_ solver will not be used.
+        run_emcee
+            If True, the problem is solved with the emcee solver. Otherwise, the emcee
+            solver will not be used.
+        run_torch
+            If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
+            pyro/torch_ solver will not be used.
         """
 
         if run_torch:
-            raise RuntimeError("The pyro-solver is not available yet for "
-                               "forward models including correlations.")
+            raise RuntimeError(
+                "The pyro-solver is not available yet for forward models including "
+                "correlations."
+            )
 
-        # ==================================================================== #
-        #                          Set numeric values                          #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                              Set numeric values                              #
+        # ============================================================================ #
 
         # 'true' value of a, and its normal prior parameters
         a_true = 2.5
@@ -98,88 +108,92 @@ class TestProblem(unittest.TestCase):
         n_points = 50
         seed = 1
 
-        # ==================================================================== #
-        #                       Define the Forward Model                       #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def response(self, inp):
-                a = inp['a']
-                b = inp['b']
+            def response(self, inp: dict) -> dict:
+                a = inp["a"]
+                b = inp["b"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = a * os.x.flatten() + b
                 return response
 
-        # ==================================================================== #
-        #                     Define the Inference Problem                     #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
 
-        # initialize the inference problem with a useful name; note that the
-        # name will only be stored as an attribute of the InferenceProblem and
-        # is not important for the problem itself; can be useful when dealing
-        # with multiple problems
+        # initialize the inference problem with a useful name; note that the name will
+        # only be stored as an attribute of the InferenceProblem and is not important
+        # for the problem itself; can be useful when dealing with multiple problems
         problem = InferenceProblem("Linear regression with normal noise")
 
-        # add all parameters to the problem; the first argument states the
-        # parameter's global name (here: 'a', 'b' and 'sigma'); the second
-        # argument defines the parameter type (three options: 'model' for
-        # parameter's of the forward model, 'prior' for prior parameters and
-        # 'noise' for parameters of the noise model); the 'info'-argument is a
-        # short description string used for logging, and the tex-argument gives
-        # a tex-string of the parameter used for plotting; finally, the prior-
-        # argument specifies the parameter's prior; note that this definition
-        # of a prior will result in the initialization of constant parameters of
-        # type 'prior' in the background
-        problem.add_parameter('a', 'model',
-                              tex="$a$",
-                              info="Slope of the graph",
-                              prior=('normal', {'loc': loc_a,
-                                                'scale': scale_a}))
-        problem.add_parameter('b', 'model',
-                              info="Intersection of graph with y-axis",
-                              tex='$b$',
-                              prior=('normal', {'loc': loc_b,
-                                                'scale': scale_b}))
-        problem.add_parameter('sigma', 'noise',
-                              tex=r"$\sigma$",
-                              info="Std. dev, of 0-mean noise model",
-                              prior=('uniform', {'low': low_sigma,
-                                                 'high': high_sigma}))
-        problem.add_parameter('l_corr', 'noise',
-                              tex=r"$l_\mathrm{corr}$",
-                              info="Correlation length of correlation model",
-                              prior=('uniform', {'low': low_l_corr,
-                                                 'high': high_l_corr}))
+        # add all parameters to the problem; the first argument states the parameter's
+        # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
+        # parameter type (three options: 'model' for parameter's of the forward model,
+        # 'prior' for prior parameters and 'noise' for parameters of the noise model);
+        # the 'info'-argument is a short description string used for logging, and the
+        # tex-argument gives a tex-string of the parameter used for plotting; finally,
+        # the prior-argument specifies the parameter's prior; note that this definition
+        # of a prior will result in the initialization of constant parameters of type
+        # 'prior' in the background
+        problem.add_parameter(
+            "a",
+            "model",
+            tex="$a$",
+            info="Slope of the graph",
+            prior=("normal", {"loc": loc_a, "scale": scale_a}),
+        )
+        problem.add_parameter(
+            "b",
+            "model",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+        )
+        problem.add_parameter(
+            "sigma",
+            "noise",
+            tex=r"$\sigma$",
+            info="Std. dev, of 0-mean noise model",
+            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+        )
+        problem.add_parameter(
+            "l_corr",
+            "noise",
+            tex=r"$l_\mathrm{corr}$",
+            info="Correlation length of correlation model",
+            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
+        )
 
-        # add the forward model to the problem; note that the first positional
-        # argument [{'a': 'm'}, 'b'] passed to LinearModel defines the forward
-        # model's parameters by name via a list with elements structured like
-        # {<global parameter name>: <local parameter name>}; a global name is a
-        # name introduced by problem.add_parameter, while a local name is a name
-        # used in the response-method of the forward model class (see the class
-        # LinearModel above); note that the use of the local parameter name 'm'
-        # for the global parameter 'a' is added here only to highlight the
-        # possibility of this feature; it is not necessary at all here; whenever
-        # forward model's parameter has a similar local and global name (which
-        # should be the case most of the times), one doesn't have to use the
-        # verbose notation  {<global parameter name>: <local parameter name>}
-        # but can instead just write the parameter's (global=local) name, like
-        # it is done with the forward model's parameter 'b' below
+        # add the forward model to the problem; note that the first positional argument
+        # [{'a': 'm'}, 'b'] passed to LinearModel defines the forward model's parameters
+        # by name via a list with elements structured like {<global parameter name>:
+        # <local parameter name>}; a global name is a name introduced by problem.
+        # add_parameter, while a local name is a name used in the response-method of the
+        # forward model class (see the class LinearModel above); note that the use of
+        # the local parameter name 'm' for the global parameter 'a' is added here only
+        # to highlight the possibility of this feature; it is not necessary at all here;
+        # whenever forward model's parameter has a similar local and global name (which
+        # should be the case most of the times), one doesn't have to use the verbose
+        # notation  {<global parameter name>: <local parameter name>} but can instead
+        # just write the parameter's (global=local) name, like it is done with the
+        # forward model's parameter 'b' below
         x_test = np.linspace(0.0, 1.0, n_points)
         osensor = Sensor("y", x=x_test)
-        linear_model = LinearModel(['a', 'b'], [], [osensor])
+        linear_model = LinearModel(["a", "b"], [], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
-        # ==================================================================== #
-        #                Add test data to the Inference Problem                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
 
-        # data-generation; first create the true values without noise; these
-        # true values will be the mean values for sampling from a multivariate
-        # normal distribution
+        # data-generation; first create the true values without noise; these true values
+        # will be the mean values for sampling from a multivariate normal distribution
         np.random.seed(seed)
-        y_true = linear_model({'a': a_true, 'b': b_true})[osensor.name]
+        y_true = linear_model({"a": a_true, "b": b_true})[osensor.name]
 
         # create the covariance matrix (this is just for the test data generation)
         x_position_array = np.tile(osensor.x.reshape((n_points, -1)), n_points)
@@ -187,8 +201,8 @@ class TestProblem(unittest.TestCase):
         correlation_model = SpatiotemporalExponentialCorrelationModel(position_arrays)
         cov = correlation_model({'std': sigma, 'l_corr': l_corr})
 
-        # now generate the noisy test data including correlations; we assume
-        # here that there are n_experiments test series
+        # now generate the noisy test data including correlations; we assume here that
+        # there are n_experiments test series
         for i in range(n_experiments):
             exp_name = f'Test_{i}'
             y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
@@ -200,31 +214,38 @@ class TestProblem(unittest.TestCase):
                 experiment_names=exp_name, prms_def=[{'sigma': 'std'}, 'l_corr'])
             problem.add_noise_model(noise_model)
             if plot:
-                plt.scatter(x_test, y_test, label=f'measured data (test {i+1})',
-                            s=10, zorder=10)
+                plt.scatter(
+                    x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
+                )
         # finish the plot
         if plot:
-            plt.plot(x_test, y_true, label='true model', c="black", linewidth=3)
-            plt.xlabel('x')
+            plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
+            plt.xlabel("x")
             plt.ylabel(osensor.name)
             plt.legend()
             plt.tight_layout()
             plt.draw()  # plt.draw() does not stop execution
 
-        # ==================================================================== #
-        #                Solve problem with inference engine(s)                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Solve problem with inference engine(s)                    #
+        # ============================================================================ #
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {'a': a_true, 'b': b_true, 'sigma': sigma,
-                       'l_corr': l_corr}
-        run_inference_engines(problem, true_values=true_values, n_steps=n_steps,
-                              n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              show_progress=show_progress,
-                              run_scipy=run_scipy, run_emcee=run_emcee,
-                              run_torch=run_torch)
+        true_values = {"a": a_true, "b": b_true, "sigma": sigma, "l_corr": l_corr}
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
