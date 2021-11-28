@@ -4,5 +4,6 @@
 [![PyPI version](https://img.shields.io/pypi/v/probeye)](https://pypi.org/project/probeye/)
 ![python versions](https://img.shields.io/pypi/pyversions/probeye)
 [![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/aklawonn/5eb707145cc7d75de25b43d25b13c972/raw/probeye_main_coverage.json)](https://en.wikipedia.org/wiki/Code_coverage)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
 A general framework for setting up parameter estimation problems, and providing an interface for solving them via Bayesian (e.g. MCMC) or frequentist (e.g. maximum likelihood) methods.
