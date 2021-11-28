@@ -24,7 +24,7 @@ class NormalNoise(NormalNoiseModel):
     def __init__(
         self,
         target_sensor: "Sensor",
-        prms_def: Union[str, List[str], dict],
+        prms_def: Union[str, List[Union[str, dict]], dict],
         name: Optional[str] = None,
         corr: Optional[str] = None,
         corr_model: Optional[str] = "exp",

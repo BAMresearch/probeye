@@ -1,9 +1,9 @@
 """
 Linear regression example solved with max. likelihood (without needing priors).
---------------------------------------------------------------------------------
-The model equation is y = m * x + b with a, b being the model parameters and the
-noise model is a normal zero-mean distribution with the std. deviation to infer.
-The problem is solved via maximum likelihood estimation based on scipy.
+----------------------------------------------------------------------------------------
+The model equation is y = m * x + b with a, b being the model parameters and the noise
+model is a normal zero-mean distribution with the std. deviation to infer. The problem
+is solved via maximum likelihood estimation based on scipy.
 """
 
 # standard library imports
@@ -24,21 +24,20 @@ from probeye.inference.scipy_.solver import ScipySolver
 
 
 class TestProblem(unittest.TestCase):
-    def test_maximum_likelihood(self, plot=False):
+    def test_maximum_likelihood(self, plot: bool = False):
         """
         Integration test for the problem described at the top of this file.
 
         Parameters
         ----------
-        plot : bool, optional
-            If True, the problem's data is plotted. This is deactivated by
-            default, so that the test does not stop until the generated plots
-            are closed.
+        plot
+            If True, the problem's data is plotted. This is deactivated by default, so
+            that the test does not stop until the generated plots are closed.
         """
 
-        # ==================================================================== #
-        #                          Set numeric values                          #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                              Set numeric values                              #
+        # ============================================================================ #
 
         # 'true' value of m
         m_true = 2.5
@@ -53,12 +52,12 @@ class TestProblem(unittest.TestCase):
         n_tests = 50
         seed = 1
 
-        # ==================================================================== #
-        #                       Define the Forward Model                       #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def response(self, inp):
+            def response(self, inp: dict) -> dict:
                 # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["m"]
@@ -68,22 +67,21 @@ class TestProblem(unittest.TestCase):
                     response[os.name] = m * x + b
                 return response
 
-        # ==================================================================== #
-        #                     Define the Inference Problem                     #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
 
-        # initialize the inference problem with a useful name; note that the
-        # name will only be stored as an attribute of the InferenceProblem and
-        # is not important for the problem itself; can be useful when dealing
-        # with multiple problems
+        # initialize the inference problem with a useful name; note that the name will
+        # only be stored as an attribute of the InferenceProblem and is not important
+        # for the problem itself; can be useful when dealing with multiple problems
         problem = InferenceProblem("Max likelihood for linear regression")
 
-        # add all parameters to the problem; the first argument states the
-        # parameter's global name (here: 'm', 'b' and 'sigma'); the second
-        # argument defines the parameter type (three options: 'model' for
-        # parameter's of the forward model, 'prior' for prior parameters and
-        # 'noise' for parameters of the noise model); the tex argument is states
-        # a tex-string for the parameter which is only used for plotting
+        # add all parameters to the problem; the first argument states the parameter's
+        # global name (here: 'm', 'b' and 'sigma'); the second argument defines the
+        # parameter type (three options: 'model' for parameter's of the forward model,
+        # 'prior' for prior parameters and 'noise' for parameters of the noise model);
+        # the tex argument is states a tex-string for the parameter which is only used
+        # for plotting
         problem.add_parameter("m", "model", tex="$m$")
         problem.add_parameter("b", "model", tex="$b$")
         problem.add_parameter("sigma", "noise", tex=r"$\sigma$")
@@ -99,9 +97,9 @@ class TestProblem(unittest.TestCase):
             NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
         )
 
-        # ==================================================================== #
-        #                Add test data to the Inference Problem                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
 
         # data-generation; normal noise with constant variance around each point
         np.random.seed(seed)
@@ -131,9 +129,9 @@ class TestProblem(unittest.TestCase):
             plt.tight_layout()
             plt.draw()  # does not stop execution
 
-        # ==================================================================== #
-        #                Solve problem with inference engine(s)                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Solve problem with inference engine(s)                    #
+        # ============================================================================ #
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting

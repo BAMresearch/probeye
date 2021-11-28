@@ -1,12 +1,11 @@
 """
 Inference problem with two forward models that share a common parameter
---------------------------------------------------------------------------------
-The first model equation is y = a * x + b with a, b being the model parameters
-and the second model equation is y = alpha * x**2 + b where alpha is a new model
-parameter, and b is the same model parameter as in the first model equation.
-Both forward models have the same noise model with a normal zero-mean
-distribution where the standard deviation is to be inferred.The problem is
-solved via sampling using emcee and pyro.
+----------------------------------------------------------------------------------------
+The first model equation is y = a * x + b with a, b being the model parameters and the
+second model equation is y = alpha * x**2 + b where alpha is a new model parameter, and
+b is the same model parameter as in the first model equation. Both forward models have
+the same noise model with a normal zero-mean distribution where the standard deviation
+is to be inferred.The problem is solved via sampling using emcee and pyro.
 """
 
 # standard library imports
@@ -29,47 +28,47 @@ from tests.integration_tests.subroutines import run_inference_engines
 class TestProblem(unittest.TestCase):
     def test_two_models(
         self,
-        n_steps=200,
-        n_initial_steps=100,
-        n_walkers=20,
-        plot=False,
-        show_progress=False,
-        run_scipy=True,
-        run_emcee=True,
-        run_torch=False,
+        n_steps: int = 200,
+        n_initial_steps: int = 100,
+        n_walkers: int = 20,
+        plot: bool = False,
+        show_progress: bool = False,
+        run_scipy: bool = True,
+        run_emcee: bool = True,
+        run_torch: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
 
         Parameters
         ----------
-        n_steps : int, optional
-            Number of steps (samples) to run. Note that the default number is
-            rather low just so the test does not take too long.
-        n_initial_steps : int, optional
+        n_steps
+            Number of steps (samples) to run. Note that the default number is rather low
+            just so the test does not take too long.
+        n_initial_steps
             Number of steps for initial (burn-in) sampling.
-        n_walkers : int, optional
+        n_walkers
             Number of walkers used by the estimator.
-        plot : bool, optional
-            If True, the data and the posterior distributions are plotted. This
-            is deactivated by default, so that the test does not stop until the
-            generated plots are closed.
-        show_progress : bool, optional
+        plot
+            If True, the data and the posterior distributions are plotted. This is
+            deactivated by default, so that the test does not stop until the generated
+            plots are closed.
+        show_progress
             If True, progress-bars will be shown, if available.
-        run_scipy : bool, optional
+        run_scipy
             If True, the problem is solved with scipy (maximum likelihood est).
             Otherwise, no maximum likelihood estimate is derived.
-        run_emcee : bool, optional
-            If True, the problem is solved with the emcee solver. Otherwise,
-            the emcee solver will not be used.
-        run_torch : bool, optional
-            If True, the problem is solved with the pyro/torch_ solver.
-            Otherwise, the pyro/torch_ solver will not be used.
+        run_emcee
+            If True, the problem is solved with the emcee solver. Otherwise, the emcee
+            solver will not be used.
+        run_torch
+            If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
+            pyro/torch_ solver will not be used.
         """
 
-        # ==================================================================== #
-        #                          Set numeric values                          #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                              Set numeric values                              #
+        # ============================================================================ #
 
         # 'true' value of a, and its normal prior parameters
         a_true = 2.5
@@ -95,12 +94,12 @@ class TestProblem(unittest.TestCase):
         n_tests = 100
         seed = 1
 
-        # ==================================================================== #
-        #                      Define the Forward Models                       #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                          Define the Forward Models                           #
+        # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def response(self, inp):
+            def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
@@ -110,7 +109,7 @@ class TestProblem(unittest.TestCase):
                 return response
 
         class QuadraticModel(ForwardModelBase):
-            def response(self, inp):
+            def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 alpha = inp["alpha"]
                 beta = inp["beta"]
@@ -119,9 +118,9 @@ class TestProblem(unittest.TestCase):
                     response[os.name] = alpha * x ** 2 + beta
                 return response
 
-        # ==================================================================== #
-        #                     Define the Inference Problem                     #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
 
         # initialize the inference problem with a useful name
         problem = InferenceProblem("Two models with shared parameter and normal noise")
@@ -175,9 +174,9 @@ class TestProblem(unittest.TestCase):
             NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
         )
 
-        # ==================================================================== #
-        #                Add test data to the Inference Problem                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
 
         # data-generation; normal noise with constant variance around each point
         np.random.seed(seed)
@@ -235,9 +234,9 @@ class TestProblem(unittest.TestCase):
             plt.tight_layout()
             plt.draw()  # does not stop execution
 
-        # ==================================================================== #
-        #                Solve problem with inference engine(s)                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Solve problem with inference engine(s)                    #
+        # ============================================================================ #
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way

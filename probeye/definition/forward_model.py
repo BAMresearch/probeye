@@ -20,7 +20,7 @@ class ForwardModelBase:
 
     def __init__(
         self,
-        prms_def_: Union[str, List[str], dict],
+        prms_def_: Union[str, List[Union[str, dict]], dict],
         input_sensors: Union[Sensor, List[Sensor]],
         output_sensors: Union[Sensor, List[Sensor]],
     ):
@@ -106,7 +106,7 @@ class ForwardModelBase:
             "define this method, so you can evaluate your model."
         )
 
-    def __call__(self, inp: dict) -> Dict[str, dict]:
+    def __call__(self, inp: dict) -> dict:
         """
         Calls the self.response method. Shortens internal forward model calls.
         """

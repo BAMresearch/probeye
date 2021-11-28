@@ -13,7 +13,7 @@ class NoiseModelBase:
     def __init__(
         self,
         dist: str,
-        prms_def: Union[str, List[str], dict],
+        prms_def: Union[str, List[Union[str, dict]], dict],
         sensors: Union[Sensor, List[Sensor]],
         name: Optional[str] = None,
         corr: Optional[str] = None,
@@ -245,7 +245,7 @@ class NormalNoiseModel(NoiseModelBase):
 
     def __init__(
         self,
-        prms_def: Union[str, List[str], dict],
+        prms_def: Union[str, List[Union[str, dict]], dict],
         sensors: Union[Sensor, List[Sensor]],
         name: Optional[str] = None,
         corr: Optional[str] = None,

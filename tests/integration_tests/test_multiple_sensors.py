@@ -1,13 +1,13 @@
 """
 Linear model in time and space with three different noise models
---------------------------------------------------------------------------------
-The model equation is y = A * x + B * t + c with A, B, c being the model prms.
-while x and t represent position and time respectively. From the three model
-parameters A and B are latent ones while c is a constant. Measurements are made
-at three different positions (x-values) each of which is associated with an own
-zero-mean, uncorrelated normal noise model with the std. deviations to infer.
-This results in five latent parameters (parameters to infer). The problem
-is solved via sampling by means of emcee and pyro.
+----------------------------------------------------------------------------------------
+The model equation is y = A * x + B * t + c with A, B, c being the model parameters
+while x and t represent position and time respectively. From the three model parameters
+A and B are latent ones while c is a constant. Measurements are made at three different
+positions (x-values) each of which is associated with an own zero-mean, uncorrelated
+normal noise model with the std. deviations to infer. This results in five latent
+parameters (parameters to infer). The problem is solved via sampling by means of emcee
+and pyro.
 """
 
 # standard library imports
@@ -29,45 +29,47 @@ from tests.integration_tests.subroutines import run_inference_engines
 class TestProblem(unittest.TestCase):
     def test_multiple_sensors(
         self,
-        n_steps=200,
-        n_initial_steps=100,
-        n_walkers=20,
-        plot=False,
-        show_progress=False,
-        run_scipy=True,
-        run_emcee=True,
-        run_torch=True,
+        n_steps: int = 200,
+        n_initial_steps: int = 100,
+        n_walkers: int = 20,
+        plot: bool = False,
+        show_progress: bool = False,
+        run_scipy: bool = True,
+        run_emcee: bool = True,
+        run_torch: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
 
         Parameters
         ----------
-        n_steps : int, optional
-            Number of steps (samples) to run. Note that the default number is
-            rather low just so the test does not take too long.
-        n_walkers : int, optional
+        n_steps
+            Number of steps (samples) to run. Note that the default number is rather low
+            just so the test does not take too long.
+        n_initial_steps
+            Number of steps for initial (burn-in) sampling.
+        n_walkers
             Number of walkers used by the estimator.
-        plot : bool, optional
-            If True, the data and the posterior distributions are plotted. This
-            is deactivated by default, so that the test does not stop until the
-            generated plots are closed.
-        show_progress : bool, optional
+        plot
+            If True, the data and the posterior distributions are plotted. This is
+            deactivated by default, so that the test does not stop until the generated
+            plots are closed.
+        show_progress
             If True, progress-bars will be shown, if available.
-        run_scipy : bool, optional
+        run_scipy
             If True, the problem is solved with scipy (maximum likelihood est).
             Otherwise, no maximum likelihood estimate is derived.
-        run_emcee : bool, optional
-            If True, the problem is solved with the emcee solver. Otherwise,
-            the emcee solver will not be used.
-        run_torch : bool, optional
-            If True, the problem is solved with the pyro/torch_ solver.
-            Otherwise, the pyro/torch_ solver will not be used.
+        run_emcee
+            If True, the problem is solved with the emcee solver. Otherwise, the emcee
+            solver will not be used.
+        run_torch
+            If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
+            pyro/torch_ solver will not be used.
         """
 
-        # ==================================================================== #
-        #                          Set numeric values                          #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                              Set numeric values                              #
+        # ============================================================================ #
 
         # 'true' value of A, and its normal prior parameters
         A_true = 1.3
@@ -99,16 +101,16 @@ class TestProblem(unittest.TestCase):
         pos_s2 = 0.5
         pos_s3 = 1.0
 
-        # define global constant; this constant is used here only to test if
-        # there are any problems when using global constants
+        # define global constant; this constant is used here only to test if there are
+        # any problems when using global constants
         c = 0.5
 
-        # ==================================================================== #
-        #                       Define the Forward Model                       #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def response(self, inp):
+            def response(self, inp: dict) -> dict:
                 t = inp["time"]
                 A = inp["A"]
                 B = inp["B"]
@@ -118,9 +120,9 @@ class TestProblem(unittest.TestCase):
                     response[os.name] = A * os.x + B * t + const
                 return response
 
-        # ==================================================================== #
-        #                     Define the Inference Problem                     #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
 
         # initialize the inference problem with a useful name
         problem = InferenceProblem("Linear model with three noise models")
@@ -184,9 +186,9 @@ class TestProblem(unittest.TestCase):
             NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
         )
 
-        # ==================================================================== #
-        #                Add test data to the Inference Problem                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
 
         # add the experimental data
         np.random.seed(1)
@@ -215,9 +217,9 @@ class TestProblem(unittest.TestCase):
         # give problem overview
         problem.info()
 
-        # ==================================================================== #
-        #                Solve problem with inference engine(s)                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Solve problem with inference engine(s)                    #
+        # ============================================================================ #
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
