@@ -18,7 +18,7 @@ from probeye.inference.scipy_.solver import ScipySolver
 from probeye.subroutines import stream_to_logger, print_dict_in_rows
 
 # imports only needed for type hints
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inference_problem import InferenceProblem
 
 

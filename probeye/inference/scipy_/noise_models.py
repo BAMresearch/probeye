@@ -11,7 +11,7 @@ from probeye.inference.scipy_.correlation_models import (
 )
 
 # imports only needed for type hints
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.sensor import Sensor
 
 

@@ -11,7 +11,7 @@ import pyro.distributions as dist
 from probeye.definition.noise_model import NormalNoiseModel
 
 # imports only needed for type hints
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.sensor import Sensor
 
 

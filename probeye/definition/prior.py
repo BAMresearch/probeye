@@ -9,7 +9,7 @@ import matplotlib
 from probeye.subroutines import translate_prms_def
 
 # this is required to prevent a circular import-structure
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.parameter import Parameters
 
 

@@ -11,7 +11,7 @@ from probeye.subroutines import len_or_one
 from probeye.subroutines import add_index_to_tex_prm_name
 
 # imports only needed for type hints
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inference_problem import InferenceProblem
 
 

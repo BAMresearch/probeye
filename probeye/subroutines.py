@@ -9,8 +9,8 @@ import sys
 import numpy as np
 from loguru import logger
 
-# local imports
-if TYPE_CHECKING:
+# local imports for type checking
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inference_problem import InferenceProblem
 
 

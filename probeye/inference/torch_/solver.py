@@ -21,7 +21,7 @@ from probeye.subroutines import print_dict_in_rows
 from probeye.subroutines import check_for_uninformative_priors
 
 # imports only needed for type hints
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inference_problem import InferenceProblem
     from probeye.definition.forward_model import ForwardModelBase
 
