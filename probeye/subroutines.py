@@ -450,7 +450,7 @@ def flatten(arg: Union[list, np.ndarray, float, int, None]) -> Union[list, None]
     return arg_flat
 
 
-def process_spatial_coordinates(
+def process_spatiotemporal_coordinates(
     x: Union[float, int, np.ndarray, None] = None,
     y: Union[float, int, np.ndarray, None] = None,
     z: Union[float, int, np.ndarray, None] = None,

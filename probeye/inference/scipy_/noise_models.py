@@ -180,7 +180,7 @@ class NormalNoise(NormalNoiseModel):
         the docstring there for additional information.
         """
         # compute the model error; note that this mode has exactly one sensor
-        model_error_vector = self.error_vector(model_response)
+        model_error_vector = self.error_vector(model_response_dict)
         # the precision 'prec' is defined as the inverse of the variance, hence
         # prec = 1 / sigma**2 where sigma denotes the standard deviation
         std = prms["std"]

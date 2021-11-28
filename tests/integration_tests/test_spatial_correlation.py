@@ -196,7 +196,9 @@ class TestProblem(unittest.TestCase):
         y_true = linear_model({"a": a_true, "b": b_true})[osensor.name]
 
         # create the covariance matrix (this is just for the test data generation)
-        x_position_array = np.tile(osensor.x.reshape((n_points, -1)), n_points)
+        x_position_array = np.tile(
+            osensor.x.reshape((n_points, -1)), n_points  # type: ignore
+        )
         position_arrays = {"x": x_position_array}
         correlation_model = SpatiotemporalExponentialCorrelationModel(position_arrays)
         cov = correlation_model({"std": sigma, "l_corr": l_corr})
