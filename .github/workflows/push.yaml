@@ -1,12 +1,14 @@
-# This workflow runs on
-#  * a `push` to any branch
+# This workflow runs on a `push` to any branch
 
 name: CI
 
 on:
   push:
+  schedule:
+    - cron: '0 1 * * 6'  # weekly run at 01:00 UTC on Saturday, dependency check
 
 jobs:
+
   # Lint and type checking
   lint_and_type_check:
     name: Lint and type check
@@ -24,10 +26,12 @@ jobs:
       - name: Lint and type check
         run: |
           pre-commit run --all-files --verbose --show-diff-on-failure
+
   # Unit test and coverage
   test:
     name: Test on Python ${{ matrix.python-version }}
     runs-on: ubuntu-latest
+    needs: [ lint_and_type_check ]
     strategy:
       matrix:
         python-version: [ 3.6, 3.7, 3.8, 3.9 ]
@@ -82,6 +86,37 @@ jobs:
           label: coverage
           message: ${{ env.COVERAGE_PCT }}
           color: ${{ env.COVERAGE_COL }}
+
+  # Run tests with the latest available version of all dependencies
+  # these latest versions might be beyond the versions specified in `setup.cfg`
+  # the goal of this job to catch errors with these latest versions
+  # [only for `main`]. Ideally, if this job succeeded with at least one major
+  # version number increased then the `setup.cfg` would be updated.
+  test_with_latest:
+      name: Test with latest dependencies on Python ${{ matrix.python-version }}
+      runs-on: ubuntu-latest
+      if: |
+        github.ref == 'refs/heads/main' &&
+        github.repository == 'BAMresearch/probeye' &&
+        github.event_name == 'schedule'
+      needs: [ lint_and_type_check ]
+      strategy:
+        matrix:
+          python-version: [ 3.6, 3.7, 3.8, 3.9 ]
+
+      steps:
+        - uses: actions/checkout@v2
+        - name: Set up Python ${{ matrix.python-version }}
+          uses: actions/setup-python@v2
+          with:
+            python-version: ${{ matrix.python-version }}
+        - name: Install package with latest dependencies
+          run: |
+            python probeye/_setup_cfg.py
+            pip install .[tests]
+        - name: Test with pytest
+          run: |
+            pytest
 
   # Release to GitHub and PyPi [only for `main`]
   #release:

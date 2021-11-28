@@ -8,7 +8,6 @@ from probeye.postprocessing.sampling import create_trace_plot
 
 
 class TestProblem(unittest.TestCase):
-
     def test_not_implemented_pair_plot(self):
         # check for currently not implemented plotting frameworks
         with self.assertRaises(NotImplementedError):
@@ -35,6 +34,7 @@ class TestProblem(unittest.TestCase):
             create_trace_plot(None, None, plot_with="matplotlib")
         with self.assertRaises(RuntimeError):
             create_trace_plot(None, None, plot_with="other package")
+
 
 if __name__ == "__main__":
     unittest.main()
