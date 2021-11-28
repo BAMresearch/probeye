@@ -24,7 +24,6 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-  
     def test_linear_regression(
         self,
         n_steps: int = 200,

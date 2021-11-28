@@ -15,6 +15,7 @@ from probeye.inference.scipy_.correlation_models import (
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.sensor import Sensor
 
+
 class NormalNoise(NormalNoiseModel):
     def __init__(
         self,
@@ -150,9 +151,7 @@ class NormalNoise(NormalNoiseModel):
         return n_static, n_dynamic
 
     def generate_distance_array(self):
-        """
-
-        """
+        """ """
 
         position_arrays = {v: np.zeros((self.n, self.n)) for v in list(self.corr)}
         for v in self.corr:
@@ -232,8 +231,11 @@ class NormalNoise(NormalNoiseModel):
         _, log_det_cov_matrix = np.linalg.slogdet(cov_matrix)
         error_vector = self.error_vector(model_response_dict)
         error_vector_red = np.dot(self.cov.reduction_array, error_vector)
-        ll = -0.5 * (n * np.log(2 * np.pi) + log_det_cov_matrix +
-                     np.dot(error_vector_red, inv_cov_matrix.dot(error_vector_red)))
+        ll = -0.5 * (
+            n * np.log(2 * np.pi)
+            + log_det_cov_matrix
+            + np.dot(error_vector_red, inv_cov_matrix.dot(error_vector_red))
+        )
         return ll
 
 

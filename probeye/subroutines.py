@@ -449,6 +449,7 @@ def flatten(arg: Union[list, np.ndarray, float, int, None]) -> Union[list, None]
         )
     return arg_flat
 
+
 def process_spatial_coordinates(
     x: Union[float, int, np.ndarray, None] = None,
     y: Union[float, int, np.ndarray, None] = None,
@@ -494,8 +495,7 @@ def process_spatial_coordinates(
     """
 
     # the following check should cover the option that no spatial input is given
-    if (x is None) and (y is None) and (z is None) and \
-            (t is None) and (coords is None):
+    if (x is None) and (y is None) and (z is None) and (t is None) and (coords is None):
         return np.array([]), []
 
     # convert all single-coordinate inputs to flat numpy arrays
@@ -815,12 +815,15 @@ def check_for_uninformative_priors(problem: "InferenceProblem"):
         The given problem to check.
     """
     for prior_name, prior_template in problem.priors.items():
-        if prior_template.prior_type == 'uninformative':
-            raise RuntimeError(f"The prior '{prior_name}' is uninformative,"
-                               f" which cannot be used by the requested "
-                               f"solver. You could change it to a "
-                               f"uniform-prior on a specified interval to "
-                               f"solver this problem.")
+        if prior_template.prior_type == "uninformative":
+            raise RuntimeError(
+                f"The prior '{prior_name}' is uninformative,"
+                f" which cannot be used by the requested "
+                f"solver. You could change it to a "
+                f"uniform-prior on a specified interval to "
+                f"solver this problem."
+            )
+
 
 def get_dictionary_depth(d):
     """
@@ -848,7 +851,7 @@ def compute_reduction_array(array):
     rows_to_remove = []
     for i, reference_row in enumerate(array):
         rows_to_add = []
-        for j, row_to_check in enumerate(array[i+1:], start=i+1):
+        for j, row_to_check in enumerate(array[i + 1 :], start=i + 1):
             if np.allclose(row_to_check, reference_row):
                 rows_to_add.append(j)
         for row_idx in rows_to_add:

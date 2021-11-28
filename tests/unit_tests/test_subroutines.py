@@ -217,7 +217,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for only x being given as list
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=[1, 2, 3], y=None, z=None, coords=None)
+            x=[1, 2, 3], y=None, z=None, coords=None
+        )
         coords_expected = np.array([[1, 2, 3]])
         order_expected = ["x"]
         self.assertTrue(
@@ -227,7 +228,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for only y being given as numpy array
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=None, y=np.array([1, 2, 3]), z=None, coords=None)
+            x=None, y=np.array([1, 2, 3]), z=None, coords=None
+        )
         coords_expected = np.array([[1, 2, 3]])
         order_expected = ["y"]
         self.assertTrue(
@@ -237,7 +239,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for only y being given as list
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=None, y=[1, 2, 3], z=None, coords=None)
+            x=None, y=[1, 2, 3], z=None, coords=None
+        )
         coords_expected = np.array([[1, 2, 3]])
         order_expected = ["y"]
         self.assertTrue(
@@ -247,7 +250,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for only z being given as numpy array
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=None, y=None, z=np.array([1, 2, 3]), coords=None)
+            x=None, y=None, z=np.array([1, 2, 3]), coords=None
+        )
         coords_expected = np.array([[1, 2, 3]])
         order_expected = ["z"]
         self.assertTrue(
@@ -257,7 +261,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for only z being given as list
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=None, y=None, z=[1, 2, 3], coords=None)
+            x=None, y=None, z=[1, 2, 3], coords=None
+        )
         coords_expected = np.array([[1, 2, 3]])
         order_expected = ["z"]
         self.assertTrue(
@@ -267,7 +272,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for x and y being given as numpy arrays
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=np.array([1, 2, 3]), y=np.array([4, 5, 6]), z=None, coords=None)
+            x=np.array([1, 2, 3]), y=np.array([4, 5, 6]), z=None, coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
         order_expected = ["x", "y"]
         self.assertTrue(
@@ -277,7 +283,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for x and y being given as lists
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=[1, 2, 3], y=[4, 5, 6], z=None, coords=None)
+            x=[1, 2, 3], y=[4, 5, 6], z=None, coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
         order_expected = ["x", "y"]
         self.assertTrue(
@@ -287,7 +294,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for x and z being given as numpy arrays
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=np.array([1, 2, 3]), y=None, z=np.array([4, 5, 6]), coords=None)
+            x=np.array([1, 2, 3]), y=None, z=np.array([4, 5, 6]), coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
         order_expected = ["x", "z"]
         self.assertTrue(
@@ -297,7 +305,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for x and z being given as lists
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=[1, 2, 3], y=None, z=[4, 5, 6], coords=None)
+            x=[1, 2, 3], y=None, z=[4, 5, 6], coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
         order_expected = ["x", "z"]
         self.assertTrue(
@@ -307,7 +316,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for y and z being given as numpy arrays
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=None, y=np.array([1, 2, 3]), z=np.array([4, 5, 6]), coords=None)
+            x=None, y=np.array([1, 2, 3]), z=np.array([4, 5, 6]), coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
         order_expected = ["y", "z"]
         self.assertTrue(
@@ -317,7 +327,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for y and z being given as lists
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=None, y=[1, 2, 3], z=[4, 5, 6], coords=None)
+            x=None, y=[1, 2, 3], z=[4, 5, 6], coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
         order_expected = ["y", "z"]
         self.assertTrue(
@@ -327,8 +338,11 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for x, y and z being given as numpy arrays
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=np.array([1, 2, 3]), y=np.array([4, 5, 6]),
-            z=np.array([7, 8, 9]), coords=None)
+            x=np.array([1, 2, 3]),
+            y=np.array([4, 5, 6]),
+            z=np.array([7, 8, 9]),
+            coords=None,
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
         order_expected = ["x", "y", "z"]
         self.assertTrue(
@@ -338,7 +352,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for y and z being given as lists
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            x=[1, 2, 3], y=[4, 5, 6], z=[7, 8, 9], coords=None)
+            x=[1, 2, 3], y=[4, 5, 6], z=[7, 8, 9], coords=None
+        )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
         order_expected = ["x", "y", "z"]
         self.assertTrue(
@@ -348,8 +363,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check for coords being given as numpy array with new order
         coords_computed, order_computed = process_spatiotemporal_coordinates(
-            coords=np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]]),
-            order=('y', 'x', 'z'))
+            coords=np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]]), order=("y", "x", "z")
+        )
         coords_expected = np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]])
         order_expected = ["y", "x", "z"]
         self.assertTrue(

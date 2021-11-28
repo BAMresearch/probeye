@@ -197,21 +197,28 @@ class TestProblem(unittest.TestCase):
 
         # create the covariance matrix (this is just for the test data generation)
         x_position_array = np.tile(osensor.x.reshape((n_points, -1)), n_points)
-        position_arrays = {'x': x_position_array}
+        position_arrays = {"x": x_position_array}
         correlation_model = SpatiotemporalExponentialCorrelationModel(position_arrays)
-        cov = correlation_model({'std': sigma, 'l_corr': l_corr})
+        cov = correlation_model({"std": sigma, "l_corr": l_corr})
 
         # now generate the noisy test data including correlations; we assume here that
         # there are n_experiments test series
         for i in range(n_experiments):
-            exp_name = f'Test_{i}'
+            exp_name = f"Test_{i}"
             y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
-            problem.add_experiment(exp_name, fwd_model_name="LinearModel",
-                                   sensor_values={osensor.name: y_test})
+            problem.add_experiment(
+                exp_name,
+                fwd_model_name="LinearModel",
+                sensor_values={osensor.name: y_test},
+            )
             # add the noise model to the problem
             noise_model = NormalNoiseModel(
-                sensors=osensor, corr_static='x', corr_model='exp',
-                experiment_names=exp_name, prms_def=[{'sigma': 'std'}, 'l_corr'])
+                sensors=osensor,
+                corr_static="x",
+                corr_model="exp",
+                experiment_names=exp_name,
+                prms_def=[{"sigma": "std"}, "l_corr"],
+            )
             problem.add_noise_model(noise_model)
             if plot:
                 plt.scatter(

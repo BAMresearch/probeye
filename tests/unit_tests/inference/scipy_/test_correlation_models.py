@@ -15,10 +15,11 @@ class TestProblem(unittest.TestCase):
         n = 10
         x_test = np.linspace(0.0, 1.0, n)
         position_array = np.tile(x_test.reshape((n, -1)), n)
-        position_arrays = {'x': position_array}
+        position_arrays = {"x": position_array}
         scm = SpatiotemporalExponentialCorrelationModel(position_arrays)
-        self.assertTrue(not scm.check_prms({'l_corr': -1., 'std': 1.}))
-        self.assertTrue(not scm.check_prms({'l_corr': 1., 'std': -1.}))
+        self.assertTrue(not scm.check_prms({"l_corr": -1.0, "std": 1.0}))
+        self.assertTrue(not scm.check_prms({"l_corr": 1.0, "std": -1.0}))
+
 
 if __name__ == "__main__":
     unittest.main()

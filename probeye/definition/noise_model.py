@@ -16,9 +16,19 @@ class NoiseModelBase:
     General noise model without any (solver-specific) computing methods.
     """
 
-    def __init__(self, dist, prms_def, sensors, experiment_names=None,
-                 name=None, corr_static='', corr_dynamic='', corr_model='exp',
-                 corr_dict=None, noise_type='additive'):
+    def __init__(
+        self,
+        dist,
+        prms_def,
+        sensors,
+        experiment_names=None,
+        name=None,
+        corr_static="",
+        corr_dynamic="",
+        corr_model="exp",
+        corr_dict=None,
+        noise_type="additive",
+    ):
         """
         Parameters
         ----------
@@ -147,7 +157,8 @@ class NoiseModelBase:
         else:
             raise ValueError(
                 f"Unknown noise_type: '{noise_type}'. The noise_type must be "
-                f"either 'additive', 'multiplicative' or 'other'.")
+                f"either 'additive', 'multiplicative' or 'other'."
+            )
 
     @property
     def n_experiments(self):
@@ -157,34 +168,37 @@ class NoiseModelBase:
         """
         return len(self.experiment_names)
 
-    def check_correlation_definition(self, valid_corr_models=('exp',)):
+    def check_correlation_definition(self, valid_corr_models=("exp",)):
         """
         Check if the correlation definition cumulated in self.corr is valid.
         """
         # check that only valid characters are given, and that those characters
         # are at most mentioned once
         for char in self.corr:
-            if char not in ['x', 'y', 'z', 't']:
+            if char not in ["x", "y", "z", "t"]:
                 raise RuntimeError(
                     f"Found invalid correlation variable '{char}' in the "
                     f"correlation definition. Only the characters 'x', 'y', "
-                    f"'z', 't' are valid correlation variables.")
+                    f"'z', 't' are valid correlation variables."
+                )
             if self.corr.count(char) > 1:
                 raise RuntimeError(
                     f"The correlation variable '{char}' was mentioned more "
-                    f"than once in the correlation definition: '{self.corr}'.")
+                    f"than once in the correlation definition: '{self.corr}'."
+                )
         # check the correlation model
         if self.corr_model not in valid_corr_models:
             raise ValueError(
                 f"Found invalid correlation model '{self.corr_model}' in the "
                 f"correlation definition. Currently, valid correlation models "
-                f"are: {valid_corr_models}.")
+                f"are: {valid_corr_models}."
+            )
 
     def prepare_corr_dict(self):
         # check the correlation dictionary (corr_dict); note that this dict
         # can have two different structures, see the explanation in __init__
         if self.corr_dict is None:
-            self.corr_dict = {'x': 'x', 'y': 'y', 'z': 'z', 't': 't'}
+            self.corr_dict = {"x": "x", "y": "y", "z": "z", "t": "t"}
         depth = get_dictionary_depth(self.corr_dict)
         if depth == 2:
             # in this case, self.corr_dict describes an experiment-wise mapping
@@ -194,14 +208,16 @@ class NoiseModelBase:
                         raise KeyError(
                             f"The specified correlation variable '{char}' is "
                             f"missing in the give corr_dict for experiment "
-                            f"'{exp_name}'.")
+                            f"'{exp_name}'."
+                        )
         elif depth == 1:
             # in this case, self.corr_dict describes a global mapping
             for char in self.corr:
                 if char not in self.corr_dict:
                     raise KeyError(
                         f"The specified correlation variable '{char}' is "
-                        f"missing in the give corr_dict.")
+                        f"missing in the give corr_dict."
+                    )
             # translate the global correlation dictionary to the experiment-wise
             # format, so that in each of the two cases described here, it has
             # the same format (required for later processing)
@@ -309,7 +325,7 @@ class NoiseModelBase:
         idx = 0
         for error_sub_vector in model_error_dict.values():
             m = len_or_one(error_sub_vector)
-            error_vector[idx: idx + m] = error_sub_vector
+            error_vector[idx : idx + m] = error_sub_vector
             idx += m
         return error_vector
 
@@ -406,25 +422,41 @@ class NormalNoiseModel(NoiseModelBase):
     noise model when setting up the InferenceProblem.
     """
 
-    def __init__(self, prms_def, sensors, experiment_names=None, name=None,
-                 corr_static='', corr_dynamic='', corr_model='exp',
-                 corr_dict=None, noise_type='additive'):
+    def __init__(
+        self,
+        prms_def,
+        sensors,
+        experiment_names=None,
+        name=None,
+        corr_static="",
+        corr_dynamic="",
+        corr_model="exp",
+        corr_dict=None,
+        noise_type="additive",
+    ):
         """
         See docstring of NoiseModelBase for information on the input arguments.
         Except for the missing 'dist'-argument, they are similar.
         """
 
         # initialize the base class with given input
-        super().__init__('normal', prms_def, sensors,
-                         experiment_names=experiment_names,
-                         name=name, corr_static=corr_static,
-                         corr_dynamic=corr_dynamic, corr_model=corr_model,
-                         corr_dict=corr_dict, noise_type=noise_type)
+        super().__init__(
+            "normal",
+            prms_def,
+            sensors,
+            experiment_names=experiment_names,
+            name=name,
+            corr_static=corr_static,
+            corr_dynamic=corr_dynamic,
+            corr_model=corr_model,
+            corr_dict=corr_dict,
+            noise_type=noise_type,
+        )
 
         # check that at the standard deviation is provided (this can be either
         # as a constant or a latent parameter, but it has to be given); note
         # that 'std' has to be used as the local name
-        if 'std' not in [*self.prms_def.values()]:
+        if "std" not in [*self.prms_def.values()]:
             raise RuntimeError(
                 "The standard deviation 'std' was not provided in prms_def!"
             )

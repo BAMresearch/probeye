@@ -16,10 +16,17 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-
-    def test_time_correlation(self, n_steps=1000, n_initial_steps=100,
-                              n_walkers=20, plot=False, show_progress=False,
-                              run_scipy=False, run_emcee=True, run_torch=False):
+    def test_time_correlation(
+        self,
+        n_steps=1000,
+        n_initial_steps=100,
+        n_walkers=20,
+        plot=False,
+        show_progress=False,
+        run_scipy=False,
+        run_emcee=True,
+        run_torch=False,
+    ):
         """
         Integration test for the problem described at the top of this file.
 
@@ -76,12 +83,11 @@ class TestProblem(unittest.TestCase):
         # ==================================================================== #
 
         class TrajectoryModel(ForwardModelBase):
-
             def response(self, inp):
                 # this method *must* be provided by the user
-                t = inp['t']
-                v0 = inp['v0']
-                g = inp['g']
+                t = inp["t"]
+                v0 = inp["v0"]
+                g = inp["g"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = np.maximum((v0 - 0.5 * g * t) * t, 0.0)
@@ -95,27 +101,33 @@ class TestProblem(unittest.TestCase):
         problem = InferenceProblem("Estimate gravitational acceleration")
 
         # add all parameters to the problem
-        problem.add_parameter('g', 'model', tex="$g$",
-                              info="Gravitational acceleration of earth",
-                              prior=('normal', {'loc': loc_g,
-                                                'scale': scale_g}))
-        problem.add_parameter('sigma', 'noise',
-                              tex=r"$\sigma$",
-                              info="Std. dev, of normal 0-mean noise model",
-                              prior=('uniform', {'low': low_sigma,
-                                                 'high': high_sigma}))
-        problem.add_parameter('l_corr', 'noise',
-                              tex=r"$l_\mathrm{corr}$",
-                              info="Correlation length of correlation model",
-                              prior=('uniform', {'low': low_l_corr,
-                                                 'high': high_l_corr}))
+        problem.add_parameter(
+            "g",
+            "model",
+            tex="$g$",
+            info="Gravitational acceleration of earth",
+            prior=("normal", {"loc": loc_g, "scale": scale_g}),
+        )
+        problem.add_parameter(
+            "sigma",
+            "noise",
+            tex=r"$\sigma$",
+            info="Std. dev, of normal 0-mean noise model",
+            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+        )
+        problem.add_parameter(
+            "l_corr",
+            "noise",
+            tex=r"$l_\mathrm{corr}$",
+            info="Correlation length of correlation model",
+            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
+        )
 
         # add the forward model to the problem
         isensor1 = Sensor("t")
         isensor2 = Sensor("v0")
         osensor = Sensor("y")
-        trajectory_model = TrajectoryModel(
-            ['g'], [isensor1, isensor2], [osensor])
+        trajectory_model = TrajectoryModel(["g"], [isensor1, isensor2], [osensor])
         problem.add_forward_model("TrajectoryModel", trajectory_model)
 
         # ==================================================================== #
@@ -181,11 +193,11 @@ class TestProblem(unittest.TestCase):
             y_vector = np.zeros(t_vector.shape)
             for i, t_i in enumerate(t_vector):
                 if t_i <= t_peak:
-                    y_vector[i] =\
-                        y_peak + 1 / mu * np.log(np.cos((t_peak - t_i) / t_f))
+                    y_vector[i] = y_peak + 1 / mu * np.log(np.cos((t_peak - t_i) / t_f))
                 elif (t_peak < t_i) and (t_i < t_end):
-                    y_vector[i] =\
-                        y_peak - 1 / mu * np.log(np.cosh((t_i - t_peak) / t_f))
+                    y_vector[i] = y_peak - 1 / mu * np.log(
+                        np.cosh((t_i - t_peak) / t_f)
+                    )
                 else:
                     y_vector[i] = 0.0
 
@@ -201,81 +213,101 @@ class TestProblem(unittest.TestCase):
         time_test_1_tracker_1 = np.arange(0, 5, 1.0)
         y_test_1_tracker_1 = forward_process(time_test_1_tracker_1, v0_test_1)
         y_test_1_tracker_1 = np.random.normal(
-            loc=y_test_1_tracker_1, scale=sd_noise_tracker_1)
+            loc=y_test_1_tracker_1, scale=sd_noise_tracker_1
+        )
         time_test_1_tracker_2 = np.arange(0, 5, 0.6)
         y_test_1_tracker_2 = forward_process(time_test_1_tracker_2, v0_test_1)
         y_test_1_tracker_2 = np.random.normal(
-            loc=y_test_1_tracker_2, scale=sd_noise_tracker_2)
+            loc=y_test_1_tracker_2, scale=sd_noise_tracker_2
+        )
 
         # test data for second test with two trackers
         v0_test_2 = 25.0
         time_test_2_tracker_1 = np.arange(0, 6, 0.7)
         y_test_2_tracker_1 = forward_process(time_test_2_tracker_1, v0_test_2)
         y_test_2_tracker_1 = np.random.normal(
-            loc=y_test_2_tracker_1, scale=sd_noise_tracker_1)
+            loc=y_test_2_tracker_1, scale=sd_noise_tracker_1
+        )
         time_test_2_tracker_2 = np.arange(0, 6, 0.8)
         y_test_2_tracker_2 = forward_process(time_test_2_tracker_2, v0_test_2)
         y_test_2_tracker_2 = np.random.normal(
-            loc=y_test_2_tracker_2, scale=sd_noise_tracker_2)
+            loc=y_test_2_tracker_2, scale=sd_noise_tracker_2
+        )
 
         # plot the generated data if requested
         if plot:
-            plt.scatter(time_test_1_tracker_1,
-                        y_test_1_tracker_1,
-                        label='Test 1, Tracker 1')
-            plt.scatter(time_test_1_tracker_2,
-                        y_test_1_tracker_2,
-                        label='Test 1, Tracker 2')
-            plt.scatter(time_test_2_tracker_1,
-                        y_test_2_tracker_1,
-                        label='Test 2, Tracker 1')
-            plt.scatter(time_test_2_tracker_2,
-                        y_test_2_tracker_2,
-                        label='Test 2, Tracker 2')
-            plt.xlabel('time $t$ [s]')
-            plt.ylabel('elevation $y$ [m]')
+            plt.scatter(
+                time_test_1_tracker_1, y_test_1_tracker_1, label="Test 1, Tracker 1"
+            )
+            plt.scatter(
+                time_test_1_tracker_2, y_test_1_tracker_2, label="Test 1, Tracker 2"
+            )
+            plt.scatter(
+                time_test_2_tracker_1, y_test_2_tracker_1, label="Test 2, Tracker 1"
+            )
+            plt.scatter(
+                time_test_2_tracker_2, y_test_2_tracker_2, label="Test 2, Tracker 2"
+            )
+            plt.xlabel("time $t$ [s]")
+            plt.ylabel("elevation $y$ [m]")
             plt.legend()
             plt.tight_layout()
             plt.show()
 
         # add the experimental data
         problem.add_experiment(
-            f'Trajectory_1_Tracker_1',
+            f"Trajectory_1_Tracker_1",
             fwd_model_name="TrajectoryModel",
-            sensor_values={isensor1.name: time_test_1_tracker_1,
-                           isensor2.name: v0_test_1,
-                           osensor.name: y_test_1_tracker_1})
+            sensor_values={
+                isensor1.name: time_test_1_tracker_1,
+                isensor2.name: v0_test_1,
+                osensor.name: y_test_1_tracker_1,
+            },
+        )
         problem.add_experiment(
-            f'Trajectory_1_Tracker_2',
+            f"Trajectory_1_Tracker_2",
             fwd_model_name="TrajectoryModel",
-            sensor_values={isensor1.name: time_test_1_tracker_2,
-                           isensor2.name: v0_test_1,
-                           osensor.name: y_test_1_tracker_2})
+            sensor_values={
+                isensor1.name: time_test_1_tracker_2,
+                isensor2.name: v0_test_1,
+                osensor.name: y_test_1_tracker_2,
+            },
+        )
         problem.add_experiment(
-            f'Trajectory_2_Tracker_1',
+            f"Trajectory_2_Tracker_1",
             fwd_model_name="TrajectoryModel",
-            sensor_values={isensor1.name: time_test_2_tracker_1,
-                           isensor2.name: v0_test_2,
-                           osensor.name: y_test_2_tracker_1})
+            sensor_values={
+                isensor1.name: time_test_2_tracker_1,
+                isensor2.name: v0_test_2,
+                osensor.name: y_test_2_tracker_1,
+            },
+        )
         problem.add_experiment(
-            f'Trajectory_2_Tracker_2',
+            f"Trajectory_2_Tracker_2",
             fwd_model_name="TrajectoryModel",
-            sensor_values={isensor1.name: time_test_2_tracker_2,
-                           isensor2.name: v0_test_2,
-                           osensor.name: y_test_2_tracker_2})
+            sensor_values={
+                isensor1.name: time_test_2_tracker_2,
+                isensor2.name: v0_test_2,
+                osensor.name: y_test_2_tracker_2,
+            },
+        )
 
         # add the noise model to the problem
         noise_model = NormalNoiseModel(
-            sensors=osensor, corr_dynamic='t', corr_model='exp',
-            prms_def=[{'sigma': 'std'}, 'l_corr'],
-            experiment_names=['Trajectory_1_Tracker_1',
-                              'Trajectory_1_Tracker_2'])
+            sensors=osensor,
+            corr_dynamic="t",
+            corr_model="exp",
+            prms_def=[{"sigma": "std"}, "l_corr"],
+            experiment_names=["Trajectory_1_Tracker_1", "Trajectory_1_Tracker_2"],
+        )
         problem.add_noise_model(noise_model)
         noise_model = NormalNoiseModel(
-            sensors=osensor, corr_dynamic='t', corr_model='exp',
-            prms_def=[{'sigma': 'std'}, 'l_corr'],
-            experiment_names=['Trajectory_2_Tracker_1',
-                              'Trajectory_2_Tracker_2'])
+            sensors=osensor,
+            corr_dynamic="t",
+            corr_model="exp",
+            prms_def=[{"sigma": "std"}, "l_corr"],
+            experiment_names=["Trajectory_2_Tracker_1", "Trajectory_2_Tracker_2"],
+        )
         problem.add_noise_model(noise_model)
 
         # give problem overview
@@ -287,12 +319,18 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        run_inference_engines(problem, n_steps=n_steps,
-                              n_initial_steps=n_initial_steps,
-                              n_walkers=n_walkers, plot=plot,
-                              show_progress=show_progress,
-                              run_scipy=run_scipy, run_emcee=run_emcee,
-                              run_torch=run_torch)
+        run_inference_engines(
+            problem,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -914,7 +914,8 @@ class InferenceProblem:
             if noise_model.assign_experiments_automatically:
                 # get experiments that contain all of the noise model's sensors
                 experiment_names = self.get_experiment_names(
-                    sensor_names=noise_model.sensor_names)
+                    sensor_names=noise_model.sensor_names
+                )
                 n_experiments_noise += len(experiment_names)
                 # add the relevant experiment names to the noise model
                 noise_model.add_experiments(experiment_names)

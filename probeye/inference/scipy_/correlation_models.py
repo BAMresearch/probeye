@@ -86,7 +86,7 @@ class SpatiotemporalExponentialCorrelationModel:
         distance_array = np.sqrt(distance_array)
 
         return distance_array
-      
+
     def __call__(self, prms: dict) -> np.ndarray:
         """
         Returns the covariance matrix based on the correlation model.
