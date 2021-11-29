@@ -219,7 +219,7 @@ def create_pair_plot(
 
         # the following command reduces the otherwise wide margins
         plt.tight_layout()
-        
+
         return axs
 
     elif plot_with == "seaborn":
