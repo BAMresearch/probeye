@@ -244,7 +244,7 @@ def create_posterior_plot(
     problem: "InferenceProblem",
     plot_with: str = "arviz",
     kind: str = "hist",
-    figsize: Optional[tuple] = (9, 9),
+    figsize: Optional[tuple] = (10, 3),
     textsize: Union[int, float] = 10,
     hdi_prob: float = 0.95,
     true_values: Optional[dict] = None,
