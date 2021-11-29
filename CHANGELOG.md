@@ -1,6 +1,10 @@
 # probeye changelog
 
-## 1.0.12 (2021-Nov-11)
+## 1.0.13 (2021-Nov-29)
+### Changed
+- fixed a bug with the probeye.txt file, which was missing in the build
+
+## 1.0.12 (2021-Nov-28)
 ### Changed
 - modified code format according to standard black and introduced type hints
 
