@@ -5,6 +5,7 @@ from typing import Union, Optional, TYPE_CHECKING
 import arviz as az
 import numpy as np
 import matplotlib.pyplot as plt
+from loguru import logger
 
 # local imports
 from probeye.subroutines import len_or_one
@@ -24,13 +25,15 @@ def create_pair_plot(
     kind: str = "kde",
     figsize: Optional[tuple] = (9, 9),
     textsize: Union[int, float] = 10,
+    title_size: Union[int, float] = 14,
+    title: Optional[str] = None,
     true_values: Optional[dict] = None,
     show_legends: bool = True,
     show: bool = True,
     **kwargs,
 ) -> np.ndarray:
     """
-    Creates a pair-plot for the given inference data using arviz.
+    Creates a pair-plot for the given inference data.
 
     Parameters
     ----------
@@ -57,6 +60,10 @@ def create_pair_plot(
         the figsize will be derived automatically.
     textsize
         Defines the font size in the default unit.
+    title_size
+        Defines the font size of the figures title if 'title' is given.
+    title
+        The title of the figure.
     true_values
         Used for plotting 'true' parameter values. Keys are the parameter names and
         values are the values that are supposed to be shown in the marginal plots.
@@ -72,8 +79,18 @@ def create_pair_plot(
 
     Returns
     -------
+    axs
         The array of subplots of the created plot.
     """
+
+    # a pairplot can only be generate when there are at least two parameter or parameter
+    # components (the latter refers to vector-valued parameters)
+    if problem.n_latent_prms_dim == 1:
+        logger.warning(
+            "The combined dimension of all latent parameters is one. Hence, no "
+            "pairplot can be generated in this setup."
+        )
+        return np.array([])
 
     if plot_with == "arviz":
 
@@ -125,14 +142,6 @@ def create_pair_plot(
             **kwargs,
         )
 
-        # by default, the y-axis of the first and last marginal plot have ticks, tick-
-        # labels and axis-labels that are not meaningful to show on the y-axis; hence,
-        # we remove them here
-        for i in [0, -1]:
-            axs[i, i].yaxis.set_ticks_position("none")
-            axs[i, i].yaxis.set_ticklabels([])
-            axs[i, i].yaxis.set_visible(False)
-
         # adds a reference value in each marginal plot; for some reason this is not done
         # by arviz.pair_plot when passing 'reference_values'
         if "reference_values" in kwargs:
@@ -140,10 +149,30 @@ def create_pair_plot(
             if "reference_values_kwargs" in kwargs:
                 reference_values_kwargs = kwargs["reference_values_kwargs"]
             ref_value_list = [*kwargs["reference_values"].values()]
-            for i, prm_value in enumerate(ref_value_list):
-                axs[i, i].scatter(
-                    prm_value,
+            if problem.n_latent_prms_dim > 2:
+                # in this case, the relevant axis is always the horizontal one
+                for i, prm_value in enumerate(ref_value_list):
+                    axs[i, i].scatter(
+                        prm_value,
+                        0,
+                        label="true value",
+                        zorder=10,
+                        **reference_values_kwargs,
+                        edgecolor="black",
+                    )
+            else:
+                # in this case, the plot on the bottom right is rotated
+                axs[0, 0].scatter(
+                    ref_value_list[0],
                     0,
+                    label="true value",
+                    zorder=10,
+                    **reference_values_kwargs,
+                    edgecolor="black",
+                )
+                axs[1, 1].scatter(
+                    0,
+                    ref_value_list[1],
                     label="true value",
                     zorder=10,
                     **reference_values_kwargs,
@@ -162,7 +191,11 @@ def create_pair_plot(
                     continue
                 x = None
                 if focus_on_posterior:
-                    x_min, x_max = axs[i, i].get_xlim()
+                    if (problem.n_latent_prms_dim == 2) and (i == 1):
+                        # the plot on the bottom right is rotated
+                        x_min, x_max = axs[i, i].get_ylim()
+                    else:
+                        x_min, x_max = axs[i, i].get_xlim()
                     x = np.linspace(x_min, x_max, 200)
                 # the following code adds labels to the prior and posterior plot if they
                 # are represented as lines
@@ -173,8 +206,9 @@ def create_pair_plot(
                     # this is for the case, when the posterior is not shown as a line,
                     # but for example as a histogram etc.
                     posterior_handle, posterior_label = [], []
+                rotate = True if problem.n_latent_prms_dim == 2 and i == 1 else False
                 problem.parameters[prm_name].prior.plot(
-                    axs[i, i], problem.parameters, x=x
+                    axs[i, i], problem.parameters, x=x, rotate=rotate
                 )
                 if show_legends:
                     prior_handle, prior_label = axs[i, i].get_legend_handles_labels()
@@ -186,8 +220,8 @@ def create_pair_plot(
                 i += 1
 
             # here, the axis of the non-marginal plots are adjusted to the new ranges
-            if not focus_on_posterior:
-                n = len(prm_names)
+            if (not focus_on_posterior) and (problem.n_latent_prms_dim > 2):
+                n = problem.n_latent_prms_dim
                 for i in range(n):
                     x_min, x_max = axs[i, i].get_xlim()
                     for j in range(i + 1, n):
@@ -217,8 +251,31 @@ def create_pair_plot(
                         loc="upper right",
                     )
 
-        # the following command reduces the otherwise wide margins
-        plt.tight_layout()
+        # add a title to the plot, if requested
+        if title:
+            fig = plt.gcf()
+            fig.suptitle(title, fontsize=title_size)
+
+        # the following command reduces the otherwise wide margins; when only two
+        # parameter (components) are given, the tight_layout()-call only results in a
+        # warning without having an effect - hence, the if-clause
+        if problem.n_latent_prms_dim > 2:
+            plt.tight_layout()
+
+        # by default, the y-axis of the first and last marginal plot have ticks, tick-
+        # labels and axis-labels that are not meaningful to show on the y-axis; hence,
+        # we remove them here; since the default plot looks different for only two
+        # latent parameters, there is a check before
+        if problem.n_latent_prms_dim > 2:
+            for i in [0, -1]:
+                axs[i, i].yaxis.set_ticks_position("none")
+                axs[i, i].yaxis.set_ticklabels([])
+                axs[i, i].yaxis.set_visible(False)
+            for i in range(problem.n_latent_prms_dim - 1):
+                axs[i, i].set_xticks(ticks=axs[-1, i].get_xticks())
+                axs[i, i].set_xlim(axs[-1, i].get_xlim())
+            axs[-1, -1].set_xticks(ticks=axs[-1, 0].get_yticks())
+            axs[-1, -1].set_xlim(axs[-1, 0].get_ylim())
 
         return axs
 
@@ -244,15 +301,17 @@ def create_posterior_plot(
     problem: "InferenceProblem",
     plot_with: str = "arviz",
     kind: str = "hist",
-    figsize: Optional[tuple] = (9, 9),
+    figsize: Optional[tuple] = (10, 3),
     textsize: Union[int, float] = 10,
+    title_size: Union[int, float] = 14,
+    title: Optional[str] = None,
     hdi_prob: float = 0.95,
     true_values: Optional[dict] = None,
     show: bool = True,
     **kwargs,
 ):
     """
-    Creates a posterior-plot for the given inference data using arviz.
+    Creates a posterior-plot for the given inference data.
 
     Parameters
     ----------
@@ -270,6 +329,10 @@ def create_posterior_plot(
         the figsize will be derived automatically.
     textsize
         Defines the font size in the default unit.
+    title_size
+        Defines the font size of the figures title if 'title' is given.
+    title
+        The title of the figure.
     hdi_prob
         Defines the highest density interval. Must be a number between 0 and 1.
     true_values
@@ -284,6 +347,7 @@ def create_posterior_plot(
 
     Returns
     -------
+    axs
         The array of subplots of the created plot.
     """
 
@@ -302,7 +366,7 @@ def create_posterior_plot(
             kwargs["ref_val"] = ref_val
 
         # call the main plotting routine from arviz and return the axes object
-        return az.plot_posterior(
+        axs = az.plot_posterior(
             inference_data,
             kind=kind,
             figsize=figsize,
@@ -311,6 +375,13 @@ def create_posterior_plot(
             show=show,
             **kwargs,
         )
+
+        # add a title to the plot, if requested
+        if title:
+            fig = plt.gcf()
+            fig.suptitle(title, fontsize=title_size)
+
+        return axs
 
     elif plot_with == "seaborn":
         raise NotImplementedError(
@@ -336,11 +407,13 @@ def create_trace_plot(
     kind: str = "trace",
     figsize: Optional[tuple] = (10, 6),
     textsize: Union[int, float] = 10,
+    title_size: Union[int, float] = 14,
+    title: Optional[str] = None,
     show: bool = True,
     **kwargs,
 ):
     """
-    Creates a trace-plot for the given inference data using arviz.
+    Creates a trace-plot for the given inference data.
 
     Parameters
     ----------
@@ -359,6 +432,10 @@ def create_trace_plot(
         the figsize will be derived automatically.
     textsize
         Defines the font size in the default unit.
+    title_size
+        Defines the font size of the figures title if 'title' is given.
+    title
+        The title of the figure.
     show
         When True, the show-method is called after creating the plot. Otherwise, the
         show-method is not called. The latter is useful, when the plot should be further
@@ -368,6 +445,7 @@ def create_trace_plot(
 
     Returns
     -------
+    axs
         The array of subplots of the created plot.
     """
 
@@ -380,9 +458,16 @@ def create_trace_plot(
             kwargs["plot_kwargs"] = {"textsize": textsize}
 
         # call the main plotting routine from arviz and return the axes object
-        return az.plot_trace(
+        axs = az.plot_trace(
             inference_data, kind=kind, figsize=figsize, show=show, **kwargs
         )
+
+        # add a title to the plot, if requested
+        if title:
+            fig = plt.gcf()
+            fig.suptitle(title, fontsize=title_size)
+
+        return axs
 
     elif plot_with == "seaborn":
         raise NotImplementedError(

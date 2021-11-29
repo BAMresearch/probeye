@@ -81,6 +81,7 @@ class PriorBase:
         n_points: int = 200,
         n_sigma: Union[int, float] = 2,
         color: str = "darkorange",
+        rotate: bool = False,
     ):
         """
         Plots the prior-pdf to a given axis object.
@@ -102,6 +103,8 @@ class PriorBase:
             times the standard deviation.
         color
             The line-color of the prior-pdf's graph.
+        rotate
+            If True, the x- and y-axis are switched.
         """
 
         if self.prior_type == "normal":
@@ -111,12 +114,21 @@ class PriorBase:
             # parameters themselves
             if mu and sigma:
                 if x is None:
-                    x = np.linspace(
-                        mu - n_sigma * sigma, mu + n_sigma * sigma, n_points
-                    )
+                    left = mu - n_sigma * sigma
+                    right = mu + n_sigma * sigma
+                    x = np.linspace(left, right, n_points)
+                else:
+                    left = min(x)
+                    right = max(x)
                 y = 1 / (sigma * np.sqrt(2 * np.pi))
                 y *= np.exp(-0.5 * ((x - mu) / sigma) ** 2)
-                ax.plot(x, y, label="prior", color=color)
+                margin = 0.025 * abs(right - left)
+                if rotate:
+                    ax.plot(y, x, label="prior", color=color)
+                    ax.set_ylim((left - margin, right + margin))
+                else:
+                    ax.plot(x, y, label="prior", color=color)
+                    ax.set_xlim((left - margin, right + margin))
 
         elif self.prior_type == "uniform":
             a = prms[self.prms_def[f"low_{self.ref_prm}"]].value
@@ -132,4 +144,10 @@ class PriorBase:
                 else:
                     y[0] = 0 if (x[0] <= a) else y[1]
                     y[-1] = 0 if (x[-1] >= b) else y[-2]
-                ax.plot(x, y, label="prior", color=color)
+                margin = 0.025 * abs(b - a)
+                if rotate:
+                    ax.plot(y, x, label="prior", color=color)
+                    ax.set_ylim((a - margin, b + margin))
+                else:
+                    ax.plot(x, y, label="prior", color=color)
+                    ax.set_xlim((a - margin, b + margin))

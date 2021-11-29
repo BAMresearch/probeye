@@ -123,7 +123,11 @@ def run_inference_engines(
         # testing, as for manually running the script
         if is_sampling_solver:
             create_pair_plot(
-                inference_data, problem, true_values=true_values, show=False
+                inference_data,
+                problem,
+                true_values=true_values,
+                show=False,
+                title="plot_priors=True, focus_on_posterior=False (default)",
             )
             create_pair_plot(
                 inference_data,
@@ -133,6 +137,7 @@ def run_inference_engines(
                 true_values=true_values,
                 show=False,
                 marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
+                title="plot_priors=True, focus_on_posterior=True (hex + hist)",
             )
             create_pair_plot(
                 inference_data,
@@ -142,6 +147,7 @@ def run_inference_engines(
                 true_values=true_values,
                 show=False,
                 marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
+                title="plot_priors=False (scatter + hist)",
             )
             create_pair_plot(
                 inference_data,
@@ -149,10 +155,17 @@ def run_inference_engines(
                 plot_priors=False,
                 true_values=true_values,
                 show=False,
+                title="plot_priors=False",
             )
             create_posterior_plot(
-                inference_data, problem, true_values=true_values, show=False
+                inference_data,
+                problem,
+                true_values=true_values,
+                show=False,
+                title="This is a posterior-plot",
             )
-            create_trace_plot(inference_data, problem, show=False)
+            create_trace_plot(
+                inference_data, problem, show=False, title="This is a trace-plot"
+            )
             if plot:
                 plt.show()  # shows all plots at once due to 'show=False' above
