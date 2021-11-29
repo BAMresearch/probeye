@@ -1,8 +1,12 @@
 # probeye changelog
 
-## 1.0.13 (2021-Nov-29)
+## 1.0.14 (2021-Nov-29)
 ### Changed
 - revised arviz-based post-processing routines
+
+## 1.0.13 (2021-Nov-29)
+### Changed
+- fixed a bug with the probeye.txt file, which was missing in the build
 
 ## 1.0.12 (2021-Nov-28)
 ### Changed
