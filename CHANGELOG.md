@@ -2,7 +2,7 @@
 
 ## 1.0.13 (2021-Nov-29)
 ### Changed
-- revised arviz-based post-processing routine in create_posterior_plot, create_trace_plot
+- revised arviz-based post-processing routines
 
 ## 1.0.12 (2021-Nov-28)
 ### Changed
