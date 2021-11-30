@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from probeye.inference.scipy_.solver import ScipySolver
 from probeye.inference.emcee_.solver import EmceeSolver
 from probeye.inference.torch_.solver import PyroSolver
+from probeye.inference.dynesty_.solver import DynestySolver
 
 # local imports (post-processing)
 from probeye.postprocessing.sampling import create_pair_plot
@@ -30,6 +31,7 @@ def run_inference_engines(
     run_scipy: bool = True,
     run_emcee: bool = True,
     run_torch: bool = True,
+    run_dynesty: bool = True,
 ):
     """
     Runs a requested selection of inference engines on a given problem. This function is
@@ -62,6 +64,9 @@ def run_inference_engines(
     run_torch
         If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
         pyro/torch_ solver will not be used.
+    run_dynesty
+        If True, the problem is solved with the dynesty solver. Otherwise, the
+        dynesty solver will not be used.
     """
 
     def create_plots(inference_data, problem, true_values):
@@ -135,4 +140,9 @@ def run_inference_engines(
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
         )
+        create_plots(inference_data, problem, true_values)
+
+    if run_dynesty:
+        dynesty_solver = DynestySolver(problem, show_progress=show_progress)
+        inference_data = dynesty_solver.run_dynesty("static", nlive=250)
         create_plots(inference_data, problem, true_values)
