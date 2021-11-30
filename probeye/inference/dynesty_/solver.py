@@ -6,7 +6,7 @@ import contextlib
 
 # third party imports
 import numpy as np
-import emcee
+import dynesty
 import arviz as az
 from loguru import logger
 from tabulate import tabulate
@@ -24,9 +24,11 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class DynestySolver(ScipySolver):
     """
-    Provides emcee-sampler which is a pure-Python implementation of Goodman & Weare’s
-    Affine Invariant Markov chain Monte Carlo (MCMC) Ensemble sampler. For more
-    information, check out https://emcee.readthedocs.io/en/stable/.
+    A static and dynamic nested parameter estimator. It facilitates the use of the
+    python package `dynesty`. The default is set to a static parameter estimator.
+
+    _Note:_ For full details on the `dynesty` library see:
+        https://dynesty.readthedocs.io/en/latest/index.html.
     """
 
     def __init__(
@@ -39,7 +41,29 @@ class DynestySolver(ScipySolver):
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
 
-    def emcee_summary(self, posterior_samples: np.ndarray) -> dict:
+    def prior_transform(self, theta: np.ndarray) -> np.ndarray:
+        """
+        Evaluates the ppf of the prior distributions at theta.
+
+        Parameters
+        ----------
+        theta
+            A numeric vector for which the ppf should be evaluated.
+            Which parameters these numbers refer to can be checked by calling self.
+            theta_explanation() once the problem is set up.
+
+        Returns
+        -------
+        ppf
+            The vector of ppfs for each prior distribution at theta.
+        """
+        ppf = []
+        for prior in self.priors.values():
+            prms = self.problem.get_parameters(theta, prior.prms_def)
+            ppf.append(prior(prms, "ppf"))
+        return ppf
+
+    def get_summary(self, posterior_samples: np.ndarray) -> dict:
         """
         Computes and prints a summary of the posterior samples containing mean, median,
         standard deviation, 5th percentile and 95th percentile. Note, that this method
@@ -97,59 +121,33 @@ class DynestySolver(ScipySolver):
             "q95": {name: val for name, val in zip(row_names, quantile_95)},
         }
 
-    def run_mcmc(
+    def run_dynesty(
         self,
-        n_walkers: int = 20,
-        n_steps: int = 1000,
-        n_initial_steps: int = 100,
+        estimation_method: str = "dynamic",
+        nlive: int = 250,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
-        Runs the emcee-sampler for the InferenceProblem the EmceeSolver was initialized
-        with and returns the results as an arviz InferenceData obj.
+        Runs the dynesty-sampler for the InferenceProblem the DynestySolver was
+        initialized with and returns the results as an arviz InferenceData obj.
 
         Parameters
         ----------
-        n_walkers
-            Number of walkers used by the estimator.
-        n_steps
-            Number of steps to run.
-        n_initial_steps
-            Number of steps for initial (burn-in) sampling.
+        estimation_method
+            "dynamic" or "static"
+        nlive
+            number of live points
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
         Returns
         -------
-        inference_data
+        inference_data or dynesty sampler
             Contains the results of the sampling procedure.
         """
+        start = time.time()
 
-        # log which solver is used
-        logger.info(
-            f"Solving problem using emcee sampler with {n_initial_steps} + {n_steps} "
-            f"samples and {n_walkers} walkers"
-        )
-        if kwargs:
-            logger.info("Additional options:")
-            print_dict_in_rows(kwargs, printer=logger.info)
-        else:
-            logger.info("No additional options specified")
-
-        # draw initial samples from the parameter's priors
-        logger.debug("Drawing initial samples")
-        sampling_initial_positions = np.zeros(
-            (n_walkers, self.problem.n_latent_prms_dim)
-        )
-        theta_names = self.problem.get_theta_names(tex=False, components=False)
-        for parameter_name in theta_names:
-            idx = self.problem.parameters[parameter_name].index
-            idx_end = self.problem.parameters[parameter_name].index_end
-            samples = self.sample_from_prior(parameter_name, n_walkers)
-            if (idx_end - idx) == 1:
-                sampling_initial_positions[:, idx] = samples
-            else:
-                sampling_initial_positions[:, idx:idx_end] = samples
+        logger.info(f"Solving problem using dynesty sampler with {kwargs}")
 
         # The following code is based on taralli and merely adjusted to the variables
         # in the probeye setup; see https://gitlab.com/tno-bim/taralli
@@ -157,55 +155,48 @@ class DynestySolver(ScipySolver):
         # ............................................................................ #
         #                                 Pre-process                                  #
         # ............................................................................ #
+        rstate = np.random.RandomState(self.seed)
 
-        random.seed(self.seed)
-        np.random.seed(self.seed)
-        rstate = np.random.mtrand.RandomState(self.seed)
-
-        logger.debug("Setting up EnsembleSampler")
-        sampler = emcee.EnsembleSampler(
-            nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=lambda x: self.logprior(x) + self.loglike(x),
-            **kwargs,
-        )
-
-        sampler.random_state = rstate
-
-        # ............................................................................ #
-        #        Initial sampling, burn-in: used to avoid a poor starting point        #
-        # ............................................................................ #
-
-        logger.debug("Starting sampling (initial + main)")
-        start = time.time()
-        state = sampler.run_mcmc(
-            initial_state=sampling_initial_positions,
-            nsteps=n_initial_steps,
-            progress=self.show_progress,
-        )
-        sampler.reset()
-
-        # ............................................................................ #
-        #                          Sampling of the posterior                           #
-        # ............................................................................ #
-        sampler.run_mcmc(
-            initial_state=state, nsteps=n_steps, progress=self.show_progress
-        )
+        if estimation_method == "dynamic":
+            sampler = dynesty.DynamicNestedSampler(
+                loglikelihood=self.loglike,
+                prior_transform=self.prior_transform,
+                ndim=self.problem.n_latent_prms_dim,
+                rstate=rstate,
+                nlive=nlive,
+            )
+            sampler.run_nested(print_progress=self.show_progress, **kwargs)
+        elif estimation_method == "static":
+            sampler = dynesty.NestedSampler(
+                loglikelihood=self.loglike,
+                prior_transform=self.prior_transform,
+                ndim=self.problem.n_latent_prms_dim,
+                rstate=rstate,
+                nlive=nlive,
+            )
+            sampler.run_nested(print_progress=self.show_progress, **kwargs)
+        else:
+            raise RuntimeError(
+                "Choose 'dynamic' or 'static' as the estimation_method parameter!"
+            )
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
-        logger.info(
-            f"Sampling of the posterior distribution completed: {n_steps} steps and "
-            f"{n_walkers} walkers."
-        )
-        logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
+        logger.info(f"Total run-time: {runtime_str}.")
         logger.info("")
         logger.info("Summary of sampling results")
-        posterior_samples = sampler.get_chain(flat=True)
-        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-            self.summary = self.emcee_summary(posterior_samples)
-        self.raw_results = sampler
 
-        # translate the results to a common data structure and return it
+        self.raw_results = sampler.results
+
+        weights = np.exp(sampler.results.logwt - sampler.results.logz[-1])
+        samples = dynesty.utils.resample_equal(sampler.results.samples, weights)
+
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.summary = self.get_summary(samples)
+
         var_names = self.problem.get_theta_names(tex=True, components=True)
-        inference_data = az.from_emcee(sampler, var_names=var_names)
+
+        posterior_dict = {name: samples[:, i] for i, name in enumerate(var_names)}
+
+        inference_data = az.convert_to_inference_data(posterior_dict)
+        # TODO maybe add information like "source = dynesty", timestamp, etc ...
         return inference_data
