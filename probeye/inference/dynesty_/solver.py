@@ -74,8 +74,9 @@ class DynestySolver(ScipySolver):
                 i, j = np.nonzero(scale)
                 assert np.all(i == j)
 
-                for i in range(len(loc)):
-                    ppf.append(norm.ppf(q=x[i], loc=loc[i], scale=scale[i, i]))
+                mvn_ppf = norm.ppf(q=x, loc=loc, scale=np.diagonal(scale))
+                ppf += list(mvn_ppf)
+
         return ppf
 
     def get_summary(self, posterior_samples: np.ndarray) -> dict:
