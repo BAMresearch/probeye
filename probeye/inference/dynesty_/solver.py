@@ -10,6 +10,7 @@ import dynesty
 import arviz as az
 from loguru import logger
 from tabulate import tabulate
+from scipy.stats import norm
 
 # local imports
 from probeye.subroutines import pretty_time_delta
@@ -60,7 +61,21 @@ class DynestySolver(ScipySolver):
         ppf = []
         for prior in self.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
-            ppf.append(prior(prms, "ppf"))
+            try:
+                ppf.append(prior(prms, "ppf"))
+            except AttributeError as e:
+                # Assume to be multivariate and let it raise
+                # exceptions, if not.
+                loc = prms[f"loc_{prior.ref_prm}"]
+                scale = prms[f"scale_{prior.ref_prm}"]
+                x = prms[prior.ref_prm]
+
+                # Assume the MVN to be uncorrelated, only diagonal nonzero
+                i, j = np.nonzero(scale)
+                assert np.all(i == j)
+
+                for i in range(len(loc)):
+                    ppf.append(norm.ppf(q=x[i], loc=loc[i], scale=scale[i, i]))
         return ppf
 
     def get_summary(self, posterior_samples: np.ndarray) -> dict:

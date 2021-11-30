@@ -34,7 +34,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
-        run_dynesty: bool = False,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
