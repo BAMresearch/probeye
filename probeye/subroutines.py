@@ -1,6 +1,6 @@
 # standard library imports
 from copy import copy
-from typing import Iterable, Union, List, Tuple, Any, Optional, Generator, Callable
+from typing import Union, List, Tuple, Any, Optional, Generator, Callable
 from typing import TYPE_CHECKING
 import os
 import sys
@@ -8,7 +8,6 @@ import sys
 # third party imports
 import numpy as np
 from loguru import logger
-from functools import partial
 
 # local imports for type checking
 if TYPE_CHECKING:  # pragma: no cover
@@ -845,9 +844,27 @@ def get_dictionary_depth(d):
     return 0
 
 
-def compute_reduction_array(array):
+def compute_reduction_array(array: np.ndarray) -> Tuple[np.ndarray, List[int]]:
+    """
+    Given a square array with potentially duplicate rows, this method computes an
+    array, that, if matrix-multiplied with the given array, leaves all unique rows
+    un-modified, but averages all duplicate rows, writes the result in the first
+    row of their appearance, and removes all other rows of the duplicate ones. For
+    example:
+
+    [[1, 0, 0]            [[0.5, 0.5, 0]
+     [1, 0, 0]     -->     [ 0 ,  0 , 1]]
+     [0, 0, 1]]
+
+    Returns
+    -------
+    reduction_array
+        The derived reduction array for the given array 'array'.
+    rows_to_remove
+        A list that contains the row indices of duplicate rows.
+    """
     n = array.shape[0]
-    a = np.eye(n)
+    reduction_array = np.eye(n)
     rows_to_remove = []
     for i, reference_row in enumerate(array):
         rows_to_add = []
@@ -855,8 +872,8 @@ def compute_reduction_array(array):
             if np.allclose(row_to_check, reference_row):
                 rows_to_add.append(j)
         for row_idx in rows_to_add:
-            a[i] += a[row_idx]
-        a[i] /= 1 + len(rows_to_add)
+            reduction_array[i] += reduction_array[row_idx]
+        reduction_array[i] /= 1 + len(rows_to_add)
         rows_to_remove += rows_to_add
-    a = np.delete(a, rows_to_remove, axis=0)
-    return a, rows_to_remove
+    reduction_array = np.delete(reduction_array, rows_to_remove, axis=0)
+    return reduction_array, rows_to_remove

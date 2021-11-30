@@ -5,6 +5,7 @@ from typing import Union, List, Optional
 import numpy as np
 
 # local imports
+from probeye.definition.sensor import Sensor
 from probeye.subroutines import make_list
 from probeye.subroutines import len_or_one
 from probeye.subroutines import translate_prms_def
@@ -18,100 +19,96 @@ class NoiseModelBase:
 
     def __init__(
         self,
-        dist,
-        prms_def,
-        sensors,
-        experiment_names=None,
-        name=None,
-        corr_static="",
+        dist: str,
+        prms_def: Union[str, List[Union[str, dict]], dict],
+        sensors: Union[Sensor, List[Sensor]],
+        experiment_names: Union[str, List[str], None] = None,
+        name: Optional[str] = None,
+        corr_static: str = "",
         corr_dynamic="",
-        corr_model="exp",
-        corr_dict=None,
-        noise_type="additive",
+        corr_model: str = "exp",
+        corr_dict: Optional[dict] = None,
+        noise_type: str = "additive",
     ):
         """
         Parameters
         ----------
-        dist : str
-            A string specifying the probability distribution the noise model
-            is based on, e.g. 'normal' or 'uniform'. This string will be used
-            to translate an object of this general noise model to a solver-
-            specific one. To check out which values are valid for the solver
-            you want to use, take a look at the translate_noise_model-method
-            in probeye/inference/scipy_/noise_models.py for scipy and emcee and
-            in probeye/inference/torch_/noise_models.py for the pyro-solver.
-        prms_def : str, list[str], dict
-            Parameter names (strings) defining which parameters are used by the
-            noise model. E.g. prms_def = ['mu', 'sigma']. To check out the other
-            possible formats, see the explanation for the same parameter in
-            probeye/definition/forward_model.py:ForwardModelBase.__init__.
-        sensors : obj[Sensor], list[Sensor]
+        dist
+            A string specifying the probability distribution the noise model is based
+            on, e.g. 'normal' or 'uniform'. This string will be used to translate an
+            object of this general noise model to a solver-specific one. To check out
+            which values are valid for the solver you want to use, take a look at the
+            translate_noise_model-method in probeye/inference/scipy_/noise_models.py
+            for scipy and emcee and in probeye/inference/torch_/noise_models.py for
+            the pyro-solver.
+        prms_def
+            Parameter names (strings) defining which parameters are used by the noise
+            model. E.g. prms_def = ['mu', 'sigma']. To check out the other possible
+            formats, see the explanation for the same parameter in probeye/definition/
+            forward_model.py:ForwardModelBase.__init__.
+        sensors
             These are sensor objects which serve as output sensors in one of the
-            problem's forward models, that the noise model should refer to. This
-            means, the noise model should describe the model error between the
-            model response for all sensors specified in this 'sensors'-argument
-            and the corresponding experimental data.
-        experiment_names : str, list[str], None, optional
-            Defines the experiments that the noise model should refer to. This
-            means that the noise model will describe the error of the model
-            response with respect to the specified experiments here. If the
-            value is None, the experiments will be derived automatically by
-            finding all of the problem's experiments that contain all of the
-            sensor's names (meaning the name attribute of the sensor-objects
-            specified in the 'sensors'-argument above) as sensor_values. For
-            more information on this automatic assignment, check out the
-            assign_experiments_to_noise_models-method in probeye/definition/
+            problem's forward models, that the noise model should refer to. This means,
+            the noise model should describe the model error between the model response
+            for all sensors specified in this 'sensors'-argument and the corresponding
+            experimental data.
+        experiment_names
+            Defines the experiments that the noise model should refer to. This means
+            that the noise model will describe the error of the model  response with
+            respect to the specified experiments here. If the value is None, the
+            experiments will be derived automatically by finding all of the problem's
+            experiments that contain all of the sensor's names (meaning the name
+            attribute of the sensor-objects specified in the 'sensors'-argument above)
+            as sensor_values. For more information on this automatic assignment, check
+            out the assign_experiments_to_noise_models-method in probeye/definition/
             inference_problem.py.
-        name : str, None, optional
-            Unique name of the noise model. This name is None, if the user does
-            not specify it when adding the noise model to the problem. It is
-            then named automatically before starting the inference engine.
-        corr_static : str, optional
-            Defines the static correlation data. Static correlation data is
-            experimental data that is constant over all of the noise model's
-            experiments (think of the fixed positions of some strain gauges
-            for example). This data is to be found as attributes of the noise
-            model's sensors. The corr_static argument can be any combination
-            of the characters 'x', 'y', 'z', 't', each one appearing at most
-            once. Examples are: 'x', 't', 'xy', 'yzt'.
-        corr_dynamic : str, optional
+        name
+            Unique name of the noise model. This name is None, if the user does not
+            specify it when adding the noise model to the problem. It is then named
+            automatically before starting the inference engine.
+        corr_static
+            Defines the static correlation data. Static correlation data is experimental
+            data that is constant over all of the noise model's experiments (think of
+            the fixed positions of some strain gauges for example). This data is to be
+            found as attributes of the noise model's sensors. The corr_static argument
+            can be any combination of the characters 'x', 'y', 'z', 't', each one
+            appearing at most once. Examples are: 'x', 't', 'xy', 'yzt'.
+        corr_dynamic
             Defines the dynamic correlation data. Dynamic correlation data is
-            experimental data that can (and usually will) change between the
-            noise model's experiments. This data is to be found as in the
-            sensor_values of the noise model's experiments. The corr_static
-            argument can be any combination can assume the same values as the
-            corr_static argument. However, each of the variables 'x', 'y', 'z',
-            't' can only appear at most in one of the two arguments. So, for
-            example corr_static='xt' and corr_dynamic='xz' would not be valid
-            since 'x' appears in both strings.
-        corr_model : {'exp'}, optional
+            experimental data that can (and usually will) change between the noise
+            model's experiments. This data is to be found as in the sensor_values of the
+            noise model's experiments. The corr_static argument can be any combination
+            can assume the same values as the corr_static argument. However, each of the
+            variables 'x', 'y', 'z', 't' can only appear at most in one of the two
+            arguments. So, for example corr_static='xt' and corr_dynamic='xz' would not
+            be valid since 'x' appears in both strings.
+        corr_model
             Defines the correlation function to be used in case correlation is
             considered (which is the case, when at least one of corr_static and
-            corr_dynamic is a non-empty string). Currently, there is only one
-            option 'exp' which represents an exponential model. In the future,
-            more options should be added.
-        corr_dict : dict, None, optional
-            Allows to give each correlation variable ('x', 'y', 'z', 't') an
-            alias used in the actual experimental data. This dictionary can
-            either provide a mapping that holds for all experiments, or a
-            mapping that is individual for each experiment. In the first case,
-            you would have something like {'x': 'lateral_position_1', 't': 'T'}.
-            Here, in all experiments the sensor_value with the key 'lateral_
-            position_1' would be understood as the spatial correlation variable
-            'x' and the sensor_value with key 'T' would be understood as the
-            time 't'. In the second case, when the mapping is different for each
-            experiment, corr_dict would have the experiment names as keys, and
-            the values would be dictionaries, as explained in the first case.
+            corr_dynamic is a non-empty string). Currently, there is only one option
+            'exp' which represents an exponential model. In the future, more options
+            should be added.
+        corr_dict
+            Allows to give each correlation variable ('x', 'y', 'z', 't') an alias used
+            in the actual experimental data. This dictionary can either provide a
+            mapping that holds for all experiments, or a mapping that is individual for
+            each experiment. In the first case, you would have something like
+            {'x': 'lateral_position_1', 't': 'T'}. Here, in all experiments the
+            sensor_value with the key 'lateral_ position_1' would be understood as the
+            spatial correlation variable 'x' and the sensor_value with key 'T' would be
+            understood as the time 't'. In the second case, when the mapping is
+            different for each experiment, corr_dict would have the experiment names as
+            keys, and the values would be dictionaries, as explained in the first case.
             An example would be {'Exp_Jun23': {'x': 'x_23', 't': 't_23'},
-            'Exp_Jun93': {'x': 'x_29', 't': 't_29'}}. If corr_dict is None, it
-            is assumed that the correlation variables have the same names in the
-            sensor_values of the experiments as the default values used here,
-            i.e., 'x', 'y', 'z', 't'.
-        noise_type : str, optional
-            Either 'additive', 'multiplicative' or 'other'. Defines if the error
-            is computed via [prediction - measurement] ('additive') or via
-            [prediction/measurement-1] ('multiplicative') or in some 'other'
-            i.e., non-standard fashion.
+            'Exp_Jun93': {'x': 'x_29', 't': 't_29'}}. If corr_dict is None, it is
+            assumed that the correlation variables have the same names in the sensor_
+            values of the experiments as the default values used here, i.e., 'x', 'y',
+            'z', 't'.
+        noise_type
+            Either 'additive', 'multiplicative' or 'other'. Defines if the error is
+            computed via [prediction - measurement] ('additive') or via
+            [prediction/measurement-1] ('multiplicative') or in some 'other' i.e.,
+            non-standard fashion.
         """
 
         # general attributes
@@ -161,16 +158,21 @@ class NoiseModelBase:
             )
 
     @property
-    def n_experiments(self):
+    def n_experiments(self) -> int:
         """
         Provides a dynamic attributes stating the number of experiments that
         were assigned to the noise model.
         """
         return len(self.experiment_names)
 
-    def check_correlation_definition(self, valid_corr_models=("exp",)):
+    def check_correlation_definition(self, valid_corr_models: tuple = ("exp",)):
         """
         Check if the correlation definition cumulated in self.corr is valid.
+
+        Parameters
+        ----------
+        valid_corr_models
+            The tuple contains all currently implemented correlation models.
         """
         # check that only valid characters are given, and that those characters
         # are at most mentioned once
@@ -195,6 +197,11 @@ class NoiseModelBase:
             )
 
     def prepare_corr_dict(self):
+        """
+        Ensures that the corr_dict attribute is a depth=2 dictionary where the first
+        keys are the noise model's experiment names, and the second set of keys
+        correspond to the correlation variables.
+        """
         # check the correlation dictionary (corr_dict); note that this dict
         # can have two different structures, see the explanation in __init__
         if self.corr_dict is None:
@@ -300,21 +307,21 @@ class NoiseModelBase:
 
         return model_error_dict
 
-    def error_vector(self, model_response_dict):
+    def error_vector(self, model_response_dict: dict) -> np.ndarray:
         """
-        Computes the model error for all of the noise model's experiments and
-        returns them in a dictionary that is sorted by output sensor_values.
+        Computes the model error for all of the noise model's experiments and returns
+        them in a dictionary that is sorted by output sensor_values.
 
         Parameters
         ----------
-        model_response_dict : dict
-            The first key is the name of the experiment. The values are dicts
-            which contain the forward model's output sensor's names as keys
-            have the corresponding model responses as values.
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
 
         Returns
         -------
-        error_vector : numpy.ndarray
+        error_vector
             A one-dimensional vector containing the model errors.
         """
         model_error_dict = self.error(model_response_dict)
@@ -329,7 +336,7 @@ class NoiseModelBase:
             idx += m
         return error_vector
 
-    def error_function_additive(self, ym_dict, ye_dict):
+    def error_function_additive(self, ym_dict: dict, ye_dict: dict) -> dict:
         """
         Evaluates the additive model error for each of the noise model' sensors.
 
@@ -415,28 +422,27 @@ class NoiseModelBase:
 
 class NormalNoiseModel(NoiseModelBase):
     """
-    A general Gaussian (normal) noise model with or without correlations. This
-    class provides little additional attributes/methods compared to the
-    NoiseModelBase, but since the normal noise model is used very often, the
-    existence of this class results in a convenient definition of the normal
-    noise model when setting up the InferenceProblem.
+    A general Gaussian (normal) noise model with or without correlations. This class
+    provides little additional attributes/methods compared to the NoiseModelBase, but
+    since the normal noise model is used very often, the existence of this class results
+    in a convenient definition of the normal noise model when setting up the Problem.
     """
 
     def __init__(
         self,
-        prms_def,
-        sensors,
-        experiment_names=None,
-        name=None,
-        corr_static="",
+        prms_def: Union[str, List[Union[str, dict]], dict],
+        sensors: Union[Sensor, List[Sensor]],
+        experiment_names: Union[str, List[str], None] = None,
+        name: Optional[str] = None,
+        corr_static: str = "",
         corr_dynamic="",
-        corr_model="exp",
-        corr_dict=None,
-        noise_type="additive",
+        corr_model: str = "exp",
+        corr_dict: Optional[dict] = None,
+        noise_type: str = "additive",
     ):
         """
-        See docstring of NoiseModelBase for information on the input arguments.
-        Except for the missing 'dist'-argument, they are similar.
+        See docstring of NoiseModelBase for information on the input arguments. Except
+        for the missing 'dist'-argument, they are similar.
         """
 
         # initialize the base class with given input
@@ -453,9 +459,9 @@ class NormalNoiseModel(NoiseModelBase):
             noise_type=noise_type,
         )
 
-        # check that at the standard deviation is provided (this can be either
-        # as a constant or a latent parameter, but it has to be given); note
-        # that 'std' has to be used as the local name
+        # check that at the standard deviation is provided (this can be either as a
+        # constant or a latent parameter, but it has to be given); note that 'std' has
+        # to be used as the local name
         if "std" not in [*self.prms_def.values()]:
             raise RuntimeError(
                 "The standard deviation 'std' was not provided in prms_def!"

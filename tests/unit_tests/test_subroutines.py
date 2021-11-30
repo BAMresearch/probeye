@@ -28,6 +28,8 @@ from probeye.subroutines import logging_setup
 from probeye.subroutines import print_dict_in_rows
 from probeye.subroutines import add_index_to_tex_prm_name
 from probeye.subroutines import check_for_uninformative_priors
+from probeye.subroutines import compute_reduction_array
+from probeye.subroutines import get_dictionary_depth
 
 
 class TestProblem(unittest.TestCase):
@@ -474,6 +476,25 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("m", "model")  # uninformative prior
         with self.assertRaises(RuntimeError):
             check_for_uninformative_priors(problem)
+
+    def test_get_dictionary_depth(self):
+        # check for a depth-1-dictionary
+        compute_result = get_dictionary_depth({"a": None})
+        expected_result = 1
+        self.assertEqual(compute_result, expected_result)
+        # check for a depth-2-dictionary
+        compute_result = get_dictionary_depth({"a": {"b": None}})
+        expected_result = 2
+        self.assertEqual(compute_result, expected_result)
+
+    def test_compute_reduction_array(self):
+        # check for a simple example
+        array = np.array([[1, 0, 0], [1, 0, 0], [0, 0, 1]])
+        red_array_computed, rows_to_remove_computed = compute_reduction_array(array)
+        red_array_expected = np.array([[0.5, 0.5, 0], [0, 0, 1]])
+        rows_to_remove_expected = [1]
+        self.assertTrue(np.allclose(red_array_computed, red_array_expected))
+        self.assertEqual(rows_to_remove_computed, rows_to_remove_expected)
 
 
 if __name__ == "__main__":
