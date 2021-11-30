@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 1.1.0 (2021-Dec-XX)
+### Changed
+- revised the entire noise model framework to account for correlation setups
+
 ## 1.0.12 (2021-Nov-11)
 ### Changed
 - modified code format according to standard black and introduced type hints
