@@ -64,108 +64,75 @@ def run_inference_engines(
         pyro/torch_ solver will not be used.
     """
 
-    # this loop avoids to write down the same lines of code for the post-processing for
-    # each inference engine again
-    for inference_engine, requested_to_run in {
-        "scipy": run_scipy,
-        "emcee": run_emcee,
-        "pyro": run_torch,
-    }.items():
+    def create_plots(inference_data, problem, true_values):
+        create_pair_plot(
+            inference_data,
+            problem,
+            true_values=true_values,
+            show=False,
+            title="plot_priors=True, focus_on_posterior=False (default)",
+        )
+        create_pair_plot(
+            inference_data,
+            problem,
+            focus_on_posterior=True,
+            kind="hexbin",
+            true_values=true_values,
+            show=False,
+            marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
+            title="plot_priors=True, focus_on_posterior=True (hex + hist)",
+        )
+        create_pair_plot(
+            inference_data,
+            problem,
+            plot_priors=False,
+            kind="scatter",
+            true_values=true_values,
+            show=False,
+            marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
+            title="plot_priors=False (scatter + hist)",
+        )
+        create_pair_plot(
+            inference_data,
+            problem,
+            plot_priors=False,
+            true_values=true_values,
+            show=False,
+            title="plot_priors=False",
+        )
+        create_posterior_plot(
+            inference_data,
+            problem,
+            true_values=true_values,
+            show=False,
+            title="This is a posterior-plot",
+        )
+        create_trace_plot(
+            inference_data, problem, show=False, title="This is a trace-plot"
+        )
+        if plot:
+            plt.show()  # shows all plots at once due to 'show=False' above
 
-        # solve the problem with scipy (max. likelihood) if requested
-        if inference_engine == "scipy":
-            is_sampling_solver = False
-            if requested_to_run:
-                scipy_solver = ScipySolver(problem, show_progress=show_progress)
-                inference_data = scipy_solver.run_max_likelihood(
-                    true_values=true_values
-                )
-            else:
-                # in this case, the engine was not requested to run
-                continue
+    if run_scipy:
+        scipy_solver = ScipySolver(problem, show_progress=show_progress)
+        inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+        # no post processing for scipy solver as that is no sampler
 
-        # solve the problem with emcee if requested
-        elif inference_engine == "emcee":
-            is_sampling_solver = True
-            if requested_to_run:
-                emcee_solver = EmceeSolver(problem, show_progress=show_progress)
-                inference_data = emcee_solver.run_mcmc(
-                    n_walkers=n_walkers,
-                    n_steps=n_steps,
-                    n_initial_steps=n_initial_steps,
-                )
-            else:
-                # in this case, the engine was not requested to run
-                continue
+    if run_emcee:
+        emcee_solver = EmceeSolver(problem, show_progress=show_progress)
+        inference_data = emcee_solver.run_mcmc(
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+        )
+        create_plots(inference_data, problem, true_values)
 
-        # solver the problem with pyro/torch if requested
-        elif inference_engine == "pyro":
-            is_sampling_solver = True
-            if requested_to_run:
-                n_walkers_used = 1  # getting errors when trying to use more
-                pyro_solver = PyroSolver(problem, show_progress=show_progress)
-                inference_data = pyro_solver.run_mcmc(
-                    n_walkers=n_walkers_used,
-                    n_steps=n_steps,
-                    n_initial_steps=n_initial_steps,
-                )
-            else:
-                # in this case, the engine was not requested to run
-                continue
-
-        else:
-            # if this happens, you messed something up in the defining
-            # dictionary of this loop
-            raise RuntimeError(f"Found unknown inference engine '{inference_engine}'!")
-
-        # do the post-processing; note that the interface is the same for each inference
-        # engine; also note, that the plots are not so much intended for automatic
-        # testing, as for manually running the script
-        if is_sampling_solver:
-            create_pair_plot(
-                inference_data,
-                problem,
-                true_values=true_values,
-                show=False,
-                title="plot_priors=True, focus_on_posterior=False (default)",
-            )
-            create_pair_plot(
-                inference_data,
-                problem,
-                focus_on_posterior=True,
-                kind="hexbin",
-                true_values=true_values,
-                show=False,
-                marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
-                title="plot_priors=True, focus_on_posterior=True (hex + hist)",
-            )
-            create_pair_plot(
-                inference_data,
-                problem,
-                plot_priors=False,
-                kind="scatter",
-                true_values=true_values,
-                show=False,
-                marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
-                title="plot_priors=False (scatter + hist)",
-            )
-            create_pair_plot(
-                inference_data,
-                problem,
-                plot_priors=False,
-                true_values=true_values,
-                show=False,
-                title="plot_priors=False",
-            )
-            create_posterior_plot(
-                inference_data,
-                problem,
-                true_values=true_values,
-                show=False,
-                title="This is a posterior-plot",
-            )
-            create_trace_plot(
-                inference_data, problem, show=False, title="This is a trace-plot"
-            )
-            if plot:
-                plt.show()  # shows all plots at once due to 'show=False' above
+    if run_torch:
+        n_walkers_used = 1  # getting errors when trying to use more
+        pyro_solver = PyroSolver(problem, show_progress=show_progress)
+        inference_data = pyro_solver.run_mcmc(
+            n_walkers=n_walkers_used,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+        )
+        create_plots(inference_data, problem, true_values)
