@@ -50,8 +50,8 @@ class TestProblem(unittest.TestCase):
 
         # run the dynesty solver with deactivated output
         logging.root.disabled = True
-        dynesty_solver = DynestySolver(problem, show_progress=False, seed=6174)
-        dynesty_solver.run_dynesty("static", nlive=50)
+        dynesty_solver = DynestySolver(problem, show_progress=True, seed=6174)
+        dynesty_solver.run_dynesty("dynamic", nlive_init=10, nlive_batch=10, maxbatch=2)
 
         sample_means = dynesty_solver.summary["mean"]
         for parameter, true_value in true.items():
