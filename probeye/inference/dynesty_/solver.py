@@ -42,7 +42,7 @@ class DynestySolver(ScipySolver):
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
 
-    def prior_transform(self, theta: np.ndarray) -> np.ndarray:
+    def prior_transform(self, theta: np.ndarray) -> list:
         """
         Evaluates the ppf of the prior distributions at theta.
 

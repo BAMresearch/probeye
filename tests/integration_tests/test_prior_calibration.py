@@ -3,8 +3,8 @@ Linear regression example where a prior parameter is a latent parameter
 ----------------------------------------------------------------------------------------
 The model equation is y = a * x + b with a, b being the model parameters and the noise
 model is a normal zero-mean distribution with the std. deviation to infer. Additionally,
-the location parameter of a's prior is considered a latent parameter.The problem is
-solved via sampling using emcee and pyro.
+the location parameter of a's prior is considered a latent parameter. The problem is
+solved via max likelihood estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -36,6 +36,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -64,6 +65,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -204,6 +208,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

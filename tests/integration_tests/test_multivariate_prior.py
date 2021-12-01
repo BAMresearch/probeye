@@ -3,7 +3,7 @@ Simple linear regression example with two model and one noise parameter
 ----------------------------------------------------------------------------------------
 The model equation is y = a * x + b with a, b being the model parameters and the noise
 model is a normal zero-mean distribution with the std. deviation to infer. The problem
-is solved via sampling using emcee and pyro.
+is solved via max likelihood estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
