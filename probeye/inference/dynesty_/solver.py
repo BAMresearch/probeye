@@ -200,15 +200,14 @@ class DynestySolver(ScipySolver):
         runtime_str = pretty_time_delta(end - start)
         logger.info(f"Total run-time: {runtime_str}.")
         logger.info("")
-        logger.info("Summary of sampling results")
-
-        self.raw_results = sampler.results
 
         weights = np.exp(sampler.results.logwt - sampler.results.logz[-1])
         samples = dynesty.utils.resample_equal(sampler.results.samples, weights)
 
+        logger.info("Summary of sampling results")
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             self.summary = self.get_summary(samples)
+        logger.info(f"Posterior log evidence: {sampler.results.logz[-1]}")
 
         var_names = self.problem.get_theta_names(tex=True, components=True)
 
@@ -216,4 +215,7 @@ class DynestySolver(ScipySolver):
 
         inference_data = az.convert_to_inference_data(posterior_dict)
         # TODO maybe add information like "source = dynesty", timestamp, etc ...
+
+        self.raw_results = sampler.results
+
         return inference_data
