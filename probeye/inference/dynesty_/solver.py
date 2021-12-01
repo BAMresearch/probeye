@@ -55,17 +55,18 @@ class DynestySolver(ScipySolver):
 
         Returns
         -------
-        ppf
-            The vector of ppfs for each prior distribution at theta.
+        qs
+            The vector of quantiles for each prior distribution at theta.
         """
-        ppf = []
+        qs = []
         for prior in self.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
             try:
-                ppf.append(prior(prms, "ppf"))
+                qs.append(prior(prms, "ppf"))
             except AttributeError as e:
-                # Assume to be multivariate and let it raise
-                # exceptions, if not.
+                # This branch is active when there is no `ppf` method in
+                # the prior distribution. For the case of a multivariate
+                # normal distribution, we implement a workaround.
                 loc = prms[f"loc_{prior.ref_prm}"]
                 scale = prms[f"scale_{prior.ref_prm}"]
                 x = prms[prior.ref_prm]
@@ -74,10 +75,10 @@ class DynestySolver(ScipySolver):
                 i, j = np.nonzero(scale)
                 assert np.all(i == j)
 
-                mvn_ppf = norm.ppf(q=x, loc=loc, scale=np.diagonal(scale))
-                ppf += list(mvn_ppf)
+                mvn_qs = norm.ppf(q=x, loc=loc, scale=np.diagonal(scale))
+                qs += list(mvn_qs)
 
-        return ppf
+        return qs
 
     def get_summary(self, posterior_samples: np.ndarray) -> dict:
         """
