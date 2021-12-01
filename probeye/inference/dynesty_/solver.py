@@ -201,6 +201,8 @@ class DynestySolver(ScipySolver):
         logger.info(f"Total run-time: {runtime_str}.")
         logger.info("")
 
+        logger.info("Resample weighted samples to equal samples for post")
+        logger.info("processing. Access the original dynesty results via  .raw_results")
         weights = np.exp(sampler.results.logwt - sampler.results.logz[-1])
         samples = dynesty.utils.resample_equal(sampler.results.samples, weights)
 
