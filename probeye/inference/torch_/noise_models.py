@@ -21,7 +21,13 @@ class NormalNoise(NormalNoiseModel):
     that currently, there are no correlation capabilities defined.
     """
 
-    def __init__(self, target_sensor, prms_def, name=None, noise_type="additive"):
+    def __init__(
+        self,
+        target_sensor: "Sensor",
+        prms_def: Union[str, List[Union[str, dict]], dict],
+        name: Optional[str] = None,
+        noise_type: str = "additive",
+    ):
         """
         For information on most of the above arguments check out the docstring
         of the parent class's __init__ method.

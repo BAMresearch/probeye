@@ -25,7 +25,7 @@ class NormalNoise(NormalNoiseModel):
         problem_experiments: Optional[dict] = None,
         name: Optional[str] = None,
         corr_static: str = "",
-        corr_dynamic="",
+        corr_dynamic: str = "",
         corr_model: str = "exp",
         corr_dict: Optional[dict] = None,
         noise_type: str = "additive",
