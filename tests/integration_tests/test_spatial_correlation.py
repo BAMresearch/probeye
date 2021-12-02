@@ -9,7 +9,7 @@ correlated. The corresponding covariance matrix is defined based on an exponenti
 correlation function parameterized by the const standard deviation sigma of the
 n-variate normal distribution and a correlation length l_corr. Hence, the full model has
 four parameters a, b, sigma, l_corr, all of which are inferred in this example using
-emcee-sampling.
+via maximum likelihood estimation and via sampling using emcee and dynesty.
 """
 
 # standard library
@@ -43,6 +43,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = False,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -71,6 +72,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         if run_torch:
@@ -248,6 +252,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 
