@@ -1,6 +1,6 @@
 # standard library imports
 from copy import copy
-from typing import Iterable, Union, List, Tuple, Any, Optional, Generator, Callable
+from typing import Union, List, Tuple, Any, Optional, Generator, Callable
 from typing import TYPE_CHECKING
 import os
 import sys
@@ -574,7 +574,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "1.0.15",
+    version: str = "1.0.16",
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",

@@ -163,9 +163,9 @@ class PriorLognormal(PriorBase):
             parameter here. So, it is set to 1, which results in the standard version
             of the lognormal distribution.
         use_ref_prm
-            If True stats.lognorm.<method>(x, loc, scale) is evaluated, hence 'x' must be
-            provided in the prms dictionary. Otherwise, the evaluated method is stats.
-            lognorm.<method>(loc, scale).
+            If True stats.lognorm.<method>(x, loc, scale) is evaluated, hence 'x' must
+            be provided in the prms dictionary. Otherwise, the evaluated method is
+            stats.lognorm.<method>(loc, scale).
         kwargs
             Additional keyword arguments to pass to the specified method.
 
@@ -248,9 +248,9 @@ class PriorTruncnormal(PriorBase):
         **kwargs,
     ) -> float:
         """
-        Evaluates stats.truncnorm.<method>(x, a, b, loc, scale) or, if use_ref_prm=False stats.
-        truncnorm.<method>(a, b, loc, scale). This function is mostly used with method='logpdf'
-        during the sampling procedure.
+        Evaluates stats.truncnorm.<method>(x, a, b, loc, scale) or, if use_ref_prm=False
+        stats.truncnorm.<method>(a, b, loc, scale). This function is mostly used with
+        method='logpdf' during the sampling procedure.
 
         Parameters
         ----------
@@ -259,9 +259,9 @@ class PriorTruncnormal(PriorBase):
         method
             The method of stats.truncnorm to be evaluated (e.g. 'pdf', 'logpdf').
         use_ref_prm
-            If True stats.truncnorm.<method>(x, loc, scale) is evaluated, hence 'x' must be
-            provided in the prms dictionary. Otherwise, the evaluated method is stats.
-            truncnorm.<method>(loc, scale).
+            If True stats.truncnorm.<method>(x, loc, scale) is evaluated, hence 'x' must
+            be provided in the prms dictionary. Otherwise, the evaluated method is
+            stats.truncnorm.<method>(loc, scale).
         kwargs
             Additional keyword arguments to pass to the specified method.
 
@@ -273,8 +273,8 @@ class PriorTruncnormal(PriorBase):
         fun = getattr(stats.truncnorm, method)
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        a = (prms[f"a_{self.ref_prm}"]-loc)/scale
-        b = (prms[f"b_{self.ref_prm}"]-loc)/scale
+        a = (prms[f"a_{self.ref_prm}"] - loc) / scale
+        b = (prms[f"b_{self.ref_prm}"] - loc) / scale
         if use_ref_prm:
             x = prms[self.ref_prm]
             return fun(x, a=a, b=b, loc=loc, scale=scale, **kwargs)
@@ -306,8 +306,8 @@ class PriorTruncnormal(PriorBase):
         """
         loc = prms[f"loc_{self.ref_prm}"]
         scale = prms[f"scale_{self.ref_prm}"]
-        a = (prms[f"a_{self.ref_prm}"]-loc)/scale
-        b = (prms[f"b_{self.ref_prm}"]-loc)/scale
+        a = (prms[f"a_{self.ref_prm}"] - loc) / scale
+        b = (prms[f"b_{self.ref_prm}"] - loc) / scale
         return stats.truncnorm.rvs(
             a=a, b=b, loc=loc, scale=scale, size=size, random_state=seed
         )
@@ -350,9 +350,9 @@ class PriorUniform(PriorBase):
         method
             The method of stats.uniform to be evaluated (e.g. 'pdf', 'logpdf').
         use_ref_prm
-            If True stats.uniform.<method>(x, loc, scale) is evaluated, hence 'x' must be
-            provided in the prms dictionary. Otherwise, the evaluated method is stats.
-            uniform.<method>(loc, scale).
+            If True stats.uniform.<method>(x, loc, scale) is evaluated, hence 'x' must
+            be provided in the prms dictionary. Otherwise, the evaluated method is
+            stats.uniform.<method>(loc, scale).
         kwargs
             Additional keyword arguments to pass to the specified method.
 

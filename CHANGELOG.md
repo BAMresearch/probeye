@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 1.0.16 (2021-Dec-03)
+### Added
+- added truncated normal distribution to the scipy-based prior classes
+
 ## 1.0.15 (2021-Dec-01)
 ### Added
 - added dynesty-solver (probeye/inference/dynesty_ submodule)
