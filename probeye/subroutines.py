@@ -1,13 +1,18 @@
 # standard library imports
 from copy import copy
-from typing import Iterable, Union, List, Tuple, Any, Optional, Generator, Callable
+from typing import Union, List, Tuple, Any, Optional, Generator, Callable
 from typing import TYPE_CHECKING
+import urllib
 import os
 import sys
 
 # third party imports
 import numpy as np
 from loguru import logger
+import owlready2
+import rdflib
+from rdflib import URIRef, Graph, Literal
+from rdflib.namespace import RDF, XSD
 
 # local imports for type checking
 if TYPE_CHECKING:  # pragma: no cover
@@ -813,3 +818,144 @@ def check_for_uninformative_priors(problem: "InferenceProblem"):
                 f"the requested solver. You could change it to a uniform-prior on a "
                 f"specified interval to solver this problem."
             )
+
+
+def iri(s: owlready2.entity.ThingClass) -> rdflib.term.URIRef:
+    """
+    Gets the Internationalized Resource Identifier (IRI) from a class or an
+    instance of an ontology, applies some basic parsing and returns the IRI
+    as an rdflib-term as it is needed for the triple generation.
+    """
+    return URIRef(urllib.parse.unquote(s.iri))  # type: ignore
+
+
+def add_constant_to_graph(
+    peo: owlready2.namespace.Ontology,
+    graph: rdflib.graph.Graph,
+    array: Union[np.ndarray, float, int],
+    name: str,
+    use: str,
+    info: str,
+    include_explanations: bool = True,
+    has_part_iri: str = "http://www.obofoundry.org/ro/#OBO_REL:part_of",
+):
+    """
+    Adds a given array in form of a constant to given knowledge graph.
+
+    Parameters
+    ----------
+    peo
+        Ontology object required to add triples in line with the parameter estimation
+        ontology.
+    graph
+        The knowledge graph to which the given array should be added.
+    array
+        The array to be added to the given graph.
+    name
+        The instance's name the array should be written to.
+    use
+        Stating what the constant is used for.
+    info
+        Information on what the given constant is.
+    include_explanations
+        If True, some of the graph's instances will have string-attributes which
+        give a short explanation on what they are. If False, those explanations will
+        not be included. This might be useful for graph-visualizations.
+    has_part_iri
+        The IRI used for the BFO object relation 'has_part'.
+    """
+
+    # this accounts for the cases when an int or a float is given
+    try:
+        array_shape = array.shape
+    except AttributeError:
+        array_shape = False
+
+    if array_shape:
+        if len(array_shape) == 1:
+            # in this case the array is a flat vector, which is interpreted as a column
+            # vector, which means that now row index is going to be assigned
+            t1 = iri(peo.vector(name))
+            t2 = RDF.type
+            t3 = iri(peo.vector)
+            graph.add((t1, t2, t3))
+            for row_idx, value in enumerate(array):
+                # an element of a vector is a scalar
+                element_name = f"{name}_{row_idx}"
+                t1 = iri(peo.scalar(element_name))
+                t2 = RDF.type
+                t3 = iri(peo.scalar)
+                graph.add((t1, t2, t3))
+                # add value
+                t1 = iri(peo.scalar(element_name))
+                t2 = iri(peo.has_value)
+                t3 = Literal(value, datatype=XSD.float)
+                graph.add((t1, t2, t3))
+                # add row index
+                t1 = iri(peo.scalar(element_name))
+                t2 = iri(peo.has_row_index)
+                t3 = Literal(row_idx, datatype=XSD.int)
+                graph.add((t1, t2, t3))
+                # associate scalar instance with vector instance
+                t1 = iri(peo.scalar(element_name))
+                t2 = URIRef(urllib.parse.unquote(has_part_iri))
+                t3 = iri(peo.vector(name))
+                graph.add((t1, t2, t3))
+        elif len(array_shape) == 2:
+            # in this case we have an actual array with row and column index
+            t1 = iri(peo.matrix(name))
+            t2 = RDF.type
+            t3 = iri(peo.matrix)
+            graph.add((t1, t2, t3))
+            for row_idx, array_row in enumerate(array):
+                for col_idx, value in enumerate(array_row):
+                    # an element of a matrix is a scalar
+                    element_name = f"{name}_{row_idx}_{col_idx}"
+                    t1 = iri(peo.scalar(element_name))
+                    t2 = RDF.type
+                    t3 = iri(peo.scalar)
+                    graph.add((t1, t2, t3))
+                    # add value
+                    t1 = iri(peo.scalar(element_name))
+                    t2 = iri(peo.has_value)
+                    t3 = Literal(value, datatype=XSD.float)
+                    graph.add((t1, t2, t3))
+                    # add row index
+                    t1 = iri(peo.scalar(element_name))
+                    t2 = iri(peo.has_row_index)
+                    t3 = Literal(row_idx, datatype=XSD.int)
+                    graph.add((t1, t2, t3))
+                    # add column index
+                    t1 = iri(peo.scalar(element_name))
+                    t2 = iri(peo.has_column_index)
+                    t3 = Literal(col_idx, datatype=XSD.int)
+                    graph.add((t1, t2, t3))
+                    # associate scalar instance with matrix instance
+                    t1 = iri(peo.scalar(element_name))
+                    t2 = URIRef(urllib.parse.unquote(has_part_iri))
+                    t3 = iri(peo.matrix(name))
+                    graph.add((t1, t2, t3))
+    else:
+        # in this case 'array' is an array of a single number like np.array(1.2); note
+        # that this is different to np.array([1.2]) because here a shape is defined; a
+        # constant of a single number is added in form of a scalar
+        t1 = iri(peo.scalar(name))
+        t2 = RDF.type
+        t3 = iri(peo.scalar)
+        graph.add((t1, t2, t3))
+        # add the scalar's value as a float
+        t1 = iri(peo.scalar(name))
+        t2 = iri(peo.has_value)
+        t3 = Literal(float(array), datatype=XSD.float)
+        graph.add((t1, t2, t3))
+
+    # add the use-string
+    t2 = iri(peo.used_for)
+    t3 = Literal(use, datatype=XSD.string)
+    graph.add((t1, t2, t3))
+
+    # add the info-string
+    if include_explanations:
+        t2 = iri(peo.has_explanation)
+        t3 = Literal(info, datatype=XSD.string)
+        graph.add((t1, t2, t3))

@@ -8,7 +8,7 @@ import os
 import owlready2
 import rdflib
 from rdflib import URIRef, Graph, Literal
-from rdflib.namespace import RDF
+from rdflib.namespace import RDF, XSD
 from tabulate import tabulate
 from loguru import logger
 import numpy as np
@@ -24,6 +24,8 @@ from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import add_index_to_tex_prm_name
+from probeye.subroutines import iri
+from probeye.subroutines import add_constant_to_graph
 
 
 class InferenceProblem:
@@ -304,6 +306,7 @@ class InferenceProblem:
         prm_name: str,
         prm_type: str,
         dim: Optional[int] = 1,
+        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",
@@ -317,7 +320,14 @@ class InferenceProblem:
         # add the parameter to the central parameter dictionary; checks and translations
         # are conducted in the Parameters.add_parameter method
         self._parameters.add_parameter(
-            prm_name, prm_type, dim=dim, const=const, prior=prior, info=info, tex=tex
+            prm_name,
+            prm_type,
+            dim=dim,
+            domain=domain,
+            const=const,
+            prior=prior,
+            info=info,
+            tex=tex,
         )
 
     def remove_parameter(self, prm_name: str):
@@ -338,6 +348,7 @@ class InferenceProblem:
         prm_name: str,
         const: Union[int, float, None] = None,
         prior: Union[tuple, None] = None,
+        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
     ):
         """
         Performs the necessary tasks to change a parameter's role in the problem
@@ -360,6 +371,9 @@ class InferenceProblem:
             An example for a normal prior: ('normal', {'loc': 0.0, 'scale': 1.0}). In
             order to define the prior's parameters, check out the prior definitions
             in priors.py.
+        domain
+            The parameter's domain (i.e., values it may assume). Note that this argument
+            is only considered for latent parameter, but not for a constant.
         """
         # first, make sure that the given parameter exists
         self._parameters.confirm_that_parameter_exists(prm_name)
@@ -403,6 +417,7 @@ class InferenceProblem:
             prm_name,
             prm.type,
             dim=dim,
+            domain=domain,
             const=const,
             prior=prior,
             info=prm.info,
@@ -1009,78 +1024,3 @@ class InferenceProblem:
                 )
 
         return self_copy
-
-    def export_to_rdf(
-        self,
-        ttl_file: str,
-        owl_basename: str = "parameter_estimation_ontology.owl",
-        namespace: str = "http://www.parameter_estimation_ontology.org",
-    ):
-        """
-        Exports the inference problem to an rdf-file according to the referenced
-        parameter estimation ontology.
-
-        Parameter
-        ---------
-        ttl_file
-            Path to the file (turtle-format) the knowledge graph should be written to.
-        owl_basename
-            The basename plus extension of the owl-file that contains the parameter
-            estimation ontology. This file must be contained in the probeye directory
-            one level above the directory of this file.
-        namespace
-            The namespace used in the owl-file for the classes of the parameter
-            estimation ontology. Currently, this is just a dummy placeholder.
-        """
-
-        # get the full path of the owl-file (it is stored in the probeye directory)
-        dir_path = os.path.dirname(__file__)
-        owl_dir = os.path.join(dir_path, "..")
-        owl_file = os.path.join(owl_dir, owl_basename)
-        assert os.path.isfile(owl_file), f"Could not find the owl-file at '{owl_file}'"
-
-        # load the ontology from file and set the namespace
-        owlready2.get_ontology(owl_file).load()
-        peo = owlready2.get_namespace(namespace)
-
-        # instantiate the knowledge graph
-        graph = Graph()
-
-        # this function will simplifies the following code
-        def iri(s: str) -> rdflib.term.URIRef:
-            return URIRef(urllib.parse.unquote(s.iri))  # type: ignore
-
-        # add all of the constant parameters to the graph
-        for const_name in self.constant_prms:
-            const_value = self._parameters[const_name].value
-            const_instance = iri(peo.numeric_constant(const_name))
-            graph.add((const_instance, RDF.type, iri(peo.numeric_constant)))
-            graph.add((const_instance, iri(peo.has_value), Literal(const_value)))
-
-        # add all of the latent parameters to the graph
-        for prm_name in self.latent_prms:
-
-            # prepare instance used below
-            prior_name = self._parameters[prm_name].prior.name
-            prm_instance = iri(peo.parameter(prm_name))
-            prior_instance = iri(peo.prior_density_function(prior_name))
-            intpr_instance = iri(peo.prior_knowledge("educated_guess"))
-
-            # add the instances to the graph
-            graph.add((prm_instance, RDF.type, iri(peo.parameter)))
-            graph.add((prior_instance, RDF.type, iri(peo.probability_density_function)))
-            graph.add((intpr_instance, RDF.type, iri(peo.prior_knowledge)))
-
-            # connect the instances with each other
-            graph.add((prior_instance, iri(peo.has_interpretation), intpr_instance))
-            graph.add((prm_instance, iri(peo.has_prior), prior_instance))
-            graph.add((prior_instance, iri(peo.has_input_argument), prm_instance))
-            for hyperparameter in self._parameters[prm_name].prior.hyperparameters:
-                if hyperparameter in self.constant_prms:
-                    instance = iri(peo.numeric_constant(hyperparameter))
-                else:
-                    instance = iri(peo.parameter(hyperparameter))
-                graph.add((prior_instance, iri(peo.has_input_argument), instance))
-
-        # print the triples to a file
-        graph.serialize(destination=ttl_file, format="turtle")

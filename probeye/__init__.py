@@ -2,3 +2,4 @@
 from probeye import definition
 from probeye import inference
 from probeye import postprocessing
+from probeye import interface

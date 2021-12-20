@@ -34,6 +34,7 @@ class ParameterProperties:
         # write attributes
         self._index = prm_dict["index"]
         self._type = prm_dict["type"]
+        self._domain = prm_dict["domain"]
         self._prior = prm_dict["prior"]
         self._value = prm_dict["value"]
         self.info = prm_dict["info"]
@@ -63,6 +64,7 @@ class ParameterProperties:
         self,
         index: Optional[int] = None,
         dim: Optional[int] = None,
+        domain: Union[tuple, List[tuple]] = None,
         type: Optional[str] = None,
         prior: Union[list, tuple, None] = None,
         value: Union[int, float, np.ndarray, None] = None,
@@ -82,6 +84,7 @@ class ParameterProperties:
             {
                 "index": index if index is not None else self._index,
                 "dim": dim or self._dim,
+                "domain": domain or self._domain,
                 "type": type or self._type,
                 "prior": prior or self._prior,
                 "value": value or self._value,
@@ -209,6 +212,18 @@ class ParameterProperties:
         )
 
     @property
+    def domain(self) -> Union[tuple, list]:
+        """Access self._domain from outside via self.domain."""
+        return self._domain
+
+    @dim.setter
+    def dim(self, value: Union[tuple, list]):
+        """Raise a specific error when trying to directly set self.domain."""
+        raise AttributeError(
+            "Changing a parameter's domain directly is prohibited!"
+        )
+
+    @property
     def index_end(self) -> int:
         """Adds a pseudo-attribute self.index_end, which allows a convenient
         access to the (not-inclusive) end index in the parameter vector."""
@@ -283,6 +298,7 @@ class Parameters(dict):
         prm_name: str,
         prm_type: str,
         dim: Optional[int] = 1,
+        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",
@@ -303,6 +319,9 @@ class Parameters(dict):
             'noise' (for a noise parameter).
         dim
             The parameter's dimension.
+        domain
+            The parameter's domain (i.e., values it may assume). Note that this argument
+            is only considered for latent parameter, but not for a constant.
         const
             If the added parameter is a 'const'-parameter, the corresponding value has
             to be specified by this argument.
@@ -336,6 +355,7 @@ class Parameters(dict):
             # which is given to self.loglike and self.logprior
             prm_index = self.n_latent_prms_dim  # type: Union[int, None]
             prm_dim = dim
+            prm_domain = domain if type(domain) == list else [domain]
             # the prm_value is reserved for 'const'-parameter; hence, it is set to None
             # in this case, where we are adding a 'latent'-param.
             prm_value = None
@@ -408,6 +428,7 @@ class Parameters(dict):
             # prm_index and prm_prior values are not used here
             prm_index = None
             prm_dim = len_or_one(const)
+            prm_domain = None
             prm_prior = None
             prm_value = const
             logger.debug(
@@ -420,6 +441,7 @@ class Parameters(dict):
             {
                 "index": prm_index,
                 "dim": prm_dim,
+                "domain" : prm_domain,
                 "type": prm_type,
                 "prior": prm_prior,
                 "value": prm_value,

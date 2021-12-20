@@ -84,6 +84,11 @@ class ForwardModelBase:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
 
+    @property
+    def sensor_names(self) -> List[str]:
+        """Provides a list of all sensor names as an attribute."""
+        return self.input_sensor_names + self.output_sensor_names
+
     def response(self, inp: dict) -> dict:
         """
         Evaluates the model response and provides computed results for all of the
