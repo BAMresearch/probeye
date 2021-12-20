@@ -6,8 +6,8 @@ while x and t represent position and time respectively. From the three model par
 A and B are latent ones while c is a constant. Measurements are made at three different
 positions (x-values) each of which is associated with an own zero-mean, uncorrelated
 normal noise model with the std. deviations to infer. This results in five latent
-parameters (parameters to infer). The problem is solved via sampling by means of emcee
-and pyro.
+parameters (parameters to infer). The problem is solved via max likelihood estimation
+and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -37,6 +37,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -65,6 +66,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -241,6 +245,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

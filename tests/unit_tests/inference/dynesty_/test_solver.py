@@ -10,11 +10,11 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.noise_model import NormalNoiseModel
-from probeye.inference.emcee_.solver import EmceeSolver
+from probeye.inference.dynesty_.solver import DynestySolver
 
 
 class TestProblem(unittest.TestCase):
-    def test_emcee_solver(self):
+    def test_dynesty_solver(self):
 
         np.random.seed(6174)
 
@@ -48,12 +48,12 @@ class TestProblem(unittest.TestCase):
             f"Tests", fwd_model_name="LinRe", sensor_values={"x": x_test, "y": y_test}
         )
 
-        # run the emcee solver with deactivated output
+        # run the dynesty solver with deactivated output
         logging.root.disabled = True
-        emcee_solver = EmceeSolver(problem, show_progress=False, seed=6174)
-        emcee_solver.run_mcmc(n_walkers=20, n_steps=200, vectorize=False)
+        dynesty_solver = DynestySolver(problem, show_progress=True, seed=6174)
+        dynesty_solver.run_dynesty("dynamic", nlive_init=10, nlive_batch=10, maxbatch=2)
 
-        sample_means = emcee_solver.summary["mean"]
+        sample_means = dynesty_solver.summary["mean"]
         for parameter, true_value in true.items():
             self.assertAlmostEqual(sample_means[parameter], true_value, delta=0.01)
 
