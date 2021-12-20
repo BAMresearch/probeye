@@ -1,5 +1,6 @@
 # standard library
 import os
+from typing import Union
 
 # third party imports
 import owlready2
@@ -101,7 +102,9 @@ def export_rdf(
             # ugly due to the long code line which will be broken up
             t1 = iri(peo.single_experiment_measurement_data_set(exp_name))
             t2 = RDF.type
-            t3 = iri(peo.single_experiment_measurement_data_set)
+            t3 = iri(
+                peo.single_experiment_measurement_data_set
+            )  # type: Union[URIRef, Literal]
             graph.add((t1, t2, t3))
 
             # assign the experiment's forward model; note that it is not a problem that

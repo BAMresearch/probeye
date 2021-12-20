@@ -864,20 +864,14 @@ def add_constant_to_graph(
     has_part_iri
         The IRI used for the BFO object relation 'has_part'.
     """
-
-    # this accounts for the cases when an int or a float is given
-    try:
+    if type(array) is np.ndarray:
         array_shape = array.shape
-    except AttributeError:
-        array_shape = False
-
-    if array_shape:
         if len(array_shape) == 1:
             # in this case the array is a flat vector, which is interpreted as a column
             # vector, which means that now row index is going to be assigned
             t1 = iri(peo.vector(name))
             t2 = RDF.type
-            t3 = iri(peo.vector)
+            t3 = iri(peo.vector)  # type: Union[URIRef, Literal]
             graph.add((t1, t2, t3))
             for row_idx, value in enumerate(array):
                 # an element of a vector is a scalar

@@ -217,7 +217,7 @@ class ParameterProperties:
         return self._domain
 
     @dim.setter
-    def dim(self, value: Union[tuple, list]):
+    def domain(self, value: Union[tuple, list]):
         """Raise a specific error when trying to directly set self.domain."""
         raise AttributeError(
             "Changing a parameter's domain directly is prohibited!"
@@ -355,7 +355,7 @@ class Parameters(dict):
             # which is given to self.loglike and self.logprior
             prm_index = self.n_latent_prms_dim  # type: Union[int, None]
             prm_dim = dim
-            prm_domain = domain if type(domain) == list else [domain]
+            prm_domain = domain if type(domain) == list else [domain]  # type: ignore
             # the prm_value is reserved for 'const'-parameter; hence, it is set to None
             # in this case, where we are adding a 'latent'-param.
             prm_value = None
@@ -428,7 +428,7 @@ class Parameters(dict):
             # prm_index and prm_prior values are not used here
             prm_index = None
             prm_dim = len_or_one(const)
-            prm_domain = None
+            prm_domain = None  # type: ignore
             prm_prior = None
             prm_value = const
             logger.debug(
