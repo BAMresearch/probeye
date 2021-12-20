@@ -219,9 +219,7 @@ class ParameterProperties:
     @dim.setter
     def domain(self, value: Union[tuple, list]):
         """Raise a specific error when trying to directly set self.domain."""
-        raise AttributeError(
-            "Changing a parameter's domain directly is prohibited!"
-        )
+        raise AttributeError("Changing a parameter's domain directly is prohibited!")
 
     @property
     def index_end(self) -> int:
@@ -441,7 +439,7 @@ class Parameters(dict):
             {
                 "index": prm_index,
                 "dim": prm_dim,
-                "domain" : prm_domain,
+                "domain": prm_domain,
                 "type": prm_type,
                 "prior": prm_prior,
                 "value": prm_value,

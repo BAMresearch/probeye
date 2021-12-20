@@ -12,6 +12,7 @@ from probeye.definition.inference_problem import InferenceProblem
 from probeye.subroutines import iri
 from probeye.subroutines import add_constant_to_graph
 
+
 def export_rdf(
     problem: InferenceProblem,
     ttl_file: str,
@@ -395,7 +396,7 @@ def export_rdf(
                 t2 = iri(peo.describes_error_with_respect_to_experiment)
                 t3 = iri(peo.single_experiment_measurement_data_set(exp_name))
                 graph.add((t1, t2, t3))
-            fwd_model_name = problem.experiments[exp_name]['forward_model']
+            fwd_model_name = problem.experiments[exp_name]["forward_model"]
             t1 = iri(peo.forward_error_function(noise_model.name))
             t2 = iri(peo.has_input_argument)
             for sensor_name in noise_model.sensor_names:
