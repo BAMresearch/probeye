@@ -892,7 +892,7 @@ def add_constant_to_graph(
                 graph.add((t1, t2, t3))
                 # associate scalar instance with vector instance
                 t1 = iri(peo.scalar(element_name))
-                t2 = URIRef(urllib.parse.unquote(has_part_iri))
+                t2 = URIRef(urllib.parse.unquote(has_part_iri))  # type: ignore
                 t3 = iri(peo.vector(name))
                 graph.add((t1, t2, t3))
         elif len(array_shape) == 2:
@@ -926,7 +926,7 @@ def add_constant_to_graph(
                     graph.add((t1, t2, t3))
                     # associate scalar instance with matrix instance
                     t1 = iri(peo.scalar(element_name))
-                    t2 = URIRef(urllib.parse.unquote(has_part_iri))
+                    t2 = URIRef(urllib.parse.unquote(has_part_iri))  # type: ignore
                     t3 = iri(peo.matrix(name))
                     graph.add((t1, t2, t3))
     else:
