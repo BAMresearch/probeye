@@ -216,7 +216,7 @@ class ParameterProperties:
         """Access self._domain from outside via self.domain."""
         return self._domain
 
-    @dim.setter
+    @domain.setter
     def domain(self, value: Union[tuple, list]):
         """Raise a specific error when trying to directly set self.domain."""
         raise AttributeError("Changing a parameter's domain directly is prohibited!")

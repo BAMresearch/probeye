@@ -24,7 +24,7 @@ from probeye.interface.export_rdf import export_rdf
 
 
 class TestProblem(unittest.TestCase):
-    def test_prior_calibration(self, plot: bool = False, cleanup: bool = False):
+    def test_rdf_export(self, plot: bool = False, cleanup: bool = False):
         """
         Integration test for the problem described at the top of this file. Note that in
         this test, only the export-to-rdf feature is tested and not the actual inference
