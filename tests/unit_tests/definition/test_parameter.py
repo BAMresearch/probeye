@@ -1,6 +1,9 @@
 # standard library imports
 import unittest
 
+# third party imports
+import numpy as np
+
 # local imports
 from probeye.definition.parameter import Parameters
 from probeye.definition.parameter import ParameterProperties
@@ -14,6 +17,7 @@ class TestProblem(unittest.TestCase):
         parameters["a"] = ParameterProperties(
             {
                 "index": None,
+                "domain": None,
                 "type": "model",
                 "prior": None,
                 "value": 1.0,
@@ -24,6 +28,7 @@ class TestProblem(unittest.TestCase):
         parameters["b"] = ParameterProperties(
             {
                 "index": None,
+                "domain": None,
                 "type": "model",
                 "prior": None,
                 "value": 2.0,
@@ -36,6 +41,7 @@ class TestProblem(unittest.TestCase):
             {
                 "index": 2,
                 "dim": 1,
+                "domain": (-np.infty, np.infty),
                 "type": "model",
                 "prior": c_prior,
                 "value": None,
@@ -48,6 +54,7 @@ class TestProblem(unittest.TestCase):
             parameters[True] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": 3.0,
@@ -68,6 +75,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = {
                 "index": 3,
                 "dim": 1,
+                "domain": (-np.infty, np.infty),
                 "type": "model",
                 "role": "latent",
                 "prior": d_prior,
@@ -81,6 +89,8 @@ class TestProblem(unittest.TestCase):
             parameters["a"].index = -1
         with self.assertRaises(AttributeError):
             parameters["a"].dim = -1
+        with self.assertRaises(AttributeError):
+            parameters["a"].domain = -1
         with self.assertRaises(AttributeError):
             parameters["a"].type = -1
         with self.assertRaises(AttributeError):
@@ -97,6 +107,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": True,
                     "dim": 1,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -110,6 +121,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": -1,
                     "dim": 1,
+                    "domain": (-np.infty, np.infty),
                     "type": "model",
                     "prior": None,
                     "value": 1.0,
@@ -124,6 +136,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": True,
+                    "domain": (-np.infty, np.infty),
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -138,6 +151,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 0,
+                    "domain": (-np.infty, np.infty),
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -150,6 +164,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "invalid value",
                     "prior": None,
                     "value": 1.0,
@@ -162,6 +177,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": True,
                     "value": 1.0,
@@ -174,6 +190,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": True,
@@ -188,6 +205,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": None,
+                    "domain": (-np.infty, np.infty),
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -201,6 +219,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 1,
+                    "domain": (-np.infty, np.infty),
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -215,6 +234,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 1,
+                    "domain": (-np.infty, np.infty),
                     "type": "model",
                     "prior": d_prior,
                     "value": 1.0,
@@ -228,6 +248,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": d_prior,
                     "value": 1.0,
@@ -240,6 +261,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": None,

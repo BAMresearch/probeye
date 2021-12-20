@@ -20,6 +20,7 @@ from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.noise_model import NormalNoiseModel
+from probeye.interface.export_rdf import export_rdf
 
 
 class TestProblem(unittest.TestCase):
@@ -62,7 +63,7 @@ class TestProblem(unittest.TestCase):
         high_sigma = 0.6
 
         # the number of generated experiment_names and seed for random numbers
-        n_tests = 100
+        n_tests = 4
         seed = 1
 
         # ============================================================================ #
@@ -84,7 +85,12 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Linear model with normal noise and prior-prior")
+        from probeye.subroutines import logging_setup
+
+        logging_setup("ERROR")
+        problem = InferenceProblem(
+            "Linear model with normal noise and prior-prior", use_default_logger=False
+        )
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -111,6 +117,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "noise",
+            domain=(0.0, np.infty),
             info="Std. dev, of 0-mean noise model",
             tex=r"$\sigma$",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -137,13 +144,19 @@ class TestProblem(unittest.TestCase):
         y_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
             osensor.name
         ]
-        y_test = np.random.normal(loc=y_true, scale=sigma_noise)
+        y_test_1 = np.random.normal(loc=y_true, scale=sigma_noise)
+        y_test_2 = np.random.normal(loc=y_true, scale=sigma_noise)
 
         # add the experimental data
         problem.add_experiment(
             f"TestSeries_1",
             fwd_model_name="LinearModel",
-            sensor_values={isensor.name: x_test, osensor.name: y_test},
+            sensor_values={isensor.name: x_test, osensor.name: y_test_1},
+        )
+        problem.add_experiment(
+            f"TestSeries_2",
+            fwd_model_name="LinearModel",
+            sensor_values={isensor.name: x_test, osensor.name: y_test_2},
         )
 
         # give problem overview
@@ -151,7 +164,9 @@ class TestProblem(unittest.TestCase):
 
         # plot the true and noisy data
         if plot:
-            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.scatter(
+                x_test, y_test_1, label="measured data", s=10, c="red", zorder=10
+            )
             plt.plot(x_test, y_true, label="true", c="black")
             plt.xlabel(isensor.name)
             plt.ylabel(osensor.name)
@@ -166,7 +181,8 @@ class TestProblem(unittest.TestCase):
         # create the knowledge graph and print it to file
         dir_path = os.path.dirname(__file__)
         ttl_file = os.path.join(dir_path, "test_rdf_export.ttl")
-        problem.export_to_rdf(ttl_file)
+        problem.assign_experiments_to_noise_models()
+        export_rdf(problem, ttl_file, include_explanations=False)
 
         # remove the created file again if requested
         if cleanup and os.path.isfile(ttl_file):
