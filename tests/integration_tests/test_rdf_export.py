@@ -63,8 +63,12 @@ class TestProblem(unittest.TestCase):
         high_sigma = 0.6
 
         # the number of generated experiment_names and seed for random numbers
-        n_tests = 4
+        n_tests = 10
         seed = 1
+
+        # configures the exported graph
+        write_array_data = False
+        include_explanations = False
 
         # ============================================================================ #
         #                           Define the Forward Model                           #
@@ -182,7 +186,12 @@ class TestProblem(unittest.TestCase):
         dir_path = os.path.dirname(__file__)
         ttl_file = os.path.join(dir_path, "test_rdf_export.ttl")
         problem.assign_experiments_to_noise_models()
-        export_rdf(problem, ttl_file, include_explanations=False)
+        export_rdf(
+            problem,
+            ttl_file,
+            include_explanations=include_explanations,
+            write_array_data=write_array_data,
+        )
 
         # remove the created file again if requested
         if cleanup and os.path.isfile(ttl_file):

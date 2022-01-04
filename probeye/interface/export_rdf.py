@@ -18,6 +18,7 @@ def export_rdf(
     ttl_file: str,
     owl_basename: str = "parameter_estimation_ontology.owl",
     include_explanations: bool = True,
+    write_array_data: bool = True,
 ):
     """
     Exports a given InferenceProblem to an rdf-file according to the referenced
@@ -37,6 +38,11 @@ def export_rdf(
         If True, some of the graph's instances will have string-attributes which give a
         short explanation on what they are. If False, those explanations will not be
         included. This might be useful for graph-visualizations.
+    write_array_data
+        When True, the values and indices of an array are written to the graph. However,
+        this might lead to a rather large graph. When False, no values and indices are
+        written to the graph. This might be useful when the non-data part of the graph
+        is of primary interest.
     """
 
     # get the full path of the owl-file (it is stored in the probeye directory)
@@ -89,6 +95,7 @@ def export_rdf(
                 use,
                 info,
                 include_explanations=include_explanations,
+                write_array_data=write_array_data,
             )
 
         # ---------------------------------------------------------------------------- #
@@ -135,6 +142,7 @@ def export_rdf(
                         use,
                         info,
                         include_explanations=include_explanations,
+                        write_array_data=write_array_data,
                     )
                     # assign the added constant to the experiment; note that 't1' is
                     # the experiment-instance from above

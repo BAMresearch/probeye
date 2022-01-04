@@ -837,10 +837,11 @@ def add_constant_to_graph(
     use: str,
     info: str,
     include_explanations: bool = True,
+    write_array_data: bool = True,
     has_part_iri: str = "http://www.obofoundry.org/ro/#OBO_REL:part_of",
 ):
     """
-    Adds a given array in form of a constant to given knowledge graph.
+    Adds a given constant (array or scalar) to given knowledge graph.
 
     Parameters
     ----------
@@ -861,6 +862,11 @@ def add_constant_to_graph(
         If True, some of the graph's instances will have string-attributes which
         give a short explanation on what they are. If False, those explanations will
         not be included. This might be useful for graph-visualizations.
+    write_array_data
+        When True, the values and indices of an array are written to the graph. However,
+        this might lead to a rather large graph. When False, no values and indices are
+        written to the graph. This might be useful when the non-data part of the graph
+        is of primary interest.
     has_part_iri
         The IRI used for the BFO object relation 'has_part'.
     """
@@ -873,38 +879,10 @@ def add_constant_to_graph(
             t2 = RDF.type
             t3 = iri(peo.vector)  # type: Union[URIRef, Literal]
             graph.add((t1, t2, t3))
-            for row_idx, value in enumerate(array):
-                # an element of a vector is a scalar
-                element_name = f"{name}_{row_idx}"
-                t1 = iri(peo.scalar(element_name))
-                t2 = RDF.type
-                t3 = iri(peo.scalar)
-                graph.add((t1, t2, t3))
-                # add value
-                t1 = iri(peo.scalar(element_name))
-                t2 = iri(peo.has_value)
-                t3 = Literal(value, datatype=XSD.float)
-                graph.add((t1, t2, t3))
-                # add row index
-                t1 = iri(peo.scalar(element_name))
-                t2 = iri(peo.has_row_index)
-                t3 = Literal(row_idx, datatype=XSD.int)
-                graph.add((t1, t2, t3))
-                # associate scalar instance with vector instance
-                t1 = iri(peo.scalar(element_name))
-                t2 = URIRef(urllib.parse.unquote(has_part_iri))  # type: ignore
-                t3 = iri(peo.vector(name))
-                graph.add((t1, t2, t3))
-        elif len(array_shape) == 2:
-            # in this case we have an actual array with row and column index
-            t1 = iri(peo.matrix(name))
-            t2 = RDF.type
-            t3 = iri(peo.matrix)
-            graph.add((t1, t2, t3))
-            for row_idx, array_row in enumerate(array):
-                for col_idx, value in enumerate(array_row):
-                    # an element of a matrix is a scalar
-                    element_name = f"{name}_{row_idx}_{col_idx}"
+            if write_array_data:
+                for row_idx, value in enumerate(array):
+                    # an element of a vector is a scalar
+                    element_name = f"{name}_{row_idx}"
                     t1 = iri(peo.scalar(element_name))
                     t2 = RDF.type
                     t3 = iri(peo.scalar)
@@ -919,16 +897,46 @@ def add_constant_to_graph(
                     t2 = iri(peo.has_row_index)
                     t3 = Literal(row_idx, datatype=XSD.int)
                     graph.add((t1, t2, t3))
-                    # add column index
-                    t1 = iri(peo.scalar(element_name))
-                    t2 = iri(peo.has_column_index)
-                    t3 = Literal(col_idx, datatype=XSD.int)
-                    graph.add((t1, t2, t3))
-                    # associate scalar instance with matrix instance
+                    # associate scalar instance with vector instance
                     t1 = iri(peo.scalar(element_name))
                     t2 = URIRef(urllib.parse.unquote(has_part_iri))  # type: ignore
-                    t3 = iri(peo.matrix(name))
+                    t3 = iri(peo.vector(name))
                     graph.add((t1, t2, t3))
+        elif len(array_shape) == 2:
+            # in this case we have an actual array with row and column index
+            t1 = iri(peo.matrix(name))
+            t2 = RDF.type
+            t3 = iri(peo.matrix)
+            graph.add((t1, t2, t3))
+            if write_array_data:
+                for row_idx, array_row in enumerate(array):
+                    for col_idx, value in enumerate(array_row):
+                        # an element of a matrix is a scalar
+                        element_name = f"{name}_{row_idx}_{col_idx}"
+                        t1 = iri(peo.scalar(element_name))
+                        t2 = RDF.type
+                        t3 = iri(peo.scalar)
+                        graph.add((t1, t2, t3))
+                        # add value
+                        t1 = iri(peo.scalar(element_name))
+                        t2 = iri(peo.has_value)
+                        t3 = Literal(value, datatype=XSD.float)
+                        graph.add((t1, t2, t3))
+                        # add row index
+                        t1 = iri(peo.scalar(element_name))
+                        t2 = iri(peo.has_row_index)
+                        t3 = Literal(row_idx, datatype=XSD.int)
+                        graph.add((t1, t2, t3))
+                        # add column index
+                        t1 = iri(peo.scalar(element_name))
+                        t2 = iri(peo.has_column_index)
+                        t3 = Literal(col_idx, datatype=XSD.int)
+                        graph.add((t1, t2, t3))
+                        # associate scalar instance with matrix instance
+                        t1 = iri(peo.scalar(element_name))
+                        t2 = URIRef(urllib.parse.unquote(has_part_iri))  # type: ignore
+                        t3 = iri(peo.matrix(name))
+                        graph.add((t1, t2, t3))
     else:
         # in this case 'array' is an array of a single number like np.array(1.2); note
         # that this is different to np.array([1.2]) because here a shape is defined; a
