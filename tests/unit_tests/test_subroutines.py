@@ -192,6 +192,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(computed_result, expected_result)
         # check invalid input (here: invalid type)
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             flatten((1, 2, 3))
 
     def test_process_spatial_coordinates(self):
@@ -376,6 +377,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check invalid input (here: invalid type)
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             process_spatiotemporal_coordinates(coords=(1, 2, 3, 4, 5))
         # check invalid input (here: inconsistent individual lengths)
         with self.assertRaises(RuntimeError):
@@ -470,7 +472,7 @@ class TestProblem(unittest.TestCase):
         # check if the detection works as expected
         problem = InferenceProblem("Problem with uninformative prior")
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
         check_for_uninformative_priors(problem)  # no error should be raised
         problem.add_parameter("m", "model")  # uninformative prior

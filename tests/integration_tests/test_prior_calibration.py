@@ -1,10 +1,11 @@
 """
 Linear regression example where a prior parameter is a latent parameter
 ----------------------------------------------------------------------------------------
-The model equation is y = a * x + b with a, b being the model parameters and the noise
-model is a normal zero-mean distribution with the std. deviation to infer. Additionally,
-the location parameter of a's prior is considered a latent parameter.The problem is
-solved via sampling using emcee and pyro.
+The model equation is y(x) = a * x + b with a, b being the model parameters, while the
+likelihood model is based on a normal zero-mean additive model error distribution with
+the standard deviation to infer. Additionally, the location parameter of a's prior is
+considered a latent parameter. The problem is solved via max likelihood estimation and
+via sampling using emcee and pyro.
 """
 
 # standard library imports
@@ -19,7 +20,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -83,8 +84,8 @@ class TestProblem(unittest.TestCase):
         loc_b = 1.0
         scale_b = 1.0
 
-        # 'true' value of noise sd, and its uniform prior parameters
-        sigma_noise = 0.5
+        # 'true' value of additive error sd, and its uniform prior parameters
+        sigma = 0.5
         low_sigma = 0.1
         high_sigma = 0.6
 
@@ -111,7 +112,9 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Linear model with normal noise and prior-prior")
+        problem = InferenceProblem(
+            "Linear model with normal additive error and a latent prior-parameter"
+        )
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -137,8 +140,8 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
-            info="Std. dev, of 0-mean noise model",
+            "likelihood",
+            info="Standard deviation, of zero-mean additive model error",
             tex=r"$\sigma$",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
@@ -149,22 +152,22 @@ class TestProblem(unittest.TestCase):
         linear_model = LinearModel(["a", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        # add the likelihood model to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
         )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # data-generation; normal noise with constant variance around each point
+        # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
             osensor.name
         ]
-        y_test = np.random.normal(loc=y_true, scale=sigma_noise)
+        y_test = np.random.normal(loc=y_true, scale=sigma)
 
         # add the experimental data
         problem.add_experiment(
@@ -192,7 +195,7 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {"loc_a": a_true, "a": a_true, "b": b_true, "sigma": sigma_noise}
+        true_values = {"loc_a": a_true, "a": a_true, "b": b_true, "sigma": sigma}
         run_inference_engines(
             problem,
             true_values=true_values,

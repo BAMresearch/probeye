@@ -9,7 +9,7 @@ import numpy as np
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.emcee_.solver import EmceeSolver
 
 
@@ -31,12 +31,14 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
         problem.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 1})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 1})
         )
         problem.add_forward_model(
             "LinRe", LinRe(["a", "b"], [Sensor("x")], [Sensor("y")])
         )
-        problem.add_noise_model(NormalNoiseModel({"sigma": "std"}, sensors=Sensor("y")))
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel({"sigma": "std_model"}, sensors=Sensor("y"))
+        )
 
         # generate and add some simple test data
         n_tests, a_true, b_true, sigma_true = 5000, 0.3, -0.2, 0.1

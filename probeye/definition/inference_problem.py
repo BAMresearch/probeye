@@ -11,7 +11,7 @@ import torch as th
 # local imports
 from probeye.definition.parameter import Parameters
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.noise_model import NoiseModelBase
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
@@ -54,7 +54,7 @@ class InferenceProblem:
         # following attributes:
         # .index  int or None (the index in the theta-vector (see self.loglike) for
         #         'latent'-parameter; None for 'const'-parameters)
-        # .type   string (either 'model', 'prior' or 'noise' depending on where the
+        # .type   string (either 'model', 'prior' or 'likelihood' depending on where the
         #         parameter appears)
         # .prior  object or None (the prior-object of the 'latent'-parameter; None for
         #         'const'-parameters)
@@ -76,10 +76,10 @@ class InferenceProblem:
         # this dictionary is managed internally and should not be edited directly
         self._forward_models = {}  # type: dict
 
-        # a list for the problem's noise models (it's not a dict like the other
-        # attributes from above as the noise models don't need to have names); this
+        # a list for the problem's likelihood models (it's not a dict like the other
+        # attributes from above as the likelihood models don't need to have names); this
         # list is managed internally and should not be edited directly
-        self._noise_models = list()  # type: List[NoiseModelBase]
+        self._likelihood_models = list()  # type: List[GaussianLikelihoodModel]
 
         # setup the logger with the given specifications
         if use_default_logger:
@@ -156,14 +156,14 @@ class InferenceProblem:
         return self._parameters.prior_prms
 
     @property
-    def n_noise_prms(self) -> int:
-        """Provides n_noise_prms attribute."""
-        return self._parameters.n_noise_prms
+    def n_likelihood_prms(self) -> int:
+        """Provides n_likelihood_prms attribute."""
+        return self._parameters.n_likelihood_prms
 
     @property
-    def noise_prms(self) -> List[str]:
-        """Provides noise_prms attribute."""
-        return self._parameters.noise_prms
+    def likelihood_prms(self) -> List[str]:
+        """Provides likelihood_prms attribute."""
+        return self._parameters.likelihood_prms
 
     @property
     def parameters(self) -> Parameters:
@@ -182,9 +182,9 @@ class InferenceProblem:
         }
 
     @property
-    def noise_models(self) -> list:
-        """Access self._noise_models from outside via self.noise_models."""
-        return self._noise_models
+    def likelihood_models(self) -> list:
+        """Access self._likelihood_models from outside via self.likelihood_models."""
+        return self._likelihood_models
 
     @property
     def forward_models(self) -> dict:
@@ -381,7 +381,7 @@ class InferenceProblem:
             )
         # the parameter's role is changed by first removing it from the problem, and
         # then adding it again in its new role; the role-change does not impact the type
-        # ('model', 'prior' or 'noise')
+        # ('model', 'prior' or 'likelihood')
         prm = self._parameters[prm_name]
         if prm.is_const:
             # if a constant parameter should be made latent, its dimension will be taken
@@ -465,7 +465,7 @@ class InferenceProblem:
         """
 
         # check if the central components have been added to the problem: parameters,
-        # forward models, noise models and experiments
+        # forward models, likelihood models and experiments
         assert (
             len(self._parameters) != 0
         ), "The problem does not contain any parameters!"
@@ -473,8 +473,8 @@ class InferenceProblem:
             len(self._forward_models) != 0
         ), "The problem does not contain any forward models!"
         assert (
-            len(self._noise_models) != 0
-        ), "The problem does not contain any noise models!"
+            len(self._likelihood_models) != 0
+        ), "The problem does not contain any likelihood models!"
         assert (
             len(self._experiments) != 0
         ), "The problem does not contain any experiments!"
@@ -491,17 +491,18 @@ class InferenceProblem:
                     self._parameters[model_prm].type == "model"
                 ), f"The forward model parameter '{model_prm}' is not of type 'model'!"
 
-        # check if all parameters of the noise model appear in self._parameters
+        # check if all parameters of the likelihood model appear in self._parameters
         # and if they have the correct type
-        for noise_model in self._noise_models:
-            for noise_prm in noise_model.prms_def.keys():
-                assert noise_prm in self._parameters, (
-                    f"The noise model parameter '{noise_prm}' is not defined within "
-                    f"the problem!"
+        for likelihood_model in self._likelihood_models:
+            for likelihood_prm in likelihood_model.prms_def.keys():
+                assert likelihood_prm in self._parameters, (
+                    f"The likelihood model parameter '{likelihood_prm}' is not defined "
+                    f"within the problem!"
                 )
-                assert (
-                    self._parameters[noise_prm].type == "noise"
-                ), f"The noise model parameter '{noise_prm}' is not of type 'noise'!"
+                assert self._parameters[likelihood_prm].type == "likelihood", (
+                    f"The likelihood model parameter '{likelihood_prm}' is not of type "
+                    f"'likelihood'!"
+                )
 
         # check if all prior objects in self.priors are consistent in terms of their
         # parameters; each one of them must appear in self._parameters
@@ -863,89 +864,93 @@ class InferenceProblem:
         # the given forward model name
         self._forward_models[name] = forward_model
 
-    def add_noise_model(self, noise_model: NoiseModelBase):
+    def add_likelihood_model(self, likelihood_model: GaussianLikelihoodModel):
         """
-        Adds a noise model to the inference problem.
+        Adds a likelihood model to the inference problem.
 
         Parameters
         ----------
-        noise_model
-            The noise model object, e.g. from NormalNoise. Check out noise.py to see
-            some noise model classes.
+        likelihood_model
+            The likelihood model object. Check out likelihood_model.py to get more
+            information on the underlying class.
         """
 
-        # check if the noise model has been assigned a name; if not, assign one
-        if noise_model.name is None:
-            noise_model.name = f"noise_model_{len(self.noise_models)}"
+        # check if the likelihood model has been assigned a name; if not, assign one
+        if likelihood_model.name is None:
+            likelihood_model.name = f"likelihood_model_{len(self.likelihood_models)}"
             logger.debug(
-                f"Adding noise model '{noise_model.name}' (name assigned automatically)"
+                f"Adding likelihood model '{likelihood_model.name}' "
+                f"(name assigned automatically)"
             )
         else:
-            logger.debug(f"Adding noise model '{noise_model.name}'")
+            logger.debug(f"Adding likelihood model '{likelihood_model.name}'")
 
-        # check if all given noise model parameters have already been added to
+        # check if all given likelihood model parameters have already been added to
         # the inference problem
-        for prm_name in noise_model.prms_def:
+        for prm_name in likelihood_model.prms_def:
             if prm_name not in self._parameters.keys():
                 raise RuntimeError(
-                    f"The noise model parameter '{prm_name}' has not been defined yet."
-                    f"\nYou have to add all noise model parameters to the problem "
-                    f"before adding the noise model.\nYou can use the 'add_parameter' "
-                    f"method for this purpose."
+                    f"The likelihood model parameter '{prm_name}' has not been defined "
+                    f"yet.\nYou have to add all likelihood model parameters to the"
+                    f"problem before adding the likelihood model.\nYou can use the "
+                    f"'add_parameter' method for this purpose."
                 )
 
-        # add the problem's experiments to the noise model (this is just a pointer!)
-        # for noise_model-internal checks
-        noise_model.problem_experiments = self._experiments
-        # finally, add the noise_model to the internal dict
-        self._noise_models.append(noise_model)
+        # add the problem's experiments to the likelihood model (note that this is just
+        # a pointer!) for likelihood_model-internal checks
+        likelihood_model.problem_experiments = self._experiments
 
-    def assign_experiments_to_noise_models(self):
+        # finally, add the likelihood_model to the internal dict
+        self._likelihood_models.append(likelihood_model)
+
+    def assign_experiments_to_likelihood_models(self):
         """
-        Assigns each noise model the corresponding experiment names, based on the sensor
-        names, that are defined for each noise model. This function is intended to be
-        called after the problem was fully defined. Alternatively, you can assign the
-        experiments 'by hand', by using the NoiseModelBase's 'add_experiments' method.
+        Assigns each likelihood model the corresponding experiment names, based on the
+        sensor names, that are defined for each likelihood model. This function is
+        intended to be called after the problem was fully defined. Alternatively, you
+        can assign the experiments 'by hand', by using the GaussianLikelihood's
+        'add_experiments' method.
         """
-        logger.debug("Assigning experiments to noise models")
+        logger.debug("Assigning experiments to likelihood models")
         n_experiments_defined = len(self._experiments)
-        n_experiments_noise = 0
-        for noise_model in self._noise_models:
-            if noise_model.assign_experiments_automatically:
-                # get experiments that contain all of the noise model's sensors
+        n_experiments_likelihood = 0
+        for likelihood_model in self._likelihood_models:
+            if likelihood_model.assign_experiments_automatically:
+                # get experiments that contain all of the likelihood model's sensors
                 experiment_names = self.get_experiment_names(
-                    sensor_names=noise_model.sensor_names
+                    sensor_names=likelihood_model.sensor_names
                 )
-                n_experiments_noise += len(experiment_names)
-                # add the relevant experiment names to the noise model
-                noise_model.add_experiments(experiment_names)
+                n_experiments_likelihood += len(experiment_names)
+                # add the relevant experiment names to the likelihood model
+                likelihood_model.add_experiments(experiment_names)
             else:
-                n_experiments_noise += len(noise_model.experiment_names)
-            noise_model.prepare_corr_dict()
+                n_experiments_likelihood += len(likelihood_model.experiment_names)
+            likelihood_model.prepare_corr_dict()
 
-        # check if there is the same number of experiments over all noise models as
+        # check if there is the same number of experiments over all likelihood models as
         # defined for the inference problem
-        if n_experiments_noise != n_experiments_defined:
+        if n_experiments_likelihood != n_experiments_defined:
             # this is not necessarily an error; it also happens in a valid setup when
-            # more than one noise model are defined for one forward model; in a future
-            # version, there could be an info message here
+            # more than one likelihood model are defined for one forward model; in a
+            # future version, there could be an info message here
             pass
 
-        # check that each globally defined experiment appears in one of the noise models
-        exp_names_in_noise_models = set()
-        for noise_model in self._noise_models:
-            for exp_name_noise in noise_model.experiment_names:
-                exp_names_in_noise_models.add(exp_name_noise)
+        # check that each globally defined experiment appears in one of the likelihood
+        # models
+        exp_names_in_likelihood_models = set()
+        for likelihood_model in self._likelihood_models:
+            for exp_name_likelihood in likelihood_model.experiment_names:
+                exp_names_in_likelihood_models.add(exp_name_likelihood)
 
         for exp_name in self._experiments.keys():
-            if exp_name not in exp_names_in_noise_models:
+            if exp_name not in exp_names_in_likelihood_models:
                 # undo the adding of the experiment names
-                for noise_model in self._noise_models:
-                    noise_model.experiment_names = []
+                for likelihood_model in self._likelihood_models:
+                    likelihood_model.experiment_names = []
                 # one may argue, that this could also be only a warning here
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not appear in "
-                    f"any of the noise models!"
+                    f"any of the likelihood models!"
                 )
 
     def transform_experimental_data(

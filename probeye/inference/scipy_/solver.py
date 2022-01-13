@@ -11,7 +11,7 @@ from loguru import logger
 
 # local imports
 from probeye.inference.scipy_.priors import translate_prior
-from probeye.inference.scipy_.noise_models import translate_noise_model
+from probeye.inference.scipy_.likelihood_models import translate_likelihood_model
 from probeye.subroutines import print_dict_in_rows, make_list
 
 # imports only needed for type hints
@@ -49,10 +49,10 @@ class ScipySolver:
         self.raw_results = None
         self.summary = {}  # type: dict
 
-        # each noise model must be connected to the relevant experiment_names; a copy is
-        # created before, so that this solver routine does not have side effects on the
-        # original problem; such side effects would occur due to calling the assign_
-        # experiments_to_noise_models-method below
+        # each likelihood model must be connected to the relevant experiment_names; a
+        # copy is created before, so that this solver routine does not have side effects
+        # on the original problem; such side effects would occur due to calling the
+        # assign_experiments_to_likelihood_models-method below
         try:
             self.problem = cp.deepcopy(problem)
         except:
@@ -61,7 +61,7 @@ class ScipySolver:
                 "will be modified!"
             )
             self.problem = problem
-        self.problem.assign_experiments_to_noise_models()
+        self.problem.assign_experiments_to_likelihood_models()
 
         # translate the prior definitions to objects with computing capabilities
         logger.debug("Translate problem's priors")
@@ -69,11 +69,13 @@ class ScipySolver:
         for prior_name, prior_template in self.problem.priors.items():
             self.priors[prior_name] = translate_prior(prior_template)
 
-        # translate the general noise model objects into solver specific ones
-        logger.debug("Translate problem's noise models")
-        self.noise_models = []
-        for noise_model_base in self.problem.noise_models:
-            self.noise_models.append(translate_noise_model(noise_model_base))
+        # translate the general likelihood model objects into solver specific ones
+        logger.debug("Translate problem's likelihood models")
+        self.likelihood_models = []
+        for likelihood_model_definition in self.problem.likelihood_models:
+            self.likelihood_models.append(
+                translate_likelihood_model(likelihood_model_definition)
+            )
 
     def evaluate_model_response(
         self, theta: np.ndarray, experiment_names: Union[str, List[str], None] = None
@@ -205,18 +207,20 @@ class ScipySolver:
         ll
             The evaluated log-likelihood function for the given theta-vector.
         """
-        # compute the contribution to the log-likelihood function for each noise
+        # compute the contribution to the log-likelihood function for each likelihood
         # model and sum it all up
         ll = 0.0
-        for noise_model in self.noise_models:
-            # compute the model response for the noise model's experiment_names
+        for likelihood_model in self.likelihood_models:
+            # compute the model response for the likelihood model's experiment_names
             model_response = self.evaluate_model_response(
-                theta, noise_model.experiment_names
+                theta, likelihood_model.experiment_names
             )
-            # get the parameter values for the noise model's parameters
-            prms_noise = self.problem.get_parameters(theta, noise_model.prms_def)
-            # evaluate the loglike-contribution for the noise model
-            ll += noise_model.loglike_contribution(model_response, prms_noise)
+            # get the parameter values for the likelihood model's parameters
+            prms_likelihood = self.problem.get_parameters(
+                theta, likelihood_model.prms_def
+            )
+            # evaluate the loglike-contribution for the likelihood model
+            ll += likelihood_model.loglike(model_response, prms_likelihood)
         return ll
 
     def get_start_values(

@@ -1,5 +1,5 @@
 # standard library imports
-from typing import Union, List, Tuple, Optional, Callable, Iterable, TYPE_CHECKING, Any
+from typing import Union, List, Callable, TYPE_CHECKING, Any
 import warnings
 
 # third party imports
@@ -14,7 +14,7 @@ import contextlib
 
 # local imports
 from probeye.inference.torch_.priors import translate_prior_template
-from probeye.inference.torch_.noise_models import translate_noise_model
+from probeye.inference.torch_.likelihood_models import translate_likelihood_model
 from probeye.subroutines import len_or_one, make_list
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
@@ -62,8 +62,8 @@ class PyroSolver:
         self.problem = problem.transform_experimental_data(f=np.atleast_1d)
         self.problem = self.problem.transform_experimental_data(f=th.from_numpy)
 
-        # each noise model must be connected to the relevant experiment_names
-        self.problem.assign_experiments_to_noise_models()
+        # each likelihood model must be connected to the relevant experiment_names
+        self.problem.assign_experiments_to_likelihood_models()
 
         # the dictionary dependency_dict will contain all latent parameter names as
         # keys; the value of each key will be a list with latent hyper-parameters of the
@@ -115,11 +115,11 @@ class PyroSolver:
                 prior_template
             )
 
-        # translate the general noise model objects into solver specific ones
-        logger.debug("Translating problem's noise models")
-        self.noise_models = []
-        for noise_model_base in self.problem.noise_models:
-            self.noise_models.append(translate_noise_model(noise_model_base))
+        # translate the general likelihood model objects into solver specific ones
+        logger.debug("Translating problem's likelihood models")
+        self.likelihood_models = []
+        for likelihood_def in self.problem.likelihood_models:
+            self.likelihood_models.append(translate_likelihood_model(likelihood_def))
 
         # translate the problem's forward models into torch compatible ones
         logger.debug("Wrapping problem's forward models")
@@ -397,17 +397,17 @@ class PyroSolver:
             A vector of pyro.samples (i.e. tensors) for which the log-likelihood
             function should be evaluated.
         """
-        # compute the contribution to the log-likelihood function for each noise model
-        # and sum it all up
-        for noise_model in self.noise_models:
-            # compute the model response for the noise model's experiment_names
+        # compute the contribution to the log-likelihood function for each likelihood
+        # model and sum it all up
+        for likelihood_model in self.likelihood_models:
+            # compute the model response for the likelihood model's experiment_names
             model_response = self.evaluate_model_response(
-                theta, noise_model.experiment_names
+                theta, likelihood_model.experiment_names
             )
-            # get the tensors for the noise model's parameters
-            prms_noise = self.problem.get_parameters(theta, noise_model.prms_def)
-            # evaluate the loglike-contribution for the noise model
-            noise_model.sample_cond_likelihood(model_response, prms_noise)
+            # get the tensors for the likelihood model's parameters
+            prms_like = self.problem.get_parameters(theta, likelihood_model.prms_def)
+            # evaluate the loglike-contribution for the likelihood model
+            likelihood_model.sample_cond_likelihood(model_response, prms_like)
 
     def posterior_model(self):
         """

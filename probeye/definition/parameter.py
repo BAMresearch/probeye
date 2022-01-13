@@ -125,10 +125,10 @@ class ParameterProperties:
                 f"an integer >= 1, but found a value of {self._dim}."
             )
 
-        if self._type not in ["model", "prior", "noise"]:
+        if self._type not in ["model", "prior", "likelihood"]:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can only "
-                f"assume the three values 'model', 'prior' or 'noise' but found "
+                f"assume the three values 'model', 'prior' or 'likelihood' but found "
                 f"'{self._type}'."
             )
 
@@ -300,7 +300,7 @@ class Parameters(dict):
             The name of the parameter which should be added to the problem.
         prm_type
             Either 'model' (for a model parameter), 'prior' (for a prior parameter) or
-            'noise' (for a noise parameter).
+            'likelihood' (for a likelihood parameter).
         dim
             The parameter's dimension.
         const
@@ -594,14 +594,14 @@ class Parameters(dict):
         return len(self.prior_prms)
 
     @property
-    def noise_prms(self) -> List[str]:
-        """Access the names of all 'noise'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.type == "noise"]
+    def likelihood_prms(self) -> List[str]:
+        """Access the names of all 'likelihood'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.type == "likelihood"]
 
     @property
-    def n_noise_prms(self) -> int:
+    def n_likelihood_prms(self) -> int:
         """Access the number of all 'prior'-parameters as an attribute."""
-        return len(self.noise_prms)
+        return len(self.likelihood_prms)
 
     def parameter_overview(self, tablefmt: str = "presto") -> str:
         """
@@ -632,9 +632,9 @@ class Parameters(dict):
                 self.n_prior_prms,
             ),
             (
-                "Noise parameters",
-                simplified_list_string(self.noise_prms),
-                self.n_noise_prms,
+                "Likelihood parameters",
+                simplified_list_string(self.likelihood_prms),
+                self.n_likelihood_prms,
             ),
             (
                 "Const parameters",

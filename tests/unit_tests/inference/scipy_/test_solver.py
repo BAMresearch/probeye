@@ -1,5 +1,4 @@
 # standard library
-import logging
 import unittest
 
 # third party imports
@@ -9,7 +8,7 @@ import numpy as np
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.scipy_.solver import ScipySolver
 
 
@@ -28,15 +27,15 @@ class TestProblem(unittest.TestCase):
             "b", "model", prior=("normal", {"loc": 1.0, "scale": 1.0})
         )
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
 
-        # add forward model and noise model
+        # add forward model and likelihood model
         isensor, osensor = Sensor("x"), Sensor("y")
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
         )
 
         # add experimental data
@@ -81,7 +80,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("sigma", "noise", const=1.0)
+        p.add_parameter("sigma", "likelihood", const=1.0)
 
         class FwdModel(ForwardModelBase):
             def response(self, inp):
@@ -91,11 +90,13 @@ class TestProblem(unittest.TestCase):
                 a2 = inp["a2"]
                 return {"y": a0 + a1 * x + a2 * x ** 2}
 
-        # add forward and noise model
+        # add forward and likelihood model
         fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
         p.add_forward_model("FwdModel", fwd_model)
-        p.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=Sensor("y"))
+        p.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=Sensor("y")
+            )
         )
 
         # add experiment_names

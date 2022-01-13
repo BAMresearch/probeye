@@ -450,10 +450,10 @@ def flatten(arg: Union[list, np.ndarray, float, int, None]) -> Union[list, None]
 
 
 def process_spatiotemporal_coordinates(
-    x: Union[float, int, np.ndarray, None] = None,
-    y: Union[float, int, np.ndarray, None] = None,
-    z: Union[float, int, np.ndarray, None] = None,
-    t: Union[float, int, np.ndarray, None] = None,
+    x: Union[float, int, np.ndarray, list, None] = None,
+    y: Union[float, int, np.ndarray, list, None] = None,
+    z: Union[float, int, np.ndarray, list, None] = None,
+    t: Union[float, int, np.ndarray, list, None] = None,
     coords: Optional[np.ndarray] = None,
     order: tuple = ("x", "y", "z", "t"),
 ) -> Tuple[np.ndarray, List[str]]:

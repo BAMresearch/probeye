@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -93,7 +93,7 @@ class TestProblem(unittest.TestCase):
         loc_b = 1.0
         scale_b = 1.0
 
-        # 'true' value of noise sd, and its uniform prior parameters
+        # 'true' value of additive error sd, and its uniform prior parameters
         sigma = 0.5
         low_sigma = 0.1
         high_sigma = 0.8
@@ -128,17 +128,17 @@ class TestProblem(unittest.TestCase):
         # initialize the inference problem with a useful name; note that the name will
         # only be stored as an attribute of the InferenceProblem and is not important
         # for the problem itself; can be useful when dealing with multiple problems
-        problem = InferenceProblem("Linear regression with normal noise")
+        problem = InferenceProblem("Linear regression with normal additive error")
 
         # add all parameters to the problem; the first argument states the parameter's
         # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
         # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'noise' for parameters of the noise model);
-        # the 'info'-argument is a short description string used for logging, and the
-        # tex-argument gives a tex-string of the parameter used for plotting; finally,
-        # the prior-argument specifies the parameter's prior; note that this definition
-        # of a prior will result in the initialization of constant parameters of type
-        # 'prior' in the background
+        # 'prior' for prior parameters and 'likelihood' for parameters of the likelihood
+        # model); the 'info'-argument is a short description string used for logging,
+        # and the tex-argument gives a tex-string of the parameter used for plotting;
+        # finally, the prior-argument specifies the parameter's prior; note that this
+        # definition of a prior will result in the initialization of constant parameters
+        # of type 'prior' in the background
         problem.add_parameter(
             "a",
             "model",
@@ -155,14 +155,14 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             tex=r"$\sigma$",
-            info="Std. dev, of 0-mean noise model",
+            info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
         problem.add_parameter(
             "l_corr",
-            "noise",
+            "likelihood",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
@@ -190,8 +190,9 @@ class TestProblem(unittest.TestCase):
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # data-generation; first create the true values without noise; these true values
-        # will be the mean values for sampling from a multivariate normal distribution
+        # data-generation; first create the true values without an error model; these
+        # 'true' values will be the mean values for sampling from a multivariate normal
+        # distribution that accounts for the intended correlation
         np.random.seed(seed)
         y_true = linear_model({"a": a_true, "b": b_true})[osensor.name]
 
@@ -213,15 +214,15 @@ class TestProblem(unittest.TestCase):
                 fwd_model_name="LinearModel",
                 sensor_values={osensor.name: y_test},
             )
-            # add the noise model to the problem
-            noise_model = NormalNoiseModel(
+            # add the likelihood model to the problem
+            likelihood_model = GaussianLikelihoodModel(
+                prms_def=[{"sigma": "std_model"}, "l_corr"],
                 sensors=osensor,
-                corr_static="x",
-                corr_model="exp",
+                correlation_variables="x",
+                correlation_model="exp",
                 experiment_names=exp_name,
-                prms_def=[{"sigma": "std"}, "l_corr"],
             )
-            problem.add_noise_model(noise_model)
+            problem.add_likelihood_model(likelihood_model)
             if plot:
                 plt.scatter(
                     x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10

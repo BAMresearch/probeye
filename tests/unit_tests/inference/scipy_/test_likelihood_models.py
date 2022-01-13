@@ -2,12 +2,11 @@
 import unittest
 
 # third party imports
-from scipy import stats
 import numpy as np
 
 # local imports
 from probeye.definition.sensor import Sensor
-from probeye.inference.scipy_.noise_models import NormalNoise
+from probeye.inference.scipy_.likelihood_models import AdditiveUncorrelatedModelError
 
 
 class TestProblem(unittest.TestCase):
@@ -15,13 +14,12 @@ class TestProblem(unittest.TestCase):
         x_test = np.linspace(0.0, 1.0, 10)
         osensor = Sensor("y", x=x_test)
         with self.assertRaises(ValueError):
-            NormalNoise(
-                [{"s": "std"}, "l_corr"],
+            AdditiveUncorrelatedModelError(
+                [{"s": "std_model"}, "l_corr"],
                 osensor,
-                corr_static="x",
-                corr_model="wrong model spec",
-                noise_type="additive",
-            )
+                correlation_variables="x",
+                correlation_model="wrong model spec",
+            ).check_correlation_definition()
 
 
 if __name__ == "__main__":

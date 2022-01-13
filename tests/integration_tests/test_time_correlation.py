@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -18,13 +18,13 @@ from tests.integration_tests.subroutines import run_inference_engines
 class TestProblem(unittest.TestCase):
     def test_time_correlation(
         self,
-        n_steps=1000,
+        n_steps=200,
         n_initial_steps=100,
         n_walkers=20,
         plot=False,
         show_progress=False,
         run_scipy=False,
-        run_emcee=True,
+        run_emcee=False,
         run_torch=False,
     ):
         """
@@ -65,10 +65,10 @@ class TestProblem(unittest.TestCase):
         loc_g = 10.0
         scale_g = 0.3
 
-        # these are the additive noise standard deviations of the elevation
+        # these are the additive error model's standard deviations of the elevation
         # measurements of the two trackers
-        sd_noise_tracker_1 = 0.1
-        sd_noise_tracker_2 = 0.2
+        sd_error_tracker_1 = 0.1
+        sd_error_tracker_2 = 0.2
         low_sigma = 0.01
         high_sigma = 0.5
         low_l_corr = 0.01
@@ -110,14 +110,14 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             tex=r"$\sigma$",
-            info="Std. dev, of normal 0-mean noise model",
+            info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
         problem.add_parameter(
             "l_corr",
-            "noise",
+            "likelihood",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
@@ -213,12 +213,12 @@ class TestProblem(unittest.TestCase):
         time_test_1_tracker_1 = np.arange(0, 5, 1.0)
         y_test_1_tracker_1 = forward_process(time_test_1_tracker_1, v0_test_1)
         y_test_1_tracker_1 = np.random.normal(
-            loc=y_test_1_tracker_1, scale=sd_noise_tracker_1
+            loc=y_test_1_tracker_1, scale=sd_error_tracker_1
         )
         time_test_1_tracker_2 = np.arange(0, 5, 0.6)
         y_test_1_tracker_2 = forward_process(time_test_1_tracker_2, v0_test_1)
         y_test_1_tracker_2 = np.random.normal(
-            loc=y_test_1_tracker_2, scale=sd_noise_tracker_2
+            loc=y_test_1_tracker_2, scale=sd_error_tracker_2
         )
 
         # test data for second test with two trackers
@@ -226,12 +226,12 @@ class TestProblem(unittest.TestCase):
         time_test_2_tracker_1 = np.arange(0, 6, 0.7)
         y_test_2_tracker_1 = forward_process(time_test_2_tracker_1, v0_test_2)
         y_test_2_tracker_1 = np.random.normal(
-            loc=y_test_2_tracker_1, scale=sd_noise_tracker_1
+            loc=y_test_2_tracker_1, scale=sd_error_tracker_1
         )
         time_test_2_tracker_2 = np.arange(0, 6, 0.8)
         y_test_2_tracker_2 = forward_process(time_test_2_tracker_2, v0_test_2)
         y_test_2_tracker_2 = np.random.normal(
-            loc=y_test_2_tracker_2, scale=sd_noise_tracker_2
+            loc=y_test_2_tracker_2, scale=sd_error_tracker_2
         )
 
         # plot the generated data if requested
@@ -292,23 +292,23 @@ class TestProblem(unittest.TestCase):
             },
         )
 
-        # add the noise model to the problem
-        noise_model = NormalNoiseModel(
+        # add the likelihood models to the problem
+        likelihood_model_1 = GaussianLikelihoodModel(
+            prms_def=[{"sigma": "std_model"}, "l_corr"],
             sensors=osensor,
-            corr_dynamic="t",
-            corr_model="exp",
-            prms_def=[{"sigma": "std"}, "l_corr"],
+            correlation_variables="t",
+            correlation_model="exp",
             experiment_names=["Trajectory_1_Tracker_1", "Trajectory_1_Tracker_2"],
         )
-        problem.add_noise_model(noise_model)
-        noise_model = NormalNoiseModel(
+        problem.add_likelihood_model(likelihood_model_1)
+        likelihood_model_2 = GaussianLikelihoodModel(
+            prms_def=[{"sigma": "std_model"}, "l_corr"],
             sensors=osensor,
-            corr_dynamic="t",
-            corr_model="exp",
-            prms_def=[{"sigma": "std"}, "l_corr"],
+            correlation_variables="t",
+            correlation_model="exp",
             experiment_names=["Trajectory_2_Tracker_1", "Trajectory_2_Tracker_2"],
         )
-        problem.add_noise_model(noise_model)
+        problem.add_likelihood_model(likelihood_model_2)
 
         # give problem overview
         problem.info()

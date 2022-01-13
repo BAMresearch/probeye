@@ -1,11 +1,12 @@
 """
 Inference problem with two forward models that share a common parameter
 ----------------------------------------------------------------------------------------
-The first model equation is y = a * x + b with a, b being the model parameters and the
-second model equation is y = alpha * x**2 + b where alpha is a new model parameter, and
-b is the same model parameter as in the first model equation. Both forward models have
-the same noise model with a normal zero-mean distribution where the standard deviation
-is to be inferred.The problem is solved via sampling using emcee and pyro.
+The first model equation is y(x) = a * x + b with a, b being the model parameters and
+the second model equation is y(x) = alpha * x**2 + b where alpha is an additional model
+parameter, and b is the same model parameter as in the first model equation. Both
+forward models have the same additive error model with a normal zero-mean distribution
+where the standard deviation is to be inferred. The problem is solved via max likelihood
+estimation and via sampling using emcee and pyro.
 """
 
 # standard library imports
@@ -19,7 +20,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -123,7 +124,9 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Two models with shared parameter and normal noise")
+        problem = InferenceProblem(
+            "Two models with shared parameter and normal additive error"
+        )
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -149,9 +152,9 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
-            tex=r"$\sigma$ (noise)",
-            info="Std. deviation of zero-mean noise model",
+            "likelihood",
+            tex=r"$\sigma$ (likelihood)",
+            info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
 
@@ -166,19 +169,23 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_forward_model("QuadraticModel", quadratic_model)
 
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_linear)
+        # add the likelihood model to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=osensor_linear
+            )
         )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=osensor_quadratic
+            )
         )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # data-generation; normal noise with constant variance around each point
+        # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_linear_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
