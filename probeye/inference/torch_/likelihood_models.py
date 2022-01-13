@@ -17,18 +17,17 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
-
     def __init__(
-            self,
-            prms_def: Union[str, List[Union[str, dict]], dict],
-            sensors: Union["Sensor", List["Sensor"]],
-            experiment_names: Union[str, List[str], None] = None,
-            problem_experiments: Optional[dict] = None,
-            additive_measurement_error: bool = False,
-            correlation_variables: str = "",
-            correlation_model: str = "exp",
-            correlation_dict: Optional[dict] = None,
-            name: Optional[str] = None,
+        self,
+        prms_def: Union[str, List[Union[str, dict]], dict],
+        sensors: Union["Sensor", List["Sensor"]],
+        experiment_names: Union[str, List[str], None] = None,
+        problem_experiments: Optional[dict] = None,
+        additive_measurement_error: bool = False,
+        correlation_variables: str = "",
+        correlation_model: str = "exp",
+        correlation_dict: Optional[dict] = None,
+        name: Optional[str] = None,
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given

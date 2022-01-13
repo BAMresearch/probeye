@@ -207,19 +207,19 @@ def translate_likelihood_model(
     # likelihood model selection based on the flags given in the likelihood definition
     if like_def.additive_model_error:
         if not like_def.considers_correlation:
-            likelihood_computer_class = AdditiveUncorrelatedModelError
+            like_computer_class = AdditiveUncorrelatedModelError
         else:
             if like_def.considers_only_space_correlation:
-                likelihood_computer_class = AdditiveCorrelatedModelError1D
+                like_computer_class = AdditiveCorrelatedModelError1D  # type: ignore
             elif like_def.considers_only_time_correlation:
-                likelihood_computer_class = AdditiveCorrelatedModelError1D
+                like_computer_class = AdditiveCorrelatedModelError1D  # type: ignore
             else:
                 raise NotImplementedError("Likelihood model not implemented yet!")
     else:
         raise NotImplementedError("Likelihood model not implemented yet!")
 
     # this is where the translation happens
-    likelihood_computer = likelihood_computer_class(
+    likelihood_computer = like_computer_class(
         like_def.prms_def,
         like_def.sensors,
         experiment_names=like_def.experiment_names,

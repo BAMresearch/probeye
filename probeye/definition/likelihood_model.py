@@ -2,6 +2,7 @@
 from typing import Union, List, Optional
 
 # third party imports
+import torch as th
 import numpy as np
 
 # local imports
@@ -307,7 +308,9 @@ class GaussianLikelihoodModel:
 
         return residuals_dict
 
-    def residuals_vector(self, model_response_dict: dict) -> np.ndarray:
+    def residuals_vector(
+        self, model_response_dict: dict
+    ) -> Union[np.ndarray, th.Tensor]:
         """
         Computes the model residuals for all of the likelihood model's sensors over all
         of the likelihood model's experiments and returns them in a single vector.
@@ -359,14 +362,15 @@ class GaussianLikelihoodModel:
         if coord not in ["x", "y", "z", "t"]:
             raise ValueError(
                 f"The given coordinate 'coord' is neither 'x', 'y', 'z' nor 't'. "
-                f"Found '{coord}'.")
+                f"Found '{coord}'."
+            )
 
         # prepare the coord-vector with the correct length
         n = 0
         ns = len(self.sensors)
         for exp_name in self.experiment_names:
             exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
-            coord_name_in_exp = self.correlation_dict[exp_name][coord]
+            coord_name_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
             if coord_name_in_exp in exp_sensor_values:
                 n += len_or_one(exp_sensor_values[coord_name_in_exp]) * ns
             else:
@@ -374,8 +378,10 @@ class GaussianLikelihoodModel:
                     try:
                         n += len_or_one(getattr(sensor, coord))
                     except AttributeError:
-                        print(f"Sensor '{sensor.name}' of likelihood model "
-                              f"'{self.name}' does not have a '{coord}'-attribute!")
+                        print(
+                            f"Sensor '{sensor.name}' of likelihood model "
+                            f"'{self.name}' does not have a '{coord}'-attribute!"
+                        )
                         raise
         coord_vector = np.zeros(n)
 
@@ -383,18 +389,18 @@ class GaussianLikelihoodModel:
         i = 0
         for exp_name in self.experiment_names:
             exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
-            coord_name_in_exp = self.correlation_dict[exp_name][coord]
+            coord_name_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
             if coord_name_in_exp in exp_sensor_values:
                 coord_sub_vector = exp_sensor_values[coord_name_in_exp]
                 m = len_or_one(coord_sub_vector)
                 for _ in range(ns):
-                    coord_vector[i: i + m] = coord_sub_vector
+                    coord_vector[i : i + m] = coord_sub_vector
                     i += m
             else:
                 for sensor in self.sensors:
                     coord_sub_vector = getattr(sensor, coord)
                     m = len_or_one(coord_sub_vector)
-                    coord_vector[i: i + m] = coord_sub_vector
+                    coord_vector[i : i + m] = coord_sub_vector
                     i += m
 
         return coord_vector
