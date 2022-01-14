@@ -30,6 +30,7 @@ from probeye.subroutines import add_index_to_tex_prm_name
 from probeye.subroutines import check_for_uninformative_priors
 from probeye.subroutines import compute_reduction_array
 from probeye.subroutines import get_dictionary_depth
+from probeye.subroutines import incrementalize
 
 
 class TestProblem(unittest.TestCase):
@@ -498,6 +499,44 @@ class TestProblem(unittest.TestCase):
         self.assertTrue(np.allclose(red_array_computed, red_array_expected))
         self.assertEqual(rows_to_remove_computed, rows_to_remove_expected)
 
+    def test_incrementalize(self):
+
+        # no incrementalization is required
+        v_in = [1, 2, 3, 4]
+        v_out, f, flag = incrementalize(v_in)
+        self.assertTrue(np.allclose(v_in, v_out))
+        self.assertTrue(np.allclose(v_in, f(v_in)))
+        self.assertTrue(flag)
+
+        # same test as before, but with np.array instead of list
+        v_in = np.array([1, 2, 3, 4])
+        v_out, f, flag = incrementalize(v_in)
+        self.assertTrue(np.allclose(v_in, v_out))
+        self.assertTrue(np.allclose(v_in, f(v_in)))
+        self.assertTrue(flag)
+
+        # here, the input vector is not sorted and has no duplicate elements
+        v_in = np.array([3, 1, 4, 2])
+        v_out, f, flag = incrementalize(v_in)
+        v_out_expected = np.array([1, 2, 3, 4])
+        self.assertTrue(np.allclose(v_out_expected, v_out))
+        self.assertTrue(np.allclose(v_out_expected, f(v_in)))
+        self.assertTrue(not flag)
+
+        # here, the input vector is not sorted and has duplicate elements
+        v_in = np.array([3, 1, 1, 4, 4, 2, 2, 2, 2, 2, 2])
+        v_out, f, flag = incrementalize(v_in)
+        v_out_expected = np.array([1, 2, 3, 4])
+        self.assertTrue(np.allclose(v_out_expected, v_out))
+        self.assertTrue(np.allclose(v_out_expected, f(v_in)))
+        self.assertTrue(not flag)
+
+        # special case: input has only one element
+        v_in = [1]
+        v_out, f, flag = incrementalize(v_in)
+        self.assertTrue(np.allclose(v_in, v_out))
+        self.assertTrue(np.allclose(v_in, f(v_in)))
+        self.assertTrue(flag)
 
 if __name__ == "__main__":
     unittest.main()

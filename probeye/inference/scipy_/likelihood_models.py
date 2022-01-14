@@ -7,6 +7,7 @@ from tripy.loglikelihood import chol_loglike_1D
 
 # local imports
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.subroutines import incrementalize
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -130,7 +131,8 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
         self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values of the correlation variable
-        self.coords = self.coordinate_vector(correlation_variables)
+        coords = self.coordinate_vector(correlation_variables)
+        self.coords, self.f, self.sorted_coords = incrementalize(coords)
 
     def loglike(
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
@@ -160,6 +162,8 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
 
         # compute the model residuals via a method from the parent class
         res_vector = self.residuals_vector(model_response_dict)
+        if not self.sorted_coords:
+            res_vector = self.f(res_vector)
         ones = np.ones(len(res_vector))
 
         # parameters for the model prediction error

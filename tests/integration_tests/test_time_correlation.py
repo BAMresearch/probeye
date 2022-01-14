@@ -23,8 +23,8 @@ class TestProblem(unittest.TestCase):
         n_walkers=20,
         plot=False,
         show_progress=False,
-        run_scipy=False,
-        run_emcee=False,
+        run_scipy=True,
+        run_emcee=True,
         run_torch=False,
     ):
         """

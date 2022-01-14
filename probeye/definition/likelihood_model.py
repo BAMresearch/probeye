@@ -112,16 +112,16 @@ class GaussianLikelihoodModel:
         self.sensor_names = [sensor.name for sensor in self.sensors]
         self.n_sensors = len(self.sensor_names)
 
-        # correlation-related attributes
+        # correlation-related attributes from the given input
         self.correlation_variables = correlation_variables
         self.correlation_model = correlation_model
         self.correlation_dict = correlation_dict
+
+        # derived correlation attributes (these are convenience attributes)
         self.considers_correlation = True if self.correlation_variables else False
         self.considers_time_correlation = "t" in self.correlation_variables
         self.considers_space_correlation = (
-            "x" in self.correlation_variables
-            or "y" in self.correlation_variables
-            or "z" in self.correlation_variables
+            len({"x", "y", "z"}.intersection(set(self.correlation_variables))) > 0
         )
         self.considers_only_time_correlation = (
             self.considers_time_correlation and not self.considers_space_correlation

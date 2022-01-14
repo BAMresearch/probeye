@@ -877,3 +877,91 @@ def compute_reduction_array(array: np.ndarray) -> Tuple[np.ndarray, List[int]]:
         rows_to_remove += rows_to_add
     reduction_array = np.delete(reduction_array, rows_to_remove, axis=0)
     return reduction_array, rows_to_remove
+
+
+def incrementalize(
+    v_in: Union[np.array, list], eps: float = 1e-12
+) -> Tuple[np.array, Callable, bool]:
+    """
+    Given some vector, this function rearranges the elements so that they are ascending,
+    and removes duplicate elements.
+
+    Parameters
+    ----------
+    v_in
+        The vector to be processed.
+    eps
+        A threshold value, that defines when two values are considered identical.
+
+    Returns
+    -------
+    v_out
+        The processed input vector.
+    fun
+        See the explanations in the function docstring below.
+    is_incremental
+        If v_in has no duplicate elements and is already in ascending order, this flag
+        is True. Otherwise, it is False.
+    """
+
+    # check if the given vector is already sorted
+    n = len(v_in)
+    is_incremental = all(v_in[i] < v_in[i + 1] for i in range(n - 1))
+
+    # sort the vector if necessary
+    if is_incremental:
+        v_out = v_in
+        fun = lambda x: x  # identity function
+    else:
+
+        # sort v_in and remove duplicate elements; the result is v_out
+        idx_sorted = np.argsort(v_in)
+        v_sorted = v_in[idx_sorted]
+        v_diff = np.diff(v_sorted)
+        indices_to_remove = [i for i, vi in enumerate(v_diff) if np.abs(vi) < eps]
+        m = len(indices_to_remove)
+        v_out = np.delete(v_sorted, indices_to_remove)
+
+        # this list will contain triples; the first two entries of a triple (lets call
+        # them t1 and t2) refer to the indices of v_out in that sense, that v_out[t1:t2]
+        # have identical values; the last entry of a triple is just t2-t3 and is needed
+        # for the averaging operation performed by the function f
+        triples = []
+
+        # derive the triples
+        i = 0
+        while i < m:
+            j = i
+            while j + 1 < m and (indices_to_remove[j + 1] - indices_to_remove[j] == 1):
+                j += 1
+            idx_1 = indices_to_remove[i]
+            idx_2 = indices_to_remove[j] + 1 + 1
+            triples.append((idx_1, idx_2, idx_2 - idx_1))
+            i = j + 1
+
+        def fun(w: np.array) -> np.array:
+            """
+            Performs an averaging operations over slices of w that correspond to
+            duplicate elements in the sorted version of v_in. For example, in the case
+            of v_sorted = [1, 2, 2, 3] and w = [8, 3, 6, 0], this function would return
+            ws = [8, (3+6)/2, 3] = [8, 4.5, 3].
+
+            Parameters
+            ----------
+            w
+                The input vector which is understood as the picture of v_sorted.
+
+            Returns
+            -------
+            ws
+                The processed input vector.
+            """
+            ws = w[idx_sorted]
+            nr = 0  # number of already removed elements
+            for t in triples:
+                ws[t[0] - nr] = np.sum(ws[t[0] - nr : t[1] - nr]) / t[2]
+                ws = np.delete(ws, np.s_[t[0] - nr + 1 : t[1] - nr])
+                nr += t[2] - 1
+            return ws
+
+    return v_out, fun, is_incremental
