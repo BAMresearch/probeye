@@ -880,8 +880,8 @@ def compute_reduction_array(array: np.ndarray) -> Tuple[np.ndarray, List[int]]:
 
 
 def incrementalize(
-    v_in: Union[np.array, list], eps: float = 1e-12
-) -> Tuple[np.array, Callable, bool]:
+    v_in: Union[np.ndarray, list], eps: float = 1e-12
+) -> Tuple[Union[np.ndarray, list], Callable, bool]:
     """
     Given some vector, this function rearranges the elements so that they are ascending,
     and removes duplicate elements.
@@ -939,7 +939,7 @@ def incrementalize(
             triples.append((idx_1, idx_2, idx_2 - idx_1))
             i = j + 1
 
-        def fun(w: np.array) -> np.array:
+        def fun(w: np.ndarray) -> np.ndarray:
             """
             Performs an averaging operations over slices of w that correspond to
             duplicate elements in the sorted version of v_in. For example, in the case
