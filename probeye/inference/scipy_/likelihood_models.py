@@ -4,6 +4,8 @@ from typing import Union, List, Optional, TYPE_CHECKING
 # third party imports
 import numpy as np
 from tripy.loglikelihood import chol_loglike_1D
+from tripy.utils import correlation_matrix
+from tripy.utils import correlation_function
 
 # local imports
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -15,6 +17,12 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
+    """
+    This is a likelihood model based on a multivariate normal distribution without any
+    correlations, i.e., with a diagonal covariance matrix. Both the model error as well
+    as the measurement error (if considered) are assumed to be additive.
+    """
+
     def __init__(
         self,
         prms_def: Union[str, List[Union[str, dict]], dict],
@@ -96,6 +104,12 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
 
 
 class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
+    """
+    This is a likelihood model based on a multivariate normal distribution with that
+    includes correlation effects in time or in one spatial coordinate. Both the model
+    error as well as the measurement error (if considered) are assumed to be additive.
+    """
+
     def __init__(
         self,
         prms_def: Union[str, List[Union[str, dict]], dict],
@@ -131,7 +145,7 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
         self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values of the correlation variable
-        coords = self.coordinate_vector(correlation_variables)
+        coords = self.coordinate_array(correlation_variables)
         self.coords, self.f, self.sorted_coords = incrementalize(coords)
 
     def loglike(
@@ -187,9 +201,213 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
         return ll
 
 
+class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
+    """
+    This is a likelihood model based on a multivariate normal distribution with that
+    includes correlation effects in more than one spatial coordinate. Time correlation
+    effects cannot be considered. Both the model error as well as the measurement error
+    (if considered) are assumed to be additive.
+    """
+
+    def __init__(
+        self,
+        prms_def: Union[str, List[Union[str, dict]], dict],
+        sensors: Union["Sensor", List["Sensor"]],
+        experiment_names: Union[str, List[str], None] = None,
+        problem_experiments: Optional[dict] = None,
+        additive_measurement_error: bool = False,
+        correlation_variables: str = "",
+        correlation_model: str = "exp",
+        correlation_dict: Optional[dict] = None,
+        name: Optional[str] = None,
+    ):
+        """
+        For a detailed explanation of the input arguments check out the docstring given
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
+        additional argument is 'problem_experiments' which is simply a pointer to
+        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        """
+
+        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        super().__init__(
+            prms_def,
+            sensors,
+            experiment_names=experiment_names,
+            additive_measurement_error=additive_measurement_error,
+            correlation_variables=correlation_variables,
+            correlation_model=correlation_model,
+            correlation_dict=correlation_dict,
+            name=name,
+        )
+
+        # problem_experiments is an attribute not set by the parent-class
+        self.problem_experiments = problem_experiments  # type: ignore
+
+        # extract the values of the correlation variable
+        self.coords = self.coordinate_array(correlation_variables)
+
+    def loglike(
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
+        """
+        Computes the log(likelihood) of this model.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+        prms
+            Dictionary containing parameter name:value pairs.
+        worst_value
+            This value is returned when this method does not result in a numeric value.
+            This might happen for example when the given parameters are not valid (for
+            example in case of a negative standard deviation). The returned value in
+            such cases should represent the worst possible value of the contribution.
+
+        Returns
+        -------
+        ll
+            A scalar value representing the evaluated log-likelihood function.
+        """
+
+        # compute the model residuals via a method from the parent class
+        res_vector = self.residuals_vector(model_response_dict)
+        n = len(res_vector)
+
+        # parameters for the model prediction error
+        std_model = prms["std_model"]
+        l_corr = prms["l_corr"]
+        if (std_model <= 0) or (l_corr <= 0):
+            return worst_value
+
+        # parameter for the measurement error
+        if self.additive_measurement_error:
+            std_meas = prms["std_measurement"]
+            if std_meas <= 0:
+                return worst_value
+        else:
+            std_meas = None
+
+        # assemble covariance matrix
+        f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
+        cov_matrix = std_model ** 2 * correlation_matrix(self.coords, f_corr)
+        if self.additive_measurement_error:
+            cov_matrix += std_meas ** 2 * np.eye(n)
+
+        # evaluate log-likelihood (no efficient algorithm available in this case)
+        inv_cov_matrix = np.linalg.inv(cov_matrix)
+        _, log_det_cov_matrix = np.linalg.slogdet(cov_matrix)
+        ll = -(n * np.log(2 * np.pi) + log_det_cov_matrix) / 2
+        ll += -np.dot(res_vector, inv_cov_matrix.dot(res_vector)) / 2
+
+        return ll
+
+
+class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
+    """
+    This is a likelihood model based on a multivariate normal distribution without any
+    correlations, i.e., with a diagonal covariance matrix. The model error is assumed to
+    be multiplicative while the measurement error (if considered) is assumed additive.
+    """
+
+    def __init__(
+        self,
+        prms_def: Union[str, List[Union[str, dict]], dict],
+        sensors: Union["Sensor", List["Sensor"]],
+        experiment_names: Union[str, List[str], None] = None,
+        problem_experiments: Optional[dict] = None,
+        additive_measurement_error: bool = False,
+        correlation_variables: str = "",
+        correlation_model: str = "exp",
+        correlation_dict: Optional[dict] = None,
+        name: Optional[str] = None,
+    ):
+        """
+        For a detailed explanation of the input arguments check out the docstring given
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
+        additional argument is 'problem_experiments' which is simply a pointer to
+        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        """
+
+        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        super().__init__(
+            prms_def,
+            sensors,
+            experiment_names=experiment_names,
+            additive_measurement_error=additive_measurement_error,
+            correlation_variables=correlation_variables,
+            correlation_model=correlation_model,
+            correlation_dict=correlation_dict,
+            name=name,
+        )
+
+        # problem_experiments is an attribute not set by the parent-class
+        self.problem_experiments = problem_experiments  # type: ignore
+
+    def loglike(
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
+        """
+        Computes the log(likelihood) of this model.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+        prms
+            Dictionary containing parameter name:value pairs.
+        worst_value
+            This value is returned when this method does not result in a numeric value.
+            This might happen for example when the given parameters are not valid (for
+            example in case of a negative standard deviation). The returned value in
+            such cases should represent the worst possible value of the contribution.
+
+        Returns
+        -------
+        ll
+            A scalar value representing the evaluated log-likelihood function.
+        """
+        # compute the model error; note that this mode has exactly one sensor
+        y_model = self.response_vector(model_response_dict)
+        delta = self.residuals_vector(model_response_dict)
+        n = len(delta)
+
+        # process the standard deviation for the model error
+        std_model = prms["std_model"]
+        if std_model <= 0:
+            return worst_value
+
+        # compute the covariance matrix depending on the measurement error; note that
+        # without correlation (as it is the case here) the covariance matrix is diagonal
+        # and can hence be represented by a single vector; this is the case in the
+        # computations below, i.e., cov_mtx is a vector
+        if self.additive_measurement_error:
+            std_meas = prms["std_measurement"]
+            if std_meas <= 0:
+                return worst_value
+            cov_mtx = np.power(y_model * std_model, 2) + np.power(std_meas, 2)
+        else:
+            cov_mtx = np.power(y_model * std_model, 2)
+
+        # finally, evaluate the log-likelihood
+        inv_cov_mtx = 1 / cov_mtx
+        log_det_cov_mtx = np.sum(np.log(cov_mtx))
+        ll = -0.5 * (n * np.log(2 * np.pi) + log_det_cov_mtx)
+        ll += -0.5 * np.sum(np.power(delta, 2) * inv_cov_mtx)
+        return ll
+
+
 def translate_likelihood_model(
     like_def: GaussianLikelihoodModel,
-) -> Union[AdditiveUncorrelatedModelError, AdditiveCorrelatedModelError1D]:
+) -> Union[
+    AdditiveUncorrelatedModelError,
+    AdditiveCorrelatedModelError1D,
+    AdditiveSpaceCorrelatedModelError2D3D,
+]:
     """
     Translates a given instance of GaussianLikelihoodModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
@@ -211,19 +429,25 @@ def translate_likelihood_model(
     # likelihood model selection based on the flags given in the likelihood definition
     if like_def.additive_model_error:
         if not like_def.considers_correlation:
-            like_computer_class = AdditiveUncorrelatedModelError
+            l_class = AdditiveUncorrelatedModelError
         else:
             if like_def.considers_only_space_correlation:
-                like_computer_class = AdditiveCorrelatedModelError1D  # type: ignore
+                if len(like_def.correlation_variables) == 1:
+                    l_class = AdditiveCorrelatedModelError1D  # type: ignore
+                else:
+                    l_class = AdditiveSpaceCorrelatedModelError2D3D  # type: ignore
             elif like_def.considers_only_time_correlation:
-                like_computer_class = AdditiveCorrelatedModelError1D  # type: ignore
+                l_class = AdditiveCorrelatedModelError1D  # type: ignore
             else:
                 raise NotImplementedError("Likelihood model not implemented yet!")
     else:
-        raise NotImplementedError("Likelihood model not implemented yet!")
+        if not like_def.considers_correlation:
+            l_class = MultiplicativeUncorrelatedModelError
+        else:
+            raise NotImplementedError("Likelihood model not implemented yet!")
 
     # this is where the translation happens
-    likelihood_computer = like_computer_class(
+    likelihood_computer = l_class(
         like_def.prms_def,
         like_def.sensors,
         experiment_names=like_def.experiment_names,

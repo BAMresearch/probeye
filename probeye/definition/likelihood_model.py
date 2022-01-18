@@ -339,68 +339,110 @@ class GaussianLikelihoodModel:
             idx += m
         return residuals_vector
 
-    def coordinate_vector(self, coord: str) -> np.ndarray:
+    def response_vector(
+        self, model_response_dict: dict
+    ) -> Union[np.ndarray, th.Tensor]:
+        """
+        Computes the model response for all of the likelihood model's sensors over all
+        of the likelihood model's experiments and returns them in a single vector.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
+        Returns
+        -------
+        response_vector
+            A one-dimensional vector containing the model response.
+        """
+
+        # create the response dict only for the experiments of the likelihood model
+        response_dict = {name: np.array([]) for name in self.sensor_names}
+        for exp_name in self.experiment_names:
+            ym_dict = model_response_dict[exp_name]
+            response_dict = {
+                name: np.append(response_dict[name], ym_dict[name])
+                for name in self.sensor_names
+            }
+
+        # concatenate the responses to a single vector
+        n = 0
+        for residuals_sub_vector in response_dict.values():
+            n += len_or_one(residuals_sub_vector)
+        residuals_vector = np.zeros(n)
+        idx = 0
+        for residuals_sub_vector in response_dict.values():
+            m = len_or_one(residuals_sub_vector)
+            residuals_vector[idx : idx + m] = residuals_sub_vector
+            idx += m
+        return residuals_vector
+
+    def coordinate_array(self, coords: str) -> np.ndarray:
         """
 
         Parameters
         ----------
-        coord
-            A single character from {'x', 'y', 'z', 't'}, i.e., a possible correlation
-            variable.
+        coords
+            One or more characters from {'x', 'y', 'z', 't'}, i.e., possible correlation
+            variables.
 
         Returns
         -------
-        coord_vector
-            A vector containing the values of the requested coordinate 'coord' over
+        coord_array
+            A vector containing the values of the requested coordinates 'coords' over
             all of the likelihood model's experiments and sensors. These values have
             the same structure as the values in the residual vector computed by the
-            method 'residuals_vector' above. Hence, the i-th entry in 'coord_vector'
+            method 'residuals_vector' above. Hence, the i-th entry in 'coord_array'
             corresponds to the i-th entry in the vector returned by 'residuals_vector'.
         """
 
         # check input
-        if coord not in ["x", "y", "z", "t"]:
-            raise ValueError(
-                f"The given coordinate 'coord' is neither 'x', 'y', 'z' nor 't'. "
-                f"Found '{coord}'."
-            )
+        n_coords = len(coords)
+        coord_1 = list(coords)[0]
 
         # prepare the coord-vector with the correct length
         n = 0
         ns = len(self.sensors)
         for exp_name in self.experiment_names:
             exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
-            coord_name_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
+            coord_name_in_exp = self.correlation_dict[exp_name][coord_1]  # type: ignore
             if coord_name_in_exp in exp_sensor_values:
                 n += len_or_one(exp_sensor_values[coord_name_in_exp]) * ns
             else:
                 for sensor in self.sensors:
                     try:
-                        n += len_or_one(getattr(sensor, coord))
+                        n += len_or_one(getattr(sensor, coord_1))
                     except AttributeError:
                         print(
                             f"Sensor '{sensor.name}' of likelihood model "
-                            f"'{self.name}' does not have a '{coord}'-attribute!"
+                            f"'{self.name}' does not have a '{coord_1}'-attribute!"
                         )
                         raise
-        coord_vector = np.zeros(n)
+        coord_array = np.zeros((n, n_coords))
 
         # fill the dictionary with model residual vectors
-        i = 0
-        for exp_name in self.experiment_names:
-            exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
-            coord_name_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
-            if coord_name_in_exp in exp_sensor_values:
-                coord_sub_vector = exp_sensor_values[coord_name_in_exp]
-                m = len_or_one(coord_sub_vector)
-                for _ in range(ns):
-                    coord_vector[i : i + m] = coord_sub_vector
-                    i += m
-            else:
-                for sensor in self.sensors:
-                    coord_sub_vector = getattr(sensor, coord)
+        for ic, coord in enumerate(list(coords)):
+            i = 0
+            for exp_name in self.experiment_names:
+                exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
+                coord_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
+                if coord_in_exp in exp_sensor_values:
+                    coord_sub_vector = exp_sensor_values[coord_in_exp]
                     m = len_or_one(coord_sub_vector)
-                    coord_vector[i : i + m] = coord_sub_vector
-                    i += m
+                    for _ in range(ns):
+                        coord_array[i : i + m, ic] = coord_sub_vector
+                        i += m
+                else:
+                    for sensor in self.sensors:
+                        coord_sub_vector = getattr(sensor, coord)
+                        m = len_or_one(coord_sub_vector)
+                        coord_array[i : i + m, ic] = coord_sub_vector
+                        i += m
 
-        return coord_vector
+        if n_coords == 1:
+            coord_array = coord_array.flatten()
+
+        return coord_array

@@ -182,7 +182,7 @@ class TestProblem(unittest.TestCase):
         # just write the parameter's (global=local) name, like it is done with the
         # forward model's parameter 'b' below
         x_test = np.linspace(0.0, 1.0, n_points)
-        osensor = Sensor("y", x=x_test)
+        osensor = Sensor("y", x=x_test, z=x_test)
         linear_model = LinearModel(["a", "b"], [], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
@@ -218,7 +218,7 @@ class TestProblem(unittest.TestCase):
             likelihood_model = GaussianLikelihoodModel(
                 prms_def=[{"sigma": "std_model"}, "l_corr"],
                 sensors=osensor,
-                correlation_variables="x",
+                correlation_variables="xz",
                 correlation_model="exp",
                 experiment_names=exp_name,
             )
