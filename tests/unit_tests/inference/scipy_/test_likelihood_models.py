@@ -7,7 +7,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.sensor import Sensor
-from probeye.inference.scipy_.noise_models import NormalNoise
+from probeye.inference.scipy_.likelihood_models import NormalNoise
 
 
 class TestProblem(unittest.TestCase):

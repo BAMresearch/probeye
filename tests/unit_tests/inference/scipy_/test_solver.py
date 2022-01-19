@@ -9,7 +9,7 @@ import numpy as np
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 from probeye.inference.scipy_.solver import ScipySolver
 
 

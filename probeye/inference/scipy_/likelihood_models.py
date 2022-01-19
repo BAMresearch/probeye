@@ -5,7 +5,7 @@ from typing import Union, List, Optional, TYPE_CHECKING
 import numpy as np
 
 # local imports
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 from probeye.inference.scipy_.correlation_models import (
     SpatialExponentialCorrelationModel,
 )

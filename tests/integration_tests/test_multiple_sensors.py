@@ -20,7 +20,7 @@ import numpy as np
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -179,17 +179,6 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the noise models to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
-        )
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -217,6 +206,21 @@ class TestProblem(unittest.TestCase):
 
         for n_exp, n_t in enumerate([101, 51]):
             generate_data(n_t, n=n_exp)
+
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
+        )
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
+        )
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
+        )
 
         # give problem overview
         problem.info()

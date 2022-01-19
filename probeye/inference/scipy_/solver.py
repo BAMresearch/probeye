@@ -11,7 +11,7 @@ from loguru import logger
 
 # local imports
 from probeye.inference.scipy_.priors import translate_prior
-from probeye.inference.scipy_.noise_models import translate_noise_model
+from probeye.inference.scipy_.likelihood_models import translate_noise_model
 from probeye.subroutines import print_dict_in_rows, make_list
 
 # imports only needed for type hints

@@ -11,7 +11,7 @@ import torch as th
 # local imports
 from probeye.definition.parameter import Parameters
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.noise_model import NoiseModelBase
+from probeye.definition.likelihood_model import NoiseModelBase
 from probeye.subroutines import underlined_string, titled_table
 from probeye.subroutines import simplified_list_string, simplified_dict_string
 from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one

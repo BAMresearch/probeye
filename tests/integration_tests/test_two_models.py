@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -171,14 +171,6 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_forward_model("QuadraticModel", quadratic_model)
 
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_linear)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
-        )
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -210,9 +202,6 @@ class TestProblem(unittest.TestCase):
             fwd_model_name="QuadraticModel",
         )
 
-        # give problem overview
-        problem.info()
-
         # plot the true and noisy data
         if plot:
             plt.scatter(
@@ -238,6 +227,21 @@ class TestProblem(unittest.TestCase):
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
+
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_linear)
+        )
+        problem.add_noise_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
+        )
+
+        # give problem overview
+        problem.info()
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
