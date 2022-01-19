@@ -63,10 +63,10 @@ class TestProblem(unittest.TestCase):
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
-        p.add_noise_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        p.add_likelihood_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
         p.info(include_experiments=True, tablefmt="presto", check_consistency=True)
@@ -80,10 +80,10 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("s", "noise", prior=("normal", {"loc": 0, "scale": 1}))
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
-        p.add_noise_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        p.add_likelihood_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
         sys.stdout = io.StringIO()  # redirect output to console
         print(p)
         sys.stdout = sys.__stdout__  # reset printout to console
@@ -367,17 +367,14 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(AssertionError):
             # no noise models defined yet
             p.check_problem_consistency()
-        # add a noise model
-        p.add_parameter("s", "noise", const=1.0)
-        noise_model = NoiseModelBase("normal", "s", sensors=[Sensor("y")])
-        p.add_noise_model(noise_model)
-        with self.assertRaises(AssertionError):
-            # no experiment_names defined yet
-            p.check_problem_consistency()
-        # add at an experiment
+        # add an experiment
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        # add a noise model
+        p.add_parameter("s", "noise", const=1.0)
+        noise_model = NoiseModelBase("normal", "s", sensors=[Sensor("y")])
+        p.add_likelihood_model(noise_model)
         # now the problem should be consistent
         p.check_problem_consistency()
 
@@ -629,6 +626,9 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("s3", "noise", prior=("normal", {"loc": 0, "scale": 1}))
         test_model = ForwardModelBase("a", Sensor("x"), [Sensor("y1"), Sensor("y2")])
         p.add_forward_model("TestModel", test_model)
+        p.add_experiment(
+            "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
+        )
         noise_model1 = NoiseModelBase(
             "normal", "s1", sensors=[Sensor("y1"), Sensor("y2")]
         )
@@ -636,15 +636,15 @@ class TestProblem(unittest.TestCase):
         noise_model3 = NoiseModelBase(
             "normal", ["s1", "s2", "s3"], sensors=[Sensor("y1")], name="NM3"
         )
-        p.add_noise_model(noise_model1)
-        p.add_noise_model(noise_model2)
-        p.add_noise_model(noise_model3)
+        p.add_likelihood_model(noise_model1)
+        p.add_likelihood_model(noise_model2)
+        p.add_likelihood_model(noise_model3)
         # adding a noise model with similar sensor interface should not error
-        p.add_noise_model(noise_model3)
+        p.add_likelihood_model(noise_model3)
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # the given noise model parameter has not been defined
-            p.add_noise_model(
+            p.add_likelihood_model(
                 NoiseModelBase(
                     "normal",
                     "not_existing_parameter",
@@ -669,16 +669,6 @@ class TestProblem(unittest.TestCase):
         p.add_forward_model("TestModel_y1", test_model_y1)
         p.add_forward_model("TestModel_y2", test_model_y2)
         p.add_forward_model("TestModel_z1z2", test_model_z1z2)
-        # add some noise models
-        noise_model_y1 = NoiseModelBase(
-            "normal", ["s1", "s2", "s3"], sensors=[Sensor("y1")]
-        )
-        noise_model_y2 = NoiseModelBase("normal", ["s2"], sensors=[Sensor("y2")])
-        noise_model_y1y2 = NoiseModelBase(
-            "normal", "s1", sensors=[Sensor("z1"), Sensor("z2")]
-        )
-        p.add_noise_model(noise_model_y1)
-        p.add_noise_model(noise_model_y2)
         # add some experiments
         p.add_experiment(
             "Exp_y1", sensor_values={"x": 1, "y1": 2}, fwd_model_name="TestModel_y1"
@@ -694,14 +684,24 @@ class TestProblem(unittest.TestCase):
             sensor_values={"x": 7, "z1": 8, "z2": 9},
             fwd_model_name="TestModel_z1z2",
         )
+        # add some noise models
+        noise_model_y1 = NoiseModelBase(
+            "normal", ["s1", "s2", "s3"], sensors=[Sensor("y1")]
+        )
+        noise_model_y2 = NoiseModelBase("normal", ["s2"], sensors=[Sensor("y2")])
+        noise_model_y1y2 = NoiseModelBase(
+            "normal", "s1", sensors=[Sensor("z1"), Sensor("z2")]
+        )
+        p.add_likelihood_model(noise_model_y1)
+        p.add_likelihood_model(noise_model_y2)
         # so far, not all noise models have been added, so there are unassigned
         # experiments; this should lead to an error
         with self.assertRaises(RuntimeError):
-            p.assign_experiments_to_noise_models()
+            p.check_problem_consistency()
         # now we add the missing noise model
-        p.add_noise_model(noise_model_y1y2)
+        p.add_likelihood_model(noise_model_y1y2)
         # this is the call that should be tested here
-        p.assign_experiments_to_noise_models()
+        p.check_problem_consistency()
         # now check if all experiments have been assigned correctly
         self.assertEqual(p.noise_models[0].experiment_names, ["Exp_y1"])
         self.assertEqual(p.noise_models[1].experiment_names, ["Exp_y2_1", "Exp_y2_2"])

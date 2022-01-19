@@ -35,9 +35,6 @@ class TestProblem(unittest.TestCase):
         isensor, osensor = Sensor("x"), Sensor("y")
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
-        )
 
         # add experimental data
         np.random.seed(1)
@@ -48,6 +45,11 @@ class TestProblem(unittest.TestCase):
             f"TestSeries_1",
             fwd_model_name="LinearModel",
             sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
+
+        # add likelihood model
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
         )
 
         # test the get_start_values method for given x0_dict
@@ -94,9 +96,6 @@ class TestProblem(unittest.TestCase):
         # add forward and noise model
         fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
         p.add_forward_model("FwdModel", fwd_model)
-        p.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=Sensor("y"))
-        )
 
         # add experiment_names
         p.add_experiment(
@@ -107,6 +106,11 @@ class TestProblem(unittest.TestCase):
         )
         p.add_experiment(
             "Exp3", sensor_values={"x": [1, 2], "y": [1, 2]}, fwd_model_name="FwdModel"
+        )
+
+        # add likelihood model
+        p.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=Sensor("y"))
         )
 
         # initialize the solver object

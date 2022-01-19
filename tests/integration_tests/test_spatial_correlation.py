@@ -236,7 +236,7 @@ class TestProblem(unittest.TestCase):
             corr_model="exp",
             prms_def=[{"sigma": "std"}, "l_corr"],
         )
-        problem.add_noise_model(noise_model)
+        problem.add_likelihood_model(noise_model)
 
         # give problem overview
         problem.info()

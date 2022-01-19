@@ -14,7 +14,7 @@ import contextlib
 
 # local imports
 from probeye.inference.torch_.priors import translate_prior_template
-from probeye.inference.torch_.noise_models import translate_noise_model
+from probeye.inference.torch_.likelihood_models import translate_noise_model
 from probeye.subroutines import len_or_one, make_list
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
@@ -61,9 +61,6 @@ class PyroSolver:
         # that also scalars are converted to numpy-arrays
         self.problem = problem.transform_experimental_data(f=np.atleast_1d)
         self.problem = self.problem.transform_experimental_data(f=th.from_numpy)
-
-        # each noise model must be connected to the relevant experiment_names
-        self.problem.assign_experiments_to_noise_models()
 
         # the dictionary dependency_dict will contain all latent parameter names as
         # keys; the value of each key will be a list with latent hyper-parameters of the

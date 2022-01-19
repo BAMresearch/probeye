@@ -531,6 +531,19 @@ class InferenceProblem:
         for parameter in self._parameters.values():
             parameter.check_consistency()
 
+        # check that each globally defined experiment appears in one of the noise models
+        exp_names_in_noise_models = set()
+        for noise_model in self._noise_models:
+            for exp_name_noise in noise_model.experiment_names:
+                exp_names_in_noise_models.add(exp_name_noise)
+        for exp_name in self._experiments.keys():
+            if exp_name not in exp_names_in_noise_models:
+                # one may argue, that this could also be only a warning here
+                raise RuntimeError(
+                    f"The globally defined experiment '{exp_name}' does not appear in "
+                    f"any of the likelihood models!"
+                )
+
     def add_experiment(self, exp_name: str, sensor_values: dict, fwd_model_name: str):
         """
         Adds a single experiment to the inference problem. Here, an experiment is
@@ -873,29 +886,40 @@ class InferenceProblem:
         # the given forward model name
         self._forward_models[name] = forward_model
 
-    def add_noise_model(self, noise_model: NoiseModelBase):
+    def add_likelihood_model(self, likelihood_model: NoiseModelBase):
         """
-        Adds a noise model to the inference problem.
+        Adds a likelihood model to the inference problem. Note that before adding a
+        likelihood model, all the experiments the likelihood model should refer to
+        must have already been added to the InferenceProblem.
 
         Parameters
         ----------
-        noise_model
+        likelihood_model
             The noise model object, e.g. from NormalNoise. Check out noise.py to see
             some noise model classes.
         """
 
         # check if the noise model has been assigned a name; if not, assign one
-        if noise_model.name is None:
-            noise_model.name = f"noise_model_{len(self.noise_models)}"
+        if likelihood_model.name is None:
+            likelihood_model.name = f"noise_model_{len(self.noise_models)}"
             logger.debug(
-                f"Adding noise model '{noise_model.name}' (name assigned automatically)"
+                f"Adding likelihood model '{likelihood_model.name}' (name assigned "
+                f"automatically)"
             )
         else:
-            logger.debug(f"Adding noise model '{noise_model.name}'")
+            logger.debug(f"Adding likelihood model '{likelihood_model.name}'")
+
+        # ensure that experiments have already been added to the problem
+        if not self._experiments:
+            raise RuntimeError(
+                f"You are trying to add a likelihood model to your problem without "
+                f"having added any experiments yet!\nPlease add the experiments "
+                f"before adding the likelihood models."
+            )
 
         # check if all given noise model parameters have already been added to
         # the inference problem
-        for prm_name in noise_model.prms_def:
+        for prm_name in likelihood_model.prms_def:
             if prm_name not in self._parameters.keys():
                 raise RuntimeError(
                     f"The noise model parameter '{prm_name}' has not been defined yet."
@@ -906,53 +930,37 @@ class InferenceProblem:
 
         # add the problem's experiments to the noise model (this is just a pointer!)
         # for noise_model-internal checks
-        noise_model.problem_experiments = self._experiments
-        # finally, add the noise_model to the internal dict
-        self._noise_models.append(noise_model)
+        likelihood_model.problem_experiments = self._experiments
 
-    def assign_experiments_to_noise_models(self):
-        """
-        Assigns each noise model the corresponding experiment names, based on the sensor
-        names, that are defined for each noise model. This function is intended to be
-        called after the problem was fully defined. Alternatively, you can assign the
-        experiments 'by hand', by using the NoiseModelBase's 'add_experiments' method.
-        """
-        logger.debug("Assigning experiments to noise models")
-        n_experiments_defined = len(self._experiments)
-        n_experiments_noise = 0
-        for noise_model in self._noise_models:
-            # get the experiments that contain all of the noise model's sensors
-            experiment_names = self.get_experiment_names(
-                sensor_names=noise_model.sensor_names
+        # check/assign the likelihood model's experiments
+        if likelihood_model.experiment_names:
+            for exp_name in likelihood_model.experiment_names:
+                if exp_name not in self._experiments:
+                    raise RuntimeError(
+                        f"The likelihood model '{likelihood_model.name}' was "
+                        f"explicitly assigned experiment '{exp_name}', which however "
+                        f"has not been added to the problem yet."
+                    )
+        else:
+            # get the experiments that contain all of the likelihood model's sensors
+            # and add them to the likelihood model
+            added_experiment_names = self.get_experiment_names(
+                sensor_names=likelihood_model.sensor_names
             )
-            n_experiments_noise += len(experiment_names)
-            # add the relevant experiment names to the noise model
-            noise_model.add_experiments(experiment_names)
+            likelihood_model.add_experiments(added_experiment_names)
+            logger.debug(
+                f"No experiments were explicitly defined for likelihood model "
+                f"'{likelihood_model.name}'."
+            )
+            logger.debug(
+                f"The following experiments were added were added automatically to "
+                f"'{likelihood_model.name}':"
+            )
+            for exp_name in added_experiment_names:
+                logger.debug(f"- {exp_name}")
 
-        # check if there is the same number of experiments over all noise models as
-        # defined for the inference problem
-        if n_experiments_noise != n_experiments_defined:
-            # this is not necessarily an error; it also happens in a valid setup when
-            # more than one noise model are defined for one forward model; in a future
-            # version, there could be an info message here
-            pass
-
-        # check that each globally defined experiment appears in one of the noise models
-        exp_names_in_noise_models = set()
-        for noise_model in self._noise_models:
-            for exp_name_noise in noise_model.experiment_names:
-                exp_names_in_noise_models.add(exp_name_noise)
-
-        for exp_name in self._experiments.keys():
-            if exp_name not in exp_names_in_noise_models:
-                # undo the adding of the experiment names
-                for noise_model in self._noise_models:
-                    noise_model.experiment_names = []
-                # one may argue, that this could also be only a warning here
-                raise RuntimeError(
-                    f"The globally defined experiment '{exp_name}' does not appear in "
-                    f"any of the noise models!"
-                )
+        # finally, add the noise_model to the internal dict
+        self._noise_models.append(likelihood_model)
 
     def transform_experimental_data(
         self, f: Callable, args: tuple = (), **kwargs

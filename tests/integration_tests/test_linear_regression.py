@@ -211,7 +211,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # add the noise model to the problem
-        problem.add_noise_model(
+        problem.add_likelihood_model(
             NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
         )
 

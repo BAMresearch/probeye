@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 1.0.17 (2022-Jan-19)
+### Changed
+- Noise models must now be added after all experiments have been added. This means that the relevant experiments can be assigned to the noise models right after they are added (this happens automatically). This in turn makes it unnecessary to copy a problem and assign the experiments as a kind of post-processing step in the different solvers.
+
 ## 1.0.16 (2021-Dec-03)
 ### Added
 - added truncated normal distribution to the scipy-based prior classes

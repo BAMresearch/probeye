@@ -36,7 +36,6 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model(
             "LinRe", LinRe(["a", "b"], [Sensor("x")], [Sensor("y")])
         )
-        problem.add_noise_model(NormalNoiseModel({"sigma": "std"}, sensors=Sensor("y")))
 
         # generate and add some simple test data
         n_tests = 5000
@@ -46,6 +45,11 @@ class TestProblem(unittest.TestCase):
         y_test = np.random.normal(loc=y_true, scale=true["sigma"])
         problem.add_experiment(
             f"Tests", fwd_model_name="LinRe", sensor_values={"x": x_test, "y": y_test}
+        )
+
+        # add likelihood model
+        problem.add_likelihood_model(
+            NormalNoiseModel({"sigma": "std"}, sensors=Sensor("y"))
         )
 
         # run the emcee solver with deactivated output

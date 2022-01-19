@@ -164,7 +164,9 @@ class DynestySolver(ScipySolver):
         """
         start = time.time()
 
-        logger.info(f"Solving problem using dynesty sampler with {kwargs}")
+        logger.info(
+            f"Solving problem using dynesty sampler with keyword arguments: {kwargs}"
+        )
 
         # The following code is based on taralli and merely adjusted to the variables
         # in the probeye setup; see https://gitlab.com/tno-bim/taralli
