@@ -122,6 +122,7 @@ class TestProblem(unittest.TestCase):
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
         )
+        problem.add_parameter("std_meas", "likelihood", const=0.1)
 
         # add the forward model to the problem
         isensor1 = Sensor("t")
@@ -294,19 +295,25 @@ class TestProblem(unittest.TestCase):
 
         # add the likelihood models to the problem
         likelihood_model_1 = GaussianLikelihoodModel(
-            prms_def=[{"sigma": "std_model"}, "l_corr"],
+            prms_def=[{"sigma": "std_model"}, "l_corr", {"std_meas": "std_measurement"}],
             sensors=osensor,
             correlation_variables="t",
             correlation_model="exp",
             experiment_names=["Trajectory_1_Tracker_1", "Trajectory_1_Tracker_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=True,
         )
         problem.add_likelihood_model(likelihood_model_1)
         likelihood_model_2 = GaussianLikelihoodModel(
-            prms_def=[{"sigma": "std_model"}, "l_corr"],
+            prms_def=[{"sigma": "std_model"}, "l_corr", {"std_meas": "std_measurement"}],
             sensors=osensor,
             correlation_variables="t",
             correlation_model="exp",
             experiment_names=["Trajectory_2_Tracker_1", "Trajectory_2_Tracker_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=True,
         )
         problem.add_likelihood_model(likelihood_model_2)
 

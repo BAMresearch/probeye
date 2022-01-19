@@ -380,6 +380,40 @@ class GaussianLikelihoodModel:
             idx += m
         return residuals_vector
 
+    def response_array(self, model_response_dict: dict) -> Union[np.ndarray, th.Tensor]:
+        """
+        Computes the model response for all of the likelihood model's sensors over all
+        of the likelihood model's experiments and returns them in an array format.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
+        Returns
+        -------
+        res_array
+            An 2D array containing the model response.
+        """
+
+        # prepare the result array
+        n_rows = self.n_experiments * self.n_sensors
+        n_cols = len_or_one(
+            model_response_dict[self.experiment_names[0]][self.sensor_names[0]]
+        )
+        res_array = np.zeros((n_rows, n_cols))
+
+        # create the response dict only for the experiments of the likelihood model
+        i = 0
+        for experiment_name in self.experiment_names:
+            for sensor_name in self.sensor_names:
+                res_array[i, :] = model_response_dict[experiment_name][sensor_name]
+                i += 1
+
+        return res_array
+
     def coordinate_array(self, coords: str) -> np.ndarray:
         """
 

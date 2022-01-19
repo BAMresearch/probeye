@@ -189,21 +189,26 @@ class TestProblem(unittest.TestCase):
         # add the forward model to the problem
         isensor_1 = Sensor("v")
         isensor_2 = Sensor("t")
+        isensor_3 = Sensor("F")
         osensor_1 = Sensor("y1", x=x_sensor_1)
         osensor_2 = Sensor("y2", x=x_sensor_2)
         beam_model = BeamModel(
-            ["L", "EI"], [isensor_1, isensor_2], [osensor_1, osensor_2]
+            ["L", "EI"], [isensor_1, isensor_2, isensor_3], [osensor_1, osensor_2]
         )
         problem.add_forward_model("BeamModel", beam_model)
 
         # add the log-likelihood model to the problem
         loglike = GaussianLikelihoodModel(
-            ["sigma", "l_corr_x", "l_corr_t"],
+            [
+                {"sigma": "std_model"},
+                {"l_corr_x": "l_corr_space"},
+                {"l_corr_t": "l_corr_time"},
+            ],
             [osensor_1, osensor_2],
             additive_model_error=True,
             multiplicative_model_error=False,
             additive_measurement_error=False,
-            experiment_names=["Test 1", "Test 2", "Test 3"],
+            experiment_names=["Test_1", "Test_2", "Test_3"],
             correlation_variables="xt",
             correlation_model="exp",
         )
@@ -217,7 +222,7 @@ class TestProblem(unittest.TestCase):
         np.random.seed(seed)
 
         # additional data on the three experiments
-        n_vector = [50, 20, 30]
+        n_vector = [50, 50, 50]
         v_vector = [2.5, 10.0, 5.0]  # [m/s]
         F_vector = [F1, F2, F3]
         c_vector = ["black", "red", "blue"]
@@ -255,6 +260,7 @@ class TestProblem(unittest.TestCase):
                 sensor_values={
                     isensor_1.name: v,
                     isensor_2.name: t,
+                    isensor_3.name: F,
                     osensor_1.name: y_test[:n],
                     osensor_2.name: y_test[n:],
                 },
@@ -283,21 +289,26 @@ class TestProblem(unittest.TestCase):
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
-        # # this routine is imported from another script because it it used by all
-        # # integration tests in the same way
-        # true_values = {"a": a_true, "sigma": sigma, "l_corr": l_corr}
-        # run_inference_engines(
-        #     problem,
-        #     true_values=true_values,
-        #     n_steps=n_steps,
-        #     n_initial_steps=n_initial_steps,
-        #     n_walkers=n_walkers,
-        #     plot=False,
-        #     show_progress=show_progress,
-        #     run_scipy=run_scipy,
-        #     run_emcee=run_emcee,
-        #     run_torch=run_torch,
-        # )
+        # this routine is imported from another script because it it used by all
+        # integration tests in the same way
+        true_values = {
+            "EI": EI_true,
+            "sigma": sigma,
+            "l_corr_x": l_corr_x,
+            "l_corr_t": l_corr_t,
+        }
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=False,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+        )
 
 
 if __name__ == "__main__":

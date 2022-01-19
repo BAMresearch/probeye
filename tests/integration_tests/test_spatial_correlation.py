@@ -167,6 +167,7 @@ class TestProblem(unittest.TestCase):
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
         )
+        problem.add_parameter("std_meas", "likelihood", const=0.1)
 
         # add the forward model to the problem; note that the first positional argument
         # [{'a': 'm'}, 'b'] passed to LinearModel defines the forward model's parameters
@@ -216,11 +217,14 @@ class TestProblem(unittest.TestCase):
             )
             # add the likelihood model to the problem
             likelihood_model = GaussianLikelihoodModel(
-                prms_def=[{"sigma": "std_model"}, "l_corr"],
+                prms_def=[{"sigma": "std_model"}, "l_corr", {"std_meas": "std_measurement"}],
                 sensors=osensor,
                 correlation_variables="xz",
                 correlation_model="exp",
                 experiment_names=exp_name,
+                additive_model_error=False,
+                multiplicative_model_error=True,
+                additive_measurement_error=True,
             )
             problem.add_likelihood_model(likelihood_model)
             if plot:
