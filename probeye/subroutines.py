@@ -814,6 +814,7 @@ def check_for_uninformative_priors(problem: "InferenceProblem"):
                 f"specified interval to solver this problem."
             )
 
+
 def extract_true_values(true_values: dict, var_names: List[str]) -> np.ndarray:
 
     true_values_vector = []
