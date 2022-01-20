@@ -141,7 +141,7 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             info="Std. dev, of 0-mean noise model",
             tex=r"$\sigma$",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),

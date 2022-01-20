@@ -1,5 +1,5 @@
 # standard library imports
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import time
 import random
 import contextlib
@@ -16,7 +16,8 @@ from scipy.stats import norm
 from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import check_for_uninformative_priors
 from probeye.inference.scipy_.solver import ScipySolver
-from probeye.subroutines import stream_to_logger, print_dict_in_rows
+from probeye.subroutines import stream_to_logger
+from probeye.subroutines import extract_true_values
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -80,7 +81,9 @@ class DynestySolver(ScipySolver):
 
         return qs
 
-    def get_summary(self, posterior_samples: np.ndarray) -> dict:
+    def get_summary(
+        self, posterior_samples: np.ndarray, true_values: Optional[dict] = None
+    ) -> dict:
         """
         Computes and prints a summary of the posterior samples containing mean, median,
         standard deviation, 5th percentile and 95th percentile. Note, that this method
@@ -91,6 +94,8 @@ class DynestySolver(ScipySolver):
         posterior_samples
             The generated samples in an array with as many columns as there are latent
             parameters, and n rows, where n = n_chains * n_steps.
+        true_values
+            True parameter values, if known.
 
         Returns
         -------
@@ -115,33 +120,61 @@ class DynestySolver(ScipySolver):
         sd = np.sqrt(np.diag(cov_matrix))
 
         # assemble the summary array
-        col_names = ["", "mean", "median", "sd", "5%", "95%"]
-        row_names = np.array(var_names)
-        tab = np.hstack(
-            (
-                row_names.reshape(-1, 1),
-                mean.reshape(-1, 1),
-                median.reshape(-1, 1),
-                sd.reshape(-1, 1),
-                quantile_05.reshape(-1, 1),
-                quantile_95.reshape(-1, 1),
+        if true_values:
+            col_names = ["", "true", "mean", "median", "sd", "5%", "95%"]
+            true = extract_true_values(true_values, var_names)
+            row_names = np.array(var_names)
+            tab = np.hstack(
+                (
+                    row_names.reshape(-1, 1),
+                    true.reshape(-1, 1),
+                    mean.reshape(-1, 1),
+                    median.reshape(-1, 1),
+                    sd.reshape(-1, 1),
+                    quantile_05.reshape(-1, 1),
+                    quantile_95.reshape(-1, 1),
+                )
             )
-        )
 
-        # print the generated table, and return a summary dict for later use
-        print(tabulate(tab, headers=col_names, floatfmt=".2f"))
-        return {
-            "mean": {name: val for name, val in zip(row_names, mean)},
-            "median": {name: val for name, val in zip(row_names, median)},
-            "sd": {name: val for name, val in zip(row_names, sd)},
-            "q05": {name: val for name, val in zip(row_names, quantile_05)},
-            "q95": {name: val for name, val in zip(row_names, quantile_95)},
-        }
+            # print the generated table, and return a summary dict for later use
+            print(tabulate(tab, headers=col_names, floatfmt=".2f"))
+            return {
+                "true": {name: val for name, val in zip(row_names, true)},
+                "mean": {name: val for name, val in zip(row_names, mean)},
+                "median": {name: val for name, val in zip(row_names, median)},
+                "sd": {name: val for name, val in zip(row_names, sd)},
+                "q05": {name: val for name, val in zip(row_names, quantile_05)},
+                "q95": {name: val for name, val in zip(row_names, quantile_95)},
+            }
+        else:
+            col_names = ["", "mean", "median", "sd", "5%", "95%"]
+            row_names = np.array(var_names)
+            tab = np.hstack(
+                (
+                    row_names.reshape(-1, 1),
+                    mean.reshape(-1, 1),
+                    median.reshape(-1, 1),
+                    sd.reshape(-1, 1),
+                    quantile_05.reshape(-1, 1),
+                    quantile_95.reshape(-1, 1),
+                )
+            )
+
+            # print the generated table, and return a summary dict for later use
+            print(tabulate(tab, headers=col_names, floatfmt=".2f"))
+            return {
+                "mean": {name: val for name, val in zip(row_names, mean)},
+                "median": {name: val for name, val in zip(row_names, median)},
+                "sd": {name: val for name, val in zip(row_names, sd)},
+                "q05": {name: val for name, val in zip(row_names, quantile_05)},
+                "q95": {name: val for name, val in zip(row_names, quantile_95)},
+            }
 
     def run_dynesty(
         self,
         estimation_method: str = "dynamic",
         nlive: int = 250,
+        true_values: Optional[dict] = None,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
@@ -154,6 +187,8 @@ class DynestySolver(ScipySolver):
             "dynamic" or "static"
         nlive
             number of live points
+        true_values
+            True parameter values, if known.
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
@@ -210,7 +245,7 @@ class DynestySolver(ScipySolver):
 
         logger.info("Summary of sampling results")
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-            self.summary = self.get_summary(samples)
+            self.summary = self.get_summary(samples, true_values=true_values)
         logger.info(f"Posterior log evidence: {sampler.results.logz[-1]}")
 
         var_names = self.problem.get_theta_names(tex=True, components=True)

@@ -159,14 +159,14 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             tex=r"$\sigma$",
             info="Std. dev, of 0-mean noise model",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
         problem.add_parameter(
             "l_corr",
-            "noise",
+            "likelihood",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),

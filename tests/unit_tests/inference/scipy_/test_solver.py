@@ -28,7 +28,7 @@ class TestProblem(unittest.TestCase):
             "b", "model", prior=("normal", {"loc": 1.0, "scale": 1.0})
         )
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
 
         # add forward model and noise model
@@ -83,7 +83,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("sigma", "noise", const=1.0)
+        p.add_parameter("sigma", "likelihood", const=1.0)
 
         class FwdModel(ForwardModelBase):
             def response(self, inp):

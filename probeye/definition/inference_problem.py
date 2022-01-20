@@ -22,12 +22,17 @@ from probeye.subroutines import add_index_to_tex_prm_name
 
 class InferenceProblem:
     """
-    This class provides a general framework for defining an inference problem.
-    Capabilities for solving the set up problem are intentionally not included.
+    This class provides a general framework for defining an inference problem (more
+    specifically, a parameter estimation problem) without specifying or providing any
+    computational means for solving the problem.
     """
 
     def __init__(
-        self, name: str, use_default_logger: bool = True, log_file: Optional[str] = None
+        self,
+        name: str,
+        use_default_logger: bool = True,
+        log_level: str = "INFO",
+        log_file: Optional[str] = None,
     ):
         """
         Parameters
@@ -37,10 +42,15 @@ class InferenceProblem:
             when working with several inference problems.
         use_default_logger
             When True, the logger will be set up with some useful default values.
-            Otherwise, no logger configurations are applied.
+            Otherwise, no logger configurations are applied and a logger can be defined
+            outside of the problem definition.
+        log_level
+            The log-level used by the default logger for printing to std out. This
+            argument is intended for quickly controlling the amount of logging output
+            the user sees on the screen when running probeye.
         log_file
-            Path to the log-file, if the logging should be printed to file. If None is
-            given, no logging-file will be created.
+            Path to the log-file, if the logging-stream should be printed to file.
+            If None is given, no logging-file will be created.
         """
 
         # the name of the problem
@@ -49,12 +59,14 @@ class InferenceProblem:
         # this is the central parameter dictionary of the problem (the used Parameters-
         # class is derived from the dict-class); it contains all defined parameters
         # ('const' and 'latent' ones); the keys of this dictionary are the parameter
-        # names; note that each parameter must have a unique name in the problem; the
+        # names (note that each parameter must have a unique name in the problem); the
         # values of this dictionary are Parameter-objects (see parameter.py) with the
         # following attributes:
-        # .index  int or None (the index in the theta-vector (see self.loglike) for
-        #         'latent'-parameter; None for 'const'-parameters)
-        # .type   string (either 'model', 'prior' or 'noise' depending on where the
+        # .index  int or None (the index of a 'latent' parameter in the latent parameter
+        #         vector theta; None for 'const'-parameters)
+        # .dim    int or None (the dimension of the parameter if it is latent, in case
+        #         of a constant parameter, this attribute is None)
+        # .type   string (either 'model', 'prior' or 'likelihood' depending on where the
         #         parameter appears)
         # .prior  object or None (the prior-object of the 'latent'-parameter; None for
         #         'const'-parameters)
@@ -62,28 +74,28 @@ class InferenceProblem:
         #         'latent'-parameters)
         # .info   string (a short explanation of the parameter)
         # .tex:   string or None (the TeX version of the parameter's name, for example
-        #         r'$\alpha$' for a parameter named 'alpha')
+        #         r'$\alpha$' for a parameter named 'alpha'; only used for plotting)
+        # this attribute is managed internally and should not be modified directly
         self._parameters = Parameters()
 
-        # this dictionary is intended for storing the measured data from experiment_
-        # names (see self.add_experiment); this dict is managed internally and should
-        # not be edited directly
+        # this dictionary is intended for storing the problem's experimentally measured
+        # data; this dict is managed internally and should not be modified directly
         self._experiments = {}  # type: dict
 
-        # here, the forward models are written to; note that the problem can have
-        # multiple forward models; the keys are the forward model names, while the
-        # values are the forward model objects, see also in the script forward_model.py;
-        # this dictionary is managed internally and should not be edited directly
+        # the following dict contains the problem's forward models; note that a single
+        # problem can have multiple forward models; the keys in this dict are the
+        # forward model names, while the values are the forward model objects (check out
+        # the script forward_model.py); this dictionary is managed internally and should
+        # not be modified directly
         self._forward_models = {}  # type: dict
 
-        # a list for the problem's noise models (it's not a dict like the other
-        # attributes from above as the noise models don't need to have names); this
-        # list is managed internally and should not be edited directly
-        self._noise_models = list()  # type: List[NoiseModelBase]
+        # this dictionary contains the problem's likelihood models; as the other private
+        # attributes above, it is managed internally and should not be modified directly
+        self._likelihood_models = {}  # type: dict
 
         # setup the logger with the given specifications
         if use_default_logger:
-            logging_setup(log_file=log_file)
+            logging_setup(log_file=log_file, log_level_stdout=log_level)
 
         # log probeye header and first message
         print_probeye_header()
@@ -156,14 +168,14 @@ class InferenceProblem:
         return self._parameters.prior_prms
 
     @property
-    def n_noise_prms(self) -> int:
-        """Provides n_noise_prms attribute."""
-        return self._parameters.n_noise_prms
+    def n_likelihood_prms(self) -> int:
+        """Provides n_likelihood_prms attribute."""
+        return self._parameters.n_likelihood_prms
 
     @property
-    def noise_prms(self) -> List[str]:
-        """Provides noise_prms attribute."""
-        return self._parameters.noise_prms
+    def likelihood_prms(self) -> List[str]:
+        """Provides likelihood_prms attribute."""
+        return self._parameters.likelihood_prms
 
     @property
     def parameters(self) -> Parameters:
@@ -182,9 +194,9 @@ class InferenceProblem:
         }
 
     @property
-    def noise_models(self) -> list:
-        """Access self._noise_models from outside via self.noise_models."""
-        return self._noise_models
+    def likelihood_models(self) -> dict:
+        """Access self._likelihood_models from outside via self.likelihood_models."""
+        return self._likelihood_models
 
     @property
     def forward_models(self) -> dict:
@@ -381,7 +393,7 @@ class InferenceProblem:
             )
         # the parameter's role is changed by first removing it from the problem, and
         # then adding it again in its new role; the role-change does not impact the type
-        # ('model', 'prior' or 'noise')
+        # ('model', 'prior' or 'likelihood')
         prm = self._parameters[prm_name]
         if prm.is_const:
             # if a constant parameter should be made latent, its dimension will be taken
@@ -465,7 +477,7 @@ class InferenceProblem:
         """
 
         # check if the central components have been added to the problem: parameters,
-        # forward models, noise models and experiments
+        # forward models, likelihood models and experiments
         assert (
             len(self._parameters) != 0
         ), "The problem does not contain any parameters!"
@@ -473,8 +485,8 @@ class InferenceProblem:
             len(self._forward_models) != 0
         ), "The problem does not contain any forward models!"
         assert (
-            len(self._noise_models) != 0
-        ), "The problem does not contain any noise models!"
+            len(self._likelihood_models) != 0
+        ), "The problem does not contain any likelihood models!"
         assert (
             len(self._experiments) != 0
         ), "The problem does not contain any experiments!"
@@ -491,17 +503,22 @@ class InferenceProblem:
                     self._parameters[model_prm].type == "model"
                 ), f"The forward model parameter '{model_prm}' is not of type 'model'!"
 
-        # check if all parameters of the noise model appear in self._parameters
+        # check if all parameters of the likelihood model appear in self._parameters
         # and if they have the correct type
-        for noise_model in self._noise_models:
-            for noise_prm in noise_model.prms_def.keys():
-                assert noise_prm in self._parameters, (
-                    f"The noise model parameter '{noise_prm}' is not defined within "
+        for likelihood_name, likelihood_model in self._likelihood_models.items():
+            for likelihood_prm in likelihood_model.prms_def.keys():
+                assert likelihood_prm in self._parameters, (
+                    f"The likelihood model parameter '{likelihood_prm}' that appears "
+                    f"in likelihood model '{likelihood_name}' is not defined within "
                     f"the problem!"
                 )
-                assert (
-                    self._parameters[noise_prm].type == "noise"
-                ), f"The noise model parameter '{noise_prm}' is not of type 'noise'!"
+                assert self._parameters[likelihood_prm].type == "likelihood", (
+                    f"The likelihood model parameter '{likelihood_prm}' that appears "
+                    f"in likelihood model '{likelihood_name}' has not been defined "
+                    f"as of type 'likelihood' but of type "
+                    f"'{self._parameters[likelihood_prm].type}' in the problem "
+                    f"definition!"
+                )
 
         # check if all prior objects in self.priors are consistent in terms of their
         # parameters; each one of them must appear in self._parameters
@@ -531,13 +548,13 @@ class InferenceProblem:
         for parameter in self._parameters.values():
             parameter.check_consistency()
 
-        # check that each globally defined experiment appears in one of the noise models
-        exp_names_in_noise_models = set()
-        for noise_model in self._noise_models:
-            for exp_name_noise in noise_model.experiment_names:
-                exp_names_in_noise_models.add(exp_name_noise)
+        # check that each defined experiment appears in one of the likelihood models
+        exp_names_in_likelihood_models = set()
+        for likelihood_model in self._likelihood_models.values():
+            for exp_name_likelihood in likelihood_model.experiment_names:
+                exp_names_in_likelihood_models.add(exp_name_likelihood)
         for exp_name in self._experiments.keys():
-            if exp_name not in exp_names_in_noise_models:
+            if exp_name not in exp_names_in_likelihood_models:
                 # one may argue, that this could also be only a warning here
                 raise RuntimeError(
                     f"The globally defined experiment '{exp_name}' does not appear in "
@@ -886,7 +903,9 @@ class InferenceProblem:
         # the given forward model name
         self._forward_models[name] = forward_model
 
-    def add_likelihood_model(self, likelihood_model: NoiseModelBase):
+    def add_likelihood_model(
+        self, likelihood_model: NoiseModelBase, name: Optional[str] = None
+    ):
         """
         Adds a likelihood model to the inference problem. Note that before adding a
         likelihood model, all the experiments the likelihood model should refer to
@@ -895,19 +914,23 @@ class InferenceProblem:
         Parameters
         ----------
         likelihood_model
-            The noise model object, e.g. from NormalNoise. Check out noise.py to see
-            some noise model classes.
+            The likelihood model object, e.g. from NormalNoise. Check out likelihood.py
+            to see some likelihood model classes.
+        name
+            A descriptive name for the likelihood model. If None is given, a default
+            name will be derived automatically (something like 'likelihood_model_1').
         """
 
-        # check if the noise model has been assigned a name; if not, assign one
-        if likelihood_model.name is None:
-            likelihood_model.name = f"noise_model_{len(self.noise_models)}"
+        # check if the likelihood model has been assigned a name; if not, assign one
+        if name is None:
+            name = f"likelihood_model_{len(self.likelihood_models)}"
+
             logger.debug(
-                f"Adding likelihood model '{likelihood_model.name}' (name assigned "
-                f"automatically)"
+                f"Adding likelihood model '{name}' (name assigned automatically)"
             )
         else:
-            logger.debug(f"Adding likelihood model '{likelihood_model.name}'")
+            logger.debug(f"Adding likelihood model '{name}'")
+        likelihood_model.name = name  # this is important for the torch-solver!
 
         # ensure that experiments have already been added to the problem
         if not self._experiments:
@@ -917,19 +940,19 @@ class InferenceProblem:
                 f"before adding the likelihood models."
             )
 
-        # check if all given noise model parameters have already been added to
+        # check if all given likelihood model parameters have already been added to
         # the inference problem
         for prm_name in likelihood_model.prms_def:
             if prm_name not in self._parameters.keys():
                 raise RuntimeError(
-                    f"The noise model parameter '{prm_name}' has not been defined yet."
-                    f"\nYou have to add all noise model parameters to the problem "
-                    f"before adding the noise model.\nYou can use the 'add_parameter' "
-                    f"method for this purpose."
+                    f"The likelihood model parameter '{prm_name}' has not been defined "
+                    f"yet.\nYou have to add all likelihood model parameters to the "
+                    f"problem before adding the likelihood model.\nYou can use the"
+                    f"'add_parameter' method for this purpose."
                 )
 
-        # add the problem's experiments to the noise model (this is just a pointer!)
-        # for noise_model-internal checks
+        # add the problem's experiments to the likelihood model (note that this is just
+        # a pointer!) for likelihood_model-internal checks
         likelihood_model.problem_experiments = self._experiments
 
         # check/assign the likelihood model's experiments
@@ -937,9 +960,9 @@ class InferenceProblem:
             for exp_name in likelihood_model.experiment_names:
                 if exp_name not in self._experiments:
                     raise RuntimeError(
-                        f"The likelihood model '{likelihood_model.name}' was "
-                        f"explicitly assigned experiment '{exp_name}', which however "
-                        f"has not been added to the problem yet."
+                        f"The likelihood model '{name}' was explicitly assigned "
+                        f"experiment '{exp_name}', which however has not been added to "
+                        f"the problem yet."
                     )
         else:
             # get the experiments that contain all of the likelihood model's sensors
@@ -954,13 +977,13 @@ class InferenceProblem:
             )
             logger.debug(
                 f"The following experiments were added were added automatically to "
-                f"'{likelihood_model.name}':"
+                f"'{name}':"
             )
             for exp_name in added_experiment_names:
                 logger.debug(f"- {exp_name}")
 
-        # finally, add the noise_model to the internal dict
-        self._noise_models.append(likelihood_model)
+        # finally, add the likelihood_model to the internal dict
+        self._likelihood_models[name] = likelihood_model
 
     def transform_experimental_data(
         self, f: Callable, args: tuple = (), **kwargs

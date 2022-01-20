@@ -813,3 +813,15 @@ def check_for_uninformative_priors(problem: "InferenceProblem"):
                 f"the requested solver. You could change it to a uniform-prior on a "
                 f"specified interval to solver this problem."
             )
+
+def extract_true_values(true_values: dict, var_names: List[str]) -> np.ndarray:
+
+    true_values_vector = []
+    for var_name in var_names:
+        if var_name in true_values:
+            true_values_vector.append(float(true_values[var_name]))
+        else:
+            var_name_no_index = var_name[::-1].split("_", 1)[1][::-1]
+            idx = int(var_name[::-1].split("_", 1)[0]) - 1
+            true_values_vector.append(float(true_values[var_name_no_index][idx]))
+    return np.array(true_values_vector)

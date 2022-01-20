@@ -59,7 +59,7 @@ class ScipySolver:
         # translate the general noise model objects into solver specific ones
         logger.debug("Translate problem's noise models")
         self.noise_models = []
-        for noise_model_base in self.problem.noise_models:
+        for noise_model_base in self.problem.likelihood_models.values():
             self.noise_models.append(translate_noise_model(noise_model_base))
 
     def evaluate_model_response(

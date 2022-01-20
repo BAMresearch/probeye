@@ -468,7 +468,7 @@ class TestProblem(unittest.TestCase):
         # check if the detection works as expected
         problem = InferenceProblem("Problem with uninformative prior")
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
         check_for_uninformative_priors(problem)  # no error should be raised
         problem.add_parameter("m", "model")  # uninformative prior

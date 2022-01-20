@@ -84,7 +84,7 @@ class TestProblem(unittest.TestCase):
         # for plotting
         problem.add_parameter("m", "model", tex="$m$")
         problem.add_parameter("b", "model", tex="$b$")
-        problem.add_parameter("sigma", "noise", tex=r"$\sigma$")
+        problem.add_parameter("sigma", "likelihood", tex=r"$\sigma$")
 
         # add the forward model to the problem
         isensor = Sensor("x")

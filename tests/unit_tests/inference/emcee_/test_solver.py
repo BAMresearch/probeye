@@ -31,7 +31,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
         problem.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 1})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 1})
         )
         problem.add_forward_model(
             "LinRe", LinRe(["a", "b"], [Sensor("x")], [Sensor("y")])

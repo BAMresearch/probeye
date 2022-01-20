@@ -148,21 +148,21 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma_1",
-            "noise",
+            "likelihood",
             prior=("uniform", {"low": low_S1, "high": high_S1}),
             info="Std. dev. of zero-mean noise model for S1",
             tex=r"$\sigma_1$",
         )
         problem.add_parameter(
             "sigma_2",
-            "noise",
+            "likelihood",
             prior=("uniform", {"low": low_S2, "high": high_S2}),
             info="Std. dev. of zero-mean noise model for S1",
             tex=r"$\sigma_2$",
         )
         problem.add_parameter(
             "sigma_3",
-            "noise",
+            "likelihood",
             prior=("uniform", {"low": low_S3, "high": high_S3}),
             info="Std. dev. of zero-mean noise model for S1",
             tex=r"$\sigma_3$",

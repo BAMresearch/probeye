@@ -21,7 +21,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(p.n_latent_prms, 1)
         self.assertEqual(p.latent_prms_dims, [1])
         # add second latent parameter; n_latent_prms should be 2
-        p.add_parameter("b", "noise", prior=("normal", {"loc": 0.0, "scale": 1.0}))
+        p.add_parameter("b", "likelihood", prior=("normal", {"loc": 0.0, "scale": 1.0}))
         self.assertEqual(p.n_latent_prms, 2)
         self.assertEqual(p.latent_prms_dims, [1, 1])
         # check the different properties
@@ -37,8 +37,8 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(set(p.model_prms), {"a"})
         self.assertEqual(p.n_prior_prms, 4)
         self.assertEqual(set(p.prior_prms), {"loc_a", "scale_a", "loc_b", "scale_b"})
-        self.assertEqual(p.n_noise_prms, 1)
-        self.assertEqual(set(p.noise_prms), {"b"})
+        self.assertEqual(p.n_likelihood_prms, 1)
+        self.assertEqual(set(p.likelihood_prms), {"b"})
 
     def test_info(self):
         # simply check that no errors occur when info-method is called; the output that
@@ -46,7 +46,7 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s", "noise", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         sys.stdout = io.StringIO()
         # try out different options
         p.info(include_experiments=False, tablefmt="presto", check_consistency=False)
@@ -77,7 +77,7 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s", "noise", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
         p.add_experiment(
@@ -93,7 +93,9 @@ class TestProblem(unittest.TestCase):
         # check valid use cases for constant parameters
         p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
         p.add_parameter("loc_a", "prior", const=1.0, info="info", tex=r"$loc_a$")
-        p.add_parameter("sigma_1", "noise", const=1.0, info="info", tex=r"$\sigma_1$")
+        p.add_parameter(
+            "sigma_1", "likelihood", const=1.0, info="info", tex=r"$\sigma_1$"
+        )
         # check valid use cases for latent parameters
         p.add_parameter(
             "b",
@@ -111,7 +113,7 @@ class TestProblem(unittest.TestCase):
         )
         p.add_parameter(
             "sigma_2",
-            "noise",
+            "likelihood",
             info="info",
             tex=r"$\sigma_2$",
             prior=("uniform", {"low": 0.1, "high": 2.0}),
@@ -135,7 +137,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             # adding a parameter with a name that was used before
-            p.add_parameter("c", "noise", const=2.0, info="info", tex=r"$c$")
+            p.add_parameter("c", "likelihood", const=2.0, info="info", tex=r"$c$")
         with self.assertRaises(TypeError):
             # adding a parameter with an invalid prior
             p.add_parameter(
@@ -196,7 +198,7 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
         p.add_parameter("loc_a", "prior", const=1.0, info="info", tex=r"$loc_a$")
-        p.add_parameter("s", "noise", const=1.0, info="info", tex=r"$\sigma$")
+        p.add_parameter("s", "likelihood", const=1.0, info="info", tex=r"$\sigma$")
         p.add_parameter(
             "scale_a",
             "prior",
@@ -206,7 +208,7 @@ class TestProblem(unittest.TestCase):
         )
         p.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             info="info",
             tex=r"$\sigma$",
             prior=("uniform", {"low": 0.1, "high": 2.0}),
@@ -372,7 +374,7 @@ class TestProblem(unittest.TestCase):
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
         # add a noise model
-        p.add_parameter("s", "noise", const=1.0)
+        p.add_parameter("s", "likelihood", const=1.0)
         noise_model = NoiseModelBase("normal", "s", sensors=[Sensor("y")])
         p.add_likelihood_model(noise_model)
         # now the problem should be consistent
@@ -592,7 +594,7 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s", "noise", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
             # the model is not consistent
@@ -621,9 +623,9 @@ class TestProblem(unittest.TestCase):
         # check correct use
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s1", "noise", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s2", "noise", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s3", "noise", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s1", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s2", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s3", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         test_model = ForwardModelBase("a", Sensor("x"), [Sensor("y1"), Sensor("y2")])
         p.add_forward_model("TestModel", test_model)
         p.add_experiment(
@@ -657,9 +659,9 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         # add some parameters
         p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s1", "noise", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s2", "noise", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s3", "noise", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s1", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s2", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("s3", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         # add some dummy forward models (only the output sensors are important)
         test_model_y1 = ForwardModelBase("a", Sensor("x"), Sensor("y1"))
         test_model_y2 = ForwardModelBase("a", Sensor("x"), Sensor("y2"))
@@ -692,20 +694,22 @@ class TestProblem(unittest.TestCase):
         noise_model_y1y2 = NoiseModelBase(
             "normal", "s1", sensors=[Sensor("z1"), Sensor("z2")]
         )
-        p.add_likelihood_model(noise_model_y1)
-        p.add_likelihood_model(noise_model_y2)
+        p.add_likelihood_model(noise_model_y1, name="l1")
+        p.add_likelihood_model(noise_model_y2, name="l2")
         # so far, not all noise models have been added, so there are unassigned
         # experiments; this should lead to an error
         with self.assertRaises(RuntimeError):
             p.check_problem_consistency()
         # now we add the missing noise model
-        p.add_likelihood_model(noise_model_y1y2)
+        p.add_likelihood_model(noise_model_y1y2, name="l3")
         # this is the call that should be tested here
         p.check_problem_consistency()
         # now check if all experiments have been assigned correctly
-        self.assertEqual(p.noise_models[0].experiment_names, ["Exp_y1"])
-        self.assertEqual(p.noise_models[1].experiment_names, ["Exp_y2_1", "Exp_y2_2"])
-        self.assertEqual(p.noise_models[2].experiment_names, ["Exp_z1z2"])
+        self.assertEqual(p.likelihood_models["l1"].experiment_names, ["Exp_y1"])
+        self.assertEqual(
+            p.likelihood_models["l2"].experiment_names, ["Exp_y2_1", "Exp_y2_2"]
+        )
+        self.assertEqual(p.likelihood_models["l3"].experiment_names, ["Exp_z1z2"])
 
     def test_transform_experimental_data(self):
         # check correct use
