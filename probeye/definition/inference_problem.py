@@ -13,8 +13,8 @@ from probeye.definition.parameter import Parameters
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import NoiseModelBase
 from probeye.subroutines import underlined_string, titled_table
-from probeye.subroutines import simplified_list_string, simplified_dict_string
-from probeye.subroutines import unvectorize_dict_values, make_list, len_or_one
+from probeye.subroutines import simplified_list_string
+from probeye.subroutines import make_list, len_or_one
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import add_index_to_tex_prm_name
@@ -210,21 +210,14 @@ class InferenceProblem:
 
     def info(
         self,
-        include_experiments: bool = False,
         tablefmt: str = "presto",
         check_consistency: bool = True,
     ) -> str:
         """
-        Either prints the problem definition to the console (print_it=True) or just
-        returns the generated string without printing it (print_it=False).
+        Logs an overview of the problem definition and returns the generated string.
 
         Parameters
         ----------
-        include_experiments
-            If True, information on the experiments defined within the model will be
-            included in the printout. Depending on the number of defined experiments,
-            this might result in a long additional printout, which is why this is set
-            to False (no experiment printout) by default.
         tablefmt
             An argument for the tabulate function defining the style of the generated
             table. Check out tabulate's documentation for more info.
@@ -234,37 +227,31 @@ class InferenceProblem:
 
         Returns
         -------
-            The constructed string providing the problem information.
+            The constructed string providing the problem's definition.
         """
 
-        # contains the name of the inference problem
+        # state the name of the inference problem
         title = f"Problem summary: {self.name}"
         title_string = underlined_string(title, n_empty_start=1)
 
-        # list the forward models that have been defined within the problem
-        rows = [
-            (
-                name,
-                simplified_list_string([*model.prms_def.keys()]),
-                simplified_list_string([*model.prms_def.values()]),
-            )
-            for name, model in self._forward_models.items()
-        ]
+        # provide information on the defined forward models
+        rows_fwd_model = []
+        for name, model in self._forward_models.items():
+            glob_prms = simplified_list_string([*model.prms_def.keys()])
+            loc_prms = simplified_list_string([*model.prms_def.values()])
+            rows_fwd_model.append((name, glob_prms, loc_prms))
         headers = ["Model name", "Global parameters", "Local parameters"]
-        fwd_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        fwd_table = tabulate(rows_fwd_model, headers=headers, tablefmt=tablefmt)
         fwd_string = titled_table("Forward models", fwd_table)
 
-        # include information on the defined priors
-        rows = [
-            (
-                name,
-                simplified_list_string([*prior.prms_def.keys()]),
-                simplified_list_string([*prior.prms_def.values()]),
-            )
-            for name, prior in self.priors.items()
-        ]
+        # provide information on the defined priors
+        rows_prior = []
+        for name, prior in self.priors.items():
+            glob_prms = simplified_list_string([*prior.prms_def.keys()])
+            loc_prms = simplified_list_string([*prior.prms_def.values()])
+            rows_prior.append((name, glob_prms, loc_prms))
         headers = ["Prior name", "Global parameters", "Local parameters"]
-        prior_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        prior_table = tabulate(rows_prior, headers=headers, tablefmt=tablefmt)
         prior_str = titled_table("Priors", prior_table)
 
         # provide various information on the problem's parameters
@@ -276,22 +263,43 @@ class InferenceProblem:
         theta_string = "\nTheta interpretation"
         theta_string += self.theta_explanation(check_consistency=check_consistency)
 
-        # print information on added experiments if requested
-        if include_experiments:
-            rows_exp = []  # type: List[tuple[str, str]]
-            for name, exp_dict in self._experiments.items():
-                dict_atoms = unvectorize_dict_values(exp_dict["sensor_values"])
-                for dict_atom in dict_atoms:
-                    rows_exp.append((name, simplified_dict_string(dict_atom)))
-            headers = ["Name", "Sensor values"]
-            exp_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-            exp_str = titled_table("Added experiments", exp_table)
-        else:
-            exp_str = ""
+        # provide information on the added experiments
+        rows_exp = []  # type: List[tuple[str, str, str]]
+        for exp_name, exp_dict in self._experiments.items():
+            sensor_name_1 = [*exp_dict["sensor_values"].keys()][0]
+            sensor_values_1 = [*exp_dict["sensor_values"].values()][0]
+            sv_info_1 = f"{sensor_name_1} ({len_or_one(sensor_values_1)} elements)"
+            rows_exp.append((exp_name, sv_info_1, exp_dict["forward_model"]))
+            # the remaining code is for experiments with more than one sensor val
+            if len([*exp_dict["sensor_values"].keys()]) > 1:
+                for sensor_name, sensor_values in exp_dict["sensor_values"].items():
+                    if sensor_name == sensor_name_1:
+                        continue
+                    sv_info = f"{sensor_name} ({len_or_one(sensor_values)} elements)"
+                    rows_exp.append(("", sv_info, ""))
+        headers = ["Name", "Sensor values", "Forward model"]
+        exp_table = tabulate(rows_exp, headers=headers, tablefmt=tablefmt)
+        exp_str = titled_table("Added experiments", exp_table)
+
+        # provide information on the added likelihood models
+        rows_like = []
+        for l_name, l_model in self._likelihood_models.items():
+            prms_glob = simplified_list_string([*l_model.prms_def.keys()])
+            prms_loc = simplified_list_string([*l_model.prms_def.values()])
+            l_sensors = simplified_list_string(l_model.sensor_names)
+            exp_name_1 = l_model.experiment_names[0]
+            rows_like.append((l_name, prms_glob, prms_loc, l_sensors, exp_name_1))
+            for exp_name in l_model.experiment_names:
+                if exp_name == exp_name_1:
+                    continue
+                rows_like.append(("", "", "", "", exp_name))
+        headers = ["Name", "Glob. prms", "Loc. prms", "Target sensors", "Experiments"]
+        like_table = tabulate(rows_like, headers=headers, tablefmt=tablefmt)
+        like_str = titled_table("Added likelihood models", like_table)
 
         # concatenate the string and return it
         full_string = title_string + fwd_string + prior_str + prm_string
-        full_string += theta_string + exp_str
+        full_string += theta_string + exp_str + like_str
 
         # log and return the string
         for line in full_string.split("\n"):

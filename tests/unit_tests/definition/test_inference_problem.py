@@ -49,17 +49,15 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         sys.stdout = io.StringIO()
         # try out different options
-        p.info(include_experiments=False, tablefmt="presto", check_consistency=False)
-        _ = p.info(
-            include_experiments=False, tablefmt="presto", check_consistency=False
-        )
-        p.info(include_experiments=True, tablefmt="presto", check_consistency=False)
-        p.info(include_experiments=True, tablefmt="plain", check_consistency=False)
+        p.info(tablefmt="presto", check_consistency=False)
+        _ = p.info(tablefmt="presto", check_consistency=False)
+        p.info(tablefmt="presto", check_consistency=False)
+        p.info(tablefmt="plain", check_consistency=False)
         sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
             # the problem is not consistent yet (e.g. no forward model defined yet), so
             # the consistency_check will raise an error
-            p.info(include_experiments=True, tablefmt="presto", check_consistency=True)
+            p.info(tablefmt="presto", check_consistency=True)
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
@@ -69,7 +67,7 @@ class TestProblem(unittest.TestCase):
         p.add_likelihood_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
-        p.info(include_experiments=True, tablefmt="presto", check_consistency=True)
+        p.info(tablefmt="presto", check_consistency=True)
         sys.stdout = sys.__stdout__  # reset printout to console
 
     def test_str(self):
