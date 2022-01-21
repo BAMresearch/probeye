@@ -479,22 +479,22 @@ class TestProblem(unittest.TestCase):
     def test_extract_true_values(self):
 
         # this is the default use case
-        true_values = {'a': 1, 'b': 2, 'c': 3}
-        var_names = ['b', 'a', 'c']
+        true_values = {"a": 1, "b": 2, "c": 3}
+        var_names = ["b", "a", "c"]
         expected_array = np.array([2, 1, 3])
         computed_array = extract_true_values(true_values, var_names)
         self.assertTrue(np.allclose(expected_array, computed_array))
 
         # this is the use case for a vector-valued parameter
-        true_values = {'a': 1, 'mb': np.array([2, 3]), 'c': 4}
-        var_names = ['mb_1', 'mb_2', 'c', 'a']
+        true_values = {"a": 1, "mb": np.array([2, 3]), "c": 4}
+        var_names = ["mb_1", "mb_2", "c", "a"]
         expected_array = np.array([2, 3, 4, 1])
         computed_array = extract_true_values(true_values, var_names)
         self.assertTrue(np.allclose(expected_array, computed_array))
 
         # same as before, but with list instead of array and more underscores
-        true_values = {'a': 1, 'm_and_b': [2, 3], 'c': 4}
-        var_names = ['m_and_b_1', 'm_and_b_2', 'c', 'a']
+        true_values = {"a": 1, "m_and_b": [2, 3], "c": 4}
+        var_names = ["m_and_b_1", "m_and_b_2", "c", "a"]
         expected_array = np.array([2, 3, 4, 1])
         computed_array = extract_true_values(true_values, var_names)
         self.assertTrue(np.allclose(expected_array, computed_array))
