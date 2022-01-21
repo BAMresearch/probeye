@@ -584,6 +584,16 @@ class InferenceProblem:
         # log at beginning so that errors can be associated
         logger.debug(f"Adding experiment '{exp_name}'")
 
+        # make sure that no likelihood model has been defined yet
+        if self._likelihood_models:
+            raise RuntimeError(
+                f"You are trying to add an experiment after already having defined "
+                f"likelihood models.\nSince version 1.0.17 this is not allowed "
+                f"anymore. Please add all experiments before\n defining any likelihood "
+                f"model. After you have defined a likelihood model, you cannot add\n"
+                f"experiments anymore."
+            )
+
         # check all keyword arguments are given
         if type(sensor_values) is not dict:
             raise TypeError(
@@ -989,10 +999,11 @@ class InferenceProblem:
         self, f: Callable, args: tuple = (), **kwargs
     ) -> "InferenceProblem":
         """
-        Creates a full copy of the problem the experimental data of which is transformed
-        in some way. This might be a necessary pre-processing step for an inference
-        engine in order to be able to solve the problem. Note that the original problem
-        remains unchanged.
+        Creates a copy of the problem the experimental data of which is transformed in
+        some way. This might be a necessary pre-processing step for an inference engine
+        in order to be able to solve the problem. Note that the problem is not fully
+        deep copied. The forward models are excluded from deep-copying, as this might
+        result in problems. The rest of the problem is deep-copied however.
 
         Parameters
         ----------
@@ -1006,23 +1017,24 @@ class InferenceProblem:
         Returns
         -------
         self_copy
-            A full copy of self where the experimental data has been transformed in the
+            A copy of self where the experimental data has been transformed in the
             specified fashion.
         """
 
         logger.debug(f"Transforming experimental data using f = '{f.__name__}'")
 
         # the original problem shall not be touched, so we create a copy here to which
-        # the transformation will be applied; however, sometimes this is not possible,
-        # hence the try-except frame
-        try:
-            self_copy = cp.deepcopy(self)
-        except:
-            logger.warning(
-                "The inference problem could not be deep-copied! "
-                "The original problem will be modified!"
-            )
-            self_copy = self
+        # the transformation will be applied
+        self_copy = InferenceProblem(self.name)
+        self_copy._parameters = cp.deepcopy(self._parameters)
+        self_copy._experiments = cp.deepcopy(self._experiments)
+        self_copy._forward_models = cp.copy(self._forward_models)  # no deep-copy here!
+        self_copy._likelihood_models = cp.deepcopy(self._likelihood_models)
+        # the following step is necessary since the attribute 'problem_experiments' of
+        # the deep-copied likelihood models in self_copy still refer to the experiments
+        # of self; hence, we need to set this pointer to the experiments of self_copy
+        for likelihood_model in self_copy._likelihood_models.values():
+            likelihood_model.problem_experiments = self_copy._experiments
 
         # transform the sensor values from the experiments by applying the specified
         # function with the given arguments to them
