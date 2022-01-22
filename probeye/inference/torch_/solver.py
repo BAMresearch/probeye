@@ -59,8 +59,8 @@ class PyroSolver:
         # the problem is copied, and in the copy, the experimental data is reformatted
         # from numpy-arrays to torch-tensors; note that the first command makes sure
         # that also scalars are converted to numpy-arrays
-        self.problem = problem.transform_experimental_data(f=np.atleast_1d)
-        self.problem = self.problem.transform_experimental_data(f=th.from_numpy)
+        self.problem = problem.transform_experimental_data(func=np.atleast_1d)
+        self.problem = self.problem.transform_experimental_data(func=th.from_numpy)
 
         # the dictionary dependency_dict will contain all latent parameter names as
         # keys; the value of each key will be a list with latent hyper-parameters of the

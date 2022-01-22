@@ -298,6 +298,17 @@ class TestProblem(unittest.TestCase):
             # change to role the parameter already has
             p.change_parameter_role("a", prior=("normal", {"loc": 0, "scale": 1}))
 
+    def test_change_parameter_type(self):
+        p = InferenceProblem("TestProblem")
+        # check change of type from 'model' to 'likelihood'
+        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        self.assertEqual(p.parameters["a"].type, "model")
+        p.change_parameter_type("a", "likelihood")
+        self.assertEqual(p.parameters["a"].type, "likelihood")
+        # check change of type from 'likelihood' to invalid type 'INVALID'
+        with self.assertRaises(ValueError):
+            p.change_parameter_type("a", "INVALID")
+
     def test_change_parameter_info(self):
         p = InferenceProblem("TestProblem")
         # simple check that the change works and has the expected effect
@@ -427,13 +438,6 @@ class TestProblem(unittest.TestCase):
             # forward model's output sensor not provided by experiment
             p.add_experiment(
                 "Experiment_3", sensor_values={"x": 1}, fwd_model_name="TestModel"
-            )
-        with self.assertRaises(RuntimeError):
-            # sensor values with different lengths
-            p.add_experiment(
-                "Experiment_3",
-                fwd_model_name="TestModel",
-                sensor_values={"x": [1, 2], "y": 1},
             )
         # check that sensor_value lists are transformed to numpy arrays
         p.add_experiment(
@@ -694,11 +698,6 @@ class TestProblem(unittest.TestCase):
         )
         p.add_likelihood_model(noise_model_y1, name="l1")
         p.add_likelihood_model(noise_model_y2, name="l2")
-        # so far, not all noise models have been added, so there are unassigned
-        # experiments; this should lead to an error
-        with self.assertRaises(RuntimeError):
-            p.check_problem_consistency()
-        # now we add the missing noise model
         p.add_likelihood_model(noise_model_y1y2, name="l3")
         # this is the call that should be tested here
         p.check_problem_consistency()
@@ -721,7 +720,9 @@ class TestProblem(unittest.TestCase):
             sensor_values={"x": [1, 2], "y": [1, 3]},
         )
         # apply a simple power function to the experimental data
-        p_copy = p.transform_experimental_data(f=np.power, args=([2, 3],), where=True)
+        p_copy = p.transform_experimental_data(
+            func=np.power, args=([2, 3],), where=True
+        )
         x_computed = p_copy.experiments["Experiment_1"]["sensor_values"]["x"]
         x_expected = np.array([1, 8])
         self.assertTrue(
