@@ -11,7 +11,7 @@ from loguru import logger
 
 # local imports
 from probeye.inference.scipy_.priors import translate_prior
-from probeye.inference.scipy_.noise_models import translate_noise_model
+from probeye.inference.scipy_.likelihood_models import translate_noise_model
 from probeye.subroutines import print_dict_in_rows, make_list
 
 # imports only needed for type hints
@@ -42,26 +42,13 @@ class ScipySolver:
         logger.debug("Initializing ScipySolver")
 
         # attributes from arguments
+        self.problem = problem
         self.show_progress = show_progress
         self.seed = seed
 
         # the following attributes will be set after the solver was run
         self.raw_results = None
         self.summary = {}  # type: dict
-
-        # each noise model must be connected to the relevant experiment_names; a copy is
-        # created before, so that this solver routine does not have side effects on the
-        # original problem; such side effects would occur due to calling the assign_
-        # experiments_to_noise_models-method below
-        try:
-            self.problem = cp.deepcopy(problem)
-        except:
-            logger.warning(
-                "The inference problem could not be deep-copied! The original problem "
-                "will be modified!"
-            )
-            self.problem = problem
-        self.problem.assign_experiments_to_noise_models()
 
         # translate the prior definitions to objects with computing capabilities
         logger.debug("Translate problem's priors")
@@ -72,7 +59,7 @@ class ScipySolver:
         # translate the general noise model objects into solver specific ones
         logger.debug("Translate problem's noise models")
         self.noise_models = []
-        for noise_model_base in self.problem.noise_models:
+        for noise_model_base in self.problem.likelihood_models.values():
             self.noise_models.append(translate_noise_model(noise_model_base))
 
     def evaluate_model_response(

@@ -574,7 +574,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "1.0.16",
+    version: str = "1.0.17",
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",
@@ -813,3 +813,29 @@ def check_for_uninformative_priors(problem: "InferenceProblem"):
                 f"the requested solver. You could change it to a uniform-prior on a "
                 f"specified interval to solver this problem."
             )
+
+
+def extract_true_values(true_values: dict, var_names: List[str]) -> np.ndarray:
+    """
+    Returns the values from a true_values dictionary in the order given by var_names.
+
+    Parameters
+    ----------
+    true_values
+        Keys are parameter names and values are either floats, integers or 1D-arrays.
+    var_names
+        List stating the order in which the true values should be returned.
+    """
+    true_values_vector = []
+    for var_name in var_names:
+        if var_name in true_values:
+            true_values_vector.append(float(true_values[var_name]))
+        else:
+            # this case is the reason why this function was written; it arises when
+            # vector-valued parameters are used; if for example 'mb' is a 2-element
+            # parameter, then var_names will contain 'mb_1' (not starting at 0) and
+            # 'mb_2' but true_values will just contain 'mb'
+            var_name_no_index = var_name[::-1].split("_", 1)[1][::-1]
+            idx = int(var_name[::-1].split("_", 1)[0]) - 1
+            true_values_vector.append(float(true_values[var_name_no_index][idx]))
+    return np.array(true_values_vector)

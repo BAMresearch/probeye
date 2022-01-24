@@ -8,7 +8,7 @@ import numpy as np
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 from probeye.inference.torch_.solver import PyroSolver
 
 
@@ -32,7 +32,7 @@ class TestProblem(unittest.TestCase):
             "b", "model", prior=("normal", {"loc": 1.0, "scale": 1.0})
         )
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
         problem.remove_parameter("loc_m")
         problem.add_parameter(
@@ -43,9 +43,6 @@ class TestProblem(unittest.TestCase):
         isensor, osensor = Sensor("x"), Sensor("y")
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
-        )
 
         # add experimental data
         np.random.seed(1)
@@ -56,6 +53,11 @@ class TestProblem(unittest.TestCase):
             f"TestSeries_1",
             fwd_model_name="LinearModel",
             sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
+
+        # add likelihood model
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
         )
 
         # the pre-check in PyroSolver should now detect the circular dependency
@@ -81,7 +83,7 @@ class TestProblem(unittest.TestCase):
             "b", "model", prior=("normal", {"loc": 1.0, "scale": 1.0})
         )
         problem.add_parameter(
-            "sigma", "noise", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
         problem.remove_parameter("loc_m")
         problem.add_parameter(
@@ -92,9 +94,6 @@ class TestProblem(unittest.TestCase):
         isensor, osensor = Sensor("x"), Sensor("y")
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
-        )
 
         # add experimental data
         np.random.seed(1)
@@ -105,6 +104,11 @@ class TestProblem(unittest.TestCase):
             f"TestSeries_1",
             fwd_model_name="LinearModel",
             sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
+
+        # add likelihood model
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
         )
 
         # here it is finally checked, that the rearrangement works
@@ -129,7 +133,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("sigma", "noise", const=1.0)
+        p.add_parameter("sigma", "likelihood", const=1.0)
 
         class FwdModel(ForwardModelBase):
             def response(self, inp):
@@ -142,9 +146,6 @@ class TestProblem(unittest.TestCase):
         # add forward and noise model
         fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
         p.add_forward_model("FwdModel", fwd_model)
-        p.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=Sensor("y"))
-        )
 
         # add experiment_names
         p.add_experiment(
@@ -155,6 +156,11 @@ class TestProblem(unittest.TestCase):
         )
         p.add_experiment(
             "Exp3", sensor_values={"x": [1, 2], "y": [1, 2]}, fwd_model_name="FwdModel"
+        )
+
+        # add likelihood model
+        p.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=Sensor("y"))
         )
 
         # initialize the solver object

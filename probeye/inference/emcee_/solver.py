@@ -1,5 +1,5 @@
 # standard library imports
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 import time
 import random
 import contextlib
@@ -15,7 +15,9 @@ from tabulate import tabulate
 from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import check_for_uninformative_priors
 from probeye.inference.scipy_.solver import ScipySolver
-from probeye.subroutines import stream_to_logger, print_dict_in_rows
+from probeye.subroutines import stream_to_logger
+from probeye.subroutines import print_dict_in_rows
+from probeye.subroutines import extract_true_values
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -39,7 +41,9 @@ class EmceeSolver(ScipySolver):
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
 
-    def emcee_summary(self, posterior_samples: np.ndarray) -> dict:
+    def emcee_summary(
+        self, posterior_samples: np.ndarray, true_values: Optional[dict] = None
+    ) -> dict:
         """
         Computes and prints a summary of the posterior samples containing mean, median,
         standard deviation, 5th percentile and 95th percentile. Note, that this method
@@ -50,6 +54,8 @@ class EmceeSolver(ScipySolver):
         posterior_samples
             The generated samples in an array with as many columns as there are latent
             parameters, and n rows, where n = n_chains * n_steps.
+        true_values
+            True parameter values, if known.
 
         Returns
         -------
@@ -74,34 +80,62 @@ class EmceeSolver(ScipySolver):
         sd = np.sqrt(np.diag(cov_matrix))
 
         # assemble the summary array
-        col_names = ["", "mean", "median", "sd", "5%", "95%"]
-        row_names = np.array(var_names)
-        tab = np.hstack(
-            (
-                row_names.reshape(-1, 1),
-                mean.reshape(-1, 1),
-                median.reshape(-1, 1),
-                sd.reshape(-1, 1),
-                quantile_05.reshape(-1, 1),
-                quantile_95.reshape(-1, 1),
+        if true_values:
+            col_names = ["", "true", "mean", "median", "sd", "5%", "95%"]
+            true = extract_true_values(true_values, var_names)
+            row_names = np.array(var_names)
+            tab = np.hstack(
+                (
+                    row_names.reshape(-1, 1),
+                    true.reshape(-1, 1),
+                    mean.reshape(-1, 1),
+                    median.reshape(-1, 1),
+                    sd.reshape(-1, 1),
+                    quantile_05.reshape(-1, 1),
+                    quantile_95.reshape(-1, 1),
+                )
             )
-        )
 
-        # print the generated table, and return a summary dict for later use
-        print(tabulate(tab, headers=col_names, floatfmt=".2f"))
-        return {
-            "mean": {name: val for name, val in zip(row_names, mean)},
-            "median": {name: val for name, val in zip(row_names, median)},
-            "sd": {name: val for name, val in zip(row_names, sd)},
-            "q05": {name: val for name, val in zip(row_names, quantile_05)},
-            "q95": {name: val for name, val in zip(row_names, quantile_95)},
-        }
+            # print the generated table, and return a summary dict for later use
+            print(tabulate(tab, headers=col_names, floatfmt=".2f"))
+            return {
+                "true": {name: val for name, val in zip(row_names, true)},
+                "mean": {name: val for name, val in zip(row_names, mean)},
+                "median": {name: val for name, val in zip(row_names, median)},
+                "sd": {name: val for name, val in zip(row_names, sd)},
+                "q05": {name: val for name, val in zip(row_names, quantile_05)},
+                "q95": {name: val for name, val in zip(row_names, quantile_95)},
+            }
+        else:
+            col_names = ["", "mean", "median", "sd", "5%", "95%"]
+            row_names = np.array(var_names)
+            tab = np.hstack(
+                (
+                    row_names.reshape(-1, 1),
+                    mean.reshape(-1, 1),
+                    median.reshape(-1, 1),
+                    sd.reshape(-1, 1),
+                    quantile_05.reshape(-1, 1),
+                    quantile_95.reshape(-1, 1),
+                )
+            )
+
+            # print the generated table, and return a summary dict for later use
+            print(tabulate(tab, headers=col_names, floatfmt=".2f"))
+            return {
+                "mean": {name: val for name, val in zip(row_names, mean)},
+                "median": {name: val for name, val in zip(row_names, median)},
+                "sd": {name: val for name, val in zip(row_names, sd)},
+                "q05": {name: val for name, val in zip(row_names, quantile_05)},
+                "q95": {name: val for name, val in zip(row_names, quantile_95)},
+            }
 
     def run_mcmc(
         self,
         n_walkers: int = 20,
         n_steps: int = 1000,
         n_initial_steps: int = 100,
+        true_values: Optional[dict] = None,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
@@ -116,6 +150,8 @@ class EmceeSolver(ScipySolver):
             Number of steps to run.
         n_initial_steps
             Number of steps for initial (burn-in) sampling.
+        true_values
+            True parameter values, if known.
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
@@ -202,7 +238,9 @@ class EmceeSolver(ScipySolver):
         logger.info("Summary of sampling results")
         posterior_samples = sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-            self.summary = self.emcee_summary(posterior_samples)
+            self.summary = self.emcee_summary(
+                posterior_samples, true_values=true_values
+            )
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it
