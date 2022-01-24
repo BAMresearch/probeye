@@ -3,7 +3,7 @@ Simple linear regression example with two model and one noise parameter
 ----------------------------------------------------------------------------------------
 The model equation is y = a * x + b with a, b being the model parameters and the noise
 model is a normal zero-mean distribution with the std. deviation to infer. The problem
-is solved via sampling using emcee and pyro.
+is solved via max likelihood estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -34,6 +34,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -62,6 +63,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -149,7 +153,7 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             tex=r"$\sigma$",
             info="Std. dev, of 0-mean noise model",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -173,11 +177,6 @@ class TestProblem(unittest.TestCase):
         linear_model = LinearModel([{"a": "m"}, "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
-        )
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -197,9 +196,6 @@ class TestProblem(unittest.TestCase):
             sensor_values={isensor.name: x_test, osensor.name: y_test},
         )
 
-        # give problem overview
-        problem.info()
-
         # plot the true and noisy data
         if plot:
             plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
@@ -209,6 +205,18 @@ class TestProblem(unittest.TestCase):
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
+
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise model to the problem
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        )
+
+        # give problem overview
+        problem.info()
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
@@ -228,6 +236,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

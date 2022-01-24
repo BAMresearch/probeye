@@ -5,8 +5,8 @@ import unittest
 import numpy as np
 
 # local imports
-from probeye.definition.noise_model import NoiseModelBase
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NoiseModelBase
+from probeye.definition.likelihood_model import NormalNoiseModel
 from probeye.definition.sensor import Sensor
 
 

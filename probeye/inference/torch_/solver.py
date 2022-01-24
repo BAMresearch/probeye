@@ -14,7 +14,7 @@ import contextlib
 
 # local imports
 from probeye.inference.torch_.priors import translate_prior_template
-from probeye.inference.torch_.noise_models import translate_noise_model
+from probeye.inference.torch_.likelihood_models import translate_noise_model
 from probeye.subroutines import len_or_one, make_list
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
@@ -59,11 +59,8 @@ class PyroSolver:
         # the problem is copied, and in the copy, the experimental data is reformatted
         # from numpy-arrays to torch-tensors; note that the first command makes sure
         # that also scalars are converted to numpy-arrays
-        self.problem = problem.transform_experimental_data(f=np.atleast_1d)
-        self.problem = self.problem.transform_experimental_data(f=th.from_numpy)
-
-        # each noise model must be connected to the relevant experiment_names
-        self.problem.assign_experiments_to_noise_models()
+        self.problem = problem.transform_experimental_data(func=np.atleast_1d)
+        self.problem = self.problem.transform_experimental_data(func=th.from_numpy)
 
         # the dictionary dependency_dict will contain all latent parameter names as
         # keys; the value of each key will be a list with latent hyper-parameters of the
@@ -118,7 +115,7 @@ class PyroSolver:
         # translate the general noise model objects into solver specific ones
         logger.debug("Translating problem's noise models")
         self.noise_models = []
-        for noise_model_base in self.problem.noise_models:
+        for noise_model_base in self.problem.likelihood_models.values():
             self.noise_models.append(translate_noise_model(noise_model_base))
 
         # translate the problem's forward models into torch compatible ones

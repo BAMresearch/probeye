@@ -8,7 +8,7 @@ import pyro
 import pyro.distributions as dist
 
 # local imports
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover

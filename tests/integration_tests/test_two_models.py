@@ -5,7 +5,8 @@ The first model equation is y = a * x + b with a, b being the model parameters a
 second model equation is y = alpha * x**2 + b where alpha is a new model parameter, and
 b is the same model parameter as in the first model equation. Both forward models have
 the same noise model with a normal zero-mean distribution where the standard deviation
-is to be inferred.The problem is solved via sampling using emcee and pyro.
+is to be inferred. The problem is solved via max likelihood estimation and via sampling
+using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -19,7 +20,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -36,6 +37,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -64,6 +66,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -149,7 +154,7 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             tex=r"$\sigma$ (noise)",
             info="Std. deviation of zero-mean noise model",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -165,14 +170,6 @@ class TestProblem(unittest.TestCase):
             ["alpha", {"b": "beta"}], [isensor], [osensor_quadratic]
         )
         problem.add_forward_model("QuadraticModel", quadratic_model)
-
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_linear)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
-        )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -205,9 +202,6 @@ class TestProblem(unittest.TestCase):
             fwd_model_name="QuadraticModel",
         )
 
-        # give problem overview
-        problem.info()
-
         # plot the true and noisy data
         if plot:
             plt.scatter(
@@ -235,6 +229,21 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_linear)
+        )
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
+        )
+
+        # give problem overview
+        problem.info()
+
+        # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
@@ -257,6 +266,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

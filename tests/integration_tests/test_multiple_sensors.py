@@ -6,8 +6,8 @@ while x and t represent position and time respectively. From the three model par
 A and B are latent ones while c is a constant. Measurements are made at three different
 positions (x-values) each of which is associated with an own zero-mean, uncorrelated
 normal noise model with the std. deviations to infer. This results in five latent
-parameters (parameters to infer). The problem is solved via sampling by means of emcee
-and pyro.
+parameters (parameters to infer). The problem is solved via max likelihood estimation
+and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -20,7 +20,7 @@ import numpy as np
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -37,6 +37,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -65,6 +66,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -144,21 +148,21 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma_1",
-            "noise",
+            "likelihood",
             prior=("uniform", {"low": low_S1, "high": high_S1}),
             info="Std. dev. of zero-mean noise model for S1",
             tex=r"$\sigma_1$",
         )
         problem.add_parameter(
             "sigma_2",
-            "noise",
+            "likelihood",
             prior=("uniform", {"low": low_S2, "high": high_S2}),
             info="Std. dev. of zero-mean noise model for S1",
             tex=r"$\sigma_2$",
         )
         problem.add_parameter(
             "sigma_3",
-            "noise",
+            "likelihood",
             prior=("uniform", {"low": low_S3, "high": high_S3}),
             info="Std. dev. of zero-mean noise model for S1",
             tex=r"$\sigma_3$",
@@ -174,17 +178,6 @@ class TestProblem(unittest.TestCase):
             ["A", "B", {"c": "const"}], [isensor], [osensor1, osensor2, osensor3]
         )
         problem.add_forward_model("LinearModel", linear_model)
-
-        # add the noise models to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
-        )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -214,6 +207,21 @@ class TestProblem(unittest.TestCase):
         for n_exp, n_t in enumerate([101, 51]):
             generate_data(n_t, n=n_exp)
 
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
+        )
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
+        )
+        problem.add_likelihood_model(
+            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
+        )
+
         # give problem overview
         problem.info()
 
@@ -241,6 +249,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

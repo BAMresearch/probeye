@@ -9,7 +9,7 @@ correlated. The corresponding covariance matrix is defined based on an exponenti
 correlation function parameterized by the const standard deviation sigma of the
 n-variate normal distribution and a correlation length l_corr. Hence, the full model has
 four parameters a, b, sigma, l_corr, all of which are inferred in this example using
-emcee-sampling.
+via maximum likelihood estimation and via sampling using emcee and dynesty.
 """
 
 # standard library
@@ -23,7 +23,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -43,6 +43,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = False,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -71,6 +72,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         if run_torch:
@@ -155,14 +159,14 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             tex=r"$\sigma$",
             info="Std. dev, of 0-mean noise model",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
         problem.add_parameter(
             "l_corr",
-            "noise",
+            "likelihood",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
@@ -185,15 +189,6 @@ class TestProblem(unittest.TestCase):
         osensor = Sensor("y", x=x_test)
         linear_model = LinearModel(["a", "b"], [], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
-
-        # add the noise model to the problem
-        noise_model = NormalNoiseModel(
-            sensors=osensor,
-            corr="x",
-            corr_model="exp",
-            prms_def=[{"sigma": "std"}, "l_corr"],
-        )
-        problem.add_noise_model(noise_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -231,6 +226,22 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # plt.draw() does not stop execution
 
         # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise model to the problem
+        noise_model = NormalNoiseModel(
+            sensors=osensor,
+            corr="x",
+            corr_model="exp",
+            prms_def=[{"sigma": "std"}, "l_corr"],
+        )
+        problem.add_likelihood_model(noise_model)
+
+        # give problem overview
+        problem.info()
+
+        # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
@@ -248,6 +259,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

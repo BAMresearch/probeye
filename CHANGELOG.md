@@ -4,7 +4,27 @@
 ### Changed
 - extended the documentation in README.md
 
-## 1.0.12 (2021-Nov-11)
+## 1.0.17 (2022-Jan-19)
+### Changed
+- Noise models must now be added after all experiments have been added. This means that the relevant experiments can be assigned to the noise models right after they are added (this happens automatically). This in turn makes it unnecessary to copy a problem and assign the experiments as a kind of post-processing step in the different solvers.
+
+## 1.0.16 (2021-Dec-03)
+### Added
+- added truncated normal distribution to the scipy-based prior classes
+
+## 1.0.15 (2021-Dec-01)
+### Added
+- added dynesty-solver (probeye/inference/dynesty_ submodule)
+
+## 1.0.14 (2021-Nov-29)
+### Changed
+- revised arviz-based post-processing routines
+
+## 1.0.13 (2021-Nov-29)
+### Changed
+- fixed a bug with the probeye.txt file, which was missing in the build
+
+## 1.0.12 (2021-Nov-28)
 ### Changed
 - modified code format according to standard black and introduced type hints
 
