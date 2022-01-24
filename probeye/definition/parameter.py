@@ -13,264 +13,6 @@ from probeye.subroutines import len_or_one
 from probeye.definition.prior import PriorBase
 
 
-class ParameterProperties:
-    """
-    Describes relevant properties of a ('latent' or 'const') parameter. Objects from
-    this class are associated with the parameter's name in the dictionary class
-    'Parameters', see above. The use of this class as opposed to a standard dictionary
-    allows convenient auto-completion while coding.
-    """
-
-    def __init__(self, prm_dict: dict):
-        """
-        Parameters
-        ----------
-        prm_dict
-            The keys are 'index', 'dim', 'type', 'role', 'prior', 'value', 'info' and
-            'tex', while the values are the corresponding values of these properties.
-            See also the explanations in InferenceProblem.__init__() for more detailed
-            information.
-        """
-        # write attributes
-        self._index = prm_dict["index"]
-        self._type = prm_dict["type"]
-        self._prior = prm_dict["prior"]
-        self._value = prm_dict["value"]
-        self.info = prm_dict["info"]
-        self.tex = prm_dict["tex"]
-
-        # the dimension (dim) attribute is only expected to be contained in the given
-        # prm_dict, if an index is specified; if no index is specified, a constant is
-        # given, which defines its dimension based on its value
-        if self._index is None:
-            # constant parameter
-            self._dim = len_or_one(self._value)
-        else:
-            # latent parameter
-            self._dim = prm_dict["dim"]
-
-        # whitespace in the tex strings is a problem for some plotting routines, so they
-        # are replaced here by a math-command for whitespace that does not contain
-        # actual whitespace
-        if self.tex:
-            self.tex = self.tex.replace(" ", r"$\enspace$")
-
-        # check the given values
-        self.check_consistency()
-
-    # noinspection PyShadowingBuiltins
-    def changed_copy(
-        self,
-        index: Optional[int] = None,
-        dim: Optional[int] = None,
-        type: Optional[str] = None,
-        prior: Union[list, tuple, None] = None,
-        value: Union[int, float, np.ndarray, None] = None,
-        info: Optional[str] = None,
-        tex: Optional[str] = None,
-    ) -> "ParameterProperties":
-        """
-        Convenience method that simplifies changing the attributes of a
-        ParameterProperties object based on creating a new instance. The reason for this
-        approach is that some of the attributes are private, and cannot (or at least
-        should not) be changed directly from outside.
-
-        See the explanations in InferenceProblem.__init__() for more detailed
-        information on the arguments.
-        """
-        return ParameterProperties(
-            {
-                "index": index if index is not None else self._index,
-                "dim": dim or self._dim,
-                "type": type or self._type,
-                "prior": prior or self._prior,
-                "value": value or self._value,
-                "info": info or self.info,
-                "tex": tex or self.tex,
-            }
-        )
-
-    def check_consistency(self):
-        """
-        Checks the defined attributes in both isolated checks (each attribute is checked
-        without considering others) and cross-checks, where the combination of
-        attributes is checked on consistency.
-        """
-
-        # ------------------------------- #
-        #         Isolated checks         #
-        # ------------------------------- #
-
-        if not (type(self._index) == int or self._index is None):
-            raise TypeError(
-                f"Found invalid ParameterProperties._index attribute! It must be of "
-                f"type int or None, but found {type(self._index)}."
-            )
-
-        if (self._index is not None) and (self._index < 0):
-            raise ValueError(
-                f"Found negative value for ParameterProperties._index! This attribute "
-                f"must be a non-negative integer, but found a value of {self._index}."
-            )
-
-        if not (type(self._dim) == int or self._dim is None):
-            raise TypeError(
-                f"Found invalid ParameterProperties._dim attribute! It must be of type "
-                f"int or None, but found {type(self._dim)}."
-            )
-
-        if (self._dim is not None) and (self._dim < 1):
-            raise ValueError(
-                f"Found value < 1 for ParameterProperties._dim! This attribute must be "
-                f"an integer >= 1, but found a value of {self._dim}."
-            )
-
-        if self._type not in ["model", "prior", "likelihood"]:
-            raise RuntimeError(
-                f"Found invalid ParameterProperties._type attribute! It can only "
-                f"assume the three values 'model', 'prior' or 'likelihood' but found "
-                f"'{self._type}'."
-            )
-
-        if not (type(self._prior) == PriorBase or self._prior is None):
-            raise TypeError(
-                f"Found invalid ParameterProperties._prior attribute! It must be of "
-                f"type PriorBase or None, but found {type(self._prior)}."
-            )
-
-        if not (
-            type(self._value) in [float, int, list, tuple, np.ndarray]
-            or self._value is None
-        ):
-            raise TypeError(
-                f"Found invalid ParameterProperties._value attribute! It must be of "
-                f"type float/int/list/tuple/numpy.ndarray or None, but found "
-                f"{type(self._value)}."
-            )
-
-        # -------------------------------- #
-        #           Cross checks           #
-        # -------------------------------- #
-
-        if self._index is not None:
-            # in this case, we have a latent parameter
-            if self._value is not None:
-                raise RuntimeError(
-                    f"ParameterProperties._index and ParameterProperties._value are "
-                    f"both given (_index={self._index} and _value={self._value}), but "
-                    f"one of them must be None!"
-                )
-            if self._prior is None:
-                raise RuntimeError(
-                    f"When ParameterProperties._index is not None "
-                    f"ParameterProperties._prior cannot be None!"
-                )
-            if self._dim is None:
-                raise RuntimeError(
-                    f"When ParameterProperties._index is not None "
-                    f"ParameterProperties._dim cannot be None!"
-                )
-
-        else:
-            # in this case, we have a constant parameter
-            if self._value is None:
-                raise RuntimeError(
-                    f"ParameterProperties._index and ParameterProperties._value are "
-                    f"both None, but one of them must be not None!"
-                )
-            if self._prior is not None:
-                raise RuntimeError(
-                    f"ParameterProperties._index is None while Parameter"
-                    f"Properties._prior is given ({self._prior}). This combination is "
-                    f"not valid. Either the index must also be given, or the prior "
-                    f"must also be None."
-                )
-
-    @property
-    def index(self) -> int:
-        """Access self._index from outside via self.index."""
-        return self._index
-
-    @index.setter
-    def index(self, value: Union[int, float]):
-        """Raise a specific error when trying to directly set self.index."""
-        raise AttributeError("Changing a parameter's index directly is prohibited!")
-
-    @property
-    def dim(self) -> int:
-        """Access self._dim from outside via self.dim."""
-        return self._dim
-
-    @dim.setter
-    def dim(self, value: int):
-        """Raise a specific error when trying to directly set self.dim."""
-        raise AttributeError(
-            "Changing a parameter's dimension (dim) directly is prohibited!"
-        )
-
-    @property
-    def index_end(self) -> int:
-        """Adds a pseudo-attribute self.index_end, which allows a convenient
-        access to the (not-inclusive) end index in the parameter vector."""
-        return self._index + self._dim
-
-    @property
-    def type(self) -> str:
-        """Access self._type from outside via self.type."""
-        return self._type
-
-    @type.setter
-    def type(self, value: str):
-        """Raise a specific error when trying to directly set self.type."""
-        raise AttributeError("Changing a parameter's type directly is prohibited!")
-
-    @property
-    def role(self) -> str:
-        """Adds a pseudo-attribute self.role, which allows a convenient check
-        on whether a parameter is latent or not."""
-        return "latent" if self._index is not None else "const"
-
-    @role.setter
-    def role(self, value: str):
-        """Raise a specific error when trying to directly set self.role."""
-        raise AttributeError(
-            "You cannot change a parameter's role directly! Use "
-            "InferenceProblem.change_parameter_role instead."
-        )
-
-    @property
-    def is_latent(self) -> bool:
-        """Adds a pseudo-attribute self.is_latent, which allows a convenient
-        check on whether a parameter is latent or not."""
-        return self._index is not None
-
-    @property
-    def is_const(self) -> bool:
-        """Adds a pseudo-attribute self.is_const, which allows a convenient
-        check on whether a parameter is constant or not."""
-        return not self.is_latent
-
-    @property
-    def prior(self) -> Union[tuple, list, None]:
-        """Access self._prior from outside via self.prior."""
-        return self._prior
-
-    @prior.setter
-    def prior(self, value: Union[tuple, list, None]):
-        """Raise a specific error when trying to directly set self.prior."""
-        raise AttributeError("Changing a parameter's prior directly is prohibited!")
-
-    @property
-    def value(self) -> Union[int, float]:
-        """Access self._value from outside via self.value."""
-        return self._value
-
-    @value.setter
-    def value(self, value: Union[int, float]):
-        """Raise a specific error when trying to directly set self.value."""
-        raise AttributeError("Changing a parameter's value directly is prohibited!")
-
-
 class Parameters(dict):
     """
     The main parameter 'library'. In this dictionary, all of the problem's parameters
@@ -428,7 +170,7 @@ class Parameters(dict):
             }
         )
 
-    def __setitem__(self, key: str, value: ParameterProperties):
+    def __setitem__(self, key: str, value: "ParameterProperties"):
         """
         Performs some checks before adding a parameter to the dictionary.
 
@@ -698,3 +440,261 @@ class Parameters(dict):
         prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
         prm_string = titled_table("Constant parameters", prm_table)
         return prm_string
+
+
+class ParameterProperties:
+    """
+    Describes relevant properties of a ('latent' or 'const') parameter. Objects from
+    this class are associated with the parameter's name in the dictionary class
+    'Parameters', see above. The use of this class as opposed to a standard dictionary
+    allows convenient auto-completion while coding.
+    """
+
+    def __init__(self, prm_dict: dict):
+        """
+        Parameters
+        ----------
+        prm_dict
+            The keys are 'index', 'dim', 'type', 'role', 'prior', 'value', 'info' and
+            'tex', while the values are the corresponding values of these properties.
+            See also the explanations in InferenceProblem.__init__() for more detailed
+            information.
+        """
+        # write attributes
+        self._index = prm_dict["index"]
+        self._type = prm_dict["type"]
+        self._prior = prm_dict["prior"]
+        self._value = prm_dict["value"]
+        self.info = prm_dict["info"]
+        self.tex = prm_dict["tex"]
+
+        # the dimension (dim) attribute is only expected to be contained in the given
+        # prm_dict, if an index is specified; if no index is specified, a constant is
+        # given, which defines its dimension based on its value
+        if self._index is None:
+            # constant parameter
+            self._dim = len_or_one(self._value)
+        else:
+            # latent parameter
+            self._dim = prm_dict["dim"]
+
+        # whitespace in the tex strings is a problem for some plotting routines, so they
+        # are replaced here by a math-command for whitespace that does not contain
+        # actual whitespace
+        if self.tex:
+            self.tex = self.tex.replace(" ", r"$\enspace$")
+
+        # check the given values
+        self.check_consistency()
+
+    # noinspection PyShadowingBuiltins
+    def changed_copy(
+        self,
+        index: Optional[int] = None,
+        dim: Optional[int] = None,
+        type: Optional[str] = None,
+        prior: Union[list, tuple, None] = None,
+        value: Union[int, float, np.ndarray, None] = None,
+        info: Optional[str] = None,
+        tex: Optional[str] = None,
+    ) -> "ParameterProperties":
+        """
+        Convenience method that simplifies changing the attributes of a
+        ParameterProperties object based on creating a new instance. The reason for this
+        approach is that some of the attributes are private, and cannot (or at least
+        should not) be changed directly from outside.
+
+        See the explanations in InferenceProblem.__init__() for more detailed
+        information on the arguments.
+        """
+        return ParameterProperties(
+            {
+                "index": index if index is not None else self._index,
+                "dim": dim or self._dim,
+                "type": type or self._type,
+                "prior": prior or self._prior,
+                "value": value or self._value,
+                "info": info or self.info,
+                "tex": tex or self.tex,
+            }
+        )
+
+    def check_consistency(self):
+        """
+        Checks the defined attributes in both isolated checks (each attribute is checked
+        without considering others) and cross-checks, where the combination of
+        attributes is checked on consistency.
+        """
+
+        # ------------------------------- #
+        #         Isolated checks         #
+        # ------------------------------- #
+
+        if not (type(self._index) == int or self._index is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._index attribute! It must be of "
+                f"type int or None, but found {type(self._index)}."
+            )
+
+        if (self._index is not None) and (self._index < 0):
+            raise ValueError(
+                f"Found negative value for ParameterProperties._index! This attribute "
+                f"must be a non-negative integer, but found a value of {self._index}."
+            )
+
+        if not (type(self._dim) == int or self._dim is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._dim attribute! It must be of type "
+                f"int or None, but found {type(self._dim)}."
+            )
+
+        if (self._dim is not None) and (self._dim < 1):
+            raise ValueError(
+                f"Found value < 1 for ParameterProperties._dim! This attribute must be "
+                f"an integer >= 1, but found a value of {self._dim}."
+            )
+
+        if self._type not in ["model", "prior", "likelihood"]:
+            raise RuntimeError(
+                f"Found invalid ParameterProperties._type attribute! It can only "
+                f"assume the three values 'model', 'prior' or 'likelihood' but found "
+                f"'{self._type}'."
+            )
+
+        if not (type(self._prior) == PriorBase or self._prior is None):
+            raise TypeError(
+                f"Found invalid ParameterProperties._prior attribute! It must be of "
+                f"type PriorBase or None, but found {type(self._prior)}."
+            )
+
+        if not (
+            type(self._value) in [float, int, list, tuple, np.ndarray]
+            or self._value is None
+        ):
+            raise TypeError(
+                f"Found invalid ParameterProperties._value attribute! It must be of "
+                f"type float/int/list/tuple/numpy.ndarray or None, but found "
+                f"{type(self._value)}."
+            )
+
+        # -------------------------------- #
+        #           Cross checks           #
+        # -------------------------------- #
+
+        if self._index is not None:
+            # in this case, we have a latent parameter
+            if self._value is not None:
+                raise RuntimeError(
+                    f"ParameterProperties._index and ParameterProperties._value are "
+                    f"both given (_index={self._index} and _value={self._value}), but "
+                    f"one of them must be None!"
+                )
+            if self._prior is None:
+                raise RuntimeError(
+                    f"When ParameterProperties._index is not None "
+                    f"ParameterProperties._prior cannot be None!"
+                )
+            if self._dim is None:
+                raise RuntimeError(
+                    f"When ParameterProperties._index is not None "
+                    f"ParameterProperties._dim cannot be None!"
+                )
+
+        else:
+            # in this case, we have a constant parameter
+            if self._value is None:
+                raise RuntimeError(
+                    f"ParameterProperties._index and ParameterProperties._value are "
+                    f"both None, but one of them must be not None!"
+                )
+            if self._prior is not None:
+                raise RuntimeError(
+                    f"ParameterProperties._index is None while Parameter"
+                    f"Properties._prior is given ({self._prior}). This combination is "
+                    f"not valid. Either the index must also be given, or the prior "
+                    f"must also be None."
+                )
+
+    @property
+    def index(self) -> int:
+        """Access self._index from outside via self.index."""
+        return self._index
+
+    @index.setter
+    def index(self, value: Union[int, float]):
+        """Raise a specific error when trying to directly set self.index."""
+        raise AttributeError("Changing a parameter's index directly is prohibited!")
+
+    @property
+    def dim(self) -> int:
+        """Access self._dim from outside via self.dim."""
+        return self._dim
+
+    @dim.setter
+    def dim(self, value: int):
+        """Raise a specific error when trying to directly set self.dim."""
+        raise AttributeError(
+            "Changing a parameter's dimension (dim) directly is prohibited!"
+        )
+
+    @property
+    def index_end(self) -> int:
+        """Adds a pseudo-attribute self.index_end, which allows a convenient
+        access to the (not-inclusive) end index in the parameter vector."""
+        return self._index + self._dim
+
+    @property
+    def type(self) -> str:
+        """Access self._type from outside via self.type."""
+        return self._type
+
+    @type.setter
+    def type(self, value: str):
+        """Raise a specific error when trying to directly set self.type."""
+        raise AttributeError("Changing a parameter's type directly is prohibited!")
+
+    @property
+    def role(self) -> str:
+        """Adds a pseudo-attribute self.role, which allows a convenient check
+        on whether a parameter is latent or not."""
+        return "latent" if self._index is not None else "const"
+
+    @role.setter
+    def role(self, value: str):
+        """Raise a specific error when trying to directly set self.role."""
+        raise AttributeError(
+            "You cannot change a parameter's role directly! Use "
+            "InferenceProblem.change_parameter_role instead."
+        )
+
+    @property
+    def is_latent(self) -> bool:
+        """Adds a pseudo-attribute self.is_latent, which allows a convenient
+        check on whether a parameter is latent or not."""
+        return self._index is not None
+
+    @property
+    def is_const(self) -> bool:
+        """Adds a pseudo-attribute self.is_const, which allows a convenient
+        check on whether a parameter is constant or not."""
+        return not self.is_latent
+
+    @property
+    def prior(self) -> Union[tuple, list, None]:
+        """Access self._prior from outside via self.prior."""
+        return self._prior
+
+    @prior.setter
+    def prior(self, value: Union[tuple, list, None]):
+        """Raise a specific error when trying to directly set self.prior."""
+        raise AttributeError("Changing a parameter's prior directly is prohibited!")
+
+    @property
+    def value(self) -> Union[int, float]:
+        """Access self._value from outside via self.value."""
+        return self._value
+
+    @value.setter
+    def value(self, value: Union[int, float]):
+        """Raise a specific error when trying to directly set self.value."""
+        raise AttributeError("Changing a parameter's value directly is prohibited!")
