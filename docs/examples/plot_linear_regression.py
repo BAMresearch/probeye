@@ -16,7 +16,7 @@ import numpy as np
 
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import NormalNoiseModel
 from probeye.definition.sensor import Sensor
 from probeye.inference.emcee_.solver import EmceeSolver
 
@@ -135,15 +135,18 @@ osensor = Sensor("y")
 linear_model = LinearModel([{"a": "m"}, "b"], [isensor], [osensor])
 problem.add_forward_model("LinearModel", linear_model)
 
-# add the noise model to the problem
-problem.add_noise_model(NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor))
-
 # %%
 # Add test data to the Inference Problem
 problem.add_experiment(
     "TestSeries_1",
     fwd_model_name="LinearModel",
     sensor_values={isensor.name: x_test, osensor.name: y_test},
+)
+
+# %%
+# add the noise model to the problem
+problem.add_likelihood_model(
+    NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
 )
 
 # give problem overview
