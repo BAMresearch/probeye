@@ -295,7 +295,11 @@ class TestProblem(unittest.TestCase):
 
         # add the likelihood models to the problem
         likelihood_model_1 = GaussianLikelihoodModel(
-            prms_def=[{"sigma": "std_model"}, "l_corr", {"std_meas": "std_measurement"}],
+            prms_def=[
+                {"sigma": "std_model"},
+                "l_corr",
+                {"std_meas": "std_measurement"},
+            ],
             sensors=osensor,
             correlation_variables="t",
             correlation_model="exp",
@@ -306,7 +310,11 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_likelihood_model(likelihood_model_1)
         likelihood_model_2 = GaussianLikelihoodModel(
-            prms_def=[{"sigma": "std_model"}, "l_corr", {"std_meas": "std_measurement"}],
+            prms_def=[
+                {"sigma": "std_model"},
+                "l_corr",
+                {"std_meas": "std_measurement"},
+            ],
             sensors=osensor,
             correlation_variables="t",
             correlation_model="exp",

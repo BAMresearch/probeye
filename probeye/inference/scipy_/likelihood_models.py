@@ -59,8 +59,6 @@ class ScipyLikelihoodBase(GaussianLikelihoodModel):
         self.problem_experiments = problem_experiments  # type: ignore
 
 
-
-
 class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
     """
     This is a likelihood model based on a multivariate normal distribution without any
@@ -799,31 +797,31 @@ def translate_likelihood_model(
     # likelihood model selection based on the flags given in the likelihood definition
     if like_def.additive_model_error:
         if not like_def.considers_correlation:
-            l_class = AdditiveUncorrelatedModelError
+            l_class = AdditiveUncorrelatedModelError  # type: ignore
         else:
             if like_def.considers_only_space_correlation:
                 if len(like_def.correlation_variables) == 1:
-                    l_class = AdditiveCorrelatedModelError1D
+                    l_class = AdditiveCorrelatedModelError1D  # type: ignore
                 else:
-                    l_class = AdditiveSpaceCorrelatedModelError2D3D
+                    l_class = AdditiveSpaceCorrelatedModelError2D3D  # type: ignore
             elif like_def.considers_only_time_correlation:
-                l_class = AdditiveCorrelatedModelError1D
+                l_class = AdditiveCorrelatedModelError1D  # type: ignore
             else:
                 if len(like_def.correlation_variables) == 2:
-                    l_class = AdditiveSpaceTimeCorrelatedModelError1D
+                    l_class = AdditiveSpaceTimeCorrelatedModelError1D  # type: ignore
                 else:
                     raise NotImplementedError("Likelihood model not implemented yet!")
     else:
         if not like_def.considers_correlation:
-            l_class = MultiplicativeUncorrelatedModelError
+            l_class = MultiplicativeUncorrelatedModelError  # type: ignore
         else:
             if like_def.considers_only_space_correlation:
                 if len(like_def.correlation_variables) == 1:
-                    l_class = MultiplicativeCorrelatedModelError1D
+                    l_class = MultiplicativeCorrelatedModelError1D  # type: ignore
                 else:
-                    l_class = MultiplicativeSpaceCorrelatedModelError2D3D
+                    l_class = MultiplicativeSpaceCorrelatedModelError2D3D  # type: ignore
             elif like_def.considers_only_time_correlation:
-                l_class = MultiplicativeCorrelatedModelError1D
+                l_class = MultiplicativeCorrelatedModelError1D  # type: ignore
             else:
                 raise NotImplementedError("Likelihood model not implemented yet!")
 

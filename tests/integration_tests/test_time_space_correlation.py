@@ -29,8 +29,8 @@ class TestProblem(unittest.TestCase):
         n_walkers: int = 20,
         plot: bool = False,
         show_progress: bool = False,
-        run_scipy: bool = True,
-        run_emcee: bool = True,
+        run_scipy: bool = False,
+        run_emcee: bool = False,
         run_torch: bool = False,
     ):
         """
