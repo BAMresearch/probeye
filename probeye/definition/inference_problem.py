@@ -33,6 +33,7 @@ class InferenceProblem:
         use_default_logger: bool = True,
         log_level: str = "INFO",
         log_file: Optional[str] = None,
+        print_header: bool = True,
     ):
         """
         Parameters
@@ -51,10 +52,17 @@ class InferenceProblem:
         log_file
             Path to the log-file, if the logging-stream should be printed to file.
             If None is given, no logging-file will be created.
+        print_header
+            If True, a probeye header is logged when an instance of this class is
+            created. Otherwise, the header will not be logged.
         """
 
         # the name of the problem
         self.name = name
+        self.use_default_logger = use_default_logger
+        self.log_level = log_level
+        self.log_file = log_file
+        self.print_header = print_header
 
         # this is the central parameter dictionary of the problem (the used Parameters-
         # class is derived from the dict-class); it contains all defined parameters
@@ -98,8 +106,9 @@ class InferenceProblem:
             logging_setup(log_file=log_file, log_level_stdout=log_level)
 
         # log probeye header and first message
-        print_probeye_header()
-        logger.debug("")  # for visual separation
+        if print_header:
+            print_probeye_header()
+            logger.debug("")  # for visual separation
         logger.debug(f"Initialized inference problem: '{self.name}'")
 
     @property
@@ -807,7 +816,13 @@ class InferenceProblem:
 
         # the original problem shall not be touched, so we create a copy here to which
         # the transformation will be applied
-        self_copy = InferenceProblem(self.name)
+        self_copy = InferenceProblem(
+            self.name,
+            use_default_logger=self.use_default_logger,
+            log_level=self.log_level,
+            log_file=self.log_file,
+            print_header=False,
+        )
         self_copy._parameters = cp.deepcopy(self._parameters)
         self_copy._experiments = cp.deepcopy(self._experiments)
         self_copy._forward_models = cp.copy(self._forward_models)  # no deep-copy here!
@@ -1137,6 +1152,10 @@ class InferenceProblem:
         # check the consistency of each parameter
         for parameter in self._parameters.values():
             parameter.check_consistency()
+
+        # check the consistency of each likelihood model
+        for likelihood_model in self._likelihood_models.values():
+            likelihood_model.check_experiment_consistency()
 
         # check that each defined experiment appears in one of the likelihood models
         exp_names_in_likelihood_models = set()

@@ -487,9 +487,10 @@ class PyroSolver:
         )
         logger.info(f"Total run-time (including warmup): {runtime_str}.")
         logger.info("")
-        logger.info("Summary of sampling results")
+        logger.info("Summary of sampling results (pyro)")
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             mcmc.summary()
+        logger.info("")  # empty line for visual buffer
         self.raw_results = mcmc
 
         # create a summary dictionary similar to the one created by EmceeSolver

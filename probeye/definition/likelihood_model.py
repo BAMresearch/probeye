@@ -136,15 +136,11 @@ class GaussianLikelihoodModel:
             self.considers_space_and_time_correlation
         )
 
-        # add the experiment_names to the log-likelihood model; additionally, the flag
-        # is required, so that the experiment_names are not overwritten by the
-        # automatic routine InferenceProblem.assign_experiments_to_likelihood_models
-        if experiment_names is not None:
-            self.experiment_names = make_list(experiment_names)
-            self.assign_experiments_automatically = False
-        else:
+        # add the experiment_names to the log-likelihood model
+        if experiment_names is None:
             self.experiment_names = []
-            self.assign_experiments_automatically = True
+        else:
+            self.experiment_names = make_list(experiment_names)
 
         # as soon as defined, this attribute will be a pointer to the inference
         # problems experiments (it will be used for consistency checks)
@@ -196,6 +192,29 @@ class GaussianLikelihoodModel:
             raise RuntimeError(
                 f"It is not possible to consider both an additive and a multiplicative "
                 f"model error at the same time. Please unselect one of them."
+            )
+
+    def check_experiment_consistency(self):
+        """
+        Checks if the experiments defined on the likelihood model are consistent with
+        each other.
+        """
+
+        # obviously, there has to be at least one experiment defined
+        if self.experiment_names is None:
+            raise RuntimeError(
+                f"No experiments defined for likelihood model '{self.name}'!"
+            )
+
+        # all experiments must refer to the same forward model
+        fwd_models = set()
+        for exp_name in self.experiment_names:
+            fwd_models.add(self.problem_experiments[exp_name]["forward_model"])
+        if len(fwd_models) > 1:
+            raise RuntimeError(
+                f"The experiments of likelihood model '{self.name}' refer to more than "
+                f"one forward model!\nHowever, they should all refer to one and the "
+                f"same forward model."
             )
 
     def add_experiments(self, experiment_names_: Union[str, List[str]]):
