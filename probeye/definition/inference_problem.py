@@ -986,18 +986,36 @@ class InferenceProblem:
         theta_string += self.theta_explanation(check_consistency=check_consistency)
 
         # provide information on the added experiments
+        max_length = 0
+        max_digits = 0
+        for exp_dict in self._experiments.values():
+            for sensor_name, sensor_values in exp_dict["sensor_values"].items():
+                if len(sensor_name) > max_length:
+                    max_length = len(sensor_name)
+                if len(str(len_or_one(sensor_values))) > max_digits:
+                    max_digits = len(str(len_or_one(sensor_values)))
         rows_exp = []  # type: List[tuple[str, str, str]]
         for exp_name, exp_dict in self._experiments.items():
             sensor_name_1 = [*exp_dict["sensor_values"].keys()][0]
             sensor_values_1 = [*exp_dict["sensor_values"].values()][0]
-            sv_info_1 = f"{sensor_name_1} ({len_or_one(sensor_values_1)} elements)"
+            n_values_1 = len_or_one(sensor_values_1)
+            sv_info_1 = f"{sensor_name_1:{max_length}} "
+            if n_values_1 == 1:
+                sv_info_1 += f"({n_values_1:{max_digits}} element)"
+            else:
+                sv_info_1 += f"({n_values_1:{max_digits}} elements)"
             rows_exp.append((exp_name, sv_info_1, exp_dict["forward_model"]))
             # the remaining code is for experiments with more than one sensor val
             if len([*exp_dict["sensor_values"].keys()]) > 1:
                 for sensor_name, sensor_values in exp_dict["sensor_values"].items():
                     if sensor_name == sensor_name_1:
                         continue
-                    sv_info = f"{sensor_name} ({len_or_one(sensor_values)} elements)"
+                    n_values = len_or_one(sensor_values)
+                    sv_info = f"{sensor_name:{max_length}} "
+                    if n_values == 1:
+                        sv_info += f"({n_values:{max_digits}} element)"
+                    else:
+                        sv_info += f"({n_values:{max_digits}} elements)"
                     rows_exp.append(("", sv_info, ""))
         headers = ["Name", "Sensor values", "Forward model"]
         exp_table = tabulate(rows_exp, headers=headers, tablefmt=tablefmt)

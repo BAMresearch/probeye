@@ -283,7 +283,7 @@ class ScipySolver:
         # the first part of the summary contains process information
         n_char_message = len(minimize_results.message)
         msg = (
-            f"\nResults of maximum likelihood estimation\n"
+            f"Results of maximum likelihood estimation\n"
             f"{'=' * n_char_message}\n"
             f"{minimize_results.message}\n"
             f"{'-' * n_char_message}\n"
@@ -291,8 +291,15 @@ class ScipySolver:
             f"Number of function evaluations: {minimize_results.nfev}\n"
             f"{'-' * n_char_message}"
         )
-        for line in msg.split("\n"):
-            logger.info(line)
+
+        # log the results with a level depending on the status flag
+        logger.info("")
+        if minimize_results.status == 0:
+            for line in msg.split("\n"):
+                logger.info(line)
+        else:  # in this case something went wrong
+            for line in msg.split("\n"):
+                logger.warning(line)
 
         # the second part shows the actual results and compares them with the true
         # values (if given) and the start values

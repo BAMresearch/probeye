@@ -26,7 +26,7 @@ class TestProblem(unittest.TestCase):
         n_walkers: int = 20,
         plot: bool = False,
         show_progress: bool = False,
-        run_scipy: bool = False,
+        run_scipy: bool = True,
         run_emcee: bool = False,
         run_torch: bool = False,
         run_dynesty: bool = False,
@@ -281,7 +281,7 @@ class TestProblem(unittest.TestCase):
             additive_model_error=True,
             multiplicative_model_error=False,
             additive_measurement_error=False,
-            experiment_names=["Test_1", "Test_2", "Test_3"],
+            experiment_names=["Test_1"],#, "Test_2", "Test_3"],
             correlation_variables="xt",
             correlation_model="exp",
         )
