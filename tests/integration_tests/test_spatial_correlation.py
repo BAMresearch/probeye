@@ -46,7 +46,6 @@ class TestProblem(unittest.TestCase):
     ):
         """
         Integration test for the problem described at the top of this file.
-
         Parameters
         ----------
         n_steps
@@ -215,22 +214,6 @@ class TestProblem(unittest.TestCase):
                 fwd_model_name="LinearModel",
                 sensor_values={osensor.name: y_test},
             )
-            # add the likelihood model to the problem
-            likelihood_model = GaussianLikelihoodModel(
-                prms_def=[
-                    {"sigma": "std_model"},
-                    "l_corr",
-                    {"std_meas": "std_measurement"},
-                ],
-                sensors=osensor,
-                correlation_variables="xz",
-                correlation_model="exp",
-                experiment_names=exp_name,
-                additive_model_error=False,
-                multiplicative_model_error=True,
-                additive_measurement_error=True,
-            )
-            problem.add_likelihood_model(likelihood_model)
             if plot:
                 plt.scatter(
                     x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
@@ -243,6 +226,29 @@ class TestProblem(unittest.TestCase):
             plt.legend()
             plt.tight_layout()
             plt.draw()  # plt.draw() does not stop execution
+
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        for i in range(n_experiments):
+            exp_name = f"Test_{i}"
+            # add the likelihood model to the problem
+            likelihood_model = GaussianLikelihoodModel(
+                prms_def=[
+                    {"sigma": "std_model"},
+                    "l_corr",
+                    {"std_meas": "std_measurement"},
+                ],
+                sensors=osensor,
+                correlation_variables="xz",
+                correlation_model="exp",
+                experiment_names=exp_name,
+                additive_model_error=True,
+                multiplicative_model_error=False,
+                additive_measurement_error=True,
+            )
+            problem.add_likelihood_model(likelihood_model)
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #

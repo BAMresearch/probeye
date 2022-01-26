@@ -105,7 +105,6 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -119,7 +118,6 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -196,7 +194,6 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -210,7 +207,6 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -294,7 +290,6 @@ class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -308,7 +303,6 @@ class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -403,7 +397,6 @@ class AdditiveSpaceTimeCorrelatedModelError1D(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -417,7 +410,6 @@ class AdditiveSpaceTimeCorrelatedModelError1D(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -506,7 +498,6 @@ class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -520,7 +511,6 @@ class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -607,7 +597,6 @@ class MultiplicativeCorrelatedModelError1D(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -621,7 +610,6 @@ class MultiplicativeCorrelatedModelError1D(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -709,7 +697,6 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
     ) -> float:
         """
         Computes the log(likelihood) of this model.
-
         Parameters
         ----------
         model_response_dict
@@ -723,7 +710,6 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
             This might happen for example when the given parameters are not valid (for
             example in case of a negative standard deviation). The returned value in
             such cases should represent the worst possible value of the contribution.
-
         Returns
         -------
         ll
@@ -780,13 +766,11 @@ def translate_likelihood_model(
     Translates a given instance of GaussianLikelihoodModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
     likelihood model object which does contain SciPy-based computing-methods.
-
     Parameters
     ----------
     like_def
         An instance of GaussianLikelihoodModel which contains general information on the
         likelihood model but no computing-methods.
-
     Returns
     -------
     likelihood_computer

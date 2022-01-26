@@ -293,6 +293,10 @@ class TestProblem(unittest.TestCase):
             },
         )
 
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
         # add the likelihood models to the problem
         likelihood_model_1 = GaussianLikelihoodModel(
             prms_def=[

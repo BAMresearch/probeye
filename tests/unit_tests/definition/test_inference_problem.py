@@ -51,29 +51,27 @@ class TestProblem(unittest.TestCase):
         )
         sys.stdout = io.StringIO()
         # try out different options
-        p.info(include_experiments=False, tablefmt="presto", check_consistency=False)
-        _ = p.info(
-            include_experiments=False, tablefmt="presto", check_consistency=False
-        )
-        p.info(include_experiments=True, tablefmt="presto", check_consistency=False)
-        p.info(include_experiments=True, tablefmt="plain", check_consistency=False)
+        p.info(tablefmt="presto", check_consistency=False)
+        _ = p.info(tablefmt="presto", check_consistency=False)
+        p.info(tablefmt="presto", check_consistency=False)
+        p.info(tablefmt="plain", check_consistency=False)
         sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
             # the problem is not consistent yet (e.g. no forward model defined yet), so
             # the consistency_check will raise an error
-            p.info(include_experiments=True, tablefmt="presto", check_consistency=True)
+            p.info(tablefmt="presto", check_consistency=True)
         # now add the remaining stuff to make to problem consistent
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
-        p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
-        )
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        p.add_likelihood_model(
+            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
+        )
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
-        p.info(include_experiments=True, tablefmt="presto", check_consistency=True)
+        p.info(tablefmt="presto", check_consistency=True)
         sys.stdout = sys.__stdout__  # reset printout to console
 
     def test_str(self):
@@ -86,11 +84,11 @@ class TestProblem(unittest.TestCase):
         )
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
-        p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
-        )
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
+        )
+        p.add_likelihood_model(
+            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
         )
         sys.stdout = io.StringIO()  # redirect output to console
         print(p)
@@ -320,6 +318,17 @@ class TestProblem(unittest.TestCase):
             # change to role the parameter already has
             p.change_parameter_role("a", prior=("normal", {"loc": 0, "scale": 1}))
 
+    def test_change_parameter_type(self):
+        p = InferenceProblem("TestProblem")
+        # check change of type from 'model' to 'likelihood'
+        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        self.assertEqual(p.parameters["a"].type, "model")
+        p.change_parameter_type("a", "likelihood")
+        self.assertEqual(p.parameters["a"].type, "likelihood")
+        # check change of type from 'likelihood' to invalid type 'INVALID'
+        with self.assertRaises(ValueError):
+            p.change_parameter_type("a", "INVALID")
+
     def test_change_parameter_info(self):
         p = InferenceProblem("TestProblem")
         # simple check that the change works and has the expected effect
@@ -389,17 +398,14 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(AssertionError):
             # no noise models defined yet
             p.check_problem_consistency()
-        # add a noise model
-        p.add_parameter("sigma_model", "likelihood", const=1.0)
-        likelihood_model = GaussianLikelihoodModel("sigma_model", sensors=[Sensor("y")])
-        p.add_likelihood_model(likelihood_model)
-        with self.assertRaises(AssertionError):
-            # no experiment_names defined yet
-            p.check_problem_consistency()
-        # add at an experiment
+        # add an experiment
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        # add a noise model
+        p.add_parameter("s", "likelihood", const=1.0)
+        noise_model = GaussianLikelihoodModel("s", sensors=[Sensor("y")])
+        p.add_likelihood_model(noise_model)
         # now the problem should be consistent
         p.check_problem_consistency()
 
@@ -646,18 +652,21 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("s3", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         test_model = ForwardModelBase("a", Sensor("x"), [Sensor("y1"), Sensor("y2")])
         p.add_forward_model("TestModel", test_model)
-        likelihood_model1 = GaussianLikelihoodModel(
+        p.add_experiment(
+            "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
+        )
+        noise_model1 = GaussianLikelihoodModel(
             "s1", sensors=[Sensor("y1"), Sensor("y2")]
         )
-        likelihood_model2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
-        likelihood_model3 = GaussianLikelihoodModel(
+        noise_model2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
+        noise_model3 = GaussianLikelihoodModel(
             ["s1", "s2", "s3"], sensors=[Sensor("y1")], name="NM3"
         )
-        p.add_likelihood_model(likelihood_model1)
-        p.add_likelihood_model(likelihood_model2)
-        p.add_likelihood_model(likelihood_model3)
+        p.add_likelihood_model(noise_model1)
+        p.add_likelihood_model(noise_model2)
+        p.add_likelihood_model(noise_model3)
         # adding a noise model with similar sensor interface should not error
-        p.add_likelihood_model(likelihood_model3)
+        p.add_likelihood_model(noise_model3)
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # the given noise model parameter has not been defined
@@ -668,7 +677,7 @@ class TestProblem(unittest.TestCase):
                 )
             )
 
-    def test_assign_experiments_to_likelihood_models(self):
+    def test_assign_experiments_to_noise_models(self):
         # some preparations before performing the actual tests
         p = InferenceProblem("TestProblem")
         # add some parameters
@@ -685,16 +694,6 @@ class TestProblem(unittest.TestCase):
         p.add_forward_model("TestModel_y1", test_model_y1)
         p.add_forward_model("TestModel_y2", test_model_y2)
         p.add_forward_model("TestModel_z1z2", test_model_z1z2)
-        # add some noise models
-        likelihood_model_y1 = GaussianLikelihoodModel(
-            ["s1", "s2", "s3"], sensors=[Sensor("y1")]
-        )
-        likelihood_model_y2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
-        likelihood_model_y1y2 = GaussianLikelihoodModel(
-            "s1", sensors=[Sensor("z1"), Sensor("z2")]
-        )
-        p.add_likelihood_model(likelihood_model_y1)
-        p.add_likelihood_model(likelihood_model_y2)
         # add some experiments
         p.add_experiment(
             "Exp_y1", sensor_values={"x": 1, "y1": 2}, fwd_model_name="TestModel_y1"
@@ -710,20 +709,25 @@ class TestProblem(unittest.TestCase):
             sensor_values={"x": 7, "z1": 8, "z2": 9},
             fwd_model_name="TestModel_z1z2",
         )
-        # so far, not all noise models have been added, so there are unassigned
-        # experiments; this should lead to an error
-        with self.assertRaises(RuntimeError):
-            p.assign_experiments_to_likelihood_models()
-        # now we add the missing noise model
-        p.add_likelihood_model(likelihood_model_y1y2)
-        # this is the call that should be tested here
-        p.assign_experiments_to_likelihood_models()
-        # now check if all experiments have been assigned correctly
-        self.assertEqual(p.likelihood_models[0].experiment_names, ["Exp_y1"])
-        self.assertEqual(
-            p.likelihood_models[1].experiment_names, ["Exp_y2_1", "Exp_y2_2"]
+        # add some noise models
+        noise_model_y1 = GaussianLikelihoodModel(
+            ["s1", "s2", "s3"], sensors=[Sensor("y1")]
         )
-        self.assertEqual(p.likelihood_models[2].experiment_names, ["Exp_z1z2"])
+        noise_model_y2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
+        noise_model_y1y2 = GaussianLikelihoodModel(
+            "s1", sensors=[Sensor("z1"), Sensor("z2")]
+        )
+        p.add_likelihood_model(noise_model_y1, name="l1")
+        p.add_likelihood_model(noise_model_y2, name="l2")
+        p.add_likelihood_model(noise_model_y1y2, name="l3")
+        # this is the call that should be tested here
+        p.check_problem_consistency()
+        # now check if all experiments have been assigned correctly
+        self.assertEqual(p.likelihood_models["l1"].experiment_names, ["Exp_y1"])
+        self.assertEqual(
+            p.likelihood_models["l2"].experiment_names, ["Exp_y2_1", "Exp_y2_2"]
+        )
+        self.assertEqual(p.likelihood_models["l3"].experiment_names, ["Exp_z1z2"])
 
     def test_transform_experimental_data(self):
         # check correct use
@@ -737,7 +741,9 @@ class TestProblem(unittest.TestCase):
             sensor_values={"x": [1, 2], "y": [1, 3]},
         )
         # apply a simple power function to the experimental data
-        p_copy = p.transform_experimental_data(f=np.power, args=([2, 3],), where=True)
+        p_copy = p.transform_experimental_data(
+            func=np.power, args=([2, 3],), where=True
+        )
         x_computed = p_copy.experiments["Experiment_1"]["sensor_values"]["x"]
         x_expected = np.array([1, 8])
         self.assertTrue(

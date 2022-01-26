@@ -93,11 +93,6 @@ class TestProblem(unittest.TestCase):
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the likelihood model to the problem
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
-        )
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -117,9 +112,6 @@ class TestProblem(unittest.TestCase):
             sensor_values={isensor.name: x_test, osensor.name: y_test},
         )
 
-        # give problem overview
-        problem.info()
-
         # plot the true and noisy data
         if plot:
             plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
@@ -129,6 +121,18 @@ class TestProblem(unittest.TestCase):
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
+
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise model to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+        )
+
+        # give problem overview
+        problem.info()
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #

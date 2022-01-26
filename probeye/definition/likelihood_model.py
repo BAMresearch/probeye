@@ -202,7 +202,6 @@ class GaussianLikelihoodModel:
         """
         Adds experiment names to the log-likelihood model. When the log-likelihood model
         is evaluated it will only be evaluated for those experiments added here.
-
         Parameters
         ----------
         experiment_names_
@@ -279,14 +278,12 @@ class GaussianLikelihoodModel:
         """
         Computes the model residuals (model prediction minus measurement) for all of the
         likelihood model's experiments and returns them as a dictionary.
-
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
-
         Returns
         -------
         residuals_dict
@@ -314,14 +311,12 @@ class GaussianLikelihoodModel:
         """
         Computes the model residuals for all of the likelihood model's sensors over all
         of the likelihood model's experiments and returns them in a single vector.
-
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
-
         Returns
         -------
         residuals_vector
@@ -345,14 +340,12 @@ class GaussianLikelihoodModel:
         """
         Computes the model response for all of the likelihood model's sensors over all
         of the likelihood model's experiments and returns them in a single vector.
-
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
-
         Returns
         -------
         response_vector
@@ -384,14 +377,12 @@ class GaussianLikelihoodModel:
         """
         Computes the model response for all of the likelihood model's sensors over all
         of the likelihood model's experiments and returns them in an array format.
-
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
-
         Returns
         -------
         res_array
@@ -416,13 +407,11 @@ class GaussianLikelihoodModel:
 
     def coordinate_array(self, coords: str) -> np.ndarray:
         """
-
         Parameters
         ----------
         coords
             One or more characters from {'x', 'y', 'z', 't'}, i.e., possible correlation
             variables.
-
         Returns
         -------
         coord_array

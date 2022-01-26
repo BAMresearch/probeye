@@ -342,7 +342,7 @@ class Parameters(dict):
 
     @property
     def n_likelihood_prms(self) -> int:
-        """Access the number of all 'prior'-parameters as an attribute."""
+        """Access the number of all 'likelihood'-parameters as an attribute."""
         return len(self.likelihood_prms)
 
     def parameter_overview(self, tablefmt: str = "presto") -> str:

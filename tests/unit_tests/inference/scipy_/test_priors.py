@@ -6,6 +6,7 @@ from scipy import stats
 
 # local imports
 from probeye.inference.scipy_.priors import PriorNormal
+from probeye.inference.scipy_.priors import PriorTruncnormal
 from probeye.inference.scipy_.priors import PriorLognormal
 from probeye.inference.scipy_.priors import PriorUniform
 from probeye.inference.scipy_.priors import PriorWeibull
@@ -37,6 +38,42 @@ class TestProblem(unittest.TestCase):
         # test requesting an invalid method
         with self.assertRaises(AttributeError):
             prior_normal(prms, method="invalid method")
+
+    def test_prior_truncnormal(self):
+        prior_truncnormal = PriorTruncnormal(
+            "sigma", ["loc_sigma", "scale_sigma"], "sigma_normal"
+        )
+        # check the evaluation of the log-pdf
+        prms = {
+            "sigma": 1.0,
+            "loc_sigma": 0.0,
+            "scale_sigma": 1.0,
+            "a_sigma": 0.0,
+            "b_sigma": 5.0,
+        }
+        self.assertEqual(
+            stats.truncnorm.logpdf(
+                prms["sigma"],
+                a=prms["a_sigma"],
+                b=prms["b_sigma"],
+                loc=prms["loc_sigma"],
+                scale=prms["scale_sigma"],
+            ),
+            prior_truncnormal(prms, "logpdf"),
+        )
+        # check the sampling-method (samples are checked one by one)
+        prms = {"loc_sigma": 0.0, "scale_sigma": 1.0, "a_sigma": 0.0, "b_sigma": 5.0}
+        prior_samples = prior_truncnormal.generate_samples(prms, 10, seed=1)
+        sp_samples = stats.truncnorm.rvs(
+            a=prms["a_sigma"],
+            b=prms["b_sigma"],
+            loc=prms["loc_sigma"],
+            scale=prms["scale_sigma"],
+            size=10,
+            random_state=1,
+        )
+        for s1, s2 in zip(prior_samples, sp_samples):
+            self.assertEqual(s1, s2)
 
     def test_prior_lognormal(self):
         prior_lognormal = PriorLognormal("a", ["loc_a", "scale_a"], "a_lognormal")

@@ -163,9 +163,9 @@ class PriorLognormal(PriorBase):
             parameter here. So, it is set to 1, which results in the standard version
             of the lognormal distribution.
         use_ref_prm
-            If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x' must be
-            provided in the prms dictionary. Otherwise, the evaluated method is stats.
-            norm.<method>(loc, scale).
+            If True stats.lognorm.<method>(x, loc, scale) is evaluated, hence 'x' must
+            be provided in the prms dictionary. Otherwise, the evaluated method is
+            stats.lognorm.<method>(loc, scale).
         kwargs
             Additional keyword arguments to pass to the specified method.
 
@@ -218,6 +218,101 @@ class PriorLognormal(PriorBase):
         )
 
 
+class PriorTruncnormal(PriorBase):
+    """Prior class for a trunc-normal distribution."""
+
+    def __init__(
+        self,
+        ref_prm: str,
+        prms_def: Union[str, dict, List[Union[str, dict]]],
+        name: str,
+    ):
+        """
+        Parameters
+        ----------
+        ref_prm
+            The name of the latent parameter the prior refers to.
+        prms_def
+            Defines the prior's parameter names. See the docstring of PriorBase for
+            more detailed information.
+        name
+            Defining the priors name.
+        """
+        super().__init__(ref_prm, prms_def, name, "trunc-normal distribution")
+
+    def __call__(
+        self,
+        prms: dict,
+        method: str,
+        use_ref_prm: bool = True,
+        **kwargs,
+    ) -> float:
+        """
+        Evaluates stats.truncnorm.<method>(x, a, b, loc, scale) or, if use_ref_prm=False
+        stats.truncnorm.<method>(a, b, loc, scale). This function is mostly used with
+        method='logpdf' during the sampling procedure.
+
+        Parameters
+        ----------
+        prms
+            Contains the prior's parameters as keys and their values as values.
+        method
+            The method of stats.truncnorm to be evaluated (e.g. 'pdf', 'logpdf').
+        use_ref_prm
+            If True stats.truncnorm.<method>(x, loc, scale) is evaluated, hence 'x' must
+            be provided in the prms dictionary. Otherwise, the evaluated method is
+            stats.truncnorm.<method>(loc, scale).
+        kwargs
+            Additional keyword arguments to pass to the specified method.
+
+        Returns
+        -------
+            The result of stats.truncnorm.<method>(x, loc, scale) or of stats.truncnorm.
+            <method>(loc, scale).
+        """
+        fun = getattr(stats.truncnorm, method)
+        loc = prms[f"loc_{self.ref_prm}"]
+        scale = prms[f"scale_{self.ref_prm}"]
+        a = (prms[f"a_{self.ref_prm}"] - loc) / scale
+        b = (prms[f"b_{self.ref_prm}"] - loc) / scale
+        if use_ref_prm:
+            x = prms[self.ref_prm]
+            return fun(x, a=a, b=b, loc=loc, scale=scale, **kwargs)
+        else:
+            return fun(a=a, b=b, loc=loc, scale=scale, **kwargs)
+
+    def generate_samples(
+        self,
+        prms: dict,
+        size: int,
+        seed: Optional[int] = None,
+    ) -> np.ndarray:
+        """
+        Randomly draws samples from this prior distribution. This method is used to
+        create initial samples for MCMC-based algorithms.
+
+        Parameters
+        ----------
+        prms
+            Contains the prior's parameters as keys and their values as values.
+        size
+            Number of samples to generate.
+        seed
+            Used for the random state of the random number generation.
+
+        Returns
+        -------
+            The generate samples.
+        """
+        loc = prms[f"loc_{self.ref_prm}"]
+        scale = prms[f"scale_{self.ref_prm}"]
+        a = (prms[f"a_{self.ref_prm}"] - loc) / scale
+        b = (prms[f"b_{self.ref_prm}"] - loc) / scale
+        return stats.truncnorm.rvs(
+            a=a, b=b, loc=loc, scale=scale, size=size, random_state=seed
+        )
+
+
 class PriorUniform(PriorBase):
     """Prior class for a uniform distribution."""
 
@@ -255,9 +350,9 @@ class PriorUniform(PriorBase):
         method
             The method of stats.uniform to be evaluated (e.g. 'pdf', 'logpdf').
         use_ref_prm
-            If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x' must be
-            provided in the prms dictionary. Otherwise, the evaluated method is stats.
-            norm.<method>(loc, scale).
+            If True stats.uniform.<method>(x, loc, scale) is evaluated, hence 'x' must
+            be provided in the prms dictionary. Otherwise, the evaluated method is
+            stats.uniform.<method>(loc, scale).
         kwargs
             Additional keyword arguments to pass to the specified method.
 
@@ -341,7 +436,7 @@ class PriorWeibull(PriorBase):
         use_ref_prm
             If True stats.weibull_min.<method>(x, loc, scale) is evaluated, hence 'x'
             must be provided in the prms dictionary. Otherwise, the evaluated method is
-            weibull_min.norm.<method>(loc, scale).
+            weibull_min.<method>(loc, scale).
         kwargs
             Additional keyword arguments to pass to the specified method.
 
@@ -424,6 +519,7 @@ def translate_prior(
             prior_classes = {
                 "normal": PriorNormal,
                 "lognormal": PriorLognormal,
+                "truncnormal": PriorTruncnormal,
                 "uniform": PriorUniform,
                 "weibull": PriorWeibull,
             }

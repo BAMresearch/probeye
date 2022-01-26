@@ -42,26 +42,13 @@ class ScipySolver:
         logger.debug("Initializing ScipySolver")
 
         # attributes from arguments
+        self.problem = problem
         self.show_progress = show_progress
         self.seed = seed
 
         # the following attributes will be set after the solver was run
         self.raw_results = None
         self.summary = {}  # type: dict
-
-        # each likelihood model must be connected to the relevant experiment_names; a
-        # copy is created before, so that this solver routine does not have side effects
-        # on the original problem; such side effects would occur due to calling the
-        # assign_experiments_to_likelihood_models-method below
-        try:
-            self.problem = cp.deepcopy(problem)
-        except:
-            logger.warning(
-                "The inference problem could not be deep-copied! The original problem "
-                "will be modified!"
-            )
-            self.problem = problem
-        self.problem.assign_experiments_to_likelihood_models()
 
         # translate the prior definitions to objects with computing capabilities
         logger.debug("Translate problem's priors")
@@ -72,7 +59,7 @@ class ScipySolver:
         # translate the general likelihood model objects into solver specific ones
         logger.debug("Translate problem's likelihood models")
         self.likelihood_models = []
-        for likelihood_model_definition in self.problem.likelihood_models:
+        for likelihood_model_definition in self.problem.likelihood_models.values():
             self.likelihood_models.append(
                 translate_likelihood_model(likelihood_model_definition)
             )

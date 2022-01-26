@@ -16,9 +16,6 @@ from probeye.subroutines import len_or_one
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
-from probeye.inference.scipy_.correlation_models import (
-    SpatiotemporalExponentialCorrelationModel,
-)
 
 
 class TestProblem(unittest.TestCase):
@@ -32,6 +29,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = False,
         run_emcee: bool = False,
         run_torch: bool = False,
+        run_dynesty: bool = False,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -197,23 +195,6 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_forward_model("BeamModel", beam_model)
 
-        # add the log-likelihood model to the problem
-        loglike = GaussianLikelihoodModel(
-            [
-                {"sigma": "std_model"},
-                {"l_corr_x": "l_corr_space"},
-                {"l_corr_t": "l_corr_time"},
-            ],
-            [osensor_1, osensor_2],
-            additive_model_error=True,
-            multiplicative_model_error=False,
-            additive_measurement_error=False,
-            experiment_names=["Test_1", "Test_2", "Test_3"],
-            correlation_variables="xt",
-            correlation_model="exp",
-        )
-        problem.add_likelihood_model(loglike)
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -286,6 +267,30 @@ class TestProblem(unittest.TestCase):
             plt.show()
 
         # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the log-likelihood model to the problem
+        loglike = GaussianLikelihoodModel(
+            [
+                {"sigma": "std_model"},
+                {"l_corr_x": "l_corr_space"},
+                {"l_corr_t": "l_corr_time"},
+            ],
+            [osensor_1, osensor_2],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            experiment_names=["Test_1", "Test_2", "Test_3"],
+            correlation_variables="xt",
+            correlation_model="exp",
+        )
+        problem.add_likelihood_model(loglike)
+
+        # give problem overview
+        problem.info()
+
+        # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
@@ -308,6 +313,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

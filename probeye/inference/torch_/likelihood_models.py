@@ -56,14 +56,12 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         Computes the residuals for all of the likelihood model's experiments and returns
         them in a dictionary that is sorted by output sensor_values. This method
         overwrites the corresponding method of the parent class.
-
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
-
         Returns
         -------
         model_error
@@ -89,14 +87,12 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         """
         Computes the model residuals for all of the likelihood model's sensors over all
         of the likelihood model's experiments and returns them in a single vector.
-
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
-
         Returns
         -------
         residuals_vector
@@ -117,7 +113,6 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
     def sample_cond_likelihood(self, model_response: dict, prms: dict) -> pyro.sample:
         """
         Creates a likelihood-sample conditioned on the observed errors.
-
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
@@ -138,13 +133,11 @@ def translate_likelihood_model(
     Translates a given instance of GaussianLikelihoodModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
     likelihood model object which does contain SciPy-based computing-methods.
-
     Parameters
     ----------
     like_def
         An instance of GaussianLikelihoodModel which contains general information on the
         likelihood model but no computing-methods.
-
     Returns
     -------
     likelihood_computer

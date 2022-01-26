@@ -7,7 +7,7 @@ A and B are latent ones while c is a constant. Measurements are made at three di
 positions (x-values) each of which is associated with an own zero-mean, uncorrelated
 normal error model with the standard deviations to infer. This results in five latent
 parameters (parameters to be inferred). The problem is solved via max likelihood
-estimation and via sampling using emcee and pyro.
+estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -37,6 +37,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -65,6 +66,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -175,17 +179,6 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_forward_model("LinearModel", linear_model)
 
-        # add the likelihood models to the problem
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma_1": "std_model"}, sensors=osensor1)
-        )
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma_2": "std_model"}, sensors=osensor2)
-        )
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma_3": "std_model"}, sensors=osensor3)
-        )
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -214,6 +207,21 @@ class TestProblem(unittest.TestCase):
         for n_exp, n_t in enumerate([101, 51]):
             generate_data(n_t, n=n_exp)
 
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma_1": "std_model"}, sensors=osensor1)
+        )
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma_2": "std_model"}, sensors=osensor2)
+        )
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma_3": "std_model"}, sensors=osensor3)
+        )
+
         # give problem overview
         problem.info()
 
@@ -241,6 +249,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

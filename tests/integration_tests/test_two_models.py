@@ -6,7 +6,7 @@ the second model equation is y(x) = alpha * x**2 + b where alpha is an additiona
 parameter, and b is the same model parameter as in the first model equation. Both
 forward models have the same additive error model with a normal zero-mean distribution
 where the standard deviation is to be inferred. The problem is solved via max likelihood
-estimation and via sampling using emcee and pyro.
+estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -37,6 +37,7 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = True,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -65,6 +66,9 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         # ============================================================================ #
@@ -169,18 +173,6 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_forward_model("QuadraticModel", quadratic_model)
 
-        # add the likelihood model to the problem
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=osensor_linear
-            )
-        )
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=osensor_quadratic
-            )
-        )
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
@@ -212,9 +204,6 @@ class TestProblem(unittest.TestCase):
             fwd_model_name="QuadraticModel",
         )
 
-        # give problem overview
-        problem.info()
-
         # plot the true and noisy data
         if plot:
             plt.scatter(
@@ -242,6 +231,25 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=osensor_linear
+            )
+        )
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=osensor_quadratic
+            )
+        )
+
+        # give problem overview
+        problem.info()
+
+        # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
@@ -264,6 +272,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 
