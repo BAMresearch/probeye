@@ -201,16 +201,16 @@ class GaussianLikelihoodModel:
         self.considers_correlation = True if self.correlation_variables else False
         self.considers_time_correlation = "t" in self.correlation_variables
         self.considers_space_correlation = (
-                len({"x", "y", "z"}.intersection(set(self.correlation_variables))) > 0
+            len({"x", "y", "z"}.intersection(set(self.correlation_variables))) > 0
         )
         self.considers_only_time_correlation = (
-                self.considers_time_correlation and not self.considers_space_correlation
+            self.considers_time_correlation and not self.considers_space_correlation
         )
         self.considers_only_space_correlation = (
-                self.considers_space_correlation and not self.considers_time_correlation
+            self.considers_space_correlation and not self.considers_time_correlation
         )
         self.considers_space_and_time_correlation = (
-                self.considers_time_correlation and self.considers_space_correlation
+            self.considers_time_correlation and self.considers_space_correlation
         )
         self.considers_time_and_space_correlation = (
             self.considers_space_and_time_correlation
