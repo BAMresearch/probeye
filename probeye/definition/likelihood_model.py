@@ -7,6 +7,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.sensor import Sensor
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.subroutines import len_or_one
 from probeye.subroutines import make_list
 from probeye.subroutines import translate_prms_def
@@ -117,34 +118,31 @@ class GaussianLikelihoodModel:
         self.correlation_model = correlation_model
         self.correlation_dict = correlation_dict
 
-        # derived correlation attributes (these are convenience attributes)
-        self.considers_correlation = True if self.correlation_variables else False
-        self.considers_time_correlation = "t" in self.correlation_variables
-        self.considers_space_correlation = (
-            len({"x", "y", "z"}.intersection(set(self.correlation_variables))) > 0
-        )
-        self.considers_only_time_correlation = (
-            self.considers_time_correlation and not self.considers_space_correlation
-        )
-        self.considers_only_space_correlation = (
-            self.considers_space_correlation and not self.considers_time_correlation
-        )
-        self.considers_space_and_time_correlation = (
-            self.considers_time_correlation and self.considers_space_correlation
-        )
-        self.considers_time_and_space_correlation = (
-            self.considers_space_and_time_correlation
-        )
+        # derived correlation variables
+        self.considers_correlation = False
+        self.considers_time_correlation = False
+        self.considers_space_correlation = False
+        self.considers_only_time_correlation = False
+        self.considers_only_space_correlation = False
+        self.considers_space_and_time_correlation = False
+        self.considers_time_and_space_correlation = False
+        self.process_correlation_definition()
 
-        # add the experiment_names to the log-likelihood model
-        if experiment_names is None:
-            self.experiment_names = []
-        else:
+        # add the experiment_names to the log-likelihood model; note that the default
+        # value of experiment_names is not [] due to preventing a mutable default arg
+        self.experiment_names = []
+        if experiment_names is not None:
             self.experiment_names = make_list(experiment_names)
 
         # as soon as defined, this attribute will be a pointer to the inference
         # problems experiments (it will be used for consistency checks)
         self.problem_experiments = {}  # type: dict
+
+        # since all experiments of a likelihood model must refer to the same forward
+        # model, one can identify this common forward model as the forward model of
+        # the likelihood model; this attribute cannot be specified before all the
+        # experiments of the likelihood model have been added
+        self.forward_model = None  # type: Optional[ForwardModelBase]
 
     @property
     def n_experiments(self) -> int:
@@ -154,30 +152,17 @@ class GaussianLikelihoodModel:
         """
         return len(self.experiment_names)
 
-    def check_correlation_definition(self, valid_corr_models: tuple = ("exp",)):
+    def process_correlation_definition(self, valid_corr_models: tuple = ("exp",)):
         """
-        Check if the correlation definition is valid.
+        Processes a string like 'xt' or 'xy' into the corresponding correlation
+        variables and decides if a mere spatial, temporal or spatio-temporal correlation
+        was defined. The results are written to attributes.
 
         Parameters
         ----------
         valid_corr_models
             The tuple contains all currently implemented correlation models.
         """
-
-        # check that only valid characters are given, and that those characters
-        # are at most mentioned once
-        for char in self.correlation_variables:
-            if char not in ["x", "y", "z", "t"]:
-                raise RuntimeError(
-                    f"Found invalid correlation variable '{char}' in the correlation "
-                    f"definition. Only the characters 'x', 'y', 'z', 't' are valid "
-                    f"correlation variables."
-                )
-            if self.correlation_variables.count(char) > 1:
-                raise RuntimeError(
-                    f"The correlation variable '{char}' was mentioned more than once "
-                    f"in the correlation definition: '{self.correlation_variables}'."
-                )
 
         # check the correlation model
         if self.correlation_model not in valid_corr_models:
@@ -193,6 +178,43 @@ class GaussianLikelihoodModel:
                 f"It is not possible to consider both an additive and a multiplicative "
                 f"model error at the same time. Please unselect one of them."
             )
+
+        # translate the given string in a list of its characters
+        cv_list = list(self.correlation_variables)
+
+        # check that only valid characters are given, and that those characters
+        # are at most mentioned once
+        for char in cv_list:
+            if char not in ["x", "y", "z", "t"]:
+                raise RuntimeError(
+                    f"Found invalid correlation variable '{char}' in the correlation "
+                    f"definition. Only the characters 'x', 'y', 'z', 't' are valid "
+                    f"correlation variables."
+                )
+            if self.correlation_variables.count(char) > 1:
+                raise RuntimeError(
+                    f"The correlation variable '{char}' was mentioned more than once "
+                    f"in the correlation definition: '{self.correlation_variables}'."
+                )
+
+        # this is where the actual processing happens
+        self.considers_correlation = True if self.correlation_variables else False
+        self.considers_time_correlation = "t" in self.correlation_variables
+        self.considers_space_correlation = (
+                len({"x", "y", "z"}.intersection(set(self.correlation_variables))) > 0
+        )
+        self.considers_only_time_correlation = (
+                self.considers_time_correlation and not self.considers_space_correlation
+        )
+        self.considers_only_space_correlation = (
+                self.considers_space_correlation and not self.considers_time_correlation
+        )
+        self.considers_space_and_time_correlation = (
+                self.considers_time_correlation and self.considers_space_correlation
+        )
+        self.considers_time_and_space_correlation = (
+            self.considers_space_and_time_correlation
+        )
 
     def check_experiment_consistency(self):
         """
@@ -255,6 +277,18 @@ class GaussianLikelihoodModel:
                     f"likelihood model. Something might be wrong here."
                 )
         self.experiment_names += experiment_names
+
+    def determine_forward_model(self):
+        """
+        Determines the forward model of the likelihood model as the forward model that
+        is referenced by all of its experiments. Note, that all experiments of a
+        likelihood model must refer to one and only one common forward model.
+        """
+        # note that the check makes sure that all experiments have the same forward
+        # model; hence we can simply take any experiment and read its forward model
+        self.check_experiment_consistency()
+        exp_1 = self.problem_experiments[self.experiment_names[0]]
+        self.forward_model = exp_1["forward_model"]
 
     def prepare_corr_dict(self):
         """

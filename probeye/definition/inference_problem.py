@@ -936,7 +936,10 @@ class InferenceProblem:
             )
             for exp_name in added_experiment_names:
                 logger.debug(f"{likelihood_model.name} <--- {exp_name}")
+
+        # these calls define some attributes of the likelihood model
         likelihood_model.prepare_corr_dict()
+        likelihood_model.determine_forward_model()
 
         # finally, add the likelihood_model to the internal dict
         self._likelihood_models[name] = likelihood_model
