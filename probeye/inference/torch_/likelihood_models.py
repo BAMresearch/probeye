@@ -74,7 +74,7 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
 
         # fill the dictionary with model error vectors
         for exp_name in self.experiment_names:
-            exp_dict = self.problem_experiments[exp_name]
+            exp_dict = self.problem_experiments[exp_name]  # type: ignore
             ym_dict = model_response_dict[exp_name]
             ye_dict = exp_dict["sensor_values"]
             residuals_dict = {

@@ -51,50 +51,6 @@ class TestProblem(unittest.TestCase):
             # adding the same experiment again
             noise_template.add_experiments("Exp1")
 
-    def test_error(self):
-        # prepare the setup for the tests
-        noise_template = GaussianLikelihoodModel(
-            ["bias", "sigma"], [Sensor("y1"), Sensor("y2")]
-        )
-        # in the GaussianLikelihoodModel class the error_function is just a dummy, so
-        # we need to define it to be able to test the error-method
-        noise_template.error_function = lambda d1, d2: {
-            name: d1[name] - d2[name] for name in noise_template.sensor_names
-        }
-        model_response_dict = {
-            "Exp1": {"x": 1, "y1": 3, "y2": -3},
-            "Exp2": {"x": 3, "y1": 6, "y2": -6},
-            "Exp3": {"x": 5, "y1": 9, "y2": -9},
-        }
-        problem_experiments = {
-            "Exp1": {
-                "sensor_values": {"x": 1, "y1": 2, "y2": -2},
-                "forward_model": "TestModel",
-            },
-            "Exp2": {
-                "sensor_values": {"x": 3, "y1": 4, "y2": -4},
-                "forward_model": "TestModel",
-            },
-            "Exp3": {
-                "sensor_values": {"x": 5, "y1": 6, "y2": -6},
-                "forward_model": "TestModel",
-            },
-        }
-        # the following is usually done automatically when adding the noise model to the
-        # inference problem
-        noise_template.problem_experiments = problem_experiments
-        noise_template.add_experiments(["Exp1", "Exp2", "Exp3"])
-        # now we can call the error-method
-        computed_value = noise_template.residuals(model_response_dict)
-        expected_value = {
-            "y1": np.array([1.0, 2.0, 3.0]),
-            "y2": np.array([-1.0, -2.0, -3.0]),
-        }
-        # due to the numpy arrays we have to loop over everything to compare
-        for sensor_name, array in computed_value.items():
-            for i in range(len(array)):
-                self.assertEqual(array[i], expected_value[sensor_name][i])
-
 
 if __name__ == "__main__":
     unittest.main()

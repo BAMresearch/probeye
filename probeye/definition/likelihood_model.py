@@ -1,14 +1,10 @@
 # standard library
 from typing import Union, List, Optional
 
-# third party imports
-import torch as th
-import numpy as np
-
 # local imports
 from probeye.definition.sensor import Sensor
+from probeye.definition.parameter import Parameters
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.subroutines import len_or_one
 from probeye.subroutines import make_list
 from probeye.subroutines import translate_prms_def
 from probeye.subroutines import get_dictionary_depth
@@ -27,6 +23,7 @@ class GaussianLikelihoodModel:
         prms_def: Union[str, List[Union[str, dict]], dict],
         sensors: Union[Sensor, List[Sensor]],
         experiment_names: Union[str, List[str], None] = None,
+        problem_experiments: Optional[dict] = None,
         additive_model_error: bool = True,
         multiplicative_model_error: bool = False,
         additive_measurement_error: bool = False,
@@ -59,6 +56,10 @@ class GaussianLikelihoodModel:
             as sensor_values. For more information on this automatic assignment, check
             out assign_experiments_to_likelihood_models in probeye/definition/
             inference_problem.py.
+        problem_experiments
+            The experiments defined within the InferenceProblem. This argument is not
+            intended to be given by the user (however she can if she wants to). It is
+            required for internal purposes.
         additive_model_error
             If True, the model error is assumed to be additive and not multiplicative.
             Note that in this case 'multiplicative_model_error' must be False.
@@ -133,10 +134,7 @@ class GaussianLikelihoodModel:
         self.experiment_names = []
         if experiment_names is not None:
             self.experiment_names = make_list(experiment_names)
-
-        # as soon as defined, this attribute will be a pointer to the inference
-        # problems experiments (it will be used for consistency checks)
-        self.problem_experiments = {}  # type: dict
+        self.problem_experiments = problem_experiments
 
         # since all experiments of a likelihood model must refer to the same forward
         # model, one can identify this common forward model as the forward model of
@@ -152,9 +150,95 @@ class GaussianLikelihoodModel:
         """
         return len(self.experiment_names)
 
+    def add_experiments(self, experiment_names_: Union[str, List[str]]):
+        """
+        Adds experiment names to the log-likelihood model. When the log-likelihood model
+        is evaluated it will only be evaluated for those experiments added here.
+
+        Parameters
+        ----------
+        experiment_names_
+            Names (strings) of experiments from the InferenceProblem that should be
+            added to the log-likelihood model.
+        """
+
+        # this check is mostly to prevent automatic type checking issues
+        if self.problem_experiments is None:
+            raise ValueError(
+                f"The attribute likelihood_model.problem_experiments has not been set "
+                f"yet. This should have happened automatically. Something general "
+                f"seems to have gone wrong here..."
+            )
+
+        # check if the given experiments are compatible with the log-likelihood model
+        # with respect to the sensors
+        experiment_names = make_list(experiment_names_)
+        forward_models = set()
+        for exp_name in experiment_names:
+            exp_dict = self.problem_experiments[exp_name]
+            forward_models.add(exp_dict["forward_model"])
+            sensor_names_exp = [*exp_dict["sensor_values"].keys()]
+            for sensor_name in self.sensor_names:
+                if sensor_name not in sensor_names_exp:
+                    raise RuntimeError(
+                        f"Experiment '{exp_name}' does not contain a sensor "
+                        f"'{sensor_name}' which is required for the evaluation of the "
+                        f"log-likelihood model."
+                    )
+
+        # check if the given experiments all refer to one forward model
+        if len(forward_models) > 1:
+            raise RuntimeError(
+                f"The given experiments refer to more than one forward model!"
+            )
+
+        # check if one of the given experiments have been added before
+        for exp_name in experiment_names:
+            if exp_name in self.experiment_names:
+                raise RuntimeError(
+                    f"The experiment '{exp_name}' has already been added to this "
+                    f"likelihood model. Something might be wrong here."
+                )
+        self.experiment_names += experiment_names
+
+    def check_experiment_consistency(self):
+        """
+        Checks if the experiments defined on the likelihood model are consistent with
+        each other. Mostly, this means that they all refer to the same forward model.
+        """
+
+        # obviously, there has to be at least one experiment defined
+        if self.experiment_names is None:
+            raise RuntimeError(
+                f"No experiments defined for likelihood model '{self.name}'!"
+            )
+
+        # all experiments must refer to the same forward model
+        fwd_models = set()
+        for exp_name in self.experiment_names:
+            fwd_models.add(self.problem_experiments[exp_name]["forward_model"])
+        if len(fwd_models) > 1:
+            raise RuntimeError(
+                f"The experiments of likelihood model '{self.name}' refer to more than "
+                f"one forward model!\nHowever, they should all refer to one and the "
+                f"same forward model."
+            )
+
+    def determine_forward_model(self):
+        """
+        Determines the forward model of the likelihood model as the forward model that
+        is referenced by all of its experiments. Note, that all experiments of a
+        likelihood model must refer to one and only one common forward model.
+        """
+        # note that the check makes sure that all experiments have the same forward
+        # model; hence we can simply take any experiment and read its forward model
+        self.check_experiment_consistency()
+        exp_1 = self.problem_experiments[self.experiment_names[0]]
+        self.forward_model = exp_1["forward_model"]
+
     def process_correlation_definition(self, valid_corr_models: tuple = ("exp",)):
         """
-        Processes a string like 'xt' or 'xy' into the corresponding correlation
+        Processes a string like 'xt', 'xy', etc. into the corresponding correlation
         variables and decides if a mere spatial, temporal or spatio-temporal correlation
         was defined. The results are written to attributes.
 
@@ -216,80 +300,6 @@ class GaussianLikelihoodModel:
             self.considers_space_and_time_correlation
         )
 
-    def check_experiment_consistency(self):
-        """
-        Checks if the experiments defined on the likelihood model are consistent with
-        each other.
-        """
-
-        # obviously, there has to be at least one experiment defined
-        if self.experiment_names is None:
-            raise RuntimeError(
-                f"No experiments defined for likelihood model '{self.name}'!"
-            )
-
-        # all experiments must refer to the same forward model
-        fwd_models = set()
-        for exp_name in self.experiment_names:
-            fwd_models.add(self.problem_experiments[exp_name]["forward_model"])
-        if len(fwd_models) > 1:
-            raise RuntimeError(
-                f"The experiments of likelihood model '{self.name}' refer to more than "
-                f"one forward model!\nHowever, they should all refer to one and the "
-                f"same forward model."
-            )
-
-    def add_experiments(self, experiment_names_: Union[str, List[str]]):
-        """
-        Adds experiment names to the log-likelihood model. When the log-likelihood model
-        is evaluated it will only be evaluated for those experiments added here.
-        Parameters
-        ----------
-        experiment_names_
-            Names (strings) of experiments from the InferenceProblem that should be
-            added to the log-likelihood model.
-        """
-        # check if the given experiments are compatible with the log-likelihood model
-        # with respect to the sensors
-        experiment_names = make_list(experiment_names_)
-        forward_models = set()
-        for exp_name in experiment_names:
-            exp_dict = self.problem_experiments[exp_name]
-            forward_models.add(exp_dict["forward_model"])
-            sensor_names_exp = [*exp_dict["sensor_values"].keys()]
-            for sensor_name in self.sensor_names:
-                if sensor_name not in sensor_names_exp:
-                    raise RuntimeError(
-                        f"Experiment '{exp_name}' does not contain a sensor "
-                        f"'{sensor_name}' which is required for the evaluation of the "
-                        f"log-likelihood model."
-                    )
-        # check if the given experiments all refer to one forward model
-        if len(forward_models) > 1:
-            raise RuntimeError(
-                f"The given experiments refer to more than one forward model!"
-            )
-        # check if one of the given experiments have been added before
-        for exp_name in experiment_names:
-            if exp_name in self.experiment_names:
-                raise RuntimeError(
-                    f"The experiment '{exp_name}' has already been added to this "
-                    f"likelihood model. Something might be wrong here."
-                )
-        self.experiment_names += experiment_names
-
-    def determine_forward_model(self):
-        """
-        Determines the forward model of the likelihood model as the forward model that
-        is referenced by all of its experiments. Note, that all experiments of a
-        likelihood model must refer to one and only one common forward model.
-        """
-        # note that the check makes sure that all experiments have the same forward
-        # model; hence we can simply take any experiment and read its forward model
-        self.check_experiment_consistency()
-        exp_1 = self.problem_experiments[self.experiment_names[0]]
-        self.forward_model = exp_1["forward_model"]
-
     def prepare_corr_dict(self):
         """
         Ensures that the corr_dict attribute is a depth=2 dictionary where the first
@@ -326,199 +336,3 @@ class GaussianLikelihoodModel:
             for exp_name in self.experiment_names:
                 correlation_dict[exp_name] = self.correlation_dict
             self.correlation_dict = correlation_dict
-
-    def residuals(self, model_response_dict: dict) -> dict:
-        """
-        Computes the model residuals (model prediction minus measurement) for all of the
-        likelihood model's experiments and returns them as a dictionary.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        Returns
-        -------
-        residuals_dict
-            A dictionary with the keys being the likelihood model's sensor names, and 1D
-            numpy arrays representing the model residuals for all experiments as values.
-        """
-        # prepare the dictionary keys
-        residuals_dict = {name: np.array([]) for name in self.sensor_names}
-
-        # fill the dictionary with model residual vectors
-        for exp_name in self.experiment_names:
-            exp_dict = self.problem_experiments[exp_name]
-            ym_dict = model_response_dict[exp_name]
-            ye_dict = exp_dict["sensor_values"]
-            residuals_dict = {
-                name: np.append(residuals_dict[name], ym_dict[name] - ye_dict[name])
-                for name in self.sensor_names
-            }
-
-        return residuals_dict
-
-    def residuals_vector(
-        self, model_response_dict: dict
-    ) -> Union[np.ndarray, th.Tensor]:
-        """
-        Computes the model residuals for all of the likelihood model's sensors over all
-        of the likelihood model's experiments and returns them in a single vector.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        Returns
-        -------
-        residuals_vector
-            A one-dimensional vector containing the model residuals.
-        """
-        residuals_dict = self.residuals(model_response_dict)
-        n = 0
-        for residuals_sub_vector in residuals_dict.values():
-            n += len_or_one(residuals_sub_vector)
-        residuals_vector = np.zeros(n)
-        idx = 0
-        for residuals_sub_vector in residuals_dict.values():
-            m = len_or_one(residuals_sub_vector)
-            residuals_vector[idx : idx + m] = residuals_sub_vector
-            idx += m
-        return residuals_vector
-
-    def response_vector(
-        self, model_response_dict: dict
-    ) -> Union[np.ndarray, th.Tensor]:
-        """
-        Computes the model response for all of the likelihood model's sensors over all
-        of the likelihood model's experiments and returns them in a single vector.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        Returns
-        -------
-        response_vector
-            A one-dimensional vector containing the model response.
-        """
-
-        # create the response dict only for the experiments of the likelihood model
-        response_dict = {name: np.array([]) for name in self.sensor_names}
-        for exp_name in self.experiment_names:
-            ym_dict = model_response_dict[exp_name]
-            response_dict = {
-                name: np.append(response_dict[name], ym_dict[name])
-                for name in self.sensor_names
-            }
-
-        # concatenate the responses to a single vector
-        n = 0
-        for residuals_sub_vector in response_dict.values():
-            n += len_or_one(residuals_sub_vector)
-        residuals_vector = np.zeros(n)
-        idx = 0
-        for residuals_sub_vector in response_dict.values():
-            m = len_or_one(residuals_sub_vector)
-            residuals_vector[idx : idx + m] = residuals_sub_vector
-            idx += m
-        return residuals_vector
-
-    def response_array(self, model_response_dict: dict) -> Union[np.ndarray, th.Tensor]:
-        """
-        Computes the model response for all of the likelihood model's sensors over all
-        of the likelihood model's experiments and returns them in an array format.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        Returns
-        -------
-        res_array
-            An 2D array containing the model response.
-        """
-
-        # prepare the result array
-        n_rows = self.n_experiments * self.n_sensors
-        n_cols = len_or_one(
-            model_response_dict[self.experiment_names[0]][self.sensor_names[0]]
-        )
-        res_array = np.zeros((n_rows, n_cols))
-
-        # create the response dict only for the experiments of the likelihood model
-        i = 0
-        for experiment_name in self.experiment_names:
-            for sensor_name in self.sensor_names:
-                res_array[i, :] = model_response_dict[experiment_name][sensor_name]
-                i += 1
-
-        return res_array
-
-    def coordinate_array(self, coords: str) -> np.ndarray:
-        """
-        Parameters
-        ----------
-        coords
-            One or more characters from {'x', 'y', 'z', 't'}, i.e., possible correlation
-            variables.
-        Returns
-        -------
-        coord_array
-            A vector containing the values of the requested coordinates 'coords' over
-            all of the likelihood model's experiments and sensors. These values have
-            the same structure as the values in the residual vector computed by the
-            method 'residuals_vector' above. Hence, the i-th entry in 'coord_array'
-            corresponds to the i-th entry in the vector returned by 'residuals_vector'.
-        """
-
-        # check input
-        n_coords = len(coords)
-        coord_1 = list(coords)[0]
-
-        # prepare the coord-vector with the correct length
-        n = 0
-        ns = len(self.sensors)
-        for exp_name in self.experiment_names:
-            exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
-            coord_name_in_exp = self.correlation_dict[exp_name][coord_1]  # type: ignore
-            if coord_name_in_exp in exp_sensor_values:
-                n += len_or_one(exp_sensor_values[coord_name_in_exp]) * ns
-            else:
-                for sensor in self.sensors:
-                    try:
-                        n += len_or_one(getattr(sensor, coord_1))
-                    except AttributeError:
-                        print(
-                            f"Sensor '{sensor.name}' of likelihood model "
-                            f"'{self.name}' does not have a '{coord_1}'-attribute!"
-                        )
-                        raise
-        coord_array = np.zeros((n, n_coords))
-
-        # fill the dictionary with model residual vectors
-        for ic, coord in enumerate(list(coords)):
-            i = 0
-            for exp_name in self.experiment_names:
-                exp_sensor_values = self.problem_experiments[exp_name]["sensor_values"]
-                coord_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
-                if coord_in_exp in exp_sensor_values:
-                    coord_sub_vector = exp_sensor_values[coord_in_exp]
-                    m = len_or_one(coord_sub_vector)
-                    for _ in range(ns):
-                        coord_array[i : i + m, ic] = coord_sub_vector
-                        i += m
-                else:
-                    for sensor in self.sensors:
-                        coord_sub_vector = getattr(sensor, coord)
-                        m = len_or_one(coord_sub_vector)
-                        coord_array[i : i + m, ic] = coord_sub_vector
-                        i += m
-
-        if n_coords == 1:
-            coord_array = coord_array.flatten()
-
-        return coord_array

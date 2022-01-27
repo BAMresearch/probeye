@@ -11,6 +11,7 @@ from tripy.utils import correlation_function
 # local imports
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.subroutines import incrementalize
+from probeye.subroutines import len_or_one
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -38,14 +39,13 @@ class ScipyLikelihoodBase(GaussianLikelihoodModel):
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
         """
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
@@ -53,13 +53,241 @@ class ScipyLikelihoodBase(GaussianLikelihoodModel):
             name=name,
         )
 
-        # problem_experiments is an attribute not set by the parent-class because when
-        # objects of the parent class are created not all experiments need to have been
-        # defined yet
-        self.problem_experiments = problem_experiments  # type: ignore
+    def residuals(self, model_response_dict: dict) -> dict:
+        """
+        Computes the model residuals (model prediction minus measurement) for all of the
+        likelihood model's experiments and returns them as a dictionary.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
+        Returns
+        -------
+        residuals_dict
+            A dictionary with the keys being the likelihood model's sensor names, and 1D
+            numpy arrays representing the model residuals for all experiments as values.
+        """
+        # prepare the dictionary keys
+        residuals_dict = {name: np.array([]) for name in self.sensor_names}
+
+        # fill the dictionary with model residual vectors
+        for exp_name in self.experiment_names:
+            exp_dict = self.problem_experiments[exp_name]  # type: ignore
+            ym_dict = model_response_dict[exp_name]
+            ye_dict = exp_dict["sensor_values"]
+            residuals_dict = {
+                name: np.append(residuals_dict[name], ym_dict[name] - ye_dict[name])
+                for name in self.sensor_names
+            }
+
+        return residuals_dict
+
+    def residuals_vector(self, model_response_dict: dict) -> np.ndarray:
+        """
+        Computes the model residuals for all of the likelihood model's sensors over all
+        of the likelihood model's experiments and returns them in a single vector.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
+        Returns
+        -------
+        residuals_vector
+            A one-dimensional vector containing the model residuals.
+        """
+        residuals_dict = self.residuals(model_response_dict)
+        n = 0
+        for residuals_sub_vector in residuals_dict.values():
+            n += len_or_one(residuals_sub_vector)
+        residuals_vector = np.zeros(n)
+        idx = 0
+        for residuals_sub_vector in residuals_dict.values():
+            m = len_or_one(residuals_sub_vector)
+            residuals_vector[idx : idx + m] = residuals_sub_vector
+            idx += m
+        return residuals_vector
+
+    def response_vector(self, model_response_dict: dict) -> np.ndarray:
+        """
+        Computes the model response for all of the likelihood model's sensors over all
+        of the likelihood model's experiments and returns them in a single vector.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
+        Returns
+        -------
+        response_vector
+            A one-dimensional vector containing the model response.
+        """
+
+        # create the response dict only for the experiments of the likelihood model
+        response_dict = {name: np.array([]) for name in self.sensor_names}
+        for exp_name in self.experiment_names:
+            ym_dict = model_response_dict[exp_name]
+            response_dict = {
+                name: np.append(response_dict[name], ym_dict[name])
+                for name in self.sensor_names
+            }
+
+        # concatenate the responses to a single vector
+        n = 0
+        for residuals_sub_vector in response_dict.values():
+            n += len_or_one(residuals_sub_vector)
+        residuals_vector = np.zeros(n)
+        idx = 0
+        for residuals_sub_vector in response_dict.values():
+            m = len_or_one(residuals_sub_vector)
+            residuals_vector[idx : idx + m] = residuals_sub_vector
+            idx += m
+        return residuals_vector
+
+    def response_array(self, model_response_dict: dict) -> np.ndarray:
+        """
+        Computes the model response for all of the likelihood model's sensors over all
+        of the likelihood model's experiments and returns them in an array format.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+
+        Returns
+        -------
+        res_array
+            An 2D array containing the model response.
+        """
+
+        # prepare the result array
+        n_rows = self.n_experiments * self.n_sensors
+        n_cols = len_or_one(
+            model_response_dict[self.experiment_names[0]][self.sensor_names[0]]
+        )
+        res_array = np.zeros((n_rows, n_cols))
+
+        # create the response dict only for the experiments of the likelihood model
+        i = 0
+        for experiment_name in self.experiment_names:
+            for sensor_name in self.sensor_names:
+                res_array[i, :] = model_response_dict[experiment_name][sensor_name]
+                i += 1
+
+        return res_array
+
+    def coordinate_array(self, coords: str) -> np.ndarray:
+        """
+        Parameters
+        ----------
+        coords
+            One or more characters from {'x', 'y', 'z', 't'}, i.e., possible correlation
+            variables.
+
+        Returns
+        -------
+        coord_array
+            A vector containing the values of the requested coordinates 'coords' over
+            all of the likelihood model's experiments and sensors. These values have
+            the same structure as the values in the residual vector computed by the
+            method 'residuals_vector' above. Hence, the i-th entry in 'coord_array'
+            corresponds to the i-th entry in the vector returned by 'residuals_vector'.
+        """
+
+        # check input
+        n_coords = len(coords)
+        coord_1 = list(coords)[0]
+
+        # prepare the coord-vector with the correct length
+        n = 0
+        ns = len(self.sensors)
+        for exp_name in self.experiment_names:
+            exp_dict = self.problem_experiments[exp_name]  # type: ignore
+            exp_sensor_values = exp_dict["sensor_values"]
+            coord_name_in_exp = self.correlation_dict[exp_name][coord_1]  # type: ignore
+            if coord_name_in_exp in exp_sensor_values:
+                n += len_or_one(exp_sensor_values[coord_name_in_exp]) * ns
+            else:
+                for sensor in self.sensors:
+                    try:
+                        n += len_or_one(getattr(sensor, coord_1))
+                    except AttributeError:
+                        print(
+                            f"Sensor '{sensor.name}' of likelihood model "
+                            f"'{self.name}' does not have a '{coord_1}'-attribute!"
+                        )
+                        raise
+        coord_array = np.zeros((n, n_coords))
+
+        # fill the dictionary with model residual vectors
+        for ic, coord in enumerate(list(coords)):
+            i = 0
+            for exp_name in self.experiment_names:
+                exp_dict = self.problem_experiments[exp_name]  # type: ignore
+                exp_sensor_values = exp_dict["sensor_values"]
+                coord_in_exp = self.correlation_dict[exp_name][coord]  # type: ignore
+                if coord_in_exp in exp_sensor_values:
+                    coord_sub_vector = exp_sensor_values[coord_in_exp]
+                    m = len_or_one(coord_sub_vector)
+                    for _ in range(ns):
+                        coord_array[i : i + m, ic] = coord_sub_vector
+                        i += m
+                else:
+                    for sensor in self.sensors:
+                        coord_sub_vector = getattr(sensor, coord)
+                        m = len_or_one(coord_sub_vector)
+                        coord_array[i : i + m, ic] = coord_sub_vector
+                        i += m
+
+        if n_coords == 1:
+            coord_array = coord_array.flatten()
+
+        return coord_array
+
+    def loglike(
+        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
+    ) -> float:
+        """
+        Computes and returns the log(likelihood). To be overwritten by one of the
+        specific classes listed below.
+
+        Parameters
+        ----------
+        model_response_dict
+            The first key is the name of the experiment. The values are dicts which
+            contain the forward model's output sensor's names as keys have the
+            corresponding model responses as values.
+        prms
+            Dictionary containing parameter name:value pairs.
+        worst_value
+            This value is returned when this method does not result in a numeric value.
+            This might happen for example when the given parameters are not valid (for
+            example in case of a negative standard deviation). The returned value in
+            such cases should represent the worst possible value of the contribution.
+
+        Returns
+        -------
+        ll
+            A scalar value representing the evaluated log-likelihood function.
+        """
+        raise NotImplementedError(
+            "The ScipyLikelihoodBase class does not have a loglike implementation."
+        )
 
 
-class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
+class AdditiveUncorrelatedModelError(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution without any
     correlations, i.e., with a diagonal covariance matrix. Both the model error as well
@@ -80,16 +308,15 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
@@ -97,31 +324,12 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
             name=name,
         )
 
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
-
     def loglike(
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
         # compute the model error; note that this mode has exactly one sensor
         res_vector = self.residuals_vector(model_response_dict)
@@ -144,7 +352,7 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         return ll
 
 
-class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
+class AdditiveCorrelatedModelError1D(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time or in one spatial coordinate. Both the model
@@ -165,25 +373,21 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
             correlation_dict=correlation_dict,
             name=name,
         )
-
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values of the correlation variable
         coords = self.coordinate_array(correlation_variables)
@@ -193,24 +397,8 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
 
         # compute the model residuals via a method from the parent class
@@ -240,7 +428,7 @@ class AdditiveCorrelatedModelError1D(GaussianLikelihoodModel):
         return ll
 
 
-class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
+class AdditiveSpaceCorrelatedModelError2D3D(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in more than one spatial coordinate. Time correlation
@@ -262,25 +450,21 @@ class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
             correlation_dict=correlation_dict,
             name=name,
         )
-
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values of the correlation variable
         self.coords = self.coordinate_array(correlation_variables)
@@ -289,24 +473,8 @@ class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
 
         # compute the model residuals via a method from the parent class
@@ -342,7 +510,7 @@ class AdditiveSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
         return ll
 
 
-class AdditiveSpaceTimeCorrelatedModelError1D(GaussianLikelihoodModel):
+class AdditiveSpaceTimeCorrelatedModelError1D(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time and one spatial coordinate. Both the model
@@ -363,25 +531,21 @@ class AdditiveSpaceTimeCorrelatedModelError1D(GaussianLikelihoodModel):
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
             correlation_dict=correlation_dict,
             name=name,
         )
-
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values for time
         time_vector = self.coordinate_array("t")
@@ -396,31 +560,13 @@ class AdditiveSpaceTimeCorrelatedModelError1D(GaussianLikelihoodModel):
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
 
         # compute the model residuals via a method from the parent class
         y_model = self.response_array(model_response_dict)
-        res_vector = self.residuals_vector(model_response_dict)
-        ones = np.ones(len(res_vector))
-        zeros = np.zeros(len(res_vector))
+        # res_vector = self.residuals_vector(model_response_dict)
 
         # parameters for the model prediction error
         std_model = prms["std_model"]
@@ -452,7 +598,7 @@ class AdditiveSpaceTimeCorrelatedModelError1D(GaussianLikelihoodModel):
         return ll
 
 
-class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
+class MultiplicativeUncorrelatedModelError(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution without any
     correlations, i.e., with a diagonal covariance matrix. The model error is assumed to
@@ -473,16 +619,15 @@ class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
+        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
@@ -490,31 +635,12 @@ class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
             name=name,
         )
 
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
-
     def loglike(
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
         # compute the model error; note that this mode has exactly one sensor
         y_model = self.response_vector(model_response_dict)
@@ -546,7 +672,7 @@ class MultiplicativeUncorrelatedModelError(GaussianLikelihoodModel):
         return ll
 
 
-class MultiplicativeCorrelatedModelError1D(GaussianLikelihoodModel):
+class MultiplicativeCorrelatedModelError1D(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time or in one spatial coordinate. The model error
@@ -573,20 +699,18 @@ class MultiplicativeCorrelatedModelError1D(GaussianLikelihoodModel):
         InferenceProblem._experiments (a dictionary of all the problem's experiments).
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
             correlation_dict=correlation_dict,
             name=name,
         )
-
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values of the correlation variable
         coords = self.coordinate_array(correlation_variables)
@@ -596,24 +720,8 @@ class MultiplicativeCorrelatedModelError1D(GaussianLikelihoodModel):
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
 
         # compute the model residuals via a method from the parent class
@@ -647,7 +755,7 @@ class MultiplicativeCorrelatedModelError1D(GaussianLikelihoodModel):
         return ll
 
 
-class MultiplicativeSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
+class MultiplicativeSpaceCorrelatedModelError2D3D(ScipyLikelihoodBase):
     """
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in more than one spatial coordinate. Time correlation
@@ -674,20 +782,18 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
         InferenceProblem._experiments (a dictionary of all the problem's experiments).
         """
 
-        # initialize the super-class (GaussianLikelihoodModel) based on the given input
+        # initialize the super-class (ScipyLikelihoodBase) based on the given input
         super().__init__(
             prms_def,
             sensors,
             experiment_names=experiment_names,
+            problem_experiments=problem_experiments,
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
             correlation_dict=correlation_dict,
             name=name,
         )
-
-        # problem_experiments is an attribute not set by the parent-class
-        self.problem_experiments = problem_experiments  # type: ignore
 
         # extract the values of the correlation variable
         self.coords = self.coordinate_array(correlation_variables)
@@ -696,24 +802,8 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
         self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
     ) -> float:
         """
-        Computes the log(likelihood) of this model.
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-        Returns
-        -------
-        ll
-            A scalar value representing the evaluated log-likelihood function.
+        Computes the log(likelihood) of this model. For more information, check out the
+        doc-string of the parent class (ScipyLikelihoodBase).
         """
 
         # compute the model residuals via a method from the parent class
@@ -752,23 +842,15 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(GaussianLikelihoodModel):
         return ll
 
 
-def translate_likelihood_model(
-    like_def: GaussianLikelihoodModel,
-) -> Union[
-    AdditiveUncorrelatedModelError,
-    AdditiveCorrelatedModelError1D,
-    AdditiveSpaceCorrelatedModelError2D3D,
-    MultiplicativeUncorrelatedModelError,
-    MultiplicativeCorrelatedModelError1D,
-    MultiplicativeSpaceCorrelatedModelError2D3D,
-]:
+def translate_likelihood_model(lm_def: GaussianLikelihoodModel) -> ScipyLikelihoodBase:
     """
     Translates a given instance of GaussianLikelihoodModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
     likelihood model object which does contain SciPy-based computing-methods.
+
     Parameters
     ----------
-    like_def
+    lm_def
         An instance of GaussianLikelihoodModel which contains general information on the
         likelihood model but no computing-methods.
     Returns
@@ -779,47 +861,67 @@ def translate_likelihood_model(
     """
 
     # likelihood model selection based on the flags given in the likelihood definition
-    if like_def.additive_model_error:
-        if not like_def.considers_correlation:
-            l_class = AdditiveUncorrelatedModelError  # type: ignore
+    if lm_def.additive_model_error:
+        if not lm_def.considers_correlation:
+            l_class = "Add_Uncorrelated"
         else:
-            if like_def.considers_only_space_correlation:
-                if len(like_def.correlation_variables) == 1:
-                    l_class = AdditiveCorrelatedModelError1D  # type: ignore
+            if lm_def.considers_only_space_correlation:
+                if len(lm_def.correlation_variables) == 1:
+                    l_class = "Add_Correlated_1D"
                 else:
-                    l_class = AdditiveSpaceCorrelatedModelError2D3D  # type: ignore
-            elif like_def.considers_only_time_correlation:
-                l_class = AdditiveCorrelatedModelError1D  # type: ignore
+                    l_class = "Add_SpaceCorrelated_2D3D"
+            elif lm_def.considers_only_time_correlation:
+                l_class = "Add_Correlated_1D"
             else:
-                if len(like_def.correlation_variables) == 2:
-                    l_class = AdditiveSpaceTimeCorrelatedModelError1D  # type: ignore
+                if len(lm_def.correlation_variables) == 2:
+                    l_class = "Add_SpaceTimeCorrelated_1D"
                 else:
-                    raise NotImplementedError("Likelihood model not implemented yet!")
+                    l_class = "Add_SpaceTimeCorrelated_2D3D"
     else:
-        if not like_def.considers_correlation:
-            l_class = MultiplicativeUncorrelatedModelError  # type: ignore
+        if not lm_def.considers_correlation:
+            l_class = "Mul_Uncorrelated"
         else:
-            if like_def.considers_only_space_correlation:
-                if len(like_def.correlation_variables) == 1:
-                    l_class = MultiplicativeCorrelatedModelError1D  # type: ignore
+            if lm_def.considers_only_space_correlation:
+                if len(lm_def.correlation_variables) == 1:
+                    l_class = "Mul_Correlated_1D"
                 else:
-                    l_class = MultiplicativeSpaceCorrelatedModelError2D3D  # type: ignore
-            elif like_def.considers_only_time_correlation:
-                l_class = MultiplicativeCorrelatedModelError1D  # type: ignore
+                    l_class = "Mul_SpaceTimeCorrelated_2D3D"
+            elif lm_def.considers_only_time_correlation:
+                l_class = "Mul_Correlated_1D"
             else:
-                raise NotImplementedError("Likelihood model not implemented yet!")
+                if len(lm_def.correlation_variables) == 2:
+                    l_class = "Mul_SpaceTimeCorrelated_1D"
+                else:
+                    l_class = "Mul_SpaceTimeCorrelated_2D3D"
+
+    # this dict allows to map an assigned string from the if-cases above to a specific
+    # likelihood model defined in this file; the class is not assigned directly to the
+    # variable l_class from the if-clauses above to avoid that l_class can have multiple
+    # different types (which leads to issues during type-checking)
+    class_dict = {
+        "Add_Uncorrelated": AdditiveUncorrelatedModelError,
+        "Add_Correlated_1D": AdditiveCorrelatedModelError1D,
+        "Add_SpaceCorrelated_2D3D": AdditiveSpaceCorrelatedModelError2D3D,
+        "Add_SpaceTimeCorrelated_1D": AdditiveSpaceTimeCorrelatedModelError1D,
+        # "Add_SpaceTimeCorrelated_2D3D": AdditiveSpaceTimeCorrelatedModelError2D3D,
+        "Mul_Uncorrelated": MultiplicativeUncorrelatedModelError,
+        "Mul_Correlated_1D": MultiplicativeCorrelatedModelError1D,
+        "Mul_SpaceCorrelated_2D3D": MultiplicativeSpaceCorrelatedModelError2D3D,
+        # "Mul_SpaceTimeCorrelated_1D": MultiplicativeSpaceTimeCorrelatedModelError1D,
+        # "Mul_SpaceTimeCorrelated_2D3D": MultiplicativeSpaceTimeCorrelatedModelError2D3D,
+    }
 
     # this is where the translation happens
-    likelihood_computer = l_class(
-        like_def.prms_def,
-        like_def.sensors,
-        experiment_names=like_def.experiment_names,
-        problem_experiments=like_def.problem_experiments,
-        additive_measurement_error=like_def.additive_measurement_error,
-        correlation_variables=like_def.correlation_variables,
-        correlation_model=like_def.correlation_model,
-        correlation_dict=like_def.correlation_dict,
-        name=like_def.name,
+    likelihood_computer = class_dict[l_class](
+        lm_def.prms_def,
+        lm_def.sensors,
+        experiment_names=lm_def.experiment_names,
+        problem_experiments=lm_def.problem_experiments,
+        additive_measurement_error=lm_def.additive_measurement_error,
+        correlation_variables=lm_def.correlation_variables,
+        correlation_model=lm_def.correlation_model,
+        correlation_dict=lm_def.correlation_dict,
+        name=lm_def.name,
     )
 
     return likelihood_computer
