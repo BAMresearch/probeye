@@ -3,11 +3,9 @@ from typing import Union, List, Optional
 
 # local imports
 from probeye.definition.sensor import Sensor
-from probeye.definition.parameter import Parameters
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.subroutines import make_list
 from probeye.subroutines import translate_prms_def
-from probeye.subroutines import get_dictionary_depth
 
 
 class GaussianLikelihoodModel:
@@ -23,14 +21,12 @@ class GaussianLikelihoodModel:
         prms_def: Union[str, List[Union[str, dict]], dict],
         sensors: Union[Sensor, List[Sensor]],
         experiment_names: Union[str, List[str], None] = None,
-        problem_experiments: Optional[dict] = None,
         additive_model_error: bool = True,
         multiplicative_model_error: bool = False,
         additive_measurement_error: bool = False,
         correlation_variables: str = "",
         correlation_model: str = "exp",
-        correlation_dict: Optional[dict] = None,
-        name: Optional[str] = None,
+        name: str = "",
     ):
         """
         Parameters
@@ -47,19 +43,7 @@ class GaussianLikelihoodModel:
             model response for all sensors specified in this 'sensors'-argument and the
             corresponding experimental data.
         experiment_names
-            Defines the experiments the likelihood model should refer to. This means
-            that the likelihood model will describe the error of the model response with
-            respect to the specified experiments here. If the value is None, the
-            experiments will be derived automatically by finding all of the problem's
-            experiments that contain all of the sensor's names (meaning the name
-            attribute of the sensor-objects specified in the 'sensors'-argument above)
-            as sensor_values. For more information on this automatic assignment, check
-            out assign_experiments_to_likelihood_models in probeye/definition/
-            inference_problem.py.
-        problem_experiments
-            The experiments defined within the InferenceProblem. This argument is not
-            intended to be given by the user (however she can if she wants to). It is
-            required for internal purposes.
+            The names of the experiments in the scope of the likelihood model.
         additive_model_error
             If True, the model error is assumed to be additive and not multiplicative.
             Note that in this case 'multiplicative_model_error' must be False.
@@ -78,22 +62,6 @@ class GaussianLikelihoodModel:
             considered (which is the case, when correlation_variables is a non-empty
             string). Currently, there is only one option 'exp' which represents an
             exponential model. In the future, more options should be added.
-        correlation_dict
-            Allows to give each correlation variable ('x', 'y', 'z', 't') an alias used
-            in the actual experimental data. This dictionary can either provide a
-            mapping that holds for all experiments, or a mapping that is individual for
-            each experiment. In the first case, you would have something like
-            {'x': 'lateral_position_1', 't': 'T'}. Here, in all experiments the
-            sensor_value with the key 'lateral_ position_1' would be understood as the
-            spatial correlation variable 'x' and the sensor_value with key 'T' would be
-            understood as the time 't'. In the second case, when the mapping is
-            different for each experiment, corr_dict would have the experiment names as
-            keys, and the values would be dictionaries, as explained in the first case.
-            An example would be {'Exp_Jun23': {'x': 'x_23', 't': 't_23'},
-            'Exp_Jun93': {'x': 'x_29', 't': 't_29'}}. If corr_dict is None, it is
-            assumed that the correlation variables have the same names in the sensor_
-            values of the experiments as the default values used here, i.e., 'x', 'y',
-            'z', 't'.
         name
             Unique name of the likelihood model. This name is None, if the user does not
             specify it when adding the likelihood model to the problem. It is then named
@@ -117,9 +85,9 @@ class GaussianLikelihoodModel:
         # correlation-related attributes from the given input
         self.correlation_variables = correlation_variables
         self.correlation_model = correlation_model
-        self.correlation_dict = correlation_dict
 
         # derived correlation variables
+        self.n_correlation_variables = 0
         self.considers_correlation = False
         self.considers_time_correlation = False
         self.considers_space_correlation = False
@@ -129,18 +97,15 @@ class GaussianLikelihoodModel:
         self.considers_time_and_space_correlation = False
         self.process_correlation_definition()
 
-        # add the experiment_names to the log-likelihood model; note that the default
-        # value of experiment_names is not [] due to preventing a mutable default arg
+        # instantiate the experiment's names as a list
         self.experiment_names = []
         if experiment_names is not None:
             self.experiment_names = make_list(experiment_names)
-        self.problem_experiments = problem_experiments
 
-        # since all experiments of a likelihood model must refer to the same forward
-        # model, one can identify this common forward model as the forward model of
-        # the likelihood model; this attribute cannot be specified before all the
-        # experiments of the likelihood model have been added
+        # these attributes are not directly set by the user, but derived and set by the
+        # method InferenceProblem.add_likelihood_model
         self.forward_model = None  # type: Optional[ForwardModelBase]
+        self.problem_experiments = {}  # type: dict
 
     @property
     def n_experiments(self) -> int:
@@ -201,6 +166,9 @@ class GaussianLikelihoodModel:
                 )
         self.experiment_names += experiment_names
 
+        # this sets self.forward_model if not set yet
+        self.determine_forward_model()
+
     def check_experiment_consistency(self):
         """
         Checks if the experiments defined on the likelihood model are consistent with
@@ -240,7 +208,9 @@ class GaussianLikelihoodModel:
         """
         Processes a string like 'xt', 'xy', etc. into the corresponding correlation
         variables and decides if a mere spatial, temporal or spatio-temporal correlation
-        was defined. The results are written to attributes.
+        was defined. The results are written to attributes. This function is intended
+        to be called right after initializing the likelihood model without having added
+        any experiments yet.
 
         Parameters
         ----------
@@ -280,6 +250,7 @@ class GaussianLikelihoodModel:
                     f"The correlation variable '{char}' was mentioned more than once "
                     f"in the correlation definition: '{self.correlation_variables}'."
                 )
+        self.n_correlation_variables = len(self.correlation_variables)
 
         # this is where the actual processing happens
         self.considers_correlation = True if self.correlation_variables else False
@@ -299,40 +270,3 @@ class GaussianLikelihoodModel:
         self.considers_time_and_space_correlation = (
             self.considers_space_and_time_correlation
         )
-
-    def prepare_corr_dict(self):
-        """
-        Ensures that the corr_dict attribute is a depth=2 dictionary where the first
-        keys are the likelihood model's experiment names, and the second set of keys
-        correspond to the correlation variables.
-        """
-        # check the correlation dictionary (corr_dict); note that this dict
-        # can have two different structures, see the explanation in __init__
-        if self.correlation_dict is None:
-            self.correlation_dict = {"x": "x", "y": "y", "z": "z", "t": "t"}
-        depth = get_dictionary_depth(self.correlation_dict)
-        if depth == 2:
-            # in this case, self.corr_dict describes an experiment-wise mapping
-            for exp_name, exp_corr_dict in self.correlation_dict.items():
-                for char in self.correlation_variables:
-                    if char not in exp_corr_dict:
-                        raise KeyError(
-                            f"The specified correlation variable '{char}' is "
-                            f"missing in the give corr_dict for experiment "
-                            f"'{exp_name}'."
-                        )
-        elif depth == 1:
-            # in this case, self.corr_dict describes a global mapping
-            for char in self.correlation_variables:
-                if char not in self.correlation_dict:
-                    raise KeyError(
-                        f"The specified correlation variable '{char}' is "
-                        f"missing in the give corr_dict."
-                    )
-            # translate the global correlation dictionary to the experiment-wise
-            # format, so that in each of the two cases described here, it has
-            # the same format (required for later processing)
-            correlation_dict = {}
-            for exp_name in self.experiment_names:
-                correlation_dict[exp_name] = self.correlation_dict
-            self.correlation_dict = correlation_dict

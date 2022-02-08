@@ -1,3 +1,19 @@
+"""
+Estimation of gravitational constant assuming correlation in time
+----------------------------------------------------------------------------------------
+The experimental setup in this test is a ball that is vertically thrown upwards into the
+air and which eventually falls down again. The trajectory of the ball (here, simply the
+elevation of the ball) is tracked by two optical trackers. The data is generated with a
+model that accounts for the air's friction-induced drag onto the ball (forward_process),
+while the assumed forward model (TrajectoryModel) does not account for the friction. The
+two trackers measure the same thing, i.e., the elevation of the ball, but they record
+their data with different time discretizations. For the signals produced by the trackers
+a correlation of the generated data in time is assumed. There are three parameters of
+the data-generation model: the gravitational constant 'g', an additive model error std.
+deviation 'sigma', and a time-correlation length 'l_corr'. These three parameters are
+inferred using maximum likelihood estimation as well as sampling via emcee and dynesty.
+"""
+
 # standard library imports
 import unittest
 
@@ -26,6 +42,7 @@ class TestProblem(unittest.TestCase):
         run_scipy=True,
         run_emcee=True,
         run_torch=False,
+        run_dynesty=True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -54,11 +71,20 @@ class TestProblem(unittest.TestCase):
         run_torch : bool, optional
             If True, the problem is solved with the pyro/torch_ solver.
             Otherwise, the pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
-        # ==================================================================== #
-        #                          Set numeric values                          #
-        # ==================================================================== #
+        if run_torch:
+            raise RuntimeError(
+                "The pyro-solver is not available for inference problems including "
+                "correlations yet."
+            )
+
+        # ============================================================================ #
+        #                              Set numeric values                              #
+        # ============================================================================ #
 
         # the acceleration due to gravity [m/s^2]
         g_true = 9.81
@@ -74,17 +100,16 @@ class TestProblem(unittest.TestCase):
         low_l_corr = 0.01
         high_l_corr = 1.0
 
-        # the number of generated experiment_names and seed for random numbers
-        n_tests = 50
+        # settings for the data generation
+        plot_data = False
         seed = 1
 
-        # ==================================================================== #
-        #                       Define the Forward Model                       #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
 
         class TrajectoryModel(ForwardModelBase):
             def response(self, inp):
-                # this method *must* be provided by the user
                 t = inp["t"]
                 v0 = inp["v0"]
                 g = inp["g"]
@@ -93,9 +118,9 @@ class TestProblem(unittest.TestCase):
                     response[os.name] = np.maximum((v0 - 0.5 * g * t) * t, 0.0)
                 return response
 
-        # ==================================================================== #
-        #      Define the Inference Problem (Parameters + Forward Model)       #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
 
         # initialize the inference problem with a useful name
         problem = InferenceProblem("Estimate gravitational acceleration")
@@ -131,11 +156,11 @@ class TestProblem(unittest.TestCase):
         trajectory_model = TrajectoryModel(["g"], [isensor1, isensor2], [osensor])
         problem.add_forward_model("TrajectoryModel", trajectory_model)
 
-        # ==================================================================== #
-        #                Add test data to the Inference Problem                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
 
-        def forward_process(t, v0, g=9.81, m=0.145, r=0.036, rho=1.29, cd=0.05):
+        def forward_process(t, v0, g=g_true, m=0.145, r=0.036, rho=1.29, cd=0.05):
             """
             Computes the trajectory of a ball that is thrown straight upwards
             from ground level (zero height), until it falls back on the ground.
@@ -173,7 +198,7 @@ class TestProblem(unittest.TestCase):
             if type(t) in [float, int]:
                 t_vector = np.array([t])
             elif type(t) is list:
-                t_vector = np.array()
+                t_vector = np.array(t)
             else:
                 t_vector = t
 
@@ -209,6 +234,9 @@ class TestProblem(unittest.TestCase):
                 y = y_vector
             return y
 
+        # set the seed for the noise generation
+        np.random.seed(seed)
+
         # test data for first test with two trackers
         v0_test_1 = 20.0
         time_test_1_tracker_1 = np.arange(0, 5, 1.0)
@@ -236,18 +264,30 @@ class TestProblem(unittest.TestCase):
         )
 
         # plot the generated data if requested
-        if plot:
-            plt.scatter(
-                time_test_1_tracker_1, y_test_1_tracker_1, label="Test 1, Tracker 1"
+        if plot_data:
+            plt.plot(
+                time_test_1_tracker_1,
+                y_test_1_tracker_1,
+                label="Test 1, Tracker 1",
+                marker="o",
             )
-            plt.scatter(
-                time_test_1_tracker_2, y_test_1_tracker_2, label="Test 1, Tracker 2"
+            plt.plot(
+                time_test_1_tracker_2,
+                y_test_1_tracker_2,
+                label="Test 1, Tracker 2",
+                marker="o",
             )
-            plt.scatter(
-                time_test_2_tracker_1, y_test_2_tracker_1, label="Test 2, Tracker 1"
+            plt.plot(
+                time_test_2_tracker_1,
+                y_test_2_tracker_1,
+                label="Test 2, Tracker 1",
+                marker="v",
             )
-            plt.scatter(
-                time_test_2_tracker_2, y_test_2_tracker_2, label="Test 2, Tracker 2"
+            plt.plot(
+                time_test_2_tracker_2,
+                y_test_2_tracker_2,
+                label="Test 2, Tracker 2",
+                marker="v",
             )
             plt.xlabel("time $t$ [s]")
             plt.ylabel("elevation $y$ [m]")
@@ -264,6 +304,7 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_1,
                 osensor.name: y_test_1_tracker_1,
             },
+            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
         problem.add_experiment(
             f"Trajectory_1_Tracker_2",
@@ -273,6 +314,7 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_1,
                 osensor.name: y_test_1_tracker_2,
             },
+            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
         problem.add_experiment(
             f"Trajectory_2_Tracker_1",
@@ -282,6 +324,7 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_2,
                 osensor.name: y_test_2_tracker_1,
             },
+            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
         problem.add_experiment(
             f"Trajectory_2_Tracker_2",
@@ -291,50 +334,55 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_2,
                 osensor.name: y_test_2_tracker_2,
             },
+            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the likelihood models to the problem
+        # the two experimental data sets (experiments) 'Trajectory_1_Tracker_1' and
+        # 'Trajectory_1_Tracker_2' refer to the same event or trajectory, hence they are
+        # referred by the same likelihood model
         likelihood_model_1 = GaussianLikelihoodModel(
             prms_def=[
                 {"sigma": "std_model"},
                 "l_corr",
-                {"std_meas": "std_measurement"},
             ],
             sensors=osensor,
             correlation_variables="t",
             correlation_model="exp",
             experiment_names=["Trajectory_1_Tracker_1", "Trajectory_1_Tracker_2"],
-            additive_model_error=False,
-            multiplicative_model_error=True,
-            additive_measurement_error=True,
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
         )
         problem.add_likelihood_model(likelihood_model_1)
+
+        # the two experimental data sets (experiments) 'Trajectory_2_Tracker_1' and
+        # 'Trajectory_2_Tracker_2' refer to the same event or trajectory, hence they are
+        # referred by the same likelihood model
         likelihood_model_2 = GaussianLikelihoodModel(
             prms_def=[
                 {"sigma": "std_model"},
                 "l_corr",
-                {"std_meas": "std_measurement"},
             ],
             sensors=osensor,
             correlation_variables="t",
             correlation_model="exp",
             experiment_names=["Trajectory_2_Tracker_1", "Trajectory_2_Tracker_2"],
-            additive_model_error=False,
-            multiplicative_model_error=True,
-            additive_measurement_error=True,
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
         )
         problem.add_likelihood_model(likelihood_model_2)
 
         # give problem overview
         problem.info()
 
-        # ==================================================================== #
-        #                Solve problem with inference engine(s)                #
-        # ==================================================================== #
+        # ============================================================================ #
+        #                    Solve problem with inference engine(s)                    #
+        # ============================================================================ #
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
@@ -348,6 +396,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

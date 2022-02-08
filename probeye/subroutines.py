@@ -581,7 +581,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "1.1.0",
+    version: str = "2.0.0",
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",
@@ -991,3 +991,41 @@ def extract_true_values(true_values: dict, var_names: List[str]) -> np.ndarray:
             idx = int(var_name[::-1].split("_", 1)[0]) - 1
             true_values_vector.append(float(true_values[var_name_no_index][idx]))
     return np.array(true_values_vector)
+
+
+def translate_simple_correlation(corr_string: str) -> dict:
+    """
+    Translates a string describing a correlation definition with standard correlation
+    variables (x, y, z, t) in a dictionary that can be used for correlation_info.
+
+    Parameters
+    ----------
+    corr_string
+        A string like 'T1:xy'. This string contains 3 elements. 'T1' can be any other
+        string without a colon ':'. Afterwards, there must follow a colon ':'. Then, the
+        last element is a number of non-repeating characters from ('x', 'y', 'z', 't').
+
+    Returns
+    -------
+    corr_dict
+        In the example, 'T1:xy' would be translated to {'T1': {'x': 'x', 'y': 'y'}}.
+        This dictionary can be used for the 'correlation_info' argument when adding new
+        experiments to an InferenceProblem.
+    """
+    if not (":" in corr_string):
+        raise ValueError(f"The given 'corr_string' ('{corr_string}') contains no ':'!")
+    sensors = corr_string.split(":")
+    if len(sensors) > 2:
+        raise ValueError(
+            f"The given 'corr_string' ('{corr_string}') contains more than one ':'!"
+        )
+    corr_dict = {sensors[0]: {}}  # type: dict
+    for character in sensors[1]:
+        if character not in ["x", "y", "z", "t"]:
+            raise ValueError(
+                f"The given 'corr_string' ('{corr_string}') does contain a non-standard"
+                f" variable ('{character}' instead of 'x', 'y', 'z', 't') after the "
+                f"colon ':'!"
+            )
+        corr_dict[sensors[0]][character] = character
+    return corr_dict

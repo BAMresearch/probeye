@@ -1,3 +1,16 @@
+"""
+Bending stiffness of simply supported beam assuming time-space correlation
+----------------------------------------------------------------------------------------
+A bridge (modeled as a simply supported beam) is equipped at two positions with a
+deflection sensor. Both sensors record a time series of deflection while cars with
+different weights and velocities cross the bridge. Correlation is assumed in both space
+and time. The goal of the inference is to estimate the bridge's bending stiffness 'EI'.
+Next to 'EI' there are three other parameters to infer: the additive model error std.
+deviation 'sigma', the temporal correlation length 'l_corr_t' and the spatial corr.
+length l_corr_x. Hence, four parameters in total, all of which are inferred in this
+example using maximum likelihood estimation as well as sampling via emcee and dynesty.
+"""
+
 # standard library
 import unittest
 
@@ -26,7 +39,7 @@ class TestProblem(unittest.TestCase):
         n_walkers: int = 20,
         plot: bool = False,
         show_progress: bool = False,
-        run_scipy: bool = True,
+        run_scipy: bool = False,
         run_emcee: bool = False,
         run_torch: bool = False,
         run_dynesty: bool = False,
@@ -58,28 +71,50 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         if run_torch:
             raise RuntimeError(
-                "The pyro-solver is not available yet for forward models including "
-                "correlations."
+                "The pyro-solver is not available for inference problems including "
+                "correlations yet."
             )
 
         # ============================================================================ #
         #                              Set numeric values                              #
         # ============================================================================ #
 
+        # definition of the experiments (a car driving over the bridge)
+        experiments_def = {
+            "Experiment_1": {
+                "car_mass_kg": 3000.0,
+                "car_speed_m/s": 2.5,
+                "dt_sensors_sec": 0.4,
+                "plot_color": "black",
+            },
+            "Experiment_2": {
+                "car_mass_kg": 5000.0,
+                "car_speed_m/s": 10,
+                "dt_sensors_sec": 0.5,
+                "plot_color": "red",
+            },
+            "Experiment_3": {
+                "car_mass_kg": 10000.0,
+                "car_speed_m/s": 5.0,
+                "dt_sensors_sec": 0.6,
+                "plot_color": "blue",
+            },
+        }
+
         # length of the beam and weights of the cars
         L = 100.0  # [m]
         g = 9.81  # [m/s**2]
-        F1 = 3000.0 * g  # [N]
-        F2 = 5000.0 * g  # [N]
-        F3 = 12000.0 * g  # [N]
 
-        # positions of the two sensors
-        x_sensor_1 = 15.0  # [m]
-        x_sensor_2 = 85.0  # [m]
+        # positions of the sensors
+        x_sensor_1 = 30.0  # [m]
+        x_sensor_2 = 35.0  # [m]
 
         # 'true' value of EI, and its normal prior parameters
         EI_true = 2.1e11 * 0.25  # [Nm^2]
@@ -102,6 +137,7 @@ class TestProblem(unittest.TestCase):
         high_l_corr_t = 5.0  # [s]
 
         # settings for the data generation
+        plot_data = False
         seed = 1
 
         # ============================================================================ #
@@ -110,7 +146,8 @@ class TestProblem(unittest.TestCase):
 
         class BeamModel(ForwardModelBase):
             @staticmethod
-            def beam_deflect(x_sensor, x_load, L, F, EI):
+            def beam_deflect(x_sensor, x_load, L_in, F_in, EI_in):
+                """Convenience method used by self.response during a for-loop."""
                 y = np.zeros(len_or_one(x_load))
                 for i, x_load_i in enumerate(x_load):
                     if x_sensor <= x_load_i:
@@ -118,20 +155,26 @@ class TestProblem(unittest.TestCase):
                         x = x_sensor
                     else:
                         b = x_load_i
-                        x = L - x_sensor
-                    y[i] = -(F * b * x) / (6 * L * EI) * (L ** 2 - b ** 2 - x ** 2)
+                        x = L_in - x_sensor
+                    y[i] = (
+                        -(F_in * b * x)
+                        / (6 * L * EI_in)
+                        * (L_in ** 2 - b ** 2 - x ** 2)
+                    )
                 return y
 
             def response(self, inp: dict) -> dict:
-                v = inp["v"]
-                t = inp["t"]
-                L = inp["L"]
-                F = inp["F"]
-                EI = inp["EI"]
+                v_in = inp["v"]
+                t_in = inp["t"]
+                L_in = inp["L"]
+                F_in = inp["F"]
+                EI_in = inp["EI"]
                 response = {}
-                x_load = v * t
+                x_load = v_in * t_in
                 for os in self.output_sensors:
-                    response[os.name] = self.beam_deflect(os.x, x_load, L, F, EI)
+                    response[os.name] = self.beam_deflect(
+                        os.x, x_load, L_in, F_in, EI_in
+                    )
                 return response
 
         # ============================================================================ #
@@ -149,7 +192,9 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Simply supported beam with time-space correlation")
+        problem = InferenceProblem(
+            "Simply supported beam with time-space correlation", log_level="DEBUG"
+        )
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -172,14 +217,14 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "l_corr_x",
             "likelihood",
-            tex=r"$l_\mathrm{corr, x}$",
+            tex=r"$l_\mathrm{corr,x}$",
             info="Spatial correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr_x, "high": high_l_corr_x}),
         )
         problem.add_parameter(
             "l_corr_t",
             "likelihood",
-            tex=r"$l_\mathrm{corr, t}$",
+            tex=r"$l_\mathrm{corr,t}$",
             info="Temporal correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr_t, "high": high_l_corr_t}),
         )
@@ -202,16 +247,16 @@ class TestProblem(unittest.TestCase):
         # for reproducible results
         np.random.seed(seed)
 
-        # additional data on the three experiments
-        n_vector = [50, 50, 50]
-        v_vector = [2.5, 10.0, 5.0]  # [m/s]
-        F_vector = [F1, F2, F3]
-        c_vector = ["black", "red", "blue"]
+        # add an experiment to the problem for for each item in experiments_def
+        for exp_name, exp_dict in experiments_def.items():
+            dt = exp_dict["dt_sensors_sec"]
+            v = exp_dict["car_speed_m/s"]
+            F = exp_dict["car_mass_kg"] * g   # type: ignore
+            c = exp_dict["plot_color"]
 
-        for j, (n, v, F, c) in enumerate(zip(n_vector, v_vector, F_vector, c_vector)):
-
-            # compute the 'true' deflections which will serve as mean values
-            t = np.linspace(0, L / v, n)
+            # compute the 'true' deflections for each sensor which will serve as mean
+            # values; note that the values are concatenated to a long vector
+            t = np.arange(0, L / v, dt)  # type: ignore
             inp_1 = {"v": v, "t": t, "L": L, "F": F, "EI": EI_true}
             mean_dict = beam_model.response(inp_1)
             mean = np.append(mean_dict[osensor_1.name], mean_dict[osensor_2.name])
@@ -220,9 +265,8 @@ class TestProblem(unittest.TestCase):
             cov_compiler = MeasurementSpaceTimePoints()
             cov_compiler.add_measurement_space_points(
                 coord_mx=[osensor_1.x, osensor_2.x],
-                group="space",
-                sensor_name=osensor_1.name,
                 standard_deviation=sigma,
+                group="space",
             )
             cov_compiler.add_measurement_time_points(coord_vec=t, group="time")
             cov_compiler.add_measurement_space_within_group_correlation(
@@ -235,31 +279,42 @@ class TestProblem(unittest.TestCase):
 
             # generate the experimental data and add it to the problem
             y_test = np.random.multivariate_normal(mean=mean, cov=cov)
+            n = len(t)
+            y1 = y_test[:n]
+            y2 = y_test[n : 2 * n]
+
+            # finally, add the experiment to the problem
             problem.add_experiment(
-                f"Test_{j + 1}",
+                exp_name,
                 fwd_model_name="BeamModel",
                 sensor_values={
                     isensor_1.name: v,
                     isensor_2.name: t,
                     isensor_3.name: F,
-                    osensor_1.name: y_test[:n],
-                    osensor_2.name: y_test[n:],
+                    osensor_1.name: y1,
+                    osensor_2.name: y2,
+                    "x1": float(osensor_1.x),  # type: ignore
+                    "x2": float(osensor_2.x),  # type: ignore
+                },
+                correlation_info={
+                    osensor_1.name: {"x": "x1", "t": "t"},
+                    osensor_2.name: {"x": "x2", "t": "t"},
                 },
             )
 
             # plot the data if requested
-            if plot:
+            if plot_data:
 
                 # first sensor
-                plt.plot(t, mean[:n], "--", label=f"y1 (mean, test {j + 1})", color=c)
-                plt.plot(t, y_test[:n], "-o", label=f"y1 (sampled, test {j + 1})", c=c)
+                plt.plot(t, mean[:n], "--", label=f"y1 (mean, {exp_name})", color=c)
+                plt.plot(t, y_test[:n], "-o", label=f"y1 (sampled, {exp_name})", c=c)
 
                 # second sensor
-                plt.plot(t, mean[n:], "-.", label=f"y2 (mean, test {j + 1})", color=c)
-                plt.plot(t, y_test[n:], "-x", label=f"y2 (sampled, test {j + 1})", c=c)
+                plt.plot(t, mean[n:], "-.", label=f"y2 (mean, {exp_name})", color=c)
+                plt.plot(t, y_test[n:], "-x", label=f"y2 (sampled, {exp_name})", c=c)
 
         # finish and show the plot
-        if plot:
+        if plot_data:
             plt.xlabel("t [s]")
             plt.ylabel("deflection [m]")
             plt.legend(fontsize=8)
@@ -270,22 +325,25 @@ class TestProblem(unittest.TestCase):
         #                              Add noise model(s)                              #
         # ============================================================================ #
 
-        # add the log-likelihood model to the problem
-        loglike = GaussianLikelihoodModel(
-            [
-                {"sigma": "std_model"},
-                {"l_corr_x": "l_corr_space"},
-                {"l_corr_t": "l_corr_time"},
-            ],
-            [osensor_1, osensor_2],
-            additive_model_error=True,
-            multiplicative_model_error=False,
-            additive_measurement_error=False,
-            experiment_names=["Test_1"],  # , "Test_2", "Test_3"],
-            correlation_variables="xt",
-            correlation_model="exp",
-        )
-        problem.add_likelihood_model(loglike)
+        # since the different experiments are independent of each other they are put in
+        # individual likelihood models (the problem's likelihood models are independent
+        # of each other)
+        for exp_name in problem.experiments.keys():
+            loglike = GaussianLikelihoodModel(
+                [
+                    {"sigma": "std_model"},
+                    {"l_corr_x": "l_corr_space"},
+                    {"l_corr_t": "l_corr_time"},
+                ],
+                [osensor_1, osensor_2],
+                additive_model_error=True,
+                multiplicative_model_error=False,
+                additive_measurement_error=False,
+                experiment_names=exp_name,
+                correlation_variables="xt",
+                correlation_model="exp",
+            )
+            problem.add_likelihood_model(loglike)
 
         # give problem overview
         problem.info()
@@ -308,7 +366,7 @@ class TestProblem(unittest.TestCase):
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
             n_walkers=n_walkers,
-            plot=False,
+            plot=plot,
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,

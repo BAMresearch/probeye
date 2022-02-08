@@ -1,15 +1,15 @@
 """
-Linear regression example with spatial correlation model
+Linear regression example with 1D spatial correlation model
 ----------------------------------------------------------------------------------------
 The n data points (y1, y2, ..., yn) generated for this example are sampled from an
 n-variate normal distribution with mean values given by yi = a * xi + b with a, b being
 the model parameters and x1, x2, ..., xi, ..., xn being predefined spatial x-coordinates
 ranging from 0 to 1. The data points (y1, y2, ..., yn) are not independent but
-correlated. The corresponding covariance matrix is defined based on an exponential
-correlation function parameterized by the const standard deviation sigma of the
+correlated in x. The corresponding covariance matrix is defined based on an exponential
+correlation function parameterized by the constant standard deviation sigma of the
 n-variate normal distribution and a correlation length l_corr. Hence, the full model has
 four parameters a, b, sigma, l_corr, all of which are inferred in this example using
-emcee-sampling.
+maximum likelihood estimation as well as sampling via emcee and dynesty.
 """
 
 # standard library
@@ -18,6 +18,8 @@ import unittest
 # third party imports
 import numpy as np
 import matplotlib.pyplot as plt
+from tripy.utils import correlation_function
+from tripy.utils import correlation_matrix
 
 # local imports (problem definition)
 from probeye.definition.inference_problem import InferenceProblem
@@ -27,13 +29,10 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
-from probeye.inference.scipy_.correlation_models import (
-    SpatiotemporalExponentialCorrelationModel,
-)
 
 
 class TestProblem(unittest.TestCase):
-    def test_spatial_correlation(
+    def test_spatial_correlation_1D(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -43,9 +42,11 @@ class TestProblem(unittest.TestCase):
         run_scipy: bool = True,
         run_emcee: bool = True,
         run_torch: bool = False,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
+
         Parameters
         ----------
         n_steps
@@ -70,12 +71,15 @@ class TestProblem(unittest.TestCase):
         run_torch
             If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
             pyro/torch_ solver will not be used.
+        run_dynesty
+            If True, the problem is solved with the dynesty solver. Otherwise, the
+            dynesty solver will not be used.
         """
 
         if run_torch:
             raise RuntimeError(
-                "The pyro-solver is not available yet for forward models including "
-                "correlations."
+                "The pyro-solver is not available for inference problems including "
+                "correlations yet."
             )
 
         # ============================================================================ #
@@ -103,8 +107,9 @@ class TestProblem(unittest.TestCase):
         high_l_corr = 0.2
 
         # settings for the data generation
-        n_experiments = 8
-        n_points = 50
+        plot_data = False
+        n_experiments = 3
+        n_points = 25
         seed = 1
 
         # ============================================================================ #
@@ -115,29 +120,20 @@ class TestProblem(unittest.TestCase):
             def response(self, inp: dict) -> dict:
                 a = inp["a"]
                 b = inp["b"]
+                x = inp["x"]
                 response = {}
                 for os in self.output_sensors:
-                    response[os.name] = a * os.x.flatten() + b
+                    response[os.name] = a * x + b
                 return response
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inference problem with a useful name; note that the name will
-        # only be stored as an attribute of the InferenceProblem and is not important
-        # for the problem itself; can be useful when dealing with multiple problems
+        # initialize the inference problem with a useful name
         problem = InferenceProblem("Linear regression with normal additive error")
 
-        # add all parameters to the problem; the first argument states the parameter's
-        # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
-        # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'likelihood' for parameters of the likelihood
-        # model); the 'info'-argument is a short description string used for logging,
-        # and the tex-argument gives a tex-string of the parameter used for plotting;
-        # finally, the prior-argument specifies the parameter's prior; note that this
-        # definition of a prior will result in the initialization of constant parameters
-        # of type 'prior' in the background
+        # add all parameters to the problem
         problem.add_parameter(
             "a",
             "model",
@@ -166,24 +162,11 @@ class TestProblem(unittest.TestCase):
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
         )
-        problem.add_parameter("std_meas", "likelihood", const=0.1)
 
-        # add the forward model to the problem; note that the first positional argument
-        # [{'a': 'm'}, 'b'] passed to LinearModel defines the forward model's parameters
-        # by name via a list with elements structured like {<global parameter name>:
-        # <local parameter name>}; a global name is a name introduced by problem.
-        # add_parameter, while a local name is a name used in the response-method of the
-        # forward model class (see the class LinearModel above); note that the use of
-        # the local parameter name 'm' for the global parameter 'a' is added here only
-        # to highlight the possibility of this feature; it is not necessary at all here;
-        # whenever forward model's parameter has a similar local and global name (which
-        # should be the case most of the times), one doesn't have to use the verbose
-        # notation  {<global parameter name>: <local parameter name>} but can instead
-        # just write the parameter's (global=local) name, like it is done with the
-        # forward model's parameter 'b' below
-        x_test = np.linspace(0.0, 1.0, n_points)
-        osensor = Sensor("y", x=x_test, z=x_test)
-        linear_model = LinearModel(["a", "b"], [], [osensor])
+        # add the forward model to the problem
+        isensor = Sensor("x")
+        osensor = Sensor("y")
+        linear_model = LinearModel(["a", "b"], isensor, osensor)
         problem.add_forward_model("LinearModel", linear_model)
 
         # ============================================================================ #
@@ -194,15 +177,13 @@ class TestProblem(unittest.TestCase):
         # 'true' values will be the mean values for sampling from a multivariate normal
         # distribution that accounts for the intended correlation
         np.random.seed(seed)
-        y_true = linear_model({"a": a_true, "b": b_true})[osensor.name]
+        x_test = np.linspace(0.0, 1.0, n_points)
+        y_true = linear_model({"a": a_true, "b": b_true, "x": x_test})[osensor.name]
 
-        # create the covariance matrix (this is just for the test data generation)
-        x_position_array = np.tile(
-            osensor.x.reshape((n_points, -1)), n_points  # type: ignore
-        )
-        position_arrays = {"x": x_position_array}
-        correlation_model = SpatiotemporalExponentialCorrelationModel(position_arrays)
-        cov = correlation_model({"std": sigma, "l_corr": l_corr})
+        # assemble the spatial covariance matrix
+        x_test_as_column_matrix = x_test.reshape((n_points, -1))
+        f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
+        cov = sigma ** 2 * correlation_matrix(x_test_as_column_matrix, f_corr)
 
         # now generate the noisy test data including correlations; we assume here that
         # there are n_experiments test series
@@ -212,43 +193,44 @@ class TestProblem(unittest.TestCase):
             problem.add_experiment(
                 exp_name,
                 fwd_model_name="LinearModel",
-                sensor_values={osensor.name: y_test},
+                sensor_values={isensor.name: x_test, osensor.name: y_test},
+                correlation_info=f"{osensor.name}:{isensor.name}",
             )
-            if plot:
+            if plot_data:
                 plt.scatter(
                     x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
                 )
         # finish the plot
-        if plot:
+        if plot_data:
             plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
             plt.xlabel("x")
             plt.ylabel(osensor.name)
             plt.legend()
             plt.tight_layout()
-            plt.draw()  # plt.draw() does not stop execution
+            plt.show()
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
+        # since the different experiments are independent of each other they are put in
+        # individual likelihood models (the problem's likelihood models are independent
+        # of each other)
         for i in range(n_experiments):
-            exp_name = f"Test_{i}"
-            # add the likelihood model to the problem
             likelihood_model = GaussianLikelihoodModel(
-                prms_def=[
-                    {"sigma": "std_model"},
-                    "l_corr",
-                    {"std_meas": "std_measurement"},
-                ],
+                prms_def=[{"sigma": "std_model"}, "l_corr"],
                 sensors=osensor,
-                correlation_variables="xz",
+                correlation_variables="x",
                 correlation_model="exp",
-                experiment_names=exp_name,
+                experiment_names=f"Test_{i}",
                 additive_model_error=True,
                 multiplicative_model_error=False,
-                additive_measurement_error=True,
+                additive_measurement_error=False,
             )
             problem.add_likelihood_model(likelihood_model)
+
+        # give problem overview
+        problem.info()
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
@@ -268,6 +250,7 @@ class TestProblem(unittest.TestCase):
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_torch=run_torch,
+            run_dynesty=run_dynesty,
         )
 
 

@@ -1,9 +1,9 @@
 # probeye changelog
 
-## 1.1.0 (2021-Dec-XX)
+## 2.0.0 (2022-Feb-XX)
 ### Changed
 - revised the entire noise model framework to account for correlation setups
-- the noise model is now relabeled as likelihood model since the term 'noise model' resulted in some confusion
+- the 'noise_model' is now generally relabeled as 'likelihood_model' since the term 'noise_model' resulted in some confusion
 - when correlation effects are modeled, the log-likelihood function is now much more efficiently evaluated using the tripy package developed by Ioannis Koune (TNO)
 
 ## 1.0.17 (2022-Jan-19)

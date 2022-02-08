@@ -21,13 +21,12 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         self,
         prms_def: Union[str, List[Union[str, dict]], dict],
         sensors: Union["Sensor", List["Sensor"]],
-        experiment_names: Union[str, List[str], None] = None,
-        problem_experiments: Optional[dict] = None,
-        additive_measurement_error: bool = False,
-        correlation_variables: str = "",
-        correlation_model: str = "exp",
-        correlation_dict: Optional[dict] = None,
-        name: Optional[str] = None,
+        experiment_names: Union[str, List[str]],
+        problem_experiments: dict,
+        additive_measurement_error: bool,
+        correlation_variables: str,
+        correlation_model: str,
+        name: str,
     ):
         """
         For a detailed explanation of the input arguments check out the docstring given
@@ -44,7 +43,6 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
             additive_measurement_error=additive_measurement_error,
             correlation_variables=correlation_variables,
             correlation_model=correlation_model,
-            correlation_dict=correlation_dict,
             name=name,
         )
 
@@ -77,10 +75,11 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
             exp_dict = self.problem_experiments[exp_name]  # type: ignore
             ym_dict = model_response_dict[exp_name]
             ye_dict = exp_dict["sensor_values"]
-            residuals_dict = {
-                name: th.cat((residuals_dict[name], ym_dict[name] - ye_dict[name]))
-                for name in self.sensor_names
-            }
+            for sensor_name in self.sensor_names:
+                residuals_vector = ym_dict[sensor_name] - ye_dict[sensor_name]
+                residuals_dict[sensor_name] = th.cat(
+                    (residuals_dict[sensor_name], residuals_vector)
+                )
         return residuals_dict
 
     def residuals_vector(self, model_response_dict: dict) -> th.Tensor:
@@ -163,7 +162,6 @@ def translate_likelihood_model(
         additive_measurement_error=like_def.additive_measurement_error,
         correlation_variables=like_def.correlation_variables,
         correlation_model=like_def.correlation_model,
-        correlation_dict=like_def.correlation_dict,
         name=like_def.name,
     )
 

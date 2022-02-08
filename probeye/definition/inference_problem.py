@@ -18,6 +18,7 @@ from probeye.subroutines import make_list, len_or_one
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import add_index_to_tex_prm_name
+from probeye.subroutines import translate_simple_correlation
 
 
 class InferenceProblem:
@@ -614,7 +615,13 @@ class InferenceProblem:
     #                   Experiments related methods                   #
     # =============================================================== #
 
-    def add_experiment(self, exp_name: str, sensor_values: dict, fwd_model_name: str):
+    def add_experiment(
+        self,
+        exp_name: str,
+        sensor_values: dict,
+        fwd_model_name: str,
+        correlation_info: Union[str, dict, None] = None,
+    ):
         """
         Adds a single experiment to the inference problem. An experiment is simply a
         collection of measured data which was produced by one event. The measured data
@@ -634,6 +641,20 @@ class InferenceProblem:
             values are the measured values.
         fwd_model_name
             Name of the forward model this experiment refers to.
+        correlation_info
+            If no correlation should be considered between the data of the experiment,
+            this argument must be None. However, if there is correlated data this
+            argument must be a dictionary where the keys are sensor names of the
+            experiment and the value are dictionaries. These dictionaries have as keys
+            strings that describe correlation variables and as values again sensor names
+            of the experiment. To given an example: {"y1": {"x": "x1", "t": "t"},
+            "y2": {"x": "x2", "t": "t"}}. Here, y1, x1, y2, x2, and t must appear as
+            sensor names in the experiment, and it means that y1 and y2 are correlated
+            in x and t where the corresponding x data of y1/y2 is x1/x2 and the
+            corresponding t data of y1/y2 is simply t (no alias). In simple cases with
+            only one correlation variable that has a standard name, for example
+            {"y1": {"x": "x"}}, a string can be given. In the example given before, this
+            string would be "y1:x".
         """
 
         # log at beginning so that errors can be associated
@@ -674,6 +695,7 @@ class InferenceProblem:
                 f"The forward model '{fwd_model_name}' does not exist! You need to "
                 f"define it before adding experiments that refer to it."
             )
+        fwd_model = self._forward_models[fwd_model_name]
 
         # check that the stated forward model is consistent with the experiment; to be
         # consistent, the experiment must provide data to all input sensors of the
@@ -681,7 +703,7 @@ class InferenceProblem:
         # output sensor (otherwise the forward model's response could not be compared
         # with the experimental data)
         experiment_sensors = [*sensor_values.keys()]
-        input_sensors = self._forward_models[fwd_model_name].input_sensors
+        input_sensors = fwd_model.input_sensors
         for input_sensor in input_sensors:
             if input_sensor.name not in experiment_sensors:
                 raise RuntimeError(
@@ -689,7 +711,7 @@ class InferenceProblem:
                     f"'{input_sensor.name}' is not provided by the given "
                     f"experiment '{exp_name}'!"
                 )
-        output_sensors = self._forward_models[fwd_model_name].output_sensors
+        output_sensors = fwd_model.output_sensors
         for output_sensor in output_sensors:
             if output_sensor.name not in experiment_sensors:
                 raise RuntimeError(
@@ -698,13 +720,35 @@ class InferenceProblem:
                     f"experiment '{exp_name}'!"
                 )
 
-        # check that vector-valued sensor_values are given as numpy-arrays; if not
-        # (e.g. if lists or tuples are given) change them to numpy-ndarrays
+        # check that the sensor values are given in the right format; only floats, ints,
+        # np.ndarray, lists and tuples are allowed; lists and tuples will be converted
+        # to 1D np.ndarrays; multidimensional np.ndarrays will lead to a value error
         sensor_values_numpy = cp.deepcopy(sensor_values)
         for sensor_name, values in sensor_values.items():
-            if hasattr(values, "__len__"):  # true for list, tuple and np.ndarray
-                if not isinstance(values, np.ndarray):  # true for tuple and list
-                    sensor_values_numpy[sensor_name] = np.array(values)
+            if isinstance(values, (list, tuple)):
+                sensor_values_numpy[sensor_name] = np.atleast_1d(np.array(values))
+            elif isinstance(values, np.ndarray):
+                if values.ndim > 1:
+                    raise ValueError(
+                        f"The sensor values of an experiment must be given as 1D "
+                        f"arrays. However, the sensor_values of '{sensor_name}' in "
+                        f"experiment '{exp_name}' are given as an {values.ndim}D array."
+                    )
+                if values.size == 1:
+                    raise ValueError(
+                        f"Encountered a np.ndarray with only one element in "
+                        f"experiment '{exp_name}', sensor '{sensor_name}'. "
+                        f"Please use floats or integers to provide scalar data."
+                    )
+                sensor_values_numpy[sensor_name] = values
+            elif isinstance(values, (float, int)):
+                sensor_values_numpy[sensor_name] = values
+            else:
+                raise ValueError(
+                    f"Encountered invalid type '{type(values)}' in the sensor values "
+                    f"of sensor '{sensor_name}' in experiment '{exp_name}'.\n Sensor"
+                    f"data must be given as int, float, np.ndarray, list or tuple."
+                )
 
         # throw warning when the experiment name was defined before
         if exp_name in self._experiments.keys():
@@ -714,10 +758,49 @@ class InferenceProblem:
                 f"this was intended."
             )
 
+        # check the given correlation information
+        if correlation_info is not None:
+            # for simple cases the correlation_info can be given as a string
+            if isinstance(correlation_info, str):
+                correlation_info = translate_simple_correlation(correlation_info)
+            for key_sensor, corr_dict in correlation_info.items():
+                # the keys of correlation_info must be sensor names of the experiment
+                if key_sensor not in sensor_values:
+                    raise RuntimeError(
+                        f"The key '{key_sensor}' in the argument correlation_info does"
+                        f" not appear in the given sensor_values!"
+                    )
+                # they keys of correlation_info must be names of output sensors of the
+                # experiment's forward model
+                if key_sensor not in fwd_model.output_sensor_names:
+                    raise RuntimeError(
+                        f"The correlation_info of experiment '{exp_name}' states the "
+                        f"sensor '{key_sensor}' as a key without this sensor\nbeing "
+                        f"the name of an output sensor of forward model "
+                        f"'{fwd_model_name}' (this is the forward model this "
+                        f"experiment refers to)."
+                    )
+                # the values must be dicts again
+                if not isinstance(corr_dict, dict):
+                    raise TypeError(
+                        f"Found invalid format of the 'correlation_info' argument in "
+                        f"experiment '{exp_name}'!\nThe required format is a 2-level "
+                        f"dictionary. However, the value of key '{key_sensor}' is not "
+                        f"a dictionary but a '{type(corr_dict)}'."
+                    )
+                # also the last-level values must be sensor names of the experiment
+                for val_sensor in corr_dict.values():
+                    if val_sensor not in sensor_values:
+                        raise RuntimeError(
+                            f"The value '{val_sensor}' in the argument correlation_info"
+                            f" does not appear in the given sensor_values!"
+                        )
+
         # add the experiment to the central dictionary
         self._experiments[exp_name] = {
             "sensor_values": sensor_values_numpy,
             "forward_model": fwd_model_name,
+            "correlation_info": correlation_info,
         }
 
     def get_experiment_names(
@@ -905,7 +988,7 @@ class InferenceProblem:
         likelihood_model.problem_experiments = self._experiments
 
         # check/assign the likelihood model's experiments
-        if likelihood_model.experiment_names:
+        if len(likelihood_model.experiment_names) > 0:
             # in this case, the user has manually specified the experiments (by name)
             # she wants to assign to the likelihood model; what follows is a simple
             # check to see whether the user-stated names are included in the problem's
@@ -937,8 +1020,7 @@ class InferenceProblem:
             for exp_name in added_experiment_names:
                 logger.debug(f"{likelihood_model.name} <--- {exp_name}")
 
-        # these calls define some attributes of the likelihood model
-        likelihood_model.prepare_corr_dict()
+        # set the likelihood's forward model
         likelihood_model.determine_forward_model()
 
         # finally, add the likelihood_model to the internal dict
