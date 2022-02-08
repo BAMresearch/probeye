@@ -251,7 +251,7 @@ class TestProblem(unittest.TestCase):
         for exp_name, exp_dict in experiments_def.items():
             dt = exp_dict["dt_sensors_sec"]
             v = exp_dict["car_speed_m/s"]
-            F = exp_dict["car_mass_kg"] * g   # type: ignore
+            F = exp_dict["car_mass_kg"] * g  # type: ignore
             c = exp_dict["plot_color"]
 
             # compute the 'true' deflections for each sensor which will serve as mean
