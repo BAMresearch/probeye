@@ -304,7 +304,6 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_1,
                 osensor.name: y_test_1_tracker_1,
             },
-            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
         problem.add_experiment(
             f"Trajectory_1_Tracker_2",
@@ -314,7 +313,6 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_1,
                 osensor.name: y_test_1_tracker_2,
             },
-            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
         problem.add_experiment(
             f"Trajectory_2_Tracker_1",
@@ -324,7 +322,6 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_2,
                 osensor.name: y_test_2_tracker_1,
             },
-            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
         problem.add_experiment(
             f"Trajectory_2_Tracker_2",
@@ -334,7 +331,6 @@ class TestProblem(unittest.TestCase):
                 isensor2.name: v0_test_2,
                 osensor.name: y_test_2_tracker_2,
             },
-            correlation_info=f"{osensor.name}:{isensor1.name}",
         )
 
         # ============================================================================ #

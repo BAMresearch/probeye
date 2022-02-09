@@ -242,7 +242,6 @@ class TestProblem(unittest.TestCase):
                     isensor_2.name: y_test,
                     osensor.name: z_test,
                 },
-                correlation_info=f"{osensor.name}:{isensor_1.name}{isensor_2.name}",
             )
             if plot_data:
                 z_plot = z_test.reshape((n_points, -1))

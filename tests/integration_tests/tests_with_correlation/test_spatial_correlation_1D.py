@@ -194,7 +194,6 @@ class TestProblem(unittest.TestCase):
                 exp_name,
                 fwd_model_name="LinearModel",
                 sensor_values={isensor.name: x_test, osensor.name: y_test},
-                correlation_info=f"{osensor.name}:{isensor.name}",
             )
             if plot_data:
                 plt.scatter(

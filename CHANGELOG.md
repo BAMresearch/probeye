@@ -1,6 +1,6 @@
 # probeye changelog
 
-## 2.0.0 (2022-Feb-XX)
+## 2.0.0 (2022-Feb-09)
 ### Changed
 - revised the entire noise model framework to account for correlation setups
 - the 'noise_model' is now generally relabeled as 'likelihood_model' since the term 'noise_model' resulted in some confusion

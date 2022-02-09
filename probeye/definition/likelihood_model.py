@@ -1,6 +1,9 @@
 # standard library
 from typing import Union, List, Optional
 
+# third party imports
+from loguru import logger
+
 # local imports
 from probeye.definition.sensor import Sensor
 from probeye.definition.forward_model import ForwardModelBase
@@ -164,10 +167,32 @@ class GaussianLikelihoodModel:
                     f"The experiment '{exp_name}' has already been added to this "
                     f"likelihood model. Something might be wrong here."
                 )
-        self.experiment_names += experiment_names
 
-        # this sets self.forward_model if not set yet
-        self.determine_forward_model()
+        # the following code block is intended for automatically deriving the
+        # experiment's correlation_info if it is not given by the user; note that this
+        # option to not specify the correlation_info is intended for cases where the
+        # correlation variables have no alias (for example if the correlation variable
+        # 'x' is also called 'x' in the experiment's sensor_values)
+        if self.considers_correlation:
+            for exp_name in experiment_names:
+                if self.problem_experiments[exp_name]["correlation_info"] is None:
+                    assumed_correlation_info = {}  # type: dict
+                    for sensor_name in self.sensor_names:
+                        assumed_correlation_info[sensor_name] = {
+                            cv: cv for cv in self.correlation_variables
+                        }
+                        logger.debug(
+                            f"No 'correlation_info' given for experiment '{exp_name}'."
+                        )
+                        logger.debug(
+                            f"Assuming correlation_info = {assumed_correlation_info}"
+                        )
+                        self.problem_experiments[exp_name][
+                            "correlation_info"
+                        ] = assumed_correlation_info
+
+        # finally, add the names to the internal list
+        self.experiment_names += experiment_names
 
     def check_experiment_consistency(self):
         """

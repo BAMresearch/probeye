@@ -1,4 +1,5 @@
 # standard library
+import copy
 from typing import Union, List, Optional, Callable
 import copy as cp
 
@@ -990,16 +991,14 @@ class InferenceProblem:
         # check/assign the likelihood model's experiments
         if len(likelihood_model.experiment_names) > 0:
             # in this case, the user has manually specified the experiments (by name)
-            # she wants to assign to the likelihood model; what follows is a simple
-            # check to see whether the user-stated names are included in the problem's
-            # experiments or not
-            for exp_name in likelihood_model.experiment_names:
-                if exp_name not in self._experiments:
-                    raise RuntimeError(
-                        f"The likelihood model '{name}' was explicitly assigned "
-                        f"experiment '{exp_name}', which however has not been added to "
-                        f"the problem yet."
-                    )
+            # she wants to assign to the likelihood model; these experiments will now
+            # be properly added by the intended method; note that this is not possible
+            # to do in the __init__ of GaussianLikelihoodModel because at that time
+            # the attribute self.problem_experiments is not set yet
+            experiment_names_user = copy.copy(likelihood_model.experiment_names)
+            likelihood_model.experiment_names = []
+            likelihood_model.add_experiments(experiment_names_user)
+
         else:
             # in this case, the likelihood model will be assigned its experiments
             # automatically; this assignment works via the likelihood model's sensors;
