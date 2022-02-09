@@ -2,13 +2,14 @@
 import unittest
 
 # third party imports
+import torch as th
 import numpy as np
 
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.likelihood_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.torch_.solver import PyroSolver
 
 
@@ -39,7 +40,7 @@ class TestProblem(unittest.TestCase):
             "loc_m", "prior", prior=("uniform", {"low": "m", "high": 3.0})
         )
 
-        # add forward model and noise model
+        # add forward model
         isensor, osensor = Sensor("x"), Sensor("y")
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
@@ -55,9 +56,9 @@ class TestProblem(unittest.TestCase):
             sensor_values={isensor.name: x_test, osensor.name: y_test},
         )
 
-        # add likelihood model
+        # add the likelihood model
         problem.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
         )
 
         # the pre-check in PyroSolver should now detect the circular dependency
@@ -90,7 +91,7 @@ class TestProblem(unittest.TestCase):
             "loc_m", "prior", prior=("uniform", {"low": 1.0, "high": 3.0})
         )
 
-        # add forward model and noise model
+        # add forward model
         isensor, osensor = Sensor("x"), Sensor("y")
         linear_model = LinearModel(["m", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
@@ -106,9 +107,9 @@ class TestProblem(unittest.TestCase):
             sensor_values={isensor.name: x_test, osensor.name: y_test},
         )
 
-        # add likelihood model
+        # add the likelihood model
         problem.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
         )
 
         # here it is finally checked, that the rearrangement works
@@ -143,7 +144,7 @@ class TestProblem(unittest.TestCase):
                 a2 = inp["a2"]
                 return {"y": a0 + a1 * x + a2 * x ** 2}
 
-        # add forward and noise model
+        # add forward model
         fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
         p.add_forward_model("FwdModel", fwd_model)
 
@@ -158,9 +159,11 @@ class TestProblem(unittest.TestCase):
             "Exp3", sensor_values={"x": [1, 2], "y": [1, 2]}, fwd_model_name="FwdModel"
         )
 
-        # add likelihood model
+        # add the likelihood model
         p.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=Sensor("y"))
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=Sensor("y")
+            )
         )
 
         # initialize the solver object
@@ -168,7 +171,7 @@ class TestProblem(unittest.TestCase):
 
         # perform a check for all experiments
         a0_value, a1_value, a2_value = 1, 2, 3
-        theta = np.array([a0_value, a1_value, a2_value])
+        theta = th.tensor([a0_value, a1_value, a2_value])
         computed_result = pyro_solver.evaluate_model_response(theta)
         expected_result = {
             "Exp1": {"y": 6},

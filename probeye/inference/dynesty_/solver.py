@@ -236,17 +236,18 @@ class DynestySolver(ScipySolver):
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
         logger.info(f"Total run-time: {runtime_str}.")
-        logger.info("")
-
         logger.info("Resample weighted samples to equal samples for post")
         logger.info("processing. Access the original dynesty results via  .raw_results")
         weights = np.exp(sampler.results.logwt - sampler.results.logz[-1])
         samples = dynesty.utils.resample_equal(sampler.results.samples, weights)
+        logger.info("")  # empty line for visual buffer
 
-        logger.info("Summary of sampling results")
+        logger.info("Summary of sampling results (dynesty)")
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             self.summary = self.get_summary(samples, true_values=true_values)
+        logger.info("")  # empty line for visual buffer
         logger.info(f"Posterior log evidence: {sampler.results.logz[-1]}")
+        logger.info("")  # empty line for visual buffer
 
         var_names = self.problem.get_theta_names(tex=True, components=True)
 

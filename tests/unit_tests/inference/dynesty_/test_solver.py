@@ -9,7 +9,7 @@ import numpy as np
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.likelihood_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.dynesty_.solver import DynestySolver
 
 
@@ -49,7 +49,7 @@ class TestProblem(unittest.TestCase):
 
         # add the likelihood model
         problem.add_likelihood_model(
-            NormalNoiseModel({"sigma": "std"}, sensors=Sensor("y"))
+            GaussianLikelihoodModel({"sigma": "std_model"}, sensors=Sensor("y"))
         )
 
         # run the dynesty solver with deactivated output

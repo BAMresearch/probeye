@@ -21,13 +21,16 @@ from probeye.subroutines import dict2list
 from probeye.subroutines import list2dict
 from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import flatten
-from probeye.subroutines import process_spatial_coordinates
+from probeye.subroutines import process_spatiotemporal_coordinates
 from probeye.subroutines import translate_prms_def
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import print_dict_in_rows
 from probeye.subroutines import add_index_to_tex_prm_name
 from probeye.subroutines import check_for_uninformative_priors
+from probeye.subroutines import compute_reduction_array
+from probeye.subroutines import get_dictionary_depth
+from probeye.subroutines import incrementalize
 from probeye.subroutines import extract_true_values
 
 
@@ -191,11 +194,12 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(computed_result, expected_result)
         # check invalid input (here: invalid type)
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             flatten((1, 2, 3))
 
     def test_process_spatial_coordinates(self):
         # check for complete None-input
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=None, z=None, coords=None
         )
         coords_expected = np.array([])
@@ -206,7 +210,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for only x being given as numpy array
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=np.array([1, 2, 3]), y=None, z=None, coords=None
         )
         coords_expected = np.array([[1, 2, 3]])
@@ -217,7 +221,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for only x being given as list
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=[1, 2, 3], y=None, z=None, coords=None
         )
         coords_expected = np.array([[1, 2, 3]])
@@ -228,7 +232,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for only y being given as numpy array
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=np.array([1, 2, 3]), z=None, coords=None
         )
         coords_expected = np.array([[1, 2, 3]])
@@ -239,7 +243,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for only y being given as list
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=[1, 2, 3], z=None, coords=None
         )
         coords_expected = np.array([[1, 2, 3]])
@@ -250,7 +254,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for only z being given as numpy array
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=None, z=np.array([1, 2, 3]), coords=None
         )
         coords_expected = np.array([[1, 2, 3]])
@@ -261,7 +265,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for only z being given as list
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=None, z=[1, 2, 3], coords=None
         )
         coords_expected = np.array([[1, 2, 3]])
@@ -272,7 +276,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for x and y being given as numpy arrays
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=np.array([1, 2, 3]), y=np.array([4, 5, 6]), z=None, coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
@@ -283,7 +287,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for x and y being given as lists
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=[1, 2, 3], y=[4, 5, 6], z=None, coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
@@ -294,7 +298,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for x and z being given as numpy arrays
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=np.array([1, 2, 3]), y=None, z=np.array([4, 5, 6]), coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
@@ -305,7 +309,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for x and z being given as lists
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=[1, 2, 3], y=None, z=[4, 5, 6], coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
@@ -316,7 +320,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for y and z being given as numpy arrays
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=np.array([1, 2, 3]), z=np.array([4, 5, 6]), coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
@@ -327,7 +331,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for y and z being given as lists
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=None, y=[1, 2, 3], z=[4, 5, 6], coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6]])
@@ -338,7 +342,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for x, y and z being given as numpy arrays
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=np.array([1, 2, 3]),
             y=np.array([4, 5, 6]),
             z=np.array([7, 8, 9]),
@@ -352,7 +356,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for y and z being given as lists
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             x=[1, 2, 3], y=[4, 5, 6], z=[7, 8, 9], coords=None
         )
         coords_expected = np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
@@ -363,7 +367,7 @@ class TestProblem(unittest.TestCase):
         )
         self.assertEqual(order_computed, order_expected)
         # check for coords being given as numpy array with new order
-        coords_computed, order_computed = process_spatial_coordinates(
+        coords_computed, order_computed = process_spatiotemporal_coordinates(
             coords=np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]]), order=("y", "x", "z")
         )
         coords_expected = np.array([[4, 5, 6], [1, 2, 3], [7, 8, 9]])
@@ -375,10 +379,11 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(order_computed, order_expected)
         # check invalid input (here: invalid type)
         with self.assertRaises(TypeError):
-            process_spatial_coordinates(coords=(1, 2, 3, 4, 5))
+            # noinspection PyTypeChecker
+            process_spatiotemporal_coordinates(coords=(1, 2, 3, 4, 5))
         # check invalid input (here: inconsistent individual lengths)
         with self.assertRaises(RuntimeError):
-            process_spatial_coordinates(x=[1], y=[1, 2])
+            process_spatiotemporal_coordinates(x=[1], y=[1, 2])
 
     def test_translate_prms_def(self):
         # valid use case: single string
@@ -475,6 +480,64 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("m", "model")  # uninformative prior
         with self.assertRaises(RuntimeError):
             check_for_uninformative_priors(problem)
+
+    def test_get_dictionary_depth(self):
+        # check for a depth-1-dictionary
+        compute_result = get_dictionary_depth({"a": None})
+        expected_result = 1
+        self.assertEqual(compute_result, expected_result)
+        # check for a depth-2-dictionary
+        compute_result = get_dictionary_depth({"a": {"b": None}})
+        expected_result = 2
+        self.assertEqual(compute_result, expected_result)
+
+    def test_compute_reduction_array(self):
+        # check for a simple example
+        array = np.array([[1, 0, 0], [1, 0, 0], [0, 0, 1]])
+        red_array_computed, rows_to_remove_computed = compute_reduction_array(array)
+        red_array_expected = np.array([[0.5, 0.5, 0], [0, 0, 1]])
+        rows_to_remove_expected = [1]
+        self.assertTrue(np.allclose(red_array_computed, red_array_expected))
+        self.assertEqual(rows_to_remove_computed, rows_to_remove_expected)
+
+    def test_incrementalize(self):
+
+        # no incrementalization is required
+        v_in = [1, 2, 3, 4]
+        v_out, f, flag = incrementalize(v_in)
+        self.assertTrue(np.allclose(v_in, v_out))
+        self.assertTrue(np.allclose(v_in, f(v_in)))
+        self.assertTrue(flag)
+
+        # same test as before, but with np.array instead of list
+        v_in = np.array([1, 2, 3, 4])
+        v_out, f, flag = incrementalize(v_in)
+        self.assertTrue(np.allclose(v_in, v_out))
+        self.assertTrue(np.allclose(v_in, f(v_in)))
+        self.assertTrue(flag)
+
+        # here, the input vector is not sorted and has no duplicate elements
+        v_in = np.array([3, 1, 4, 2])
+        v_out, f, flag = incrementalize(v_in)
+        v_out_expected = np.array([1, 2, 3, 4])
+        self.assertTrue(np.allclose(v_out_expected, v_out))
+        self.assertTrue(np.allclose(v_out_expected, f(v_in)))
+        self.assertTrue(not flag)
+
+        # here, the input vector is not sorted and has duplicate elements
+        v_in = np.array([3, 1, 1, 4, 4, 2, 2, 2, 2, 2, 2])
+        v_out, f, flag = incrementalize(v_in)
+        v_out_expected = np.array([1, 2, 3, 4])
+        self.assertTrue(np.allclose(v_out_expected, v_out))
+        self.assertTrue(np.allclose(v_out_expected, f(v_in)))
+        self.assertTrue(not flag)
+
+        # special case: input has only one element
+        v_in = [1]
+        v_out, f, flag = incrementalize(v_in)
+        self.assertTrue(np.allclose(v_in, v_out))
+        self.assertTrue(np.allclose(v_in, f(v_in)))
+        self.assertTrue(flag)
 
     def test_extract_true_values(self):
 

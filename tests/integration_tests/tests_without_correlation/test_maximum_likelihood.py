@@ -1,9 +1,10 @@
 """
-Linear regression example solved with max. likelihood (without needing priors).
+Linear regression example solved with maximum likelihood (without needing priors)
 ----------------------------------------------------------------------------------------
-The model equation is y = m * x + b with a, b being the model parameters and the noise
-model is a normal zero-mean distribution with the std. deviation to infer. The problem
-is solved via maximum likelihood estimation based on scipy.
+The model equation is y(x) = a * x + b with a, b being the model parameters, while the
+likelihood model is based on a normal zero-mean additive model error distribution with
+the standard deviation to infer. The problem is solved via maximum likelihood estimation
+based on scipy.
 """
 
 # standard library imports
@@ -17,7 +18,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.likelihood_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (inference related)
 from probeye.inference.scipy_.solver import ScipySolver
@@ -45,8 +46,8 @@ class TestProblem(unittest.TestCase):
         # 'true' value of b
         b_true = 1.7
 
-        # 'true' value of noise sd
-        sigma_noise = 0.5
+        # 'true' value of additive model error sd
+        sigma = 0.5
 
         # the number of generated experiment_names and seed for random numbers
         n_tests = 50
@@ -79,9 +80,9 @@ class TestProblem(unittest.TestCase):
         # add all parameters to the problem; the first argument states the parameter's
         # global name (here: 'm', 'b' and 'sigma'); the second argument defines the
         # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'noise' for parameters of the noise model);
-        # the tex argument is states a tex-string for the parameter which is only used
-        # for plotting
+        # 'prior' for prior parameters and 'likelihood' for parameters of the likelihood
+        # model); the tex argument is states a tex-string for the parameter which is
+        # only used for plotting
         problem.add_parameter("m", "model", tex="$m$")
         problem.add_parameter("b", "model", tex="$b$")
         problem.add_parameter("sigma", "likelihood", tex=r"$\sigma$")
@@ -96,13 +97,13 @@ class TestProblem(unittest.TestCase):
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # data-generation; normal noise with constant variance around each point
+        # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_true = linear_model.response(
             {isensor.name: x_test, "m": m_true, "b": b_true}
         )[osensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma_noise)
+        y_test = np.random.normal(loc=y_true, scale=sigma)
 
         # add the experimental data
         problem.add_experiment(
@@ -127,7 +128,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
         )
 
         # give problem overview
@@ -139,7 +140,7 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting
-        true_values = {"m": m_true, "b": b_true, "sigma": sigma_noise}
+        true_values = {"m": m_true, "b": b_true, "sigma": sigma}
         scipy_solver = ScipySolver(problem)
         scipy_solver.run_max_likelihood(true_values=true_values)
 

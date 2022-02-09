@@ -449,12 +449,13 @@ def flatten(arg: Union[list, np.ndarray, float, int, None]) -> Union[list, None]
     return arg_flat
 
 
-def process_spatial_coordinates(
-    x: Union[float, int, np.ndarray, None] = None,
-    y: Union[float, int, np.ndarray, None] = None,
-    z: Union[float, int, np.ndarray, None] = None,
+def process_spatiotemporal_coordinates(
+    x: Union[float, int, np.ndarray, list, None] = None,
+    y: Union[float, int, np.ndarray, list, None] = None,
+    z: Union[float, int, np.ndarray, list, None] = None,
+    t: Union[float, int, np.ndarray, list, None] = None,
     coords: Optional[np.ndarray] = None,
-    order: tuple = ("x", "y", "z"),
+    order: tuple = ("x", "y", "z", "t"),
 ) -> Tuple[np.ndarray, List[str]]:
     """
     Converts given spatial data from a flexible format into a standardized format.
@@ -467,14 +468,19 @@ def process_spatial_coordinates(
         Positional y-coordinate. When given, the coords-argument must be None.
     z
         Positional z-coordinate. When given, the coords-argument must be None.
-    coords
-        Some or all of the coordinates x, y, z concatenated as an array. Each row
-        corresponds to one coordinate. For example, row 1 might contain all the order-
-        argument. When the coords-argument is given, all 3 args x, y and z must be None.
-    order
-        Only relevant when coords is given. Defines which row in coords corresponds to
-        which coordinate. For example, order=('x', 'y', 'z') means that the 1st row are
-        x-coordinates, the 2nd row are y-coords and the 3rd row are the z-coordinates.
+    t
+        Points in time. When given, coords must be None.
+    coords : numpy.ndarray, optional
+        Some or all of the coordinates x, y, z concatenated as an array. Each
+        row corresponds to one coordinate. For example, row 1 might contain all
+        x-coordinates. Which row corresponds to which coordinate is defined via
+        the order-argument. When the coords-argument is given, all 3 arguments
+        x, y and z must be None.
+    order : tuple[str], optional
+        Only relevant when coords is given. Defines which row in coords
+        corresponds to which coordinate. For example, order=('x', 'y', 'z')
+        means that the 1st row are x-coordinates, the 2nd row are y-coords and
+        the 3rd row are the z-coordinates.
 
     Returns
     -------
@@ -488,13 +494,14 @@ def process_spatial_coordinates(
     """
 
     # the following check should cover the option that no spatial input is given
-    if (x is None) and (y is None) and (z is None) and (coords is None):
+    if (x is None) and (y is None) and (z is None) and (t is None) and (coords is None):
         return np.array([]), []
 
     # convert all single-coordinate inputs to flat numpy arrays
     x = np.array(flatten(x)) if x is not None else None
     y = np.array(flatten(y)) if y is not None else None
     z = np.array(flatten(z)) if z is not None else None
+    t = np.array(flatten(t)) if t is not None else None
 
     # derive the number of given coordinate vectors and points
     if coords is not None:
@@ -508,7 +515,7 @@ def process_spatial_coordinates(
             # the length of rows
             n_coords, n_points = coords.shape
     else:
-        n_points_list = [len(v) for v in [x, y, z] if v is not None]
+        n_points_list = [len(v) for v in [x, y, z, t] if v is not None]
         n_points_set = set(n_points_list)
         if len(n_points_set) == 1:
             n_coords = len(n_points_list)
@@ -574,7 +581,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "1.0.17",
+    version: str = "2.0.0",
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",
@@ -809,10 +816,155 @@ def check_for_uninformative_priors(problem: "InferenceProblem"):
     for prior_name, prior_template in problem.priors.items():
         if prior_template.prior_type == "uninformative":
             raise RuntimeError(
-                f"The prior '{prior_name}' is uninformative, which cannot be used by "
-                f"the requested solver. You could change it to a uniform-prior on a "
-                f"specified interval to solver this problem."
+                f"The prior '{prior_name}' is uninformative,"
+                f" which cannot be used by the requested "
+                f"solver. You could change it to a "
+                f"uniform-prior on a specified interval to "
+                f"solver this problem."
             )
+
+
+def get_dictionary_depth(d):
+    """
+    Computes the depth of a nested dictionary recursively. Modified from
+    https://www.geeksforgeeks.org/python-find-depth-of-a-dictionary/.
+
+    Parameters
+    ----------
+    d : dict
+        The dictionary, the depth should be computed of.
+
+    Returns
+    -------
+    int
+        The depth of the given dictionary d.
+    """
+    if isinstance(d, dict):
+        return 1 + (max(map(get_dictionary_depth, d.values())) if d else 0)
+    return 0
+
+
+def compute_reduction_array(array: np.ndarray) -> Tuple[np.ndarray, List[int]]:
+    """
+    Given a square array with potentially duplicate rows, this method computes an
+    array, that, if matrix-multiplied with the given array, leaves all unique rows
+    un-modified, but averages all duplicate rows, writes the result in the first
+    row of their appearance, and removes all other rows of the duplicate ones. For
+    example:
+
+    [[1, 0, 0]            [[0.5, 0.5, 0]
+     [1, 0, 0]     -->     [ 0 ,  0 , 1]]
+     [0, 0, 1]]
+
+    Returns
+    -------
+    reduction_array
+        The derived reduction array for the given array 'array'.
+    rows_to_remove
+        A list that contains the row indices of duplicate rows.
+    """
+    n = array.shape[0]
+    reduction_array = np.eye(n)
+    rows_to_remove = []
+    for i, reference_row in enumerate(array):
+        rows_to_add = []
+        for j, row_to_check in enumerate(array[i + 1 :], start=i + 1):
+            if np.allclose(row_to_check, reference_row):
+                rows_to_add.append(j)
+        for row_idx in rows_to_add:
+            reduction_array[i] += reduction_array[row_idx]
+        reduction_array[i] /= 1 + len(rows_to_add)
+        rows_to_remove += rows_to_add
+    reduction_array = np.delete(reduction_array, rows_to_remove, axis=0)
+    return reduction_array, rows_to_remove
+
+
+def incrementalize(
+    v_in: Union[np.ndarray, list], eps: float = 1e-12
+) -> Tuple[Union[np.ndarray, list], Callable, bool]:
+    """
+    Given some vector, this function rearranges the elements so that they are ascending,
+    and removes duplicate elements.
+
+    Parameters
+    ----------
+    v_in
+        The vector to be processed.
+    eps
+        A threshold value, that defines when two values are considered identical.
+
+    Returns
+    -------
+    v_out
+        The processed input vector.
+    fun
+        See the explanations in the function docstring below.
+    is_incremental
+        If v_in has no duplicate elements and is already in ascending order, this flag
+        is True. Otherwise, it is False.
+    """
+
+    # check if the given vector is already sorted
+    n = len(v_in)
+    is_incremental = all(v_in[i] < v_in[i + 1] for i in range(n - 1))
+
+    # sort the vector if necessary
+    if is_incremental:
+        v_out = v_in
+        fun = lambda x: x  # identity function
+    else:
+
+        # sort v_in and remove duplicate elements; the result is v_out
+        idx_sorted = np.argsort(v_in)
+        v_sorted = v_in[idx_sorted]
+        v_diff = np.diff(v_sorted)
+        indices_to_remove = [i for i, vi in enumerate(v_diff) if np.abs(vi) < eps]
+        m = len(indices_to_remove)
+        v_out = np.delete(v_sorted, indices_to_remove)
+
+        # this list will contain triples; the first two entries of a triple (lets call
+        # them t1 and t2) refer to the indices of v_out in that sense, that v_out[t1:t2]
+        # have identical values; the last entry of a triple is just t2-t3 and is needed
+        # for the averaging operation performed by the function f
+        triples = []
+
+        # derive the triples
+        i = 0
+        while i < m:
+            j = i
+            while j + 1 < m and (indices_to_remove[j + 1] - indices_to_remove[j] == 1):
+                j += 1
+            idx_1 = indices_to_remove[i]
+            idx_2 = indices_to_remove[j] + 1 + 1
+            triples.append((idx_1, idx_2, idx_2 - idx_1))
+            i = j + 1
+
+        def fun(w: np.ndarray) -> np.ndarray:
+            """
+            Performs an averaging operations over slices of w that correspond to
+            duplicate elements in the sorted version of v_in. For example, in the case
+            of v_sorted = [1, 2, 2, 3] and w = [8, 3, 6, 0], this function would return
+            ws = [8, (3+6)/2, 3] = [8, 4.5, 3].
+
+            Parameters
+            ----------
+            w
+                The input vector which is understood as the picture of v_sorted.
+
+            Returns
+            -------
+            ws
+                The processed input vector.
+            """
+            ws = w[idx_sorted]
+            nr = 0  # number of already removed elements
+            for t in triples:
+                ws[t[0] - nr] = np.sum(ws[t[0] - nr : t[1] - nr]) / t[2]
+                ws = np.delete(ws, np.s_[t[0] - nr + 1 : t[1] - nr])
+                nr += t[2] - 1
+            return ws
+
+    return v_out, fun, is_incremental
 
 
 def extract_true_values(true_values: dict, var_names: List[str]) -> np.ndarray:
@@ -839,3 +991,41 @@ def extract_true_values(true_values: dict, var_names: List[str]) -> np.ndarray:
             idx = int(var_name[::-1].split("_", 1)[0]) - 1
             true_values_vector.append(float(true_values[var_name_no_index][idx]))
     return np.array(true_values_vector)
+
+
+def translate_simple_correlation(corr_string: str) -> dict:
+    """
+    Translates a string describing a correlation definition with standard correlation
+    variables (x, y, z, t) in a dictionary that can be used for correlation_info.
+
+    Parameters
+    ----------
+    corr_string
+        A string like 'T1:xy'. This string contains 3 elements. 'T1' can be any other
+        string without a colon ':'. Afterwards, there must follow a colon ':'. Then, the
+        last element is a number of non-repeating characters from ('x', 'y', 'z', 't').
+
+    Returns
+    -------
+    corr_dict
+        In the example, 'T1:xy' would be translated to {'T1': {'x': 'x', 'y': 'y'}}.
+        This dictionary can be used for the 'correlation_info' argument when adding new
+        experiments to an InferenceProblem.
+    """
+    if not (":" in corr_string):
+        raise ValueError(f"The given 'corr_string' ('{corr_string}') contains no ':'!")
+    sensors = corr_string.split(":")
+    if len(sensors) > 2:
+        raise ValueError(
+            f"The given 'corr_string' ('{corr_string}') contains more than one ':'!"
+        )
+    corr_dict = {sensors[0]: {}}  # type: dict
+    for character in sensors[1]:
+        if character not in ["x", "y", "z", "t"]:
+            raise ValueError(
+                f"The given 'corr_string' ('{corr_string}') does contain a non-standard"
+                f" variable ('{character}' instead of 'x', 'y', 'z', 't') after the "
+                f"colon ':'!"
+            )
+        corr_dict[sensors[0]][character] = character
+    return corr_dict

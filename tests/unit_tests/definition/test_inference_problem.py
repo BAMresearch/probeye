@@ -10,7 +10,7 @@ import numpy as np
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.likelihood_model import NoiseModelBase
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 
 class TestProblem(unittest.TestCase):
@@ -46,7 +46,9 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter(
+            "sigma_model", "likelihood", prior=("normal", {"loc": 0, "scale": 1})
+        )
         sys.stdout = io.StringIO()
         # try out different options
         p.info(tablefmt="presto", check_consistency=False)
@@ -64,7 +66,9 @@ class TestProblem(unittest.TestCase):
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
-        p.add_likelihood_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
+        p.add_likelihood_model(
+            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
+        )
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
         p.info(tablefmt="presto", check_consistency=True)
@@ -75,13 +79,17 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter(
+            "sigma_model", "likelihood", prior=("normal", {"loc": 0, "scale": 1})
+        )
         test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
         p.add_forward_model("TestModel", test_model)
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
-        p.add_likelihood_model(NoiseModelBase("normal", "s", sensors=Sensor("y")))
+        p.add_likelihood_model(
+            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
+        )
         sys.stdout = io.StringIO()  # redirect output to console
         print(p)
         sys.stdout = sys.__stdout__  # reset printout to console
@@ -138,6 +146,7 @@ class TestProblem(unittest.TestCase):
             p.add_parameter("c", "likelihood", const=2.0, info="info", tex=r"$c$")
         with self.assertRaises(TypeError):
             # adding a parameter with an invalid prior
+            # noinspection PyTypeChecker
             p.add_parameter(
                 "eps",
                 "model",
@@ -196,7 +205,9 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
         p.add_parameter("loc_a", "prior", const=1.0, info="info", tex=r"$loc_a$")
-        p.add_parameter("s", "likelihood", const=1.0, info="info", tex=r"$\sigma$")
+        p.add_parameter(
+            "sigma_model", "likelihood", const=1.0, info="info", tex=r"$\sigma$"
+        )
         p.add_parameter(
             "scale_a",
             "prior",
@@ -224,7 +235,7 @@ class TestProblem(unittest.TestCase):
             {
                 "c",
                 "loc_a",
-                "s",
+                "sigma_model",
                 "low_scale_a",
                 "high_scale_a",
                 "low_sigma",
@@ -234,7 +245,14 @@ class TestProblem(unittest.TestCase):
         p.remove_parameter("c")  # <-- this is where the removal happens
         self.assertEqual(
             set(p.constant_prms),
-            {"loc_a", "s", "low_scale_a", "high_scale_a", "low_sigma", "high_sigma"},
+            {
+                "loc_a",
+                "sigma_model",
+                "low_scale_a",
+                "high_scale_a",
+                "low_sigma",
+                "high_sigma",
+            },
         )
         # check removing a latent parameter; note that removing a latent parameter leads
         # to the removal of all its prior parameters
@@ -249,7 +267,9 @@ class TestProblem(unittest.TestCase):
         # check if the re-indexing worked
         self.assertEqual(p.parameters["sigma"].index, 0)
         # check that all constant prior-parameters associated with 'a' are gone
-        self.assertEqual(set(p.constant_prms), {"s", "low_sigma", "high_sigma"})
+        self.assertEqual(
+            set(p.constant_prms), {"sigma_model", "low_sigma", "high_sigma"}
+        )
         # check that the removal of non-existing parameters results in an error
         with self.assertRaises(RuntimeError):
             p.remove_parameter("undefined")
@@ -384,7 +404,7 @@ class TestProblem(unittest.TestCase):
         )
         # add a noise model
         p.add_parameter("s", "likelihood", const=1.0)
-        noise_model = NoiseModelBase("normal", "s", sensors=[Sensor("y")])
+        noise_model = GaussianLikelihoodModel("s", sensors=[Sensor("y")])
         p.add_likelihood_model(noise_model)
         # now the problem should be consistent
         p.check_problem_consistency()
@@ -462,7 +482,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
         a_value, b_value = 3.1, 14.7
         prms_def = {"b": "b", "a": "a", "loc_b": "loc_b", "c": "c"}
-        computed_result = p.get_parameters([a_value, b_value], prms_def)
+        computed_result = p.get_parameters(np.array([a_value, b_value]), prms_def)
         expected_result = {"b": b_value, "a": a_value, "loc_b": 0, "c": 1.0}
         self.assertEqual(computed_result, expected_result)
 
@@ -596,7 +616,9 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
         p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter(
+            "sigma_model", "likelihood", prior=("normal", {"loc": 0, "scale": 1})
+        )
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
             # the model is not consistent
@@ -621,7 +643,7 @@ class TestProblem(unittest.TestCase):
             test_model_2 = ForwardModelBase("a", Sensor("x"), Sensor("y"))
             p.add_forward_model("TestModel_2", test_model_2)
 
-    def test_add_noise_model(self):
+    def test_add_likelihood_model(self):
         # check correct use
         p = InferenceProblem("TestProblem")
         p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
@@ -633,12 +655,12 @@ class TestProblem(unittest.TestCase):
         p.add_experiment(
             "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
         )
-        noise_model1 = NoiseModelBase(
-            "normal", "s1", sensors=[Sensor("y1"), Sensor("y2")]
+        noise_model1 = GaussianLikelihoodModel(
+            "s1", sensors=[Sensor("y1"), Sensor("y2")]
         )
-        noise_model2 = NoiseModelBase("normal", ["s2"], sensors=[Sensor("y2")])
-        noise_model3 = NoiseModelBase(
-            "normal", ["s1", "s2", "s3"], sensors=[Sensor("y1")], name="NM3"
+        noise_model2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
+        noise_model3 = GaussianLikelihoodModel(
+            ["s1", "s2", "s3"], sensors=[Sensor("y1")], name="NM3"
         )
         p.add_likelihood_model(noise_model1)
         p.add_likelihood_model(noise_model2)
@@ -649,8 +671,7 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # the given noise model parameter has not been defined
             p.add_likelihood_model(
-                NoiseModelBase(
-                    "normal",
+                GaussianLikelihoodModel(
                     "not_existing_parameter",
                     sensors=[Sensor("y1"), Sensor("y2")],
                 )
@@ -689,12 +710,12 @@ class TestProblem(unittest.TestCase):
             fwd_model_name="TestModel_z1z2",
         )
         # add some noise models
-        noise_model_y1 = NoiseModelBase(
-            "normal", ["s1", "s2", "s3"], sensors=[Sensor("y1")]
+        noise_model_y1 = GaussianLikelihoodModel(
+            ["s1", "s2", "s3"], sensors=[Sensor("y1")]
         )
-        noise_model_y2 = NoiseModelBase("normal", ["s2"], sensors=[Sensor("y2")])
-        noise_model_y1y2 = NoiseModelBase(
-            "normal", "s1", sensors=[Sensor("z1"), Sensor("z2")]
+        noise_model_y2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
+        noise_model_y1y2 = GaussianLikelihoodModel(
+            "s1", sensors=[Sensor("z1"), Sensor("z2")]
         )
         p.add_likelihood_model(noise_model_y1, name="l1")
         p.add_likelihood_model(noise_model_y2, name="l2")

@@ -138,6 +138,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (y) via coords-input
         coords, sensor_name = np.array([[2]]), "Some sensor-name"
+        # noinspection PyTypeChecker
         position_sensor = Sensor(sensor_name, coords=coords, order="y")
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.y, 2)
@@ -156,6 +157,7 @@ class TestProblem(unittest.TestCase):
 
         # check a position sensor with one coordinate (z) via coords-input
         coords, sensor_name = np.array([[3]]), "Some sensor-name"
+        # noinspection PyTypeChecker
         position_sensor = Sensor(sensor_name, coords=coords, order="z")
         self.assertEqual(position_sensor.name, sensor_name)
         self.assertEqual(position_sensor.z, 3)
