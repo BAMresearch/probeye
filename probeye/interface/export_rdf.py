@@ -393,21 +393,21 @@ def export_rdf(
         #            Add the problem's NOISE MODELS to the knowledge graph             #
         # ---------------------------------------------------------------------------- #
 
-        for noise_model in problem.noise_models:
+        for likelihood_model in problem.likelihood_models.values():
             # add noise model instance
-            t1 = iri(peo.forward_error_function(noise_model.name))
+            t1 = iri(peo.forward_error_function(likelihood_model.name))
             t2 = RDF.type
             t3 = iri(peo.mathematical_function)
             graph.add((t1, t2, t3))
             # add the experiments covered by the forward_error_function
-            for exp_name in noise_model.experiment_names:
+            for exp_name in likelihood_model.experiment_names:
                 t2 = iri(peo.describes_error_with_respect_to_experiment)
                 t3 = iri(peo.single_experiment_measurement_data_set(exp_name))
                 graph.add((t1, t2, t3))
             fwd_model_name = problem.experiments[exp_name]["forward_model"]
-            t1 = iri(peo.forward_error_function(noise_model.name))
+            t1 = iri(peo.forward_error_function(likelihood_model.name))
             t2 = iri(peo.has_input_argument)
-            for sensor_name in noise_model.sensor_names:
+            for sensor_name in likelihood_model.sensor_names:
                 with peo.get_namespace(new_namespace_iri(fwd_model_name)):
                     t3 = iri(peo.variable(sensor_name))
                 graph.add((t1, t2, t3))

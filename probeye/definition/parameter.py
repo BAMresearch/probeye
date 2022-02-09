@@ -564,10 +564,10 @@ class ParameterProperties:
                 f"an integer >= 1, but found a value of {self._dim}."
             )
 
-        if self._type not in ["model", "prior", "noise"]:
+        if self._type not in ["model", "prior", "likelihood"]:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can only "
-                f"assume the three values 'model', 'prior' or 'noise' but found "
+                f"assume the three values 'model', 'prior' or 'likelihood' but found "
                 f"'{self._type}'."
             )
 

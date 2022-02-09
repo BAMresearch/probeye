@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.interface.export_rdf import export_rdf
 
 
@@ -120,7 +120,7 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             "sigma",
-            "noise",
+            "likelihood",
             domain=(0.0, np.infty),
             info="Std. dev, of 0-mean noise model",
             tex=r"$\sigma$",
@@ -130,13 +130,8 @@ class TestProblem(unittest.TestCase):
         # add the forward model to the problem
         isensor = Sensor("x")
         osensor = Sensor("y")
-        linear_model = LinearModel(["a", "b"], [isensor], [osensor])
+        linear_model = LinearModel(["a", "b"], isensor, osensor)
         problem.add_forward_model("LinearModel", linear_model)
-
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
-        )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -163,9 +158,6 @@ class TestProblem(unittest.TestCase):
             sensor_values={isensor.name: x_test, osensor.name: y_test_2},
         )
 
-        # give problem overview
-        problem.info()
-
         # plot the true and noisy data
         if plot:
             plt.scatter(
@@ -179,13 +171,24 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise model to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+        )
+
+        # give problem overview
+        problem.info()
+
+        # ============================================================================ #
         #                   Export the described problem to triples                    #
         # ============================================================================ #
 
         # create the knowledge graph and print it to file
         dir_path = os.path.dirname(__file__)
-        ttl_file = os.path.join(dir_path, "test_rdf_export.ttl")
-        problem.assign_experiments_to_noise_models()
+        ttl_file = os.path.join(dir_path, "../test_rdf_export.ttl")
         export_rdf(
             problem,
             ttl_file,

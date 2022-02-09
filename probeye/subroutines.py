@@ -1035,6 +1035,7 @@ def translate_simple_correlation(corr_string: str) -> dict:
         corr_dict[sensors[0]][character] = character
     return corr_dict
 
+
 def iri(s: owlready2.entity.ThingClass) -> rdflib.term.URIRef:
     """
     Gets the Internationalized Resource Identifier (IRI) from a class or an

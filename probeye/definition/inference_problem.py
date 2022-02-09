@@ -6,10 +6,6 @@ import urllib
 import os
 
 # third party imports
-import owlready2
-import rdflib
-from rdflib import URIRef, Graph, Literal
-from rdflib.namespace import RDF, XSD
 from tabulate import tabulate
 from loguru import logger
 import numpy as np
@@ -25,8 +21,6 @@ from probeye.subroutines import make_list, len_or_one
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import add_index_to_tex_prm_name
-from probeye.subroutines import iri
-from probeye.subroutines import add_constant_to_graph
 from probeye.subroutines import translate_simple_correlation
 
 
