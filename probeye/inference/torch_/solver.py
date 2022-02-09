@@ -1,5 +1,5 @@
 # standard library imports
-from typing import Union, List, Tuple, Optional, Callable, Iterable, TYPE_CHECKING, Any
+from typing import Union, List, Callable, TYPE_CHECKING, Any
 import warnings
 
 # third party imports
@@ -14,7 +14,7 @@ import contextlib
 
 # local imports
 from probeye.inference.torch_.priors import translate_prior_template
-from probeye.inference.torch_.noise_models import translate_noise_model
+from probeye.inference.torch_.likelihood_models import translate_likelihood_model
 from probeye.subroutines import len_or_one, make_list
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows
@@ -59,11 +59,8 @@ class PyroSolver:
         # the problem is copied, and in the copy, the experimental data is reformatted
         # from numpy-arrays to torch-tensors; note that the first command makes sure
         # that also scalars are converted to numpy-arrays
-        self.problem = problem.transform_experimental_data(f=np.atleast_1d)
-        self.problem = self.problem.transform_experimental_data(f=th.from_numpy)
-
-        # each noise model must be connected to the relevant experiment_names
-        self.problem.assign_experiments_to_noise_models()
+        self.problem = problem.transform_experimental_data(func=np.atleast_1d)
+        self.problem = self.problem.transform_experimental_data(func=th.from_numpy)
 
         # the dictionary dependency_dict will contain all latent parameter names as
         # keys; the value of each key will be a list with latent hyper-parameters of the
@@ -115,11 +112,11 @@ class PyroSolver:
                 prior_template
             )
 
-        # translate the general noise model objects into solver specific ones
-        logger.debug("Translating problem's noise models")
-        self.noise_models = []
-        for noise_model_base in self.problem.noise_models:
-            self.noise_models.append(translate_noise_model(noise_model_base))
+        # translate the general likelihood model objects into solver specific ones
+        logger.debug("Translating problem's likelihood models")
+        self.likelihood_models = []
+        for likelihood_def in self.problem.likelihood_models.values():
+            self.likelihood_models.append(translate_likelihood_model(likelihood_def))
 
         # translate the problem's forward models into torch compatible ones
         logger.debug("Wrapping problem's forward models")
@@ -149,7 +146,6 @@ class PyroSolver:
         """
         Translates a given forward model (based on non-tensor in/outputs) to a torch-
         compatible forward model based on tensors.
-
         Parameters
         ----------
         forward_model
@@ -165,7 +161,6 @@ class PyroSolver:
                 accept a context ctx as the first argument, followed by any number of
                 arguments (tensors or other types). The context can be used to store
                 arbitrary data that can be then retrieved during the backward pass.
-
                 Parameters
                 ----------
                 ctx
@@ -234,7 +229,6 @@ class PyroSolver:
                 corresponding input. If an input is either not a Tensor or a Tensor not
                 requiring gradients, you can just pass None as a gradient for that
                 particular input.
-
                 Parameters
                 ----------
                 ctx
@@ -243,7 +237,6 @@ class PyroSolver:
                     The jacobian of the likelihood with respect to the forward model
                     evaluations, i.e., dl/dy. Since the likelihood returns a scalar
                     value, this is a tuple of length 1.
-
                 Returns
                 -------
                     Each element i of the tuple is a tensor that represents the
@@ -294,7 +287,6 @@ class PyroSolver:
         """
         Evaluates the model response for each forward model for the given parameter
         vector theta and the given experiments.
-
         Parameters
         ----------
         theta
@@ -306,7 +298,6 @@ class PyroSolver:
             problem. If this argument is None (which is a common use case) then all
             experiments defined in the problem (self.experiments) are used. The names
             provided here define the experiments that the fwd. model is evaluated for.
-
         Returns
         -------
         model_response_dict
@@ -362,7 +353,6 @@ class PyroSolver:
     def get_theta_samples(self) -> th.Tensor:
         """
         Provides a list of latent-parameter samples in form of torch.Tensors.
-
         Returns
         -------
             The sampled values based on the latent parameter's priors.
@@ -390,29 +380,27 @@ class PyroSolver:
     def loglike(self, theta: th.Tensor):
         """
         Evaluates the log-likelihood function of the problem at theta.
-
         Parameters
         ----------
         theta
             A vector of pyro.samples (i.e. tensors) for which the log-likelihood
             function should be evaluated.
         """
-        # compute the contribution to the log-likelihood function for each noise model
-        # and sum it all up
-        for noise_model in self.noise_models:
-            # compute the model response for the noise model's experiment_names
+        # compute the contribution to the log-likelihood function for each likelihood
+        # model and sum it all up
+        for likelihood_model in self.likelihood_models:
+            # compute the model response for the likelihood model's experiment_names
             model_response = self.evaluate_model_response(
-                theta, noise_model.experiment_names
+                theta, likelihood_model.experiment_names
             )
-            # get the tensors for the noise model's parameters
-            prms_noise = self.problem.get_parameters(theta, noise_model.prms_def)
-            # evaluate the loglike-contribution for the noise model
-            noise_model.sample_cond_likelihood(model_response, prms_noise)
+            # get the tensors for the likelihood model's parameters
+            prms_like = self.problem.get_parameters(theta, likelihood_model.prms_def)
+            # evaluate the loglike-contribution for the likelihood model
+            likelihood_model.sample_cond_likelihood(model_response, prms_like)
 
     def posterior_model(self):
         """
         Returns the sampled log-likelihood in form of a torch.Tensor.
-
         Returns
         -------
         ll : torch.Tensor
@@ -432,7 +420,6 @@ class PyroSolver:
         """
         Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
-
         Parameters
         ----------
         n_walkers
@@ -445,7 +432,6 @@ class PyroSolver:
             The number of steps for the burn-in phase.
         kwargs
             Additional keyword arguments passed to NUTS.
-
         Returns
         -------
         inference_data
@@ -501,9 +487,10 @@ class PyroSolver:
         )
         logger.info(f"Total run-time (including warmup): {runtime_str}.")
         logger.info("")
-        logger.info("Summary of sampling results")
+        logger.info("Summary of sampling results (pyro)")
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             mcmc.summary()
+        logger.info("")  # empty line for visual buffer
         self.raw_results = mcmc
 
         # create a summary dictionary similar to the one created by EmceeSolver

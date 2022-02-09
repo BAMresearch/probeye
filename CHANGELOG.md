@@ -1,5 +1,15 @@
 # probeye changelog
 
+## 2.0.0 (2022-Feb-09)
+### Changed
+- revised the entire noise model framework to account for correlation setups
+- the 'noise_model' is now generally relabeled as 'likelihood_model' since the term 'noise_model' resulted in some confusion
+- when correlation effects are modeled, the log-likelihood function is now much more efficiently evaluated using the tripy package developed by Ioannis Koune (TNO)
+
+## 1.0.17 (2022-Jan-19)
+### Changed
+- Noise models must now be added after all experiments have been added. This means that the relevant experiments can be assigned to the noise models right after they are added (this happens automatically). This in turn makes it unnecessary to copy a problem and assign the experiments as a kind of post-processing step in the different solvers.
+
 ## 1.0.16 (2021-Dec-03)
 ### Added
 - added truncated normal distribution to the scipy-based prior classes

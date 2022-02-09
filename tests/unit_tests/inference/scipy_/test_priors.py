@@ -149,6 +149,7 @@ class TestProblem(unittest.TestCase):
         # check the invalid prior_classes type
         prior_uniform = PriorUniform("a", ["low_a", "high_a"], "a_uniform")
         with self.assertRaises(TypeError):
+            # noinspection PyTypeChecker
             translate_prior(prior_uniform, prior_classes=[1, 2, 3])
 
 

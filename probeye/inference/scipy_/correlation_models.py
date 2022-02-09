@@ -1,64 +1,29 @@
-# standard library
-from typing import Union, Optional, Tuple
-
 # third party imports
 import numpy as np
 
 # local imports
-from probeye.subroutines import process_spatial_coordinates
+from probeye.subroutines import compute_reduction_array
 
 
-class SpatialExponentialCorrelationModel:
+class SpatiotemporalExponentialCorrelationModel:
     """
-    Represents a spatial correlation model with an exponential kernel. It contains the
-    functionality to compute the covariance matrix over a static (i.e. constant for all
-    experiments) grid of coordinates in 1D, 2D or 3D.
+    Represents a spatio-temporal correlation model with an exponential kernel. It
+    contains the functionality to compute the covariance matrix for all the experiments
+    given for a considered noise model.
     """
 
-    def __init__(
-        self,
-        x: Union[int, float, np.ndarray, None] = None,
-        y: Union[int, float, np.ndarray, None] = None,
-        z: Union[int, float, np.ndarray, None] = None,
-        coords: Optional[np.ndarray] = None,
-        order: Tuple = ("x", "y", "z"),
-    ):
-        """
-        Parameter
-        ---------
-        x
-            Positional x-coordinate. When given, coords must be None.
-        y
-            Positional y-coordinate. When given, coords must be None.
-        z
-            Positional z-coordinate. When given, coords must be None.
-        coords
-            Some or all of the coordinates x, y, z concatenated as an array. Each row
-            corresponds to one coordinate. For example, row 1 might contain all
-            x-coordinates. Which row corresponds to which coordinate is defined via the
-            order-argument. When the coords-argument is given, all 3 arguments x, y and
-            z must be None.
-        order
-            Only relevant when coords is given. Defines which row in coords corresponds
-            to which coordinate. For example, order=('x', 'y', 'z') means that the 1st
-            row are x-coordinates, the 2nd row are y-coords and the 3rd row are the
-            z-coordinates.
-        """
-        # translate the spatial input to a coords-array
-        self.coords, self._order = process_spatial_coordinates(
-            x=x, y=y, z=z, coords=coords, order=order
-        )
-        self.n_coords, self.n = self.coords.shape
+    def __init__(self, position_arrays: dict):
 
-        # on position (i, j) in self.distance array will be denoted the distance between
-        # point i with coords[i, :] and point j with coords[j, :]
-        distance_array = np.zeros((self.n, self.n))
-        for i in range(self.n_coords):
-            v = self.coords[i, :]
-            v_in_columns = np.tile(v.reshape((self.n, -1)), self.n)
-            v_in_rows = v_in_columns.transpose()  # each row is v
-            distance_array += np.square(v_in_columns - v_in_rows)
-        self.distance_array = np.sqrt(distance_array)
+        # compute the distance array which might contain duplicate rows/columns
+        self.distance_array = self.compute_distance_array(position_arrays)
+
+        # the reduction array is a matrix that will be multiplied to the model error
+        # in order to average the error values on indices that correspond to duplicate
+        # rows/columns in the distance array
+        self.reduction_array, duplicates = compute_reduction_array(self.distance_array)
+        if duplicates:  # if there are duplicates, remove the respective rows/columns
+            self.distance_array = np.delete(self.distance_array, duplicates, axis=0)
+            self.distance_array = np.delete(self.distance_array, duplicates, axis=1)
 
     @staticmethod
     def check_prms(prms: dict) -> bool:
@@ -86,6 +51,39 @@ class SpatialExponentialCorrelationModel:
             return False
         return True
 
+    @staticmethod
+    def compute_distance_array(position_array_dict: dict) -> np.ndarray:
+        """
+        Computes the distance (relating to space and time) of each measurement to all
+        other measurements. The result is a matrix with a zero-diagonal.
+
+        Parameters
+        ----------
+        position_array_dict
+            The keys are the correlation variables of the noise model ('x', 'y', 'z',
+            't') while the values are arrays stating the position of each measurement
+            in terms of the respective correlation variable.
+
+        Returns
+        -------
+        distance_array
+            The distance (relating to space and time) of each measurement to all
+            other measurements. Currently, this is simply the Euclidean distance where
+            the time 't' is treated like another spatial component.
+        """
+
+        # each array in the values of position_array_dict has the same shape, which is
+        # also going to be the shape of the distance_array
+        first_key = [*position_array_dict.keys()][0]
+        distance_array = np.zeros(position_array_dict[first_key].shape)
+
+        # compute the distance currently using a simple Euclidean metric
+        for v, position_array in position_array_dict.items():
+            distance_array += np.power(position_array - position_array.transpose(), 2)
+        distance_array = np.sqrt(distance_array)
+
+        return distance_array
+
     def __call__(self, prms: dict) -> np.ndarray:
         """
         Returns the covariance matrix based on the correlation model.
@@ -98,8 +96,11 @@ class SpatialExponentialCorrelationModel:
 
         Returns
         -------
-            The covariance matrix based on the given parameters. The shape of
-            this array is (self.n, self.n).
+        cov
+            The covariance matrix based on the given parameters.
         """
+        # this is the correlation matrix based on an exponential model
         corr = np.exp(-self.distance_array / prms["l_corr"])
-        return prms["std"] ** 2 * corr
+        # and finally, this is the covariance matrix assuming constant std dev.
+        cov = prms["std"] ** 2 * corr
+        return cov

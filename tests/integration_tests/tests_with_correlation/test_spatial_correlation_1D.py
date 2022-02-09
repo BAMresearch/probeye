@@ -1,33 +1,38 @@
 """
-Inference problem with two forward models that share a common parameter
+Linear regression example with 1D spatial correlation model
 ----------------------------------------------------------------------------------------
-The first model equation is y = a * x + b with a, b being the model parameters and the
-second model equation is y = alpha * x**2 + b where alpha is a new model parameter, and
-b is the same model parameter as in the first model equation. Both forward models have
-the same noise model with a normal zero-mean distribution where the standard deviation
-is to be inferred. The problem is solved via max likelihood estimation and via sampling
-using emcee, pyro and dynesty.
+The n data points (y1, y2, ..., yn) generated for this example are sampled from an
+n-variate normal distribution with mean values given by yi = a * xi + b with a, b being
+the model parameters and x1, x2, ..., xi, ..., xn being predefined spatial x-coordinates
+ranging from 0 to 1. The data points (y1, y2, ..., yn) are not independent but
+correlated in x. The corresponding covariance matrix is defined based on an exponential
+correlation function parameterized by the constant standard deviation sigma of the
+n-variate normal distribution and a correlation length l_corr. Hence, the full model has
+four parameters a, b, sigma, l_corr, all of which are inferred in this example using
+maximum likelihood estimation as well as sampling via emcee and dynesty.
 """
 
-# standard library imports
+# standard library
 import unittest
 
 # third party imports
 import numpy as np
 import matplotlib.pyplot as plt
+from tripy.utils import correlation_function
+from tripy.utils import correlation_matrix
 
 # local imports (problem definition)
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_two_models(
+    def test_spatial_correlation_1D(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -36,7 +41,7 @@ class TestProblem(unittest.TestCase):
         show_progress: bool = False,
         run_scipy: bool = True,
         run_emcee: bool = True,
-        run_torch: bool = True,
+        run_torch: bool = False,
         run_dynesty: bool = True,
     ):
         """
@@ -71,6 +76,12 @@ class TestProblem(unittest.TestCase):
             dynesty solver will not be used.
         """
 
+        if run_torch:
+            raise RuntimeError(
+                "The pyro-solver is not available for inference problems including "
+                "correlations yet."
+            )
+
         # ============================================================================ #
         #                              Set numeric values                              #
         # ============================================================================ #
@@ -85,42 +96,34 @@ class TestProblem(unittest.TestCase):
         loc_b = 1.0
         scale_b = 1.0
 
-        # 'true' value of alpha, and its normal prior parameters
-        alpha_true = 0.7
-        loc_alpha = 2.0
-        scale_alpha = 1.0
-
-        # 'true' value of sigma, and its normal prior parameters
-        sigma_true = 0.15
+        # 'true' value of additive error sd, and its uniform prior parameters
+        sigma = 0.5
         low_sigma = 0.1
-        high_sigma = 2.0
+        high_sigma = 0.8
 
-        # the number of generated experiment_names and seed for random numbers
-        n_tests = 100
+        # 'true' value of correlation length, and its uniform prior parameters
+        l_corr = 0.05
+        low_l_corr = 0.001
+        high_l_corr = 0.2
+
+        # settings for the data generation
+        plot_data = False
+        n_experiments = 3
+        n_points = 25
         seed = 1
 
         # ============================================================================ #
-        #                          Define the Forward Models                           #
+        #                           Define the Forward Model                           #
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
             def response(self, inp: dict) -> dict:
-                x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
+                x = inp["x"]
                 response = {}
                 for os in self.output_sensors:
                     response[os.name] = a * x + b
-                return response
-
-        class QuadraticModel(ForwardModelBase):
-            def response(self, inp: dict) -> dict:
-                x = inp["x"]
-                alpha = inp["alpha"]
-                beta = inp["beta"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = alpha * x ** 2 + beta
                 return response
 
         # ============================================================================ #
@@ -128,116 +131,105 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Two models with shared parameter and normal noise")
+        problem = InferenceProblem("Linear regression with normal additive error")
 
         # add all parameters to the problem
         problem.add_parameter(
             "a",
             "model",
-            info="Slope of the graph in linear model",
-            tex="$a$ (linear)",
+            tex="$a$",
+            info="Slope of the graph",
             prior=("normal", {"loc": loc_a, "scale": scale_a}),
-        )
-        problem.add_parameter(
-            "alpha",
-            "model",
-            info="Factor of quadratic term",
-            tex=r"$\alpha$ (quad.)",
-            prior=("normal", {"loc": loc_alpha, "scale": scale_alpha}),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
-            tex="$b$ (shared)",
+            tex="$b$",
             prior=("normal", {"loc": loc_b, "scale": scale_b}),
         )
         problem.add_parameter(
             "sigma",
-            "noise",
-            tex=r"$\sigma$ (noise)",
-            info="Std. deviation of zero-mean noise model",
+            "likelihood",
+            tex=r"$\sigma$",
+            info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+        )
+        problem.add_parameter(
+            "l_corr",
+            "likelihood",
+            tex=r"$l_\mathrm{corr}$",
+            info="Correlation length of correlation model",
+            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
         )
 
         # add the forward model to the problem
         isensor = Sensor("x")
-        osensor_linear = Sensor("y_linear")
-        osensor_quadratic = Sensor("y_quadratic")
-        linear_model = LinearModel(["a", "b"], [isensor], [osensor_linear])
+        osensor = Sensor("y")
+        linear_model = LinearModel(["a", "b"], isensor, osensor)
         problem.add_forward_model("LinearModel", linear_model)
-        quadratic_model = QuadraticModel(
-            ["alpha", {"b": "beta"}], [isensor], [osensor_quadratic]
-        )
-        problem.add_forward_model("QuadraticModel", quadratic_model)
-
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_linear)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor_quadratic)
-        )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # data-generation; normal noise with constant variance around each point
+        # data-generation; first create the true values without an error model; these
+        # 'true' values will be the mean values for sampling from a multivariate normal
+        # distribution that accounts for the intended correlation
         np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_linear_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
-            osensor_linear.name
-        ]
-        y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
-        y_quadratic_true = quadratic_model(
-            {isensor.name: x_test, "alpha": alpha_true, "beta": b_true}
-        )[osensor_quadratic.name]
-        y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
+        x_test = np.linspace(0.0, 1.0, n_points)
+        y_true = linear_model({"a": a_true, "b": b_true, "x": x_test})[osensor.name]
 
-        # add the experimental data
-        problem.add_experiment(
-            f"TestSeries_linear",
-            sensor_values={isensor.name: x_test, osensor_linear.name: y_test_linear},
-            fwd_model_name="LinearModel",
-        )
-        problem.add_experiment(
-            f"TestSeries_quadratic",
-            sensor_values={
-                isensor.name: x_test,
-                osensor_quadratic.name: y_test_quadratic,
-            },
-            fwd_model_name="QuadraticModel",
-        )
+        # assemble the spatial covariance matrix
+        x_test_as_column_matrix = x_test.reshape((n_points, -1))
+        f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
+        cov = sigma ** 2 * correlation_matrix(x_test_as_column_matrix, f_corr)
+
+        # now generate the noisy test data including correlations; we assume here that
+        # there are n_experiments test series
+        for i in range(n_experiments):
+            exp_name = f"Test_{i}"
+            y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
+            problem.add_experiment(
+                exp_name,
+                fwd_model_name="LinearModel",
+                sensor_values={isensor.name: x_test, osensor.name: y_test},
+            )
+            if plot_data:
+                plt.scatter(
+                    x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
+                )
+        # finish the plot
+        if plot_data:
+            plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
+            plt.xlabel("x")
+            plt.ylabel(osensor.name)
+            plt.legend()
+            plt.tight_layout()
+            plt.show()
+
+        # ============================================================================ #
+        #                           Add likelihood model(s)                            #
+        # ============================================================================ #
+
+        # since the different experiments are independent of each other they are put in
+        # individual likelihood models (the problem's likelihood models are independent
+        # of each other)
+        for i in range(n_experiments):
+            likelihood_model = GaussianLikelihoodModel(
+                prms_def=[{"sigma": "std_model"}, "l_corr"],
+                sensors=osensor,
+                correlation_variables="x",
+                correlation_model="exp",
+                experiment_names=f"Test_{i}",
+                additive_model_error=True,
+                multiplicative_model_error=False,
+                additive_measurement_error=False,
+            )
+            problem.add_likelihood_model(likelihood_model)
 
         # give problem overview
         problem.info()
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(
-                x_test,
-                y_test_linear,
-                label="measured data (linear)",
-                s=10,
-                c="red",
-                zorder=10,
-            )
-            plt.plot(x_test, y_linear_true, label="true (linear)", c="black")
-            plt.scatter(
-                x_test,
-                y_test_quadratic,
-                s=10,
-                c="orange",
-                zorder=10,
-                label="measured data (quadratic)",
-            )
-            plt.plot(x_test, y_quadratic_true, label="true (quadratic)", c="blue")
-            plt.xlabel(isensor.name)
-            plt.ylabel(f"{osensor_linear.name}, {osensor_quadratic.name}")
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
@@ -245,12 +237,7 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {
-            "a": a_true,
-            "alpha": alpha_true,
-            "b": b_true,
-            "sigma": sigma_true,
-        }
+        true_values = {"a": a_true, "b": b_true, "sigma": sigma, "l_corr": l_corr}
         run_inference_engines(
             problem,
             true_values=true_values,
