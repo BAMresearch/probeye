@@ -1,13 +1,13 @@
 """
-Linear model in time and space with three different noise models
+Linear model in time and space with three different additive error models
 ----------------------------------------------------------------------------------------
-The model equation is y = A * x + B * t + c with A, B, c being the model parameters
+The model equation is y(x,t) = A * x + B * t + c with A, B, c being the model parameters
 while x and t represent position and time respectively. From the three model parameters
 A and B are latent ones while c is a constant. Measurements are made at three different
 positions (x-values) each of which is associated with an own zero-mean, uncorrelated
-normal noise model with the std. deviations to infer. This results in five latent
-parameters (parameters to infer). The problem is solved via max likelihood estimation
-and via sampling using emcee, pyro and dynesty.
+normal error model with the standard deviations to infer. This results in five latent
+parameters (parameters to be inferred). The problem is solved via max likelihood
+estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -20,7 +20,7 @@ import numpy as np
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.likelihood_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -129,7 +129,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Linear model with three noise models")
+        problem = InferenceProblem("Linear model with three likelihood models")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -150,21 +150,21 @@ class TestProblem(unittest.TestCase):
             "sigma_1",
             "likelihood",
             prior=("uniform", {"low": low_S1, "high": high_S1}),
-            info="Std. dev. of zero-mean noise model for S1",
+            info="Standard deviation, of zero-mean additive model error for S1",
             tex=r"$\sigma_1$",
         )
         problem.add_parameter(
             "sigma_2",
             "likelihood",
             prior=("uniform", {"low": low_S2, "high": high_S2}),
-            info="Std. dev. of zero-mean noise model for S1",
+            info="Standard deviation, of zero-mean additive model error for S2",
             tex=r"$\sigma_2$",
         )
         problem.add_parameter(
             "sigma_3",
             "likelihood",
             prior=("uniform", {"low": low_S3, "high": high_S3}),
-            info="Std. dev. of zero-mean noise model for S1",
+            info="Standard deviation, of zero-mean additive model error S3",
             tex=r"$\sigma_3$",
         )
         problem.add_parameter("c", "model", const=c)
@@ -213,13 +213,13 @@ class TestProblem(unittest.TestCase):
 
         # add the noise models to the problem
         problem.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
+            GaussianLikelihoodModel(prms_def={"sigma_1": "std_model"}, sensors=osensor1)
         )
         problem.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
+            GaussianLikelihoodModel(prms_def={"sigma_2": "std_model"}, sensors=osensor2)
         )
         problem.add_likelihood_model(
-            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
+            GaussianLikelihoodModel(prms_def={"sigma_3": "std_model"}, sensors=osensor3)
         )
 
         # give problem overview

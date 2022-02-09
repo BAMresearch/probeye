@@ -2,97 +2,144 @@
 from typing import Union, List, Optional
 
 # third party imports
-import numpy as np
+from loguru import logger
 
 # local imports
 from probeye.definition.sensor import Sensor
-from probeye.subroutines import make_list, translate_prms_def
+from probeye.definition.forward_model import ForwardModelBase
+from probeye.subroutines import make_list
+from probeye.subroutines import translate_prms_def
 
 
-class NoiseModelBase:
+class GaussianLikelihoodModel:
+    """
+    This class describes a Gaussian (i.e., normal) likelihood model in general terms.
+    It contains information such as the likelihood model's latent parameters, its scope
+    with respect to the given experiments, the sensors it considers, its error model
+    specification as well as its correlation structure.
+    """
+
     def __init__(
         self,
-        dist: str,
         prms_def: Union[str, List[Union[str, dict]], dict],
         sensors: Union[Sensor, List[Sensor]],
-        name: Optional[str] = None,
-        corr: Optional[str] = None,
-        corr_model: Optional[str] = None,
-        noise_type: str = "additive",
+        experiment_names: Union[str, List[str], None] = None,
+        additive_model_error: bool = True,
+        multiplicative_model_error: bool = False,
+        additive_measurement_error: bool = False,
+        correlation_variables: str = "",
+        correlation_model: str = "exp",
+        name: str = "",
     ):
         """
         Parameters
         ----------
-        dist
-            A string specifying the probability distribution the noise model is based
-            on, e.g. 'normal'.
         prms_def
-            A list of parameter names (strings) defining how a noise parameter vector
-            given to the loglike_contribution method is interpreted. For example:
-            prms_def = ['mu', 'sigma'] means that the noise parameter vector has two
-            elements, the first of which gives the value of 'mu' and the second gives
-            the value of 'sigma'.
+            Parameter names defining which parameters are used by the likelihood model.
+            For example prms_def = ['mu', 'sigma']. To check out the other possible
+            formats, see the explanation for the same parameter in probeye/definition/
+            forward_model.py:ForwardModelBase.__init__.
         sensors
-            Sensor objects that are required to evaluate the noise model.
+            These are the sensor objects which serve as output sensors in one of the
+            problem's forward models, that the likelihood model should refer to. This
+            means, the likelihood model should describe the model error between the
+            model response for all sensors specified in this 'sensors'-argument and the
+            corresponding experimental data.
+        experiment_names
+            The names of the experiments in the scope of the likelihood model.
+        additive_model_error
+            If True, the model error is assumed to be additive and not multiplicative.
+            Note that in this case 'multiplicative_model_error' must be False.
+        multiplicative_model_error
+            If True, the model error is assumed to be multiplicative and not additive.
+            Note that in this case 'additive_model_error' must be False.
+        additive_measurement_error
+            If True, next to the model error, a normal, zero-mean i.i.d. measurement
+            error is assumed to be present.
+        correlation_variables
+            Defines the correlation variables. This argument can be any combination of
+            the characters 'x', 'y', 'z', 't', each one appearing at most once. Examples
+            are: 'x', 't', 'xy', 'yzt'.
+        correlation_model
+            Defines the correlation function to be used in case correlation is
+            considered (which is the case, when correlation_variables is a non-empty
+            string). Currently, there is only one option 'exp' which represents an
+            exponential model. In the future, more options should be added.
         name
-            Unique name of the noise model. This name is None, if the user does not
-            specify it when adding the noise model to the problem. It is then named
+            Unique name of the likelihood model. This name is None, if the user does not
+            specify it when adding the likelihood model to the problem. It is then named
             automatically before starting the inference engine.
-        corr
-            Defines the correlation model. So far this is just a placeholder. It is not
-            clear yet how exactly the correlation should be defined. When it is set to
-            None, all sensors/sensor elements are independent.
-        corr_model
-            Defines the correlation function to be used in case corr isn't None.
-        noise_type
-            Either 'additive', 'multiplicative' or 'other'. Defines if the error is
-            computed via [prediction - measurement] ('additive') or via [prediction/
-            measurement-1] ('multiplicative') or in some 'other' i.e.,
-            non-standard fashion.
         """
-        self.dist = dist
+
+        # general attributes
+        self.name = name
         self.prms_def, self.prms_dim = translate_prms_def(prms_def)
+
+        # attributes related to the error model
+        self.additive_model_error = additive_model_error
+        self.multiplicative_model_error = multiplicative_model_error
+        self.additive_measurement_error = additive_measurement_error
+
+        # sensor-related attributes
         self.sensors = make_list(sensors)
         self.sensor_names = [sensor.name for sensor in self.sensors]
-        self.name = name
-        self.corr = corr
-        self.corr_model = corr_model
-        self.noise_type = noise_type
-        # this is a list of experiment names, that relate to the noise model; the list
-        # will be filled after experiments have been added to the InferenceProblem and
-        # the problem definition is complete; in this case call InferenceProblem.
-        # assign_experiments_to_noise_models() to fill it with the corresponding names
-        self.experiment_names = []  # type: List[str]
-        # as soon as defined, this attribute will be a pointer to the inference
-        # problems experiments (it will be used for consistency checks)
+        self.n_sensors = len(self.sensor_names)
+
+        # correlation-related attributes from the given input
+        self.correlation_variables = correlation_variables
+        self.correlation_model = correlation_model
+
+        # derived correlation variables
+        self.n_correlation_variables = 0
+        self.considers_correlation = False
+        self.considers_time_correlation = False
+        self.considers_space_correlation = False
+        self.considers_only_time_correlation = False
+        self.considers_only_space_correlation = False
+        self.considers_space_and_time_correlation = False
+        self.considers_time_and_space_correlation = False
+        self.process_correlation_definition()
+
+        # instantiate the experiment's names as a list
+        self.experiment_names = []
+        if experiment_names is not None:
+            self.experiment_names = make_list(experiment_names)
+
+        # these attributes are not directly set by the user, but derived and set by the
+        # method InferenceProblem.add_likelihood_model
+        self.forward_model = None  # type: Optional[ForwardModelBase]
         self.problem_experiments = {}  # type: dict
 
-        # set the error_function depending on the noise-type
-        if noise_type == "additive":
-            self.error_function = self.error_function_additive
-        elif noise_type == "multiplicative":
-            self.error_function = self.error_function_multiplicative
-        elif noise_type == "other":
-            self.error_function = self.error_function_other
-        else:
-            raise ValueError(
-                f"Encountered unknown noise_type: '{noise_type}'. The noise_type must "
-                f"be either 'additive', 'multiplicative' or 'other'."
-            )
+    @property
+    def n_experiments(self) -> int:
+        """
+        Provides a dynamic attributes stating the number of experiments that
+        were assigned to the log-likelihood model.
+        """
+        return len(self.experiment_names)
 
     def add_experiments(self, experiment_names_: Union[str, List[str]]):
         """
-        Adds experiment names to the noise model. When the noise model is evaluated it
-        will only be evaluated for those experiments added here.
+        Adds experiment names to the log-likelihood model. When the log-likelihood model
+        is evaluated it will only be evaluated for those experiments added here.
 
         Parameters
         ----------
         experiment_names_
             Names (strings) of experiments from the InferenceProblem that should be
-            added to the noise model.
+            added to the log-likelihood model.
         """
-        # check if the given experiments are compatible with the noise model with
-        # respect to the sensors
+
+        # this check is mostly to prevent automatic type checking issues
+        if self.problem_experiments is None:
+            raise ValueError(
+                f"The attribute likelihood_model.problem_experiments has not been set "
+                f"yet. This should have happened automatically. Something general "
+                f"seems to have gone wrong here..."
+            )
+
+        # check if the given experiments are compatible with the log-likelihood model
+        # with respect to the sensors
         experiment_names = make_list(experiment_names_)
         forward_models = set()
         for exp_name in experiment_names:
@@ -104,178 +151,147 @@ class NoiseModelBase:
                     raise RuntimeError(
                         f"Experiment '{exp_name}' does not contain a sensor "
                         f"'{sensor_name}' which is required for the evaluation of the "
-                        f"noise model."
+                        f"log-likelihood model."
                     )
+
         # check if the given experiments all refer to one forward model
         if len(forward_models) > 1:
             raise RuntimeError(
                 f"The given experiments refer to more than one forward model!"
             )
+
         # check if one of the given experiments have been added before
         for exp_name in experiment_names:
             if exp_name in self.experiment_names:
                 raise RuntimeError(
-                    f"The experiment '{exp_name}' has already been added to this noise "
-                    f"model. Something might be wrong here."
+                    f"The experiment '{exp_name}' has already been added to this "
+                    f"likelihood model. Something might be wrong here."
                 )
+
+        # the following code block is intended for automatically deriving the
+        # experiment's correlation_info if it is not given by the user; note that this
+        # option to not specify the correlation_info is intended for cases where the
+        # correlation variables have no alias (for example if the correlation variable
+        # 'x' is also called 'x' in the experiment's sensor_values)
+        if self.considers_correlation:
+            for exp_name in experiment_names:
+                if self.problem_experiments[exp_name]["correlation_info"] is None:
+                    assumed_correlation_info = {}  # type: dict
+                    for sensor_name in self.sensor_names:
+                        assumed_correlation_info[sensor_name] = {
+                            cv: cv for cv in self.correlation_variables
+                        }
+                        logger.debug(
+                            f"No 'correlation_info' given for experiment '{exp_name}'."
+                        )
+                        logger.debug(
+                            f"Assuming correlation_info = {assumed_correlation_info}"
+                        )
+                        self.problem_experiments[exp_name][
+                            "correlation_info"
+                        ] = assumed_correlation_info
+
+        # finally, add the names to the internal list
         self.experiment_names += experiment_names
 
-    def error(self, model_response_dict: dict) -> dict:
+    def check_experiment_consistency(self):
         """
-        Computes the model error for all of the noise model's experiments and returns
-        them in a dictionary that is sorted by output sensor_values.
-
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-
-        Returns
-        -------
-        model_error
-            A dictionary with the keys being the noise model's sensor names, and 1D
-            numpy arrays representing the model errors as values.
-        """
-        # prepare the dictionary keys
-        model_error_dict = {name: np.array([]) for name in self.sensor_names}
-
-        # fill the dictionary with model error vectors
-        for exp_name in self.experiment_names:
-            exp_dict = self.problem_experiments[exp_name]
-            ym_dict = model_response_dict[exp_name]
-            ye_dict = exp_dict["sensor_values"]
-            me_dict = self.error_function(ym_dict, ye_dict)
-            model_error_dict = {
-                name: np.append(model_error_dict[name], me_dict[name])
-                for name in self.sensor_names
-            }
-
-        return model_error_dict
-
-    def error_function_additive(self, ym_dict: dict, ye_dict: dict) -> dict:
-        """
-        Evaluates the additive model error for each of the noise model' sensors.
-
-        Parameters
-        ----------
-        ym_dict
-            The computed values for the model's output sensor_values.
-        ye_dict
-            The measured values for the model's output sensor_values.
-
-        Returns
-        -------
-        error_dict
-            The computed model error for the model's output sensor_values.
-        """
-        # for each sensor, its own error metric is used to compute the error
-        error_dict = {name: ym_dict[name] - ye_dict[name] for name in self.sensor_names}
-        return error_dict
-
-    def error_function_multiplicative(self, ym_dict: dict, ye_dict: dict) -> dict:
-        """
-        Evaluates the multiplicative model error for each of the noise model's sensors.
-
-        Parameters
-        ----------
-        ym_dict
-            The computed values for the model's output sensor_values.
-        ye_dict
-            The measured values for the model's output sensor_values.
-
-        Returns
-        -------
-        error_dict
-            The computed model error for the model's output sensor_values.
-        """
-        # for each sensor, its own error metric is used to compute the error
-        error_dict = {
-            name: ym_dict[name] / ye_dict[name] - 1.0 for name in self.sensor_names
-        }
-        return error_dict
-
-    def error_function_other(self, ym_dict: dict, ye_dict: dict) -> dict:
-        """
-        Non-standard error function self.error_function will point to when self.
-        noise_type is set to 'other'. See self.error_function for more information.
-        """
-        raise NotImplementedError(
-            "Your model does not have an non-standard error_function-method yet. If "
-            "you want to use it, you need to implement it first."
-        )
-
-    def loglike_contribution(
-        self, model_response_dict: dict, prms: dict, worst_value: float = -np.infty
-    ) -> float:
-        """
-        Evaluates the log-likelihood function for the given model error and the given
-        noise parameter vector. This method has to be overwritten.
-
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-        prms
-            Dictionary containing parameter name:value pairs.
-        worst_value
-            This value is returned when this method does not result in a numeric value.
-            This might happen for example when the given parameters are not valid (for
-            example in case of a negative standard deviation). The returned value in
-            such cases should represent the worst possible value of the contribution.
-
-        Returns
-        -------
-        ll
-            The evaluated log-likelihood function.
-        """
-        raise NotImplementedError(
-            "Your model does not have a loglike_contribution-method. You need to "
-            "define this method so you can evaluate your noise model."
-        )
-
-
-class NormalNoiseModel(NoiseModelBase):
-    """
-    A general Gaussian (normal) noise model with or without correlations.
-    """
-
-    def __init__(
-        self,
-        prms_def: Union[str, List[Union[str, dict]], dict],
-        sensors: Union[Sensor, List[Sensor]],
-        name: Optional[str] = None,
-        corr: Optional[str] = None,
-        corr_model: Optional[str] = None,
-        noise_type: str = "additive",
-    ):
-        """
-        See docstring of NoiseModelBase for information on the input arguments.
+        Checks if the experiments defined on the likelihood model are consistent with
+        each other. Mostly, this means that they all refer to the same forward model.
         """
 
-        # initialize the base class with given input
-        super().__init__(
-            "normal",
-            prms_def,
-            sensors,
-            name=name,
-            corr=corr,
-            corr_model=corr_model,
-            noise_type=noise_type,
-        )
-
-        # check that at the standard deviation is provided (this can be either as a
-        # constant or a latent parameter, but it has to be given)
-        if "std" not in [*self.prms_def.values()]:
+        # obviously, there has to be at least one experiment defined
+        if self.experiment_names is None:
             raise RuntimeError(
-                "The standard deviation 'std' was not provided in prms_def!"
+                f"No experiments defined for likelihood model '{self.name}'!"
             )
 
-        # the mean value(s) do not have to be stated explicitly; if they are not given,
-        # the are assumed to be zero
-        self.zero_mean = True
-        if "mean" in [*self.prms_def.values()]:
-            self.zero_mean = False
+        # all experiments must refer to the same forward model
+        fwd_models = set()
+        for exp_name in self.experiment_names:
+            fwd_models.add(self.problem_experiments[exp_name]["forward_model"])
+        if len(fwd_models) > 1:
+            raise RuntimeError(
+                f"The experiments of likelihood model '{self.name}' refer to more than "
+                f"one forward model!\nHowever, they should all refer to one and the "
+                f"same forward model."
+            )
+
+    def determine_forward_model(self):
+        """
+        Determines the forward model of the likelihood model as the forward model that
+        is referenced by all of its experiments. Note, that all experiments of a
+        likelihood model must refer to one and only one common forward model.
+        """
+        # note that the check makes sure that all experiments have the same forward
+        # model; hence we can simply take any experiment and read its forward model
+        self.check_experiment_consistency()
+        exp_1 = self.problem_experiments[self.experiment_names[0]]
+        self.forward_model = exp_1["forward_model"]
+
+    def process_correlation_definition(self, valid_corr_models: tuple = ("exp",)):
+        """
+        Processes a string like 'xt', 'xy', etc. into the corresponding correlation
+        variables and decides if a mere spatial, temporal or spatio-temporal correlation
+        was defined. The results are written to attributes. This function is intended
+        to be called right after initializing the likelihood model without having added
+        any experiments yet.
+
+        Parameters
+        ----------
+        valid_corr_models
+            The tuple contains all currently implemented correlation models.
+        """
+
+        # check the correlation model
+        if self.correlation_model not in valid_corr_models:
+            raise ValueError(
+                f"Found invalid correlation model '{self.correlation_model}' in the "
+                f"correlation definition. Currently, valid correlation models "
+                f"are: {valid_corr_models}."
+            )
+
+        # check if the model error definition is valid
+        if self.additive_model_error and self.multiplicative_model_error:
+            raise RuntimeError(
+                f"It is not possible to consider both an additive and a multiplicative "
+                f"model error at the same time. Please unselect one of them."
+            )
+
+        # translate the given string in a list of its characters
+        cv_list = list(self.correlation_variables)
+
+        # check that only valid characters are given, and that those characters
+        # are at most mentioned once
+        for char in cv_list:
+            if char not in ["x", "y", "z", "t"]:
+                raise RuntimeError(
+                    f"Found invalid correlation variable '{char}' in the correlation "
+                    f"definition. Only the characters 'x', 'y', 'z', 't' are valid "
+                    f"correlation variables."
+                )
+            if self.correlation_variables.count(char) > 1:
+                raise RuntimeError(
+                    f"The correlation variable '{char}' was mentioned more than once "
+                    f"in the correlation definition: '{self.correlation_variables}'."
+                )
+        self.n_correlation_variables = len(self.correlation_variables)
+
+        # this is where the actual processing happens
+        self.considers_correlation = True if self.correlation_variables else False
+        self.considers_time_correlation = "t" in self.correlation_variables
+        self.considers_space_correlation = (
+            len({"x", "y", "z"}.intersection(set(self.correlation_variables))) > 0
+        )
+        self.considers_only_time_correlation = (
+            self.considers_time_correlation and not self.considers_space_correlation
+        )
+        self.considers_only_space_correlation = (
+            self.considers_space_correlation and not self.considers_time_correlation
+        )
+        self.considers_space_and_time_correlation = (
+            self.considers_time_correlation and self.considers_space_correlation
+        )
+        self.considers_time_and_space_correlation = (
+            self.considers_space_and_time_correlation
+        )

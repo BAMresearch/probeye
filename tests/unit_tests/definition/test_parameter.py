@@ -45,6 +45,7 @@ class TestProblem(unittest.TestCase):
         )
         # check invalid key
         with self.assertRaises(ValueError):
+            # noinspection PyTypeChecker
             parameters[True] = ParameterProperties(
                 {
                     "index": None,
@@ -65,6 +66,7 @@ class TestProblem(unittest.TestCase):
         # you cannot add the parameter's properties as a dictionary
         with self.assertRaises(ValueError):
             d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            # noinspection PyTypeChecker
             parameters["d"] = {
                 "index": 3,
                 "dim": 1,

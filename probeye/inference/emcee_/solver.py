@@ -235,12 +235,13 @@ class EmceeSolver(ScipySolver):
         )
         logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
         logger.info("")
-        logger.info("Summary of sampling results")
+        logger.info("Summary of sampling results (emcee)")
         posterior_samples = sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             self.summary = self.emcee_summary(
                 posterior_samples, true_values=true_values
             )
+        logger.info("")  # empty line for visual buffer
         self.raw_results = sampler
 
         # translate the results to a common data structure and return it

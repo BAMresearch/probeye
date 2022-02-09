@@ -34,7 +34,7 @@ class PriorNormal(PriorBase):
 
     def __call__(
         self, prms: dict, method: str, use_ref_prm: bool = True, **kwargs
-    ) -> float:
+    ) -> Union[float, np.ndarray]:
         """
         Evaluates stats.(multivariate_)norm.<method>(x, loc, scale) or, if use_ref_prm=
         False stats.(multivariate_)norm.<method>(loc, scale). This function is mostly

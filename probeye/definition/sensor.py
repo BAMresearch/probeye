@@ -5,7 +5,7 @@ from typing import Union, List, Tuple, Optional
 import numpy as np
 
 # local imports
-from probeye.subroutines import process_spatial_coordinates
+from probeye.subroutines import process_spatiotemporal_coordinates
 
 
 class Sensor:
@@ -61,7 +61,7 @@ class Sensor:
         self.unit = unit
 
         # translate the input to a coords-array
-        self.coords, self._order = process_spatial_coordinates(
+        self.coords, self._order = process_spatiotemporal_coordinates(
             x=x, y=y, z=z, coords=coords, order=order
         )
 
