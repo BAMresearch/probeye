@@ -1,33 +1,33 @@
 """
-Linear model in time and space with three different noise models
+Linear regression example where a prior parameter is a latent parameter
 ----------------------------------------------------------------------------------------
-The model equation is y = A * x + B * t + c with A, B, c being the model parameters
-while x and t represent position and time respectively. From the three model parameters
-A and B are latent ones while c is a constant. Measurements are made at three different
-positions (x-values) each of which is associated with an own zero-mean, uncorrelated
-normal noise model with the std. deviations to infer. This results in five latent
-parameters (parameters to infer). The problem is solved via max likelihood estimation
-and via sampling using emcee, pyro and dynesty.
+The model equation is y(x) = a * x + b with a, b being the model parameters, while the
+likelihood model is based on a normal zero-mean additive model error distribution with
+the standard deviation to infer. Additionally, the location parameter of a's prior is
+considered a latent parameter. The problem is solved via max likelihood estimation and
+via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
 import unittest
 
+
 # third party imports
 import numpy as np
+import matplotlib.pyplot as plt
 
 # local imports (problem definition)
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_multiple_sensors(
+    def test_prior_calibration(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -75,39 +75,27 @@ class TestProblem(unittest.TestCase):
         #                              Set numeric values                              #
         # ============================================================================ #
 
-        # 'true' value of A, and its normal prior parameters
-        A_true = 1.3
-        loc_A = 1.0
-        scale_A = 1.0
+        # 'true' value of a, and its normal prior parameters
+        a_true = 2.5
+        scale_a = 1.0
 
-        # 'true' value of B, and its normal prior parameters
-        B_true = -1.0
-        loc_B = -2.0
-        scale_B = 1.5
+        # uniform prior-parameters of 'loc_a'
+        low_loc_a = 2.0
+        high_loc_a = 3.0
 
-        # 'true' value of sd_S1, and its uniform prior parameters
-        sd_S1_true = 0.2
-        low_S1 = 0.1
-        high_S1 = 0.7
+        # 'true' value of b, and its normal prior parameters
+        b_true = 1.7
+        loc_b = 1.0
+        scale_b = 1.0
 
-        # 'true' value of sd_S2, and its uniform prior parameters
-        sd_S2_true = 0.4
-        low_S2 = 0.1
-        high_S2 = 0.7
+        # 'true' value of additive error sd, and its uniform prior parameters
+        sigma = 0.5
+        low_sigma = 0.1
+        high_sigma = 0.6
 
-        # 'true' value of sd_S3, and its uniform prior parameters
-        sd_S3_true = 0.6
-        low_S3 = 0.1
-        high_S3 = 0.7
-
-        # define sensor positions
-        pos_s1 = 0.2
-        pos_s2 = 0.5
-        pos_s3 = 1.0
-
-        # define global constant; this constant is used here only to test if there are
-        # any problems when using global constants
-        c = 0.5
+        # the number of generated experiment_names and seed for random numbers
+        n_tests = 100
+        seed = 1
 
         # ============================================================================ #
         #                           Define the Forward Model                           #
@@ -115,13 +103,12 @@ class TestProblem(unittest.TestCase):
 
         class LinearModel(ForwardModelBase):
             def response(self, inp: dict) -> dict:
-                t = inp["time"]
-                A = inp["A"]
-                B = inp["B"]
-                const = inp["const"]
-                response = dict()
+                x = inp["x"]
+                a = inp["a"]
+                b = inp["b"]
+                response = {}
                 for os in self.output_sensors:
-                    response[os.name] = A * os.x + B * t + const
+                    response[os.name] = a * x + b
                 return response
 
         # ============================================================================ #
@@ -129,94 +116,83 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inference problem with a useful name
-        problem = InferenceProblem("Linear model with three noise models")
+        problem = InferenceProblem(
+            "Linear model with normal additive error and a latent prior-parameter"
+        )
 
         # add all parameters to the problem
         problem.add_parameter(
-            "A",
+            "loc_a",
+            "prior",
+            info="Location parameter of normal prior for 'a'",
+            tex=r"$\mu_a^\mathrm{prior}$",
+            prior=("uniform", {"low": low_loc_a, "high": high_loc_a}),
+        )
+        problem.add_parameter(
+            "a",
             "model",
-            prior=("normal", {"loc": loc_A, "scale": scale_A}),
             info="Slope of the graph",
-            tex="$A$",
+            tex="$a$",
+            prior=("normal", {"loc": "loc_a", "scale": scale_a}),
         )
         problem.add_parameter(
-            "B",
+            "b",
             "model",
-            prior=("normal", {"loc": loc_B, "scale": scale_B}),
             info="Intersection of graph with y-axis",
-            tex="$B$",
+            tex="$b$",
+            prior=("normal", {"loc": loc_b, "scale": scale_b}),
         )
         problem.add_parameter(
-            "sigma_1",
-            "noise",
-            prior=("uniform", {"low": low_S1, "high": high_S1}),
-            info="Std. dev. of zero-mean noise model for S1",
-            tex=r"$\sigma_1$",
+            "sigma",
+            "likelihood",
+            info="Standard deviation, of zero-mean additive model error",
+            tex=r"$\sigma$",
+            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
-        problem.add_parameter(
-            "sigma_2",
-            "noise",
-            prior=("uniform", {"low": low_S2, "high": high_S2}),
-            info="Std. dev. of zero-mean noise model for S1",
-            tex=r"$\sigma_2$",
-        )
-        problem.add_parameter(
-            "sigma_3",
-            "noise",
-            prior=("uniform", {"low": low_S3, "high": high_S3}),
-            info="Std. dev. of zero-mean noise model for S1",
-            tex=r"$\sigma_3$",
-        )
-        problem.add_parameter("c", "model", const=c)
 
         # add the forward model to the problem
-        isensor = Sensor("time")
-        osensor1 = Sensor("y1", x=pos_s1)
-        osensor2 = Sensor("y2", x=pos_s2)
-        osensor3 = Sensor("y3", x=pos_s3)
-        linear_model = LinearModel(
-            ["A", "B", {"c": "const"}], [isensor], [osensor1, osensor2, osensor3]
-        )
+        isensor = Sensor("x")
+        osensor = Sensor("y")
+        linear_model = LinearModel(["a", "b"], [isensor], [osensor])
         problem.add_forward_model("LinearModel", linear_model)
-
-        # add the noise models to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_1": "std"}, sensors=osensor1)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_2": "std"}, sensors=osensor2)
-        )
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma_3": "std"}, sensors=osensor3)
-        )
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
+        # data-generation; normal likelihood with constant variance around each point
+        np.random.seed(seed)
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
+            osensor.name
+        ]
+        y_test = np.random.normal(loc=y_true, scale=sigma)
+
         # add the experimental data
-        np.random.seed(1)
-        sd_dict = {
-            osensor1.name: sd_S1_true,
-            osensor2.name: sd_S2_true,
-            osensor3.name: sd_S3_true,
-        }
+        problem.add_experiment(
+            f"TestSeries_1",
+            fwd_model_name="LinearModel",
+            sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
 
-        def generate_data(n_time_steps, n=None):
-            time_steps = np.linspace(0, 1, n_time_steps)
-            inp = {"A": A_true, "B": B_true, "const": c, "time": time_steps}
-            sensors = linear_model(inp)
-            for key, val in sensors.items():
-                sensors[key] = val + np.random.normal(
-                    0.0, sd_dict[key], size=n_time_steps
-                )
-            sensors[isensor.name] = time_steps
-            problem.add_experiment(
-                f"TestSeries_{n}", sensor_values=sensors, fwd_model_name="LinearModel"
-            )
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
+            plt.xlabel(isensor.name)
+            plt.ylabel(osensor.name)
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
 
-        for n_exp, n_t in enumerate([101, 51]):
-            generate_data(n_t, n=n_exp)
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise model to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+        )
 
         # give problem overview
         problem.info()
@@ -227,13 +203,7 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {
-            "A": A_true,
-            "B": B_true,
-            "sigma_1": sd_S1_true,
-            "sigma_2": sd_S2_true,
-            "sigma_3": sd_S3_true,
-        }
+        true_values = {"loc_a": a_true, "a": a_true, "b": b_true, "sigma": sigma}
         run_inference_engines(
             problem,
             true_values=true_values,

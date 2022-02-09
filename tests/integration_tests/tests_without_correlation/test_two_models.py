@@ -1,9 +1,12 @@
 """
-Simple linear regression example with two model and one noise parameter
+Inference problem with two forward models that share a common parameter
 ----------------------------------------------------------------------------------------
-The model equation is y = a * x + b with a, b being the model parameters and the noise
-model is a normal zero-mean distribution with the std. deviation to infer. The problem
-is solved via max likelihood estimation and via sampling using emcee, pyro and dynesty.
+The first model equation is y(x) = a * x + b with a, b being the model parameters and
+the second model equation is y(x) = alpha * x**2 + b where alpha is an additional model
+parameter, and b is the same model parameter as in the first model equation. Both
+forward models have the same additive error model with a normal zero-mean distribution
+where the standard deviation is to be inferred. The problem is solved via max likelihood
+estimation and via sampling using emcee, pyro and dynesty.
 """
 
 # standard library imports
@@ -17,14 +20,14 @@ import matplotlib.pyplot as plt
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.noise_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_linear_regression(
+    def test_two_models(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -82,145 +85,182 @@ class TestProblem(unittest.TestCase):
         loc_b = 1.0
         scale_b = 1.0
 
-        # 'true' value of noise sd, and its uniform prior parameters
-        sigma_noise = 0.5
+        # 'true' value of alpha, and its normal prior parameters
+        alpha_true = 0.7
+        loc_alpha = 2.0
+        scale_alpha = 1.0
+
+        # 'true' value of sigma, and its normal prior parameters
+        sigma_true = 0.15
         low_sigma = 0.1
-        high_sigma = 0.8
+        high_sigma = 2.0
 
         # the number of generated experiment_names and seed for random numbers
-        n_tests = 50
+        n_tests = 100
         seed = 1
 
         # ============================================================================ #
-        #                           Define the Forward Model                           #
+        #                          Define the Forward Models                           #
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
-                m = inp["m"]
+                a = inp["a"]
                 b = inp["b"]
                 response = {}
                 for os in self.output_sensors:
-                    response[os.name] = m * x + b
+                    response[os.name] = a * x + b
                 return response
 
-            def jacobian(self, inp: dict) -> dict:
-                # this method *can* be provided by the user; if not provided the
-                # jacobian will be approximated by finite differences
-                x = inp["x"]  # vector
-                one = np.ones((len(x), 1))
-                jacobian = {}
+        class QuadraticModel(ForwardModelBase):
+            def response(self, inp: dict) -> dict:
+                x = inp["x"]
+                alpha = inp["alpha"]
+                beta = inp["beta"]
+                response = {}
                 for os in self.output_sensors:
-                    # partial derivatives must only be stated for the model parameters;
-                    # all other input must be flagged by None; note: partial derivatives
-                    # must be given as column vectors
-                    jacobian[os.name] = {"x": None, "m": x.reshape(-1, 1), "b": one}
-                return jacobian
+                    response[os.name] = alpha * x ** 2 + beta
+                return response
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inference problem with a useful name; note that the name will
-        # only be stored as an attribute of the InferenceProblem and is not important
-        # for the problem itself; can be useful when dealing with multiple problems
-        problem = InferenceProblem("Linear regression with normal noise")
+        # initialize the inference problem with a useful name
+        problem = InferenceProblem(
+            "Two models with shared parameter and normal additive error"
+        )
 
-        # add all parameters to the problem; the first argument states the parameter's
-        # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
-        # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'noise' for parameters of the noise model);
-        # the 'info'-argument is a short description string used for logging, and the
-        # tex-argument gives a tex-string of the parameter used for plotting; finally,
-        # the prior-argument specifies the parameter's prior; note that this definition
-        # of a prior will result in the initialization of constant parameters of type
-        # 'prior' in the background
+        # add all parameters to the problem
         problem.add_parameter(
             "a",
             "model",
-            tex="$a$",
-            info="Slope of the graph",
+            info="Slope of the graph in linear model",
+            tex="$a$ (linear)",
             prior=("normal", {"loc": loc_a, "scale": scale_a}),
+        )
+        problem.add_parameter(
+            "alpha",
+            "model",
+            info="Factor of quadratic term",
+            tex=r"$\alpha$ (quad.)",
+            prior=("normal", {"loc": loc_alpha, "scale": scale_alpha}),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
-            tex="$b$",
+            tex="$b$ (shared)",
             prior=("normal", {"loc": loc_b, "scale": scale_b}),
         )
         problem.add_parameter(
             "sigma",
-            "noise",
-            tex=r"$\sigma$",
-            info="Std. dev, of 0-mean noise model",
+            "likelihood",
+            tex=r"$\sigma$ (likelihood)",
+            info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
 
-        # add the forward model to the problem; note that the first positional argument
-        # [{'a': 'm'}, 'b'] passed to LinearModel defines the forward model's parameters
-        # by name via a list with elements structured like {<global parameter name>:
-        # <local parameter name>}; a global name is a name introduced by problem.
-        # add_parameter, while a local name is a name used in the response-method of the
-        # forward model class (see the class LinearModel above); note that the use of
-        # the local parameter name 'm' for the global parameter 'a' is added here only
-        # to highlight the possibility of this feature; it is not necessary at all here;
-        # whenever forward model's parameter has a similar local and global name (which
-        # should be the case most of the times), one doesn't have to use the verbose
-        # notation  {<global parameter name>: <local parameter name>} but can instead
-        # just write the parameter's (global=local) name, like it is done with the
-        # forward model's parameter 'b' below
+        # add the forward model to the problem
         isensor = Sensor("x")
-        osensor = Sensor("y")
-        linear_model = LinearModel([{"a": "m"}, "b"], [isensor], [osensor])
+        osensor_linear = Sensor("y_linear")
+        osensor_quadratic = Sensor("y_quadratic")
+        linear_model = LinearModel(["a", "b"], [isensor], [osensor_linear])
         problem.add_forward_model("LinearModel", linear_model)
-
-        # add the noise model to the problem
-        problem.add_noise_model(
-            NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+        quadratic_model = QuadraticModel(
+            ["alpha", {"b": "beta"}], [isensor], [osensor_quadratic]
         )
+        problem.add_forward_model("QuadraticModel", quadratic_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # data-generation; normal noise with constant variance around each point
+        # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model.response(
-            {isensor.name: x_test, "m": a_true, "b": b_true}
-        )[osensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma_noise)
+        y_linear_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
+            osensor_linear.name
+        ]
+        y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
+        y_quadratic_true = quadratic_model(
+            {isensor.name: x_test, "alpha": alpha_true, "beta": b_true}
+        )[osensor_quadratic.name]
+        y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
 
         # add the experimental data
         problem.add_experiment(
-            f"TestSeries_1",
+            f"TestSeries_linear",
+            sensor_values={isensor.name: x_test, osensor_linear.name: y_test_linear},
             fwd_model_name="LinearModel",
-            sensor_values={isensor.name: x_test, osensor.name: y_test},
+        )
+        problem.add_experiment(
+            f"TestSeries_quadratic",
+            sensor_values={
+                isensor.name: x_test,
+                osensor_quadratic.name: y_test_quadratic,
+            },
+            fwd_model_name="QuadraticModel",
+        )
+
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(
+                x_test,
+                y_test_linear,
+                label="measured data (linear)",
+                s=10,
+                c="red",
+                zorder=10,
+            )
+            plt.plot(x_test, y_linear_true, label="true (linear)", c="black")
+            plt.scatter(
+                x_test,
+                y_test_quadratic,
+                s=10,
+                c="orange",
+                zorder=10,
+                label="measured data (quadratic)",
+            )
+            plt.plot(x_test, y_quadratic_true, label="true (quadratic)", c="blue")
+            plt.xlabel(isensor.name)
+            plt.ylabel(f"{osensor_linear.name}, {osensor_quadratic.name}")
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
+
+        # ============================================================================ #
+        #                              Add noise model(s)                              #
+        # ============================================================================ #
+
+        # add the noise models to the problem
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=osensor_linear
+            )
+        )
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=osensor_quadratic
+            )
         )
 
         # give problem overview
         problem.info()
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(isensor.name)
-            plt.ylabel(osensor.name)
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
         # this routine is imported from another script because it it used by all
-        # integration tests in the same way; ref_values are used for plotting
-        true_values = {"a": a_true, "b": b_true, "sigma": sigma_noise}
+        # integration tests in the same way
+        true_values = {
+            "a": a_true,
+            "alpha": alpha_true,
+            "b": b_true,
+            "sigma": sigma_true,
+        }
         run_inference_engines(
             problem,
             true_values=true_values,

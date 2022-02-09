@@ -129,6 +129,7 @@ def run_inference_engines(
             n_walkers=n_walkers,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
+            true_values=true_values,
         )
         create_plots(inference_data, problem, true_values)
 
@@ -144,5 +145,7 @@ def run_inference_engines(
 
     if run_dynesty:
         dynesty_solver = DynestySolver(problem, show_progress=show_progress)
-        inference_data = dynesty_solver.run_dynesty("static", nlive=250)
+        inference_data = dynesty_solver.run_dynesty(
+            "static", nlive=250, true_values=true_values
+        )
         create_plots(inference_data, problem, true_values)

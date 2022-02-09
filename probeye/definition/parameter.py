@@ -13,6 +13,442 @@ from probeye.subroutines import len_or_one
 from probeye.definition.prior import PriorBase
 
 
+class Parameters(dict):
+    """
+    The main parameter 'library'. In this dictionary, all of the problem's parameters
+    are stored. The parameter's names are the keys, and the associated values are
+    ParameterProperties-objects, see below.
+    """
+
+    def add_parameter(
+        self,
+        prm_name: str,
+        prm_type: str,
+        dim: Optional[int] = 1,
+        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
+        const: Union[int, float, np.ndarray, None] = None,
+        prior: Union[tuple, list, None] = None,
+        info: str = "No explanation provided",
+        tex: Optional[str] = None,
+    ):
+        """
+        Adds a parameter ('const' or 'latent') to the Parameters-object. The main
+        functionality of this method is to distinguish between the two types ('const'
+        and 'latent') and in creating the prior-object and adding the prior-parameters
+        when adding a latent param. to the problem.
+
+        Parameters
+        ----------
+        prm_name
+            The name of the parameter which should be added to the problem.
+        prm_type
+            Either 'model' (for a model parameter), 'prior' (for a prior parameter) or
+            'likelihood' (for a likelihood parameter).
+        dim
+            The parameter's dimension.
+        domain
+            The parameter's domain (i.e., values it may assume). Note that this argument
+            is only considered for latent parameter, but not for a constant.
+        const
+            If the added parameter is a 'const'-parameter, the corresponding value has
+            to be specified by this argument.
+        prior
+            If the added parameter is a 'latent'-parameter, this argument has to be
+            given as a 2-tuple. The first element (a string) defines the prior-type
+            (will be referenced in inference routines). The 2nd element must be a
+            dictionary stating the prior's parameters as keys and their numeric values
+            as values or the name of a pre-defined parameter within the problem scope.
+            An example for a normal prior: ('normal', {'loc': 0.0, 'scale': 1.0}). In
+            order to define the prior's parameters, check out the prior definitions in
+            priors.py.
+        info
+            Short explanation on the added parameter.
+        tex
+            The TeX version of the parameter's name, for example r'$\beta$' for a
+            parameter named 'beta'.
+        """
+
+        # make sure the parameters has not been defined yet
+        self.confirm_that_parameter_does_not_exists(prm_name)
+
+        # if neither const nor prior are given, the parameter is interpreted as being
+        # defined as latent with an uninformative prior
+        if const is None and prior is None:
+            prior = ("uninformative", {})
+
+        # add the parameter to the central parameter dictionary
+        if prior is not None:  # i.e. adding 'latent'-parameter
+            # first, define the index of this parameter in the numeric vector theta,
+            # which is given to self.loglike and self.logprior
+            prm_index = self.n_latent_prms_dim  # type: Union[int, None]
+            prm_dim = dim
+            prm_domain = domain if type(domain) == list else [domain]  # type: ignore
+            # the prm_value is reserved for 'const'-parameter; hence, it is set to None
+            # in this case, where we are adding a 'latent'-param.
+            prm_value = None
+            # the remaining code in this if-branch defines the prior that is associated
+            # with this 'latent'-parameter; first, however, check whether the given
+            # prior has a valid structure
+            if type(prior) not in [list, tuple]:
+                raise TypeError(
+                    f"The given prior is of type {type(prior)} but must be "
+                    f"either a list or a tuple!"
+                )
+            if len(prior) != 2:
+                raise RuntimeError(
+                    f"The given prior must be a list/tuple with two elements. "
+                    f"However, the given prior has {len(prior)} element(s)."
+                )
+            if type(prior[0]) is not str:
+                raise TypeError(
+                    f"The first element of the prior must be of type string. "
+                    f"However, the given first element is of type "
+                    f"{type(prior[0])}."
+                )
+            if type(prior[1]) is not dict:
+                raise TypeError(
+                    f"The second element of the prior must be of type dict. "
+                    f"However, the given second element is of type "
+                    f"{type(prior[1])}."
+                )
+            # extract the prior's elements
+            prior_type = prior[0]  # e.g. 'normal', 'lognormal', etc.
+            prior_dict = prior[1]  # dictionary with parameter-value pairs
+            prior_parameter_names = []  # type: List[Union[str, dict]]
+            for prior_parameter_name, value in prior_dict.items():
+                # create unique name for this prior parameter
+                new_name = f"{prior_parameter_name}_{prm_name}"
+                if type(value) in {float, int, list, tuple, np.ndarray}:
+                    # in this case, the prior-parameter is considered a 'const'-
+                    # parameter and added to the problem accordingly here
+                    default_info = f"{prior_type.capitalize()} "
+                    default_info += f"prior's parameter "
+                    default_info += f"for latent parameter '{prm_name}'"
+                    # the following call is recursive, but only with a depth of one,
+                    # since the added parameter is a constant here
+                    self.add_parameter(
+                        new_name, "prior", const=value, info=default_info
+                    )
+                    prior_parameter_names.append(new_name)
+                elif type(value) is str:
+                    # in this case the prior-parameter is defined as an already defined
+                    # parameter with the name stated in value
+                    self.confirm_that_parameter_exists(value)
+                    prior_parameter_names.append({value: new_name})
+                else:
+                    raise TypeError(
+                        f"The prior-parameter {new_name} is not assigned a "
+                        f"float, int or str, but something of type "
+                        f"{type(value)}."
+                    )
+            prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
+            prm_prior = PriorBase(
+                prm_name, prior_parameter_names, prior_name, prior_type
+            )  # type: Union[PriorBase, None]
+            logger.debug(
+                f"Adding  latent  {prm_type}-parameter "
+                f"{prm_name} with {prior_type} prior to problem"
+            )
+
+        else:
+            # in this case we are adding a 'const'-parameter, which means that the
+            # prm_index and prm_prior values are not used here
+            prm_index = None
+            prm_dim = len_or_one(const)
+            prm_domain = None  # type: ignore
+            prm_prior = None
+            prm_value = const
+            logger.debug(
+                f"Adding constant {prm_type}-parameter "
+                f"{prm_name} = {prm_value} to problem"
+            )
+
+        # add the parameter to the central parameter dictionary
+        self[prm_name] = ParameterProperties(
+            {
+                "index": prm_index,
+                "dim": prm_dim,
+                "domain": prm_domain,
+                "type": prm_type,
+                "prior": prm_prior,
+                "value": prm_value,
+                "info": info,
+                "tex": tex,
+            }
+        )
+
+    def __setitem__(self, key: str, value: "ParameterProperties"):
+        """
+        Performs some checks before adding a parameter to the dictionary.
+
+        Parameters
+        ----------
+        key
+            The key of the key-value pair to be added to self.
+        value
+            The value of the key-value pair to be added to self.
+        """
+        if type(key) != str:
+            raise ValueError(
+                f"The key must be a parameters name (string), but you provided "
+                f"something of type '{type(key)}'."
+            )
+        if type(value) != ParameterProperties:
+            raise ValueError(
+                f"The properties of your parameter must be given in form of an "
+                f"ParameterProperties-object. But you provided something of "
+                f"type '{type(value)}'."
+            )
+        super().__setitem__(key, value)
+
+    def __delitem__(self, key: str):
+        """
+        Deletes an item from itself while taking care of additional actions. For example
+        removing prior-parameters when deleting a latent parameter or keeping the index-
+        attributes of the latent parameters consistent.
+
+        Parameters
+        ----------
+        key
+            The key of the key-value pair to be removed from self.
+        """
+
+        # the given key is a parameter's name (renaming for easier readability)
+        prm_name = key
+
+        # check if the given parameter exists
+        self.confirm_that_parameter_exists(prm_name)
+
+        # different steps must be taken depending on whether the parameter which should
+        # be removed is a 'const'- or a 'latent'-parameter
+        if self[prm_name].index is None:
+            # in this case prm_name refers to a constant parameter; hence, we can simply
+            # remove this parameter without having to take care of other things as we
+            # will have to do for latent parameters
+            dict.__delitem__(self, key)
+        else:
+            # in this case prm_name refers to a latent parameter; hence we need to also
+            # remove the prior-parameters; also, we have to correct the index values of
+            # the remaining latent parameters
+            for prior_prm in self[prm_name].prior.hyperparameters.keys():
+                self.__delitem__(prior_prm)  # recursive call
+            dict.__delitem__(self, prm_name)
+            # correct the indices of the remaining 'latent'-parameters; note that the
+            # way how the correction is done is due to the fact that the parameter.index
+            # attribute is protected, and cannot be changed directly from outside
+            idx_dict = {}
+            idx = 0
+            for prm_name, parameter in self.items():
+                if parameter.is_latent:
+                    dim = parameter.dim
+                    idx_dict[prm_name] = idx
+                    idx += dim
+            for prm_name, idx in idx_dict.items():
+                self[prm_name] = self[prm_name].changed_copy(index=idx)
+
+    def confirm_that_parameter_exists(self, prm_name: str):
+        """
+        Checks if a parameter, given by its name, exists among the currently defined
+        parameters. An error is raised when the given parameter does not exist yet.
+
+        Parameters
+        ----------
+        prm_name
+            A global parameter name.
+        """
+        if prm_name not in self:
+            raise RuntimeError(
+                f"A parameter with name '{prm_name}' has not been defined yet."
+            )
+
+    def confirm_that_parameter_does_not_exists(self, prm_name: str):
+        """
+        Checks if a parameter, given by its name, exists among the currently defined
+        parameters. An error is raised when the given parameter does already exist.
+
+        Parameters
+        ----------
+        prm_name
+            A global parameter name.
+        """
+        if prm_name in self:
+            raise RuntimeError(
+                f"A parameter with name '{prm_name}' has already been defined."
+            )
+
+    @property
+    def prms(self) -> List[str]:
+        """Access the names of all parameters as an attribute."""
+        return [*self.keys()]
+
+    @property
+    def n_prms(self) -> int:
+        """Access the number of all parameters as an attribute."""
+        return len(self)
+
+    @property
+    def latent_prms(self) -> List[str]:
+        """Access the names of all 'latent'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.is_latent]
+
+    @property
+    def latent_prms_dims(self) -> List[int]:
+        """Access the individual dimensions of the latent parameters."""
+        return [self[prm_name].dim for prm_name in self.latent_prms]
+
+    @property
+    def n_latent_prms(self) -> int:
+        """Access the number of all 'latent'-parameters as an attribute."""
+        return len(self.latent_prms)
+
+    @property
+    def n_latent_prms_dim(self) -> int:
+        """Access the combined dimension of all latent parameters. This number is the
+        number of elements in the theta vector."""
+        return sum(self.latent_prms_dims)
+
+    @property
+    def constant_prms(self) -> List[str]:
+        """Access the names of all 'const'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.is_const]
+
+    @property
+    def constant_prms_dict(self) -> dict:
+        """Access the names and values of all 'const'-param. as an attribute."""
+        return {name: prm.value for name, prm in self.items() if prm.is_const}
+
+    @property
+    def n_constant_prms(self) -> int:
+        """Access the number of all 'const'-parameters as an attribute."""
+        return len(self.constant_prms)
+
+    @property
+    def model_prms(self) -> List[str]:
+        """Access the names of all 'model'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.type == "model"]
+
+    @property
+    def n_model_prms(self) -> int:
+        """Access the number of all 'model'-parameters as an attribute."""
+        return len(self.model_prms)
+
+    @property
+    def prior_prms(self) -> List[str]:
+        """Access the names of all 'prior'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.type == "prior"]
+
+    @property
+    def n_prior_prms(self) -> int:
+        """Access the number of all 'prior'-parameters as an attribute."""
+        return len(self.prior_prms)
+
+    @property
+    def likelihood_prms(self) -> List[str]:
+        """Access the names of all 'likelihood'-parameters as an attribute."""
+        return [name for name, prm in self.items() if prm.type == "likelihood"]
+
+    @property
+    def n_likelihood_prms(self) -> int:
+        """Access the number of all 'likelihood'-parameters as an attribute."""
+        return len(self.likelihood_prms)
+
+    def parameter_overview(self, tablefmt: str = "presto") -> str:
+        """
+        Returns a string providing an overview of the defined parameters.
+
+        Parameters
+        ----------
+        tablefmt
+            An argument for the tabulate function defining the style of the generated
+            table. Check out tabulate's documentation for more info.
+
+        Returns
+        -------
+        prm_string
+            This string describes a nice table with some essential information on the
+            parameters of the problem.
+        """
+        # each element describes one row in the table to be generated
+        rows = [
+            (
+                "Model parameters",
+                simplified_list_string(self.model_prms),
+                self.n_model_prms,
+            ),
+            (
+                "Prior parameters",
+                simplified_list_string(self.prior_prms),
+                self.n_prior_prms,
+            ),
+            (
+                "Likelihood parameters",
+                simplified_list_string(self.likelihood_prms),
+                self.n_likelihood_prms,
+            ),
+            (
+                "Const parameters",
+                simplified_list_string(self.constant_prms),
+                self.n_constant_prms,
+            ),
+            (
+                "Latent parameters",
+                simplified_list_string(self.latent_prms),
+                self.n_latent_prms,
+            ),
+        ]
+        # these are the strings appearing in the column headers
+        headers = ["Parameter type/role", "Parameter names", "Count"]
+        prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        prm_string = titled_table("Parameter overview", prm_table)
+        return prm_string
+
+    def parameter_explanations(self, tablefmt: str = "presto") -> str:
+        """
+        Returns a string providing short explanations on the defined parameters.
+
+        Parameters
+        ----------
+        tablefmt
+            An argument for the tabulate function defining the style of the generated
+            table. Check out tabulate's documentation for more info.
+
+        Returns
+        -------
+        prm_string
+            This string describes a nice table with short explanations on the parameters
+            of the problem.
+        """
+        rows = [(name, prm.info) for name, prm in self.items()]
+        headers = ["Name", "Short explanation"]
+        prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        prm_string = titled_table("Parameter explanations", prm_table)
+        return prm_string
+
+    def const_parameter_values(self, tablefmt: str = "presto") -> str:
+        """
+        Returns a string providing the values of the defined 'const'-parameters.
+
+        Parameters
+        ----------
+        tablefmt
+            An argument for the tabulate function defining the style of the generated
+            table. Check out tabulate's documentation for more info.
+
+        Returns
+        -------
+        prm_string
+            This string describes a nice table with the names and values of the constant
+            parameters of the problem.
+        """
+        rows = [
+            (name, prm.value) for name, prm in self.items() if prm.value is not None
+        ]
+        headers = ["Name", "Value"]
+        prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
+        prm_string = titled_table("Constant parameters", prm_table)
+        return prm_string
+
+
 class ParameterProperties:
     """
     Describes relevant properties of a ('latent' or 'const') parameter. Objects from
@@ -282,439 +718,3 @@ class ParameterProperties:
     def value(self, value: Union[int, float]):
         """Raise a specific error when trying to directly set self.value."""
         raise AttributeError("Changing a parameter's value directly is prohibited!")
-
-
-class Parameters(dict):
-    """
-    The main parameter 'library'. In this dictionary, all of the problem's parameters
-    are stored. The parameter's names are the keys, and the associated values are
-    ParameterProperties-objects, see below.
-    """
-
-    def add_parameter(
-        self,
-        prm_name: str,
-        prm_type: str,
-        dim: Optional[int] = 1,
-        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
-        const: Union[int, float, np.ndarray, None] = None,
-        prior: Union[tuple, list, None] = None,
-        info: str = "No explanation provided",
-        tex: Optional[str] = None,
-    ):
-        """
-        Adds a parameter ('const' or 'latent') to the Parameters-object. The main
-        functionality of this method is to distinguish between the two types ('const'
-        and 'latent') and in creating the prior-object and adding the prior-parameters
-        when adding a latent param. to the problem.
-
-        Parameters
-        ----------
-        prm_name
-            The name of the parameter which should be added to the problem.
-        prm_type
-            Either 'model' (for a model parameter), 'prior' (for a prior parameter) or
-            'noise' (for a noise parameter).
-        dim
-            The parameter's dimension.
-        domain
-            The parameter's domain (i.e., values it may assume). Note that this argument
-            is only considered for latent parameter, but not for a constant.
-        const
-            If the added parameter is a 'const'-parameter, the corresponding value has
-            to be specified by this argument.
-        prior
-            If the added parameter is a 'latent'-parameter, this argument has to be
-            given as a 2-tuple. The first element (a string) defines the prior-type
-            (will be referenced in inference routines). The 2nd element must be a
-            dictionary stating the prior's parameters as keys and their numeric values
-            as values or the name of a pre-defined parameter within the problem scope.
-            An example for a normal prior: ('normal', {'loc': 0.0, 'scale': 1.0}). In
-            order to define the prior's parameters, check out the prior definitions in
-            priors.py.
-        info
-            Short explanation on the added parameter.
-        tex
-            The TeX version of the parameter's name, for example r'$\beta$' for a
-            parameter named 'beta'.
-        """
-
-        # make sure the parameters has not been defined yet
-        self.confirm_that_parameter_does_not_exists(prm_name)
-
-        # if neither const nor prior are given, the parameter is interpreted as being
-        # defined as latent with an uninformative prior
-        if const is None and prior is None:
-            prior = ("uninformative", {})
-
-        # add the parameter to the central parameter dictionary
-        if prior is not None:  # i.e. adding 'latent'-parameter
-            # first, define the index of this parameter in the numeric vector theta,
-            # which is given to self.loglike and self.logprior
-            prm_index = self.n_latent_prms_dim  # type: Union[int, None]
-            prm_dim = dim
-            prm_domain = domain if type(domain) == list else [domain]  # type: ignore
-            # the prm_value is reserved for 'const'-parameter; hence, it is set to None
-            # in this case, where we are adding a 'latent'-param.
-            prm_value = None
-            # the remaining code in this if-branch defines the prior that is associated
-            # with this 'latent'-parameter; first, however, check whether the given
-            # prior has a valid structure
-            if type(prior) not in [list, tuple]:
-                raise TypeError(
-                    f"The given prior is of type {type(prior)} but must be "
-                    f"either a list or a tuple!"
-                )
-            if len(prior) != 2:
-                raise RuntimeError(
-                    f"The given prior must be a list/tuple with two elements. "
-                    f"However, the given prior has {len(prior)} element(s)."
-                )
-            if type(prior[0]) is not str:
-                raise TypeError(
-                    f"The first element of the prior must be of type string. "
-                    f"However, the given first element is of type "
-                    f"{type(prior[0])}."
-                )
-            if type(prior[1]) is not dict:
-                raise TypeError(
-                    f"The second element of the prior must be of type dict. "
-                    f"However, the given second element is of type "
-                    f"{type(prior[1])}."
-                )
-            # extract the prior's elements
-            prior_type = prior[0]  # e.g. 'normal', 'lognormal', etc.
-            prior_dict = prior[1]  # dictionary with parameter-value pairs
-            prior_parameter_names = []  # type: List[Union[str, dict]]
-            for prior_parameter_name, value in prior_dict.items():
-                # create unique name for this prior parameter
-                new_name = f"{prior_parameter_name}_{prm_name}"
-                if type(value) in {float, int, list, tuple, np.ndarray}:
-                    # in this case, the prior-parameter is considered a 'const'-
-                    # parameter and added to the problem accordingly here
-                    default_info = f"{prior_type.capitalize()} "
-                    default_info += f"prior's parameter "
-                    default_info += f"for latent parameter '{prm_name}'"
-                    # the following call is recursive, but only with a depth of one,
-                    # since the added parameter is a constant here
-                    self.add_parameter(
-                        new_name, "prior", const=value, info=default_info
-                    )
-                    prior_parameter_names.append(new_name)
-                elif type(value) is str:
-                    # in this case the prior-parameter is defined as an already defined
-                    # parameter with the name stated in value
-                    self.confirm_that_parameter_exists(value)
-                    prior_parameter_names.append({value: new_name})
-                else:
-                    raise TypeError(
-                        f"The prior-parameter {new_name} is not assigned a "
-                        f"float, int or str, but something of type "
-                        f"{type(value)}."
-                    )
-            prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
-            prm_prior = PriorBase(
-                prm_name, prior_parameter_names, prior_name, prior_type
-            )  # type: Union[PriorBase, None]
-            logger.debug(
-                f"Adding  latent  {prm_type}-parameter "
-                f"{prm_name} with {prior_type} prior to problem"
-            )
-
-        else:
-            # in this case we are adding a 'const'-parameter, which means that the
-            # prm_index and prm_prior values are not used here
-            prm_index = None
-            prm_dim = len_or_one(const)
-            prm_domain = None  # type: ignore
-            prm_prior = None
-            prm_value = const
-            logger.debug(
-                f"Adding constant {prm_type}-parameter "
-                f"{prm_name} = {prm_value} to problem"
-            )
-
-        # add the parameter to the central parameter dictionary
-        self[prm_name] = ParameterProperties(
-            {
-                "index": prm_index,
-                "dim": prm_dim,
-                "domain": prm_domain,
-                "type": prm_type,
-                "prior": prm_prior,
-                "value": prm_value,
-                "info": info,
-                "tex": tex,
-            }
-        )
-
-    def __setitem__(self, key: str, value: ParameterProperties):
-        """
-        Performs some checks before adding a parameter to the dictionary.
-
-        Parameters
-        ----------
-        key
-            The key of the key-value pair to be added to self.
-        value
-            The value of the key-value pair to be added to self.
-        """
-        if type(key) != str:
-            raise ValueError(
-                f"The key must be a parameters name (string), but you provided "
-                f"something of type '{type(key)}'."
-            )
-        if type(value) != ParameterProperties:
-            raise ValueError(
-                f"The properties of your parameter must be given in form of an "
-                f"ParameterProperties-object. But you provided something of "
-                f"type '{type(value)}'."
-            )
-        super().__setitem__(key, value)
-
-    def __delitem__(self, key: str):
-        """
-        Deletes an item from itself while taking care of additional actions. For example
-        removing prior-parameters when deleting a latent parameter or keeping the index-
-        attributes of the latent parameters consistent.
-
-        Parameters
-        ----------
-        key
-            The key of the key-value pair to be removed from self.
-        """
-
-        # the given key is a parameter's name (renaming for easier readability)
-        prm_name = key
-
-        # check if the given parameter exists
-        self.confirm_that_parameter_exists(prm_name)
-
-        # different steps must be taken depending on whether the parameter which should
-        # be removed is a 'const'- or a 'latent'-parameter
-        if self[prm_name].index is None:
-            # in this case prm_name refers to a constant parameter; hence, we can simply
-            # remove this parameter without having to take care of other things as we
-            # will have to do for latent parameters
-            dict.__delitem__(self, key)
-        else:
-            # in this case prm_name refers to a latent parameter; hence we need to also
-            # remove the prior-parameters; also, we have to correct the index values of
-            # the remaining latent parameters
-            for prior_prm in self[prm_name].prior.hyperparameters.keys():
-                self.__delitem__(prior_prm)  # recursive call
-            dict.__delitem__(self, prm_name)
-            # correct the indices of the remaining 'latent'-parameters; note that the
-            # way how the correction is done is due to the fact that the parameter.index
-            # attribute is protected, and cannot be changed directly from outside
-            idx_dict = {}
-            idx = 0
-            for prm_name, parameter in self.items():
-                if parameter.is_latent:
-                    dim = parameter.dim
-                    idx_dict[prm_name] = idx
-                    idx += dim
-            for prm_name, idx in idx_dict.items():
-                self[prm_name] = self[prm_name].changed_copy(index=idx)
-
-    def confirm_that_parameter_exists(self, prm_name: str):
-        """
-        Checks if a parameter, given by its name, exists among the currently defined
-        parameters. An error is raised when the given parameter does not exist yet.
-
-        Parameters
-        ----------
-        prm_name
-            A global parameter name.
-        """
-        if prm_name not in self:
-            raise RuntimeError(
-                f"A parameter with name '{prm_name}' has not been defined yet."
-            )
-
-    def confirm_that_parameter_does_not_exists(self, prm_name: str):
-        """
-        Checks if a parameter, given by its name, exists among the currently defined
-        parameters. An error is raised when the given parameter does already exist.
-
-        Parameters
-        ----------
-        prm_name
-            A global parameter name.
-        """
-        if prm_name in self:
-            raise RuntimeError(
-                f"A parameter with name '{prm_name}' has already been defined."
-            )
-
-    @property
-    def prms(self) -> List[str]:
-        """Access the names of all parameters as an attribute."""
-        return [*self.keys()]
-
-    @property
-    def n_prms(self) -> int:
-        """Access the number of all parameters as an attribute."""
-        return len(self)
-
-    @property
-    def latent_prms(self) -> List[str]:
-        """Access the names of all 'latent'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.is_latent]
-
-    @property
-    def latent_prms_dims(self) -> List[int]:
-        """Access the individual dimensions of the latent parameters."""
-        return [self[prm_name].dim for prm_name in self.latent_prms]
-
-    @property
-    def n_latent_prms(self) -> int:
-        """Access the number of all 'latent'-parameters as an attribute."""
-        return len(self.latent_prms)
-
-    @property
-    def n_latent_prms_dim(self) -> int:
-        """Access the combined dimension of all latent parameters. This number is the
-        number of elements in the theta vector."""
-        return sum(self.latent_prms_dims)
-
-    @property
-    def constant_prms(self) -> List[str]:
-        """Access the names of all 'const'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.is_const]
-
-    @property
-    def constant_prms_dict(self) -> dict:
-        """Access the names and values of all 'const'-param. as an attribute."""
-        return {name: prm.value for name, prm in self.items() if prm.is_const}
-
-    @property
-    def n_constant_prms(self) -> int:
-        """Access the number of all 'const'-parameters as an attribute."""
-        return len(self.constant_prms)
-
-    @property
-    def model_prms(self) -> List[str]:
-        """Access the names of all 'model'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.type == "model"]
-
-    @property
-    def n_model_prms(self) -> int:
-        """Access the number of all 'model'-parameters as an attribute."""
-        return len(self.model_prms)
-
-    @property
-    def prior_prms(self) -> List[str]:
-        """Access the names of all 'prior'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.type == "prior"]
-
-    @property
-    def n_prior_prms(self) -> int:
-        """Access the number of all 'prior'-parameters as an attribute."""
-        return len(self.prior_prms)
-
-    @property
-    def noise_prms(self) -> List[str]:
-        """Access the names of all 'noise'-parameters as an attribute."""
-        return [name for name, prm in self.items() if prm.type == "noise"]
-
-    @property
-    def n_noise_prms(self) -> int:
-        """Access the number of all 'prior'-parameters as an attribute."""
-        return len(self.noise_prms)
-
-    def parameter_overview(self, tablefmt: str = "presto") -> str:
-        """
-        Returns a string providing an overview of the defined parameters.
-
-        Parameters
-        ----------
-        tablefmt
-            An argument for the tabulate function defining the style of the generated
-            table. Check out tabulate's documentation for more info.
-
-        Returns
-        -------
-        prm_string
-            This string describes a nice table with some essential information on the
-            parameters of the problem.
-        """
-        # each element describes one row in the table to be generated
-        rows = [
-            (
-                "Model parameters",
-                simplified_list_string(self.model_prms),
-                self.n_model_prms,
-            ),
-            (
-                "Prior parameters",
-                simplified_list_string(self.prior_prms),
-                self.n_prior_prms,
-            ),
-            (
-                "Noise parameters",
-                simplified_list_string(self.noise_prms),
-                self.n_noise_prms,
-            ),
-            (
-                "Const parameters",
-                simplified_list_string(self.constant_prms),
-                self.n_constant_prms,
-            ),
-            (
-                "Latent parameters",
-                simplified_list_string(self.latent_prms),
-                self.n_latent_prms,
-            ),
-        ]
-        # these are the strings appearing in the column headers
-        headers = ["Parameter type/role", "Parameter names", "Count"]
-        prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prm_string = titled_table("Parameter overview", prm_table)
-        return prm_string
-
-    def parameter_explanations(self, tablefmt: str = "presto") -> str:
-        """
-        Returns a string providing short explanations on the defined parameters.
-
-        Parameters
-        ----------
-        tablefmt
-            An argument for the tabulate function defining the style of the generated
-            table. Check out tabulate's documentation for more info.
-
-        Returns
-        -------
-        prm_string
-            This string describes a nice table with short explanations on the parameters
-            of the problem.
-        """
-        rows = [(name, prm.info) for name, prm in self.items()]
-        headers = ["Name", "Short explanation"]
-        prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prm_string = titled_table("Parameter explanations", prm_table)
-        return prm_string
-
-    def const_parameter_values(self, tablefmt: str = "presto") -> str:
-        """
-        Returns a string providing the values of the defined 'const'-parameters.
-
-        Parameters
-        ----------
-        tablefmt
-            An argument for the tabulate function defining the style of the generated
-            table. Check out tabulate's documentation for more info.
-
-        Returns
-        -------
-        prm_string
-            This string describes a nice table with the names and values of the constant
-            parameters of the problem.
-        """
-        rows = [
-            (name, prm.value) for name, prm in self.items() if prm.value is not None
-        ]
-        headers = ["Name", "Value"]
-        prm_table = tabulate(rows, headers=headers, tablefmt=tablefmt)
-        prm_string = titled_table("Constant parameters", prm_table)
-        return prm_string
