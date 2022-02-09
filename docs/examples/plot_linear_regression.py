@@ -16,7 +16,7 @@ import numpy as np
 
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.likelihood_model import NormalNoiseModel
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
 from probeye.inference.emcee_.solver import EmceeSolver
 
@@ -144,9 +144,9 @@ problem.add_experiment(
 )
 
 # %%
-# add the noise model to the problem
+# add the likelihood model to the problem
 problem.add_likelihood_model(
-    NormalNoiseModel(prms_def={"sigma": "std"}, sensors=osensor)
+    GaussianLikelihoodModel(prms_def={"sigma": "std"}, sensors=osensor)
 )
 
 # give problem overview
