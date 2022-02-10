@@ -1,24 +1,29 @@
 """
-Simple linear regression (sampling)
-===================================
+Simple linear regression (maximum likelihood)
+=============================================
 
 A simple linear regression example with two model parameters and one noise parameter.
 
 The model equation is y = a * x + b with a, b being the model parameters and the
 noise model is a normal zero-mean distribution with the std. deviation to infer.
-The problem is solved via sampling using emcee.
+The problem is solved via maximum likelihood estimation.
 """
 
 # %%
 # Import what we will need for this example.
-import matplotlib.pyplot as plt
-import numpy as np
 
-from probeye.definition.forward_model import ForwardModelBase
+# third party imports
+import numpy as np
+import matplotlib.pyplot as plt
+
+# local imports (problem definition)
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.inference.emcee_.solver import EmceeSolver
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
+
+# local imports (inference related)
+from probeye.inference.scipy_.solver import ScipySolver
 
 # %%
 # We start by generating a synthetic data set from a known linear model. Later we
@@ -59,19 +64,6 @@ class LinearModel(ForwardModelBase):
             response[os.name] = m * x + b
         return response
 
-    def jacobian(self, inp):
-        # this method *can* be provided by the user; if not provided
-        # the jacobian will be approximated by finite differences
-        x = inp["x"]  # vector
-        one = np.ones((len(x), 1))
-        jacobian = {}
-        for os in self.output_sensors:
-            # partial derivatives must only be stated for the model
-            # parameters; all other input must be flagged by None;
-            # note: partial derivatives must be given as column vectors
-            jacobian[os.name] = {"x": None, "m": x.reshape(-1, 1), "b": one}
-        return jacobian
-
 
 # %%
 # Define the inference problem.
@@ -93,27 +85,9 @@ problem = InferenceProblem("Linear regression with normal noise")
 # argument specifies the parameter's prior; note that this definition
 # of a prior will result in the initialization of constant parameters of
 # type 'prior' in the background
-problem.add_parameter(
-    "a",
-    "model",
-    tex="$a$",
-    info="Slope of the graph",
-    prior=("normal", {"loc": 2.0, "scale": 1.0}),
-)
-problem.add_parameter(
-    "b",
-    "model",
-    info="Intersection of graph with y-axis",
-    tex="$b$",
-    prior=("normal", {"loc": 1.0, "scale": 1.0}),
-)
-problem.add_parameter(
-    "sigma",
-    "likelihood",
-    tex=r"$\sigma$",
-    info="Std. dev, of 0-mean noise model",
-    prior=("uniform", {"low": 0.1, "high": 0.8}),
-)
+problem.add_parameter("a", "model", tex="$a$")
+problem.add_parameter("b", "model", tex="$b$")
+problem.add_parameter("sigma", "likelihood", tex=r"$\sigma$")
 
 # %%
 # Add the forward model to the problem; note that the first positional
@@ -152,8 +126,7 @@ problem.add_likelihood_model(
 # give problem overview
 problem.info()
 
-
 # %%
-# Estimate the parameters using `emcee`
-emcee_solver = EmceeSolver(problem, show_progress=True)
-inference_data = emcee_solver.run_mcmc(n_walkers=20, n_steps=2_000, n_initial_steps=200)
+# Estimate the parameters using `Scipy`
+scipy_solver = ScipySolver(problem, show_progress=True)
+inference_data = scipy_solver.run_max_likelihood()

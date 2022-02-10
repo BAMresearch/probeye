@@ -14,10 +14,9 @@ import datetime
 import os
 import sys
 
-from probeye import __version__
-
 sys.path.insert(0, os.path.abspath("../probeye"))
 sys.path.insert(0, os.path.abspath("../"))
+from probeye import __version__
 
 now = datetime.datetime.now()
 
@@ -62,6 +61,8 @@ autodoc_mock_imports = [
     "pyro-ppl",
     "arviz",
     "loguru",
+    "dynesty",
+    "tri-py",
 ]
 
 # If true, the current module name will be prepended to all description

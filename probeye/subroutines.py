@@ -9,6 +9,9 @@ import sys
 import numpy as np
 from loguru import logger
 
+# local imports
+from probeye import __version__
+
 # local imports for type checking
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inference_problem import InferenceProblem
@@ -581,7 +584,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "2.0.0",
+    version: str = __version__,
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",

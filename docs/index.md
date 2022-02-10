@@ -12,6 +12,7 @@ hidden:
 installation
 auto_examples/index
 motivation
+components
 api
 references
 ```
@@ -19,7 +20,7 @@ references
 ```{toctree}
 ---
 hidden:
-maxdepth: 1
+maxdepth: 2
 caption: Development
 ---
 
