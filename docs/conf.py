@@ -45,6 +45,7 @@ extensions = [
     "sphinx_inline_tabs",
     "sphinxcontrib.bibtex",
     "myst_parser",
+    "sphinx.ext.imgmath",
 ]
 
 autodoc_typehints = "description"
