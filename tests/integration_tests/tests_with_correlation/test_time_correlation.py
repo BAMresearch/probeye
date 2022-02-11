@@ -109,14 +109,16 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class TrajectoryModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = "g"
+                self.input_sensors = [Sensor("t"), Sensor("v0")]
+                self.output_sensors = Sensor("y")
+
             def response(self, inp):
                 t = inp["t"]
                 v0 = inp["v0"]
                 g = inp["g"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = np.maximum((v0 - 0.5 * g * t) * t, 0.0)
-                return response
+                return {"y": np.maximum((v0 - 0.5 * g * t) * t, 0.0)}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
@@ -150,10 +152,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("std_meas", "likelihood", const=0.1)
 
         # add the forward model to the problem
-        isensor1 = Sensor("t")
-        isensor2 = Sensor("v0")
-        osensor = Sensor("y")
-        trajectory_model = TrajectoryModel(["g"], [isensor1, isensor2], [osensor])
+        trajectory_model = TrajectoryModel()
         problem.add_forward_model("TrajectoryModel", trajectory_model)
 
         # ============================================================================ #
@@ -300,36 +299,36 @@ class TestProblem(unittest.TestCase):
             f"Trajectory_1_Tracker_1",
             fwd_model_name="TrajectoryModel",
             sensor_values={
-                isensor1.name: time_test_1_tracker_1,
-                isensor2.name: v0_test_1,
-                osensor.name: y_test_1_tracker_1,
+                trajectory_model.input_sensors[0].name: time_test_1_tracker_1,
+                trajectory_model.input_sensors[1].name: v0_test_1,
+                trajectory_model.output_sensor.name: y_test_1_tracker_1,
             },
         )
         problem.add_experiment(
             f"Trajectory_1_Tracker_2",
             fwd_model_name="TrajectoryModel",
             sensor_values={
-                isensor1.name: time_test_1_tracker_2,
-                isensor2.name: v0_test_1,
-                osensor.name: y_test_1_tracker_2,
+                trajectory_model.input_sensors[0].name: time_test_1_tracker_2,
+                trajectory_model.input_sensors[1].name: v0_test_1,
+                trajectory_model.output_sensor.name: y_test_1_tracker_2,
             },
         )
         problem.add_experiment(
             f"Trajectory_2_Tracker_1",
             fwd_model_name="TrajectoryModel",
             sensor_values={
-                isensor1.name: time_test_2_tracker_1,
-                isensor2.name: v0_test_2,
-                osensor.name: y_test_2_tracker_1,
+                trajectory_model.input_sensors[0].name: time_test_2_tracker_1,
+                trajectory_model.input_sensors[1].name: v0_test_2,
+                trajectory_model.output_sensor.name: y_test_2_tracker_1,
             },
         )
         problem.add_experiment(
             f"Trajectory_2_Tracker_2",
             fwd_model_name="TrajectoryModel",
             sensor_values={
-                isensor1.name: time_test_2_tracker_2,
-                isensor2.name: v0_test_2,
-                osensor.name: y_test_2_tracker_2,
+                trajectory_model.input_sensors[0].name: time_test_2_tracker_2,
+                trajectory_model.input_sensors[1].name: v0_test_2,
+                trajectory_model.output_sensor.name: y_test_2_tracker_2,
             },
         )
 
@@ -345,7 +344,7 @@ class TestProblem(unittest.TestCase):
                 {"sigma": "std_model"},
                 "l_corr",
             ],
-            sensors=osensor,
+            sensors=trajectory_model.output_sensor,
             correlation_variables="t",
             correlation_model="exp",
             experiment_names=["Trajectory_1_Tracker_1", "Trajectory_1_Tracker_2"],
@@ -363,7 +362,7 @@ class TestProblem(unittest.TestCase):
                 {"sigma": "std_model"},
                 "l_corr",
             ],
-            sensors=osensor,
+            sensors=trajectory_model.output_sensor,
             correlation_variables="t",
             correlation_model="exp",
             experiment_names=["Trajectory_2_Tracker_1", "Trajectory_2_Tracker_2"],

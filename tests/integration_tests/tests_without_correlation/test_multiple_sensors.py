@@ -114,6 +114,15 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["A", "B", {"c": "const"}]
+                self.input_sensors = Sensor("time")
+                self.output_sensors = [
+                    Sensor("y1", x=pos_s1),
+                    Sensor("y2", x=pos_s2),
+                    Sensor("y3", x=pos_s3),
+                ]
+
             def response(self, inp: dict) -> dict:
                 t = inp["time"]
                 A = inp["A"]
@@ -170,13 +179,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("c", "model", const=c)
 
         # add the forward model to the problem
-        isensor = Sensor("time")
-        osensor1 = Sensor("y1", x=pos_s1)
-        osensor2 = Sensor("y2", x=pos_s2)
-        osensor3 = Sensor("y3", x=pos_s3)
-        linear_model = LinearModel(
-            ["A", "B", {"c": "const"}], [isensor], [osensor1, osensor2, osensor3]
-        )
+        linear_model = LinearModel()
         problem.add_forward_model("LinearModel", linear_model)
 
         # ============================================================================ #
@@ -186,9 +189,9 @@ class TestProblem(unittest.TestCase):
         # add the experimental data
         np.random.seed(1)
         sd_dict = {
-            osensor1.name: sd_S1_true,
-            osensor2.name: sd_S2_true,
-            osensor3.name: sd_S3_true,
+            linear_model.output_sensors[0].name: sd_S1_true,
+            linear_model.output_sensors[1].name: sd_S2_true,
+            linear_model.output_sensors[2].name: sd_S3_true,
         }
 
         def generate_data(n_time_steps, n=None):
@@ -199,7 +202,7 @@ class TestProblem(unittest.TestCase):
                 sensors[key] = val + np.random.normal(
                     0.0, sd_dict[key], size=n_time_steps
                 )
-            sensors[isensor.name] = time_steps
+            sensors[linear_model.input_sensor.name] = time_steps
             problem.add_experiment(
                 f"TestSeries_{n}", sensor_values=sensors, fwd_model_name="LinearModel"
             )
@@ -213,13 +216,22 @@ class TestProblem(unittest.TestCase):
 
         # add the noise models to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma_1": "std_model"}, sensors=osensor1)
+            GaussianLikelihoodModel(
+                prms_def={"sigma_1": "std_model"},
+                sensors=linear_model.output_sensors[0],
+            )
         )
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma_2": "std_model"}, sensors=osensor2)
+            GaussianLikelihoodModel(
+                prms_def={"sigma_2": "std_model"},
+                sensors=linear_model.output_sensors[1],
+            )
         )
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma_3": "std_model"}, sensors=osensor3)
+            GaussianLikelihoodModel(
+                prms_def={"sigma_3": "std_model"},
+                sensors=linear_model.output_sensors[2],
+            )
         )
 
         # give problem overview
