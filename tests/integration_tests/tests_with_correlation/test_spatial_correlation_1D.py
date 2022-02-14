@@ -117,14 +117,16 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
             def response(self, inp: dict) -> dict:
                 a = inp["a"]
                 b = inp["b"]
                 x = inp["x"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = a * x + b
-                return response
+                return {"y": a * x + b}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
@@ -164,9 +166,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        isensor = Sensor("x")
-        osensor = Sensor("y")
-        linear_model = LinearModel(["a", "b"], isensor, osensor)
+        linear_model = LinearModel()
         problem.add_forward_model("LinearModel", linear_model)
 
         # ============================================================================ #
@@ -178,7 +178,9 @@ class TestProblem(unittest.TestCase):
         # distribution that accounts for the intended correlation
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_points)
-        y_true = linear_model({"a": a_true, "b": b_true, "x": x_test})[osensor.name]
+        y_true = linear_model({"a": a_true, "b": b_true, "x": x_test})[
+            linear_model.output_sensor.name
+        ]
 
         # assemble the spatial covariance matrix
         x_test_as_column_matrix = x_test.reshape((n_points, -1))
@@ -193,7 +195,10 @@ class TestProblem(unittest.TestCase):
             problem.add_experiment(
                 exp_name,
                 fwd_model_name="LinearModel",
-                sensor_values={isensor.name: x_test, osensor.name: y_test},
+                sensor_values={
+                    linear_model.input_sensor.name: x_test,
+                    linear_model.output_sensor.name: y_test,
+                },
             )
             if plot_data:
                 plt.scatter(
@@ -203,7 +208,7 @@ class TestProblem(unittest.TestCase):
         if plot_data:
             plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
             plt.xlabel("x")
-            plt.ylabel(osensor.name)
+            plt.ylabel(linear_model.output_sensor.name)
             plt.legend()
             plt.tight_layout()
             plt.show()
@@ -218,7 +223,7 @@ class TestProblem(unittest.TestCase):
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
                 prms_def=[{"sigma": "std_model"}, "l_corr"],
-                sensors=osensor,
+                sensors=linear_model.output_sensor,
                 correlation_variables="x",
                 correlation_model="exp",
                 experiment_names=f"Test_{i}",
