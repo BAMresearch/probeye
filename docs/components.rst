@@ -121,39 +121,38 @@ Each parameter can (but does not have to) have a tex and an info attribute. Whil
 
 Forward models
 ##############
-The forward model is a parameterized simulation model (e.g. a finite element model) the predictions of which should be compared against some experimental data. The parameters of the forward model are typically the parameters which are of primary interest. It should be pointed out that many inference problems might contain only one forward model, but it is also possible to set up a problem that contains multiple forward models.
+The forward model is a parameterized simulation model (e.g. a finite element model) the predictions of which should be compared against some experimental data. The parameters of the forward model are typically the parameters which are of primary interest within the stated problem. It should be pointed out that many inference problems might contain only one forward model, but it is also possible to set up a problem that contains multiple forward models.
 
 .. image:: images/forward_model.png
    :width: 600
 
-In probeye, a forward model is a function that has two kinds of arguments: input sensors and parameters, see also the sketch above. While input sensors refer to specific experimental data, parameters refer to the problem's parameters. Once all input sensors and parameters are given, the forward model computes a result that it returns via its output sensors.
+In probeye, a forward model is a function that has two kinds of arguments: input sensors and parameters, see also the sketch above. While input sensors refer to specific experimental data, parameters refer to the problem's parameters. Once all input sensors and parameters are provided, the forward model computes a result that it returns via its output sensors.
 
-In order to add a forward model to an inference problem, two steps are required. At first, the forward model has to be defined. This definition is done by setting up a new model class (that can have an arbitrary name) which is based on the probeye-class :code:`ForwardModelBase`. This class must have a :code:`response`-method, which describes a forward model call. The :code:`response`-method has only one input, which is a dictionary that contains both the input sensors and the parameters. The method will then perform some computations and returns its results in a dictionary of the forward model's output sensors. For a simple linear model, such a definition could look like this:
+In order to add a forward model to an inference problem, two steps are required. At first, the forward model has to be defined. This definition is done by setting up a new model class (that can have an arbitrary name) which is based on the probeye-class :code:`ForwardModelBase`. This class must have both a :code:`definition`-method, which defines the forward model's parameters, input sensors and output sensors, and it must have a :code:`response`-method, which describes a forward model call. The :code:`response`-method has only one input, which is a dictionary that contains both the input sensors and the parameters. The method will then perform some computations and returns its results in a dictionary of the forward model's output sensors. For a simple linear model, such a definition could look like this:
 
 .. code-block:: python
 
     class LinearModel(ForwardModelBase):
-        def response(self, inp: dict) -> dict:
-            x = inp["x"]
-            m = inp["m"]
-            b = inp["b"]
-            return {"y": m * x + b}
+
+            def definition(self):
+                self.parameters = ["m", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
+            def response(self, inp: dict) -> dict:
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
 
 After the forward model has been defined, it must be added to the problem. For the example shown above, this would look like this:
 
 .. code-block:: python
 
-    # define the input and output sensors
-    isensor = Sensor("x")
-    osensor = Sensor("y")
-
-    # instantiate an object of the forward model class
-    linear_model = LinearModel(["m", "b"], [isensor], [osensor])
-
     # add the forward model to the problem
-    problem.add_forward_model("LinearModel", linear_model)
+    problem.add_forward_model("LinearModel", LinearModel())
 
-The instantiation of the forward model takes three arguments: a list of the forward model's parameters (in this case :code:`m` and :code:`b`), a list of the forward model's input sensors (in this case :code:`isensor`) and finally a list of the forward model's output sensors (in this case :code:`osensor`).
+
 
 
 

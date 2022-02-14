@@ -1,10 +1,10 @@
 # probeye changelog
 
-## 2.1.0 (2022-Feb-XX)
+## 2.1.1 (2022-Feb-XX)
 ### Changed
 - extended the documentation in README.md
 ### Added
-- added a readthedocs documentation
+- added a 'readthedocs' documentation
 
 ## 2.0.0 (2022-Feb-09)
 ### Changed
