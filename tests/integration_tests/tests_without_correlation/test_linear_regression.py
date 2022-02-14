@@ -97,7 +97,6 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-
             def definition(self):
                 self.prms_def = ["m", "b"]
                 self.input_sensors = Sensor("x")
