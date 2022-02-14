@@ -123,16 +123,18 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["ax", "ay", "b"]
+                self.input_sensors = [Sensor("x"), Sensor("y")]
+                self.output_sensors = Sensor("z")
+
             def response(self, inp: dict) -> dict:
                 ax = inp["ax"]
                 ay = inp["ay"]
                 b = inp["b"]
                 x = inp["x"]
                 y = inp["y"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = ax * x + ay * y + b
-                return response
+                return {"z": ax * x + ay * y + b}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
@@ -179,10 +181,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        isensor_1 = Sensor("x")
-        isensor_2 = Sensor("y")
-        osensor = Sensor("z")
-        linear_model = LinearModel(["ax", "ay", "b"], [isensor_1, isensor_2], osensor)
+        linear_model = LinearModel()
         problem.add_forward_model("LinearModel", linear_model)
 
         # ============================================================================ #
@@ -213,7 +212,7 @@ class TestProblem(unittest.TestCase):
         # finally, compute the 'true' values on the grid using the forward model
         z_true = linear_model(
             {"ax": ax_true, "ay": ay_true, "b": b_true, "x": x_test, "y": y_test}
-        )[osensor.name]
+        )[linear_model.output_sensor.name]
 
         # assemble the spatial covariance matrix
         coords = np.zeros((n_points ** 2, 2))
@@ -238,9 +237,9 @@ class TestProblem(unittest.TestCase):
                 exp_name,
                 fwd_model_name="LinearModel",
                 sensor_values={
-                    isensor_1.name: x_test,
-                    isensor_2.name: y_test,
-                    osensor.name: z_test,
+                    linear_model.input_sensors[0].name: x_test,
+                    linear_model.input_sensors[1].name: y_test,
+                    linear_model.output_sensor.name: z_test,
                 },
             )
             if plot_data:
@@ -266,7 +265,7 @@ class TestProblem(unittest.TestCase):
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
                 prms_def=[{"sigma": "std_model"}, "l_corr"],
-                sensors=osensor,
+                sensors=linear_model.output_sensor,
                 correlation_variables="xy",
                 correlation_model="exp",
                 experiment_names=f"Test_{i}",

@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.0.1 (2022-Feb-14)
+### Added
+- Added a 'definition' method to the forward model that allows a clearer way of defining a forward model's parameters, input and output sensors. However, the old way of defining a forward model's interface still works too.
+
 ## 2.0.0 (2022-Feb-09)
 ### Changed
 - revised the entire noise model framework to account for correlation setups

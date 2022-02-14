@@ -39,10 +39,10 @@ class TestProblem(unittest.TestCase):
         n_walkers: int = 20,
         plot: bool = False,
         show_progress: bool = False,
-        run_scipy: bool = False,
-        run_emcee: bool = False,
+        run_scipy: bool = True,
+        run_emcee: bool = True,
         run_torch: bool = False,
-        run_dynesty: bool = False,
+        run_dynesty: bool = True,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -145,6 +145,14 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class BeamModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["L", "EI"]
+                self.input_sensors = [Sensor("v"), Sensor("t"), Sensor("F")]
+                self.output_sensors = [
+                    Sensor("y1", x=x_sensor_1),
+                    Sensor("y2", x=x_sensor_2),
+                ]
+
             @staticmethod
             def beam_deflect(x_sensor, x_load, L_in, F_in, EI_in):
                 """Convenience method used by self.response during a for-loop."""
@@ -230,14 +238,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        isensor_1 = Sensor("v")
-        isensor_2 = Sensor("t")
-        isensor_3 = Sensor("F")
-        osensor_1 = Sensor("y1", x=x_sensor_1)
-        osensor_2 = Sensor("y2", x=x_sensor_2)
-        beam_model = BeamModel(
-            ["L", "EI"], [isensor_1, isensor_2, isensor_3], [osensor_1, osensor_2]
-        )
+        beam_model = BeamModel()
         problem.add_forward_model("BeamModel", beam_model)
 
         # ============================================================================ #
@@ -259,12 +260,18 @@ class TestProblem(unittest.TestCase):
             t = np.arange(0, L / v, dt)  # type: ignore
             inp_1 = {"v": v, "t": t, "L": L, "F": F, "EI": EI_true}
             mean_dict = beam_model.response(inp_1)
-            mean = np.append(mean_dict[osensor_1.name], mean_dict[osensor_2.name])
+            mean = np.append(
+                mean_dict[beam_model.output_sensors[0].name],
+                mean_dict[beam_model.output_sensors[1].name],
+            )
 
             # compute the covariance matrix using tripy
             cov_compiler = MeasurementSpaceTimePoints()
             cov_compiler.add_measurement_space_points(
-                coord_mx=[osensor_1.x, osensor_2.x],
+                coord_mx=[
+                    beam_model.output_sensors[0].x,
+                    beam_model.output_sensors[1].x,
+                ],
                 standard_deviation=sigma,
                 group="space",
             )
@@ -288,17 +295,17 @@ class TestProblem(unittest.TestCase):
                 exp_name,
                 fwd_model_name="BeamModel",
                 sensor_values={
-                    isensor_1.name: v,
-                    isensor_2.name: t,
-                    isensor_3.name: F,
-                    osensor_1.name: y1,
-                    osensor_2.name: y2,
-                    "x1": float(osensor_1.x),  # type: ignore
-                    "x2": float(osensor_2.x),  # type: ignore
+                    beam_model.input_sensors[0].name: v,
+                    beam_model.input_sensors[1].name: t,
+                    beam_model.input_sensors[2].name: F,
+                    beam_model.output_sensors[0].name: y1,
+                    beam_model.output_sensors[1].name: y2,
+                    "x1": float(beam_model.output_sensors[0].x),  # type: ignore
+                    "x2": float(beam_model.output_sensors[1].x),  # type: ignore
                 },
                 correlation_info={
-                    osensor_1.name: {"x": "x1", "t": "t"},
-                    osensor_2.name: {"x": "x2", "t": "t"},
+                    beam_model.output_sensors[0].name: {"x": "x1", "t": "t"},
+                    beam_model.output_sensors[1].name: {"x": "x2", "t": "t"},
                 },
             )
 
@@ -335,7 +342,7 @@ class TestProblem(unittest.TestCase):
                     {"l_corr_x": "l_corr_space"},
                     {"l_corr_t": "l_corr_time"},
                 ],
-                [osensor_1, osensor_2],
+                [beam_model.output_sensors[0], beam_model.output_sensors[1]],
                 additive_model_error=True,
                 multiplicative_model_error=False,
                 additive_measurement_error=False,
