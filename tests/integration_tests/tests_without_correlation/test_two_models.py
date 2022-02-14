@@ -104,24 +104,28 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y_linear")
+
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = a * x + b
-                return response
+                return {"y_linear": a * x + b}
 
         class QuadraticModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["alpha", {"b": "beta"}]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y_quadratic")
+
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 alpha = inp["alpha"]
                 beta = inp["beta"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = alpha * x ** 2 + beta
-                return response
+                return {"y_quadratic": alpha * x ** 2 + beta}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
@@ -163,14 +167,9 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        isensor = Sensor("x")
-        osensor_linear = Sensor("y_linear")
-        osensor_quadratic = Sensor("y_quadratic")
-        linear_model = LinearModel(["a", "b"], [isensor], [osensor_linear])
+        linear_model = LinearModel()
         problem.add_forward_model("LinearModel", linear_model)
-        quadratic_model = QuadraticModel(
-            ["alpha", {"b": "beta"}], [isensor], [osensor_quadratic]
-        )
+        quadratic_model = QuadraticModel()
         problem.add_forward_model("QuadraticModel", quadratic_model)
 
         # ============================================================================ #
@@ -180,26 +179,33 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_linear_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
-            osensor_linear.name
-        ]
+        y_linear_true = linear_model(
+            {linear_model.input_sensor.name: x_test, "a": a_true, "b": b_true}
+        )[linear_model.output_sensor.name]
         y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
         y_quadratic_true = quadratic_model(
-            {isensor.name: x_test, "alpha": alpha_true, "beta": b_true}
-        )[osensor_quadratic.name]
+            {
+                quadratic_model.input_sensor.name: x_test,
+                "alpha": alpha_true,
+                "beta": b_true,
+            }
+        )[quadratic_model.output_sensor.name]
         y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
 
         # add the experimental data
         problem.add_experiment(
             f"TestSeries_linear",
-            sensor_values={isensor.name: x_test, osensor_linear.name: y_test_linear},
+            sensor_values={
+                linear_model.input_sensor.name: x_test,
+                linear_model.output_sensor.name: y_test_linear,
+            },
             fwd_model_name="LinearModel",
         )
         problem.add_experiment(
             f"TestSeries_quadratic",
             sensor_values={
-                isensor.name: x_test,
-                osensor_quadratic.name: y_test_quadratic,
+                linear_model.input_sensor.name: x_test,
+                quadratic_model.output_sensor.name: y_test_quadratic,
             },
             fwd_model_name="QuadraticModel",
         )
@@ -224,8 +230,11 @@ class TestProblem(unittest.TestCase):
                 label="measured data (quadratic)",
             )
             plt.plot(x_test, y_quadratic_true, label="true (quadratic)", c="blue")
-            plt.xlabel(isensor.name)
-            plt.ylabel(f"{osensor_linear.name}, {osensor_quadratic.name}")
+            plt.xlabel(linear_model.input_sensor.name)
+            plt.ylabel(
+                f"{linear_model.output_sensor.name}, "
+                f"{quadratic_model.output_sensor.name}"
+            )
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
@@ -237,12 +246,12 @@ class TestProblem(unittest.TestCase):
         # add the noise models to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=osensor_linear
+                prms_def={"sigma": "std_model"}, sensors=linear_model.output_sensor
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=osensor_quadratic
+                prms_def={"sigma": "std_model"}, sensors=quadratic_model.output_sensor
             )
         )
 

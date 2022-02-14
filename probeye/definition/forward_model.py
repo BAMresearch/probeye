@@ -20,9 +20,9 @@ class ForwardModelBase:
 
     def __init__(
         self,
-        prms_def_: Union[str, List[Union[str, dict]], dict],
-        input_sensors: Union[Sensor, List[Sensor]],
-        output_sensors: Union[Sensor, List[Sensor]],
+        prms_def_: Union[str, List[Union[str, dict]], dict] = "dummy",
+        input_sensors: Union[Sensor, List[Sensor]] = Sensor("dummy"),
+        output_sensors: Union[Sensor, List[Sensor]] = Sensor("dummy"),
     ):
         """
         Parameters
@@ -45,13 +45,39 @@ class ForwardModelBase:
             Contains sensor-objects structuring the model output.
         """
 
-        # convert the given parameter names to a dictionary with global names as keys
-        # and local names as values
-        self.prms_def, self.prms_dim = translate_prms_def(prms_def_)
+        # this is just for consistency; values will be overwritten
+        self.parameters = ["dummy"]
+        self.input_sensors = [Sensor("dummy")]
+        self.output_sensors = [Sensor("dummy")]
 
-        # other attributes
-        self.input_sensors = make_list(input_sensors)
-        self.output_sensors = make_list(output_sensors)
+        if self.definition() is None:
+
+            # in this case, the user has explicitly specified self.definition(), which
+            # means that self.prms_def,, self.input_sensors and self.output sensors are
+            # already set
+            self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
+            self.input_sensors = make_list(self.input_sensors)
+            self.output_sensors = make_list(self.output_sensors)
+
+        else:
+
+            # convert the given parameter names to a dictionary with global names as
+            # keys and local names as values
+            self.prms_def, self.prms_dim = translate_prms_def(prms_def_)
+
+            # other attributes
+            self.input_sensors = make_list(input_sensors)
+            self.output_sensors = make_list(output_sensors)
+
+        # set the attribute self.input_sensor for forward models with 1 input sensor
+        self.input_sensor = Sensor("dummy")
+        if len(self.input_sensors) == 1:
+            self.input_sensor = self.input_sensors[0]
+
+        # set the attribute self.output_sensor for forward models with 1 output sensor
+        self.output_sensor = Sensor("dummy")
+        if len(self.output_sensors) == 1:
+            self.output_sensor = self.output_sensors[0]
 
         # this attribute might be used to write the forward model's input structure to;
         # it has the same structure like the 'inp' argument of the response method, but
@@ -83,6 +109,15 @@ class ForwardModelBase:
     def output_sensor_names(self) -> List[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
+
+    def definition(self) -> Union[bool, None]:
+        """
+        This method can be overwritten by the user. It should be used to explicitly
+        define the forward model's parameters, input and output sensors. Check out the
+        integration tests to see examples.
+        """
+        self.parameters = ["dummy"]
+        return True
 
     def response(self, inp: dict) -> dict:
         """

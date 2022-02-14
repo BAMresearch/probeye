@@ -102,14 +102,16 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
-                response = {}
-                for os in self.output_sensors:
-                    response[os.name] = a * x + b
-                return response
+                return {"y": a * x + b}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
@@ -151,9 +153,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        isensor = Sensor("x")
-        osensor = Sensor("y")
-        linear_model = LinearModel(["a", "b"], [isensor], [osensor])
+        linear_model = LinearModel()
         problem.add_forward_model("LinearModel", linear_model)
 
         # ============================================================================ #
@@ -163,24 +163,27 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
-            osensor.name
-        ]
+        y_true = linear_model(
+            {linear_model.input_sensor.name: x_test, "a": a_true, "b": b_true}
+        )[linear_model.output_sensor.name]
         y_test = np.random.normal(loc=y_true, scale=sigma)
 
         # add the experimental data
         problem.add_experiment(
             f"TestSeries_1",
             fwd_model_name="LinearModel",
-            sensor_values={isensor.name: x_test, osensor.name: y_test},
+            sensor_values={
+                linear_model.input_sensor.name: x_test,
+                linear_model.output_sensor.name: y_test,
+            },
         )
 
         # plot the true and noisy data
         if plot:
             plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
             plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(isensor.name)
-            plt.ylabel(osensor.name)
+            plt.xlabel(linear_model.input_sensor.name)
+            plt.ylabel(linear_model.output_sensor.name)
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
@@ -191,7 +194,9 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=linear_model.output_sensor
+            )
         )
 
         # give problem overview
