@@ -8,12 +8,12 @@ request on [GitHub][github_repository].
 
 ## Documentation
 
-We use `sphinx` & ReadTheDocs for documenting.
+We use [sphinx](https://www.sphinx-doc.org/en/master/) & [ReadTheDocs](https://readthedocs.org/) for documenting.
 
 Test your changes locally:
 * Install the documentation dependencies (`setup.cfg`: `docs`).
-* Local build: from the `docs` directory `make html` (on Windows: `.\make.bat html`).
+* Local build: from the `docs` directory execute `make html` (on Windows: `.\make.bat html`).
 
 ## Testing
 
-We use `pytest` for unit testing.
+We use `pytest` for testing.

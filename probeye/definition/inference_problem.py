@@ -1033,6 +1033,7 @@ class InferenceProblem:
         self,
         tablefmt: str = "presto",
         check_consistency: bool = True,
+        print_header: bool = False,
     ) -> str:
         """
         Logs an overview of the problem definition and returns the generated string.
@@ -1045,11 +1046,18 @@ class InferenceProblem:
         check_consistency
             When True, a consistency check is performed before printing the explanations
             on theta. When False, this check is skipped.
+        print_header
+            When True, the probeye header is printed before printing the problem
+            information. Otherwise, the header is not printed.
 
         Returns
         -------
             The constructed string providing the problem's definition.
         """
+
+        # print the header if requested
+        if print_header:
+            print_probeye_header()
 
         # state the name of the inference problem
         title = f"Problem summary: {self.name}"

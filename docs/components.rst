@@ -1,5 +1,3 @@
-(sec:components)=
-
 Components
 **********
 
@@ -115,6 +113,16 @@ Parameter's name and type
 -------------------------
 Each parameter (latent and constant) must have a name and a type. The parameter's name, which is given by the first argument in the :code:`add_parameter`-method,  must be unique in the scope of the problem, i.e., no other parameter can have the same name. The parameter's type, on the other hand, states where the parameter appears in the problem definition. There are three possible types :code:`model`, :code:`prior` and :code:`likelihood`. A parameter of type :code:`model` appears in one the problem's forward models, while a parameter of type :code:`prior` will be used in the definition of some latent parameter's prior. Finally, a parameter of type :code:`likelihood` will appear in one of the problem's likelihood models.
 
+The name assigned to a parameter in the :code:`add_parameter`-method is also referred to as the parameter's `global` name. However, sometimes it is convenient or even required to refer to a parameter in one of the submodules (e.g. forward model or likelihood model) by a different name. This name of a parameter used by one of the submodules is referred to as a parameter's `local` name. The definition of a local name is applied, when the submodule in initialized that should use the local name. Here, we will give an example with a likelihood model that uses a local name:
+
+.. code-block:: python
+
+    problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def=[{"sigma": "std_model"}, "l_corr"], sensors="y")
+        )
+
+The only thing that should be of interest from this short code block is the argument :code:`prms_def=[{"sigma": "std_model"}, "l_corr"]`. Here we see the declaration that the likelihood model will have two parameters: :code:`sigma` and :code:`l_corr`. However, :code:`sigma` is known to this likelihood model under the local name :code:`std_model`, while :code:`l_corr`'s local name is identical with the its global name. A more verbose definition would be :code:`prms_def=[{"sigma": "std_model"}, {"l_corr": "l_corr"}]`.
+
 Tex and info
 ------------
 Each parameter can (but does not have to) have a tex and an info attribute. While the tex attribute is used for plotting, the info string is used when calling a problems info-method :code:`problem.info()` printing some information on the defined problem. Even if not required, it is recommended to define both of these attributes for each parameter added to the problem.
@@ -133,7 +141,6 @@ In order to add a forward model to an inference problem, two steps are required.
 .. code-block:: python
 
     class LinearModel(ForwardModelBase):
-
             def definition(self):
                 self.parameters = ["m", "b"]
                 self.input_sensors = Sensor("x")
@@ -152,14 +159,43 @@ After the forward model has been defined, it must be added to the problem. For t
     # add the forward model to the problem
     problem.add_forward_model("LinearModel", LinearModel())
 
-
-
-
+The first argument states the name of the forward model within the problem. It will be referred to when adding experiments to the problem. In principle, one can chose any name for a forward model, but it is recommended to use the same name as the forward model class, as done in the example above.
 
 Experiments
 ###########
-XXX
+The experiments that are added to an inference problem are the carriers of the experimentally recorded data that is used to calibrate the problem's parameters with. If we stay in the example discussed before, this could look like this:
+
+.. code-block:: python
+
+        problem.add_experiment(
+            "TestSeries_Aug12_2018",
+            fwd_model_name="LinearModel",
+            sensor_values={
+                "x": np.array([0., 1., 2., 3., 4., 5.]),
+                "y": np.array([1.75,  4.08,  6.91,  9.23, 11.67, 14.09]),
+            },
+        )
+
+The first argument (here: "TestSeries_Aug12_2018") is a unique name of the experiment. The second argument states the name of the forward model this experiment refers to (here: "LinearModel"). This name has to coincide with one of the forward models that have been added before the experiment is added. The third argument states the actual measurement data, i.e., the values that have been recorded by the experiment's sensors. Those values can be given as scalars (float, int) or as vectors in form of numpy arrays. Note however, that these arrays have to be one-dimensional and cannot be of higher dimension.
+
+There are several requirements that have to be met when adding an experiment to the inference problem. Those requirements are:
+
+- Experiments are added to the problem after all forward models have been added.
+- All experiments are added to the problem before the likelihood models are added.
+- All of the forward model's input and output sensors must appear in the dictionary given by the "sensor_values" argument.
+- The dictionary-values of the "sensor_values"-argument can be scalars or 1D-numpy array. Arrays with higher dimensionality are not permitted.
 
 Likelihood models
 #################
-XXX
+The inference problem's likelihood model's purpose is to compute the likelihood (more precisely the log-likelihood) of a given choice of parameter values by comparing the forward model's predictions (using the given parameter values) with the experimental data. In this section, we will only consider likelihood models that don't account for possible correlations. In such a framework, the addition of a likelihood model to the inference problem for our example could look like this:
+
+.. code-block:: python
+
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"},
+                experiment_names=["TestSeries_Aug12_2018"],
+                sensors="y",
+            )
+        )
+

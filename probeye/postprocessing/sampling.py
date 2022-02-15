@@ -215,7 +215,7 @@ def create_pair_plot(
                     axs[i, i].legend(
                         posterior_handle + prior_handle,
                         posterior_label + prior_label,
-                        loc="upper right",
+                        loc="best",
                     )
                 i += 1
 
@@ -248,7 +248,7 @@ def create_pair_plot(
                     axs[i, i].legend(
                         posterior_handle + existing_handles,
                         posterior_label + existing_labels,
-                        loc="upper right",
+                        loc="best",
                     )
 
         # add a title to the plot, if requested
@@ -309,7 +309,7 @@ def create_posterior_plot(
     true_values: Optional[dict] = None,
     show: bool = True,
     **kwargs,
-):
+) -> np.ndarray:
     """
     Creates a posterior-plot for the given inference data.
 
@@ -411,7 +411,7 @@ def create_trace_plot(
     title: Optional[str] = None,
     show: bool = True,
     **kwargs,
-):
+) -> np.ndarray:
     """
     Creates a trace-plot for the given inference data.
 

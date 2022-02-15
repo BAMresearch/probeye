@@ -1,98 +1,122 @@
 """
-Simple linear regression (sampling)
-===================================
+Simple linear regression example
+================================
 
-A simple linear regression example with two model parameters and one noise parameter.
-
-The model equation is y = a * x + b with a, b being the model parameters and the
-noise model is a normal zero-mean distribution with the std. deviation to infer.
-The problem is solved via sampling using emcee.
+The model equation is y = ax + b with a, b being the model parameters, while the
+likelihood model is based on a normal zero-mean additive model error distribution with
+the standard deviation to infer. The problem is solved via maximum likelihood estimation
+as well as via sampling using emcee.
 """
 
 # %%
-# Import what we will need for this example.
-import matplotlib.pyplot as plt
-import numpy as np
+# First, let's import the required functions and classes for this example.
 
-from probeye.definition.forward_model import ForwardModelBase
+# third party imports
+import numpy as np
+import matplotlib.pyplot as plt
+
+# local imports (problem definition)
 from probeye.definition.inference_problem import InferenceProblem
-from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
+
+# local imports (problem solving)
+from probeye.inference.scipy_.solver import ScipySolver
 from probeye.inference.emcee_.solver import EmceeSolver
+from probeye.inference.torch_.solver import PyroSolver
+from probeye.inference.dynesty_.solver import DynestySolver
+
+# local imports (inference data post-processing)
+from probeye.postprocessing.sampling import create_pair_plot
+from probeye.postprocessing.sampling import create_posterior_plot
+from probeye.postprocessing.sampling import create_trace_plot
 
 # %%
-# We start by generating a synthetic data set from a known linear model. Later we
-# will pretend to forgot about the parameters of this ground truth model and will try
-# to recover them from the data. The slope and intercept of the ground truth model:
+# We start by generating a synthetic data set from a known linear model to which we will
+# add some noise. Afterwards, we will pretend to have forgotten the parameters of this
+# ground-truth model and will instead try to recover them just from the data. The slope
+# (a) and intercept (b) of the ground truth model are set to be:
 
+# ground truth
 a_true = 2.5
 b_true = 1.7
 
 # %%
-# Generate a few data points that we contaminate with a Gaussian error:
+# Now, let's generate a few data points that we contaminate with a Gaussian error:
+
+# settings for data generation
 n_tests = 50
 seed = 1
+mean_noise = 0.0
+std_noise = 0.5
 
+# generate the data
 np.random.seed(seed)
 x_test = np.linspace(0.0, 1.0, n_tests)
 y_true = a_true * x_test + b_true
-sigma_noise = 0.5
-y_test = y_true + np.random.normal(loc=0, scale=sigma_noise, size=n_tests)
+y_test = y_true + np.random.normal(loc=mean_noise, scale=std_noise, size=n_tests)
 
 # %%
-# Visualize our data points
-plt.plot(x_test, y_test, "o")
+# Let's take a look at the data that we just generated:
+plt.plot(x_test, y_test, "o", label="generated data points")
+plt.plot(x_test, y_true, label="ground-truth model")
+plt.title("Data vs. ground truth")
 plt.xlabel("x")
 plt.ylabel("y")
+plt.legend()
 plt.show()
 
 # %%
-# Define our parametrized linear model:
+# Until this point, we didn't use probeye at all, since we just generate some data. In
+# a normal use case, we wouldn't have to generate our data of course. Instead, it would
+# be provided to us, for example as the result of some test series. As the first step in
+# any calibration problem, one needs to have a parameterized model (in probeye such a
+# model is called 'forward model') of which one assumes that it is able to describe the
+# data at hand. In this case, if we took a look at the blue data points in the plot
+# above without knowing the orange line, we might expect a simple linear model. It is
+# now our job to describe this model within the probeye-framework. This is done by
+# defining our own specific model class:
 class LinearModel(ForwardModelBase):
-    def response(self, inp):
-        # this method *must* be provided by the user
+    def definition(self):
+        self.parameters = ["a", "b"]
+        self.input_sensors = Sensor("x")
+        self.output_sensors = Sensor("y")
+
+    def response(self, inp: dict) -> dict:
         x = inp["x"]
-        m = inp["m"]
+        m = inp["a"]
         b = inp["b"]
-        response = {}
-        for os in self.output_sensors:
-            response[os.name] = m * x + b
-        return response
-
-    def jacobian(self, inp):
-        # this method *can* be provided by the user; if not provided
-        # the jacobian will be approximated by finite differences
-        x = inp["x"]  # vector
-        one = np.ones((len(x), 1))
-        jacobian = {}
-        for os in self.output_sensors:
-            # partial derivatives must only be stated for the model
-            # parameters; all other input must be flagged by None;
-            # note: partial derivatives must be given as column vectors
-            jacobian[os.name] = {"x": None, "m": x.reshape(-1, 1), "b": one}
-        return jacobian
+        return {"y": m * x + b}
 
 
 # %%
-# Define the inference problem.
-# Initialize the inference problem with a useful name; note that the
-# name will only be stored as an attribute of the InferenceProblem and
-# is not important for the problem itself; can be useful when dealing
-# with multiple problems
-
-problem = InferenceProblem("Linear regression with normal noise")
+# First, note that this model class is based on the probeye class 'ForwardModelBase'.
+# While this is a requirement, the name of the class can be chosen freely. As you can
+# see, this class has a 'definition' and a 'response' method. In the 'definition' method
+# we define that our model has two parameters, 'a' and 'b', next to one input and one
+# output sensors, called 'x' and 'y' respectively. Keeping this definition in mind,
+# let's now take a look at the 'response' method. This method describes the actual
+# forward model evaluation. The method takes one dictionary as an input and returns one
+# dictionary as its output. The input dictionary 'inp' will have the keys 'a', 'b' and
+# 'x' because of the definitions given in self.definition. Analogously, the returned
+# dictionary must have the key 'y', because we defined an output sensor with the name
+# 'y'. Note that the entire interface of the 'response' method is described by the
+# 'definition' method. Parameters and input sensors will be contained in the 'inp'
+# dictionary, while the output sensors must be contained in the returned dictionary.
 
 # %%
-# Add all parameters to the problem; the first argument states the
-# parameter's global name (here: 'a', 'b' and 'sigma'); the second
-# argument defines the parameter type (three options: 'model' for
-# parameter's of the forward model, 'prior' for prior parameters and
-# 'noise' for parameters of the noise model); the 'info'-argument is a
-# short description string used for logging, and the tex-argument gives
-# a tex-string of the parameter used for plotting; finally, the prior-
-# argument specifies the parameter's prior; note that this definition
-# of a prior will result in the initialization of constant parameters of
-# type 'prior' in the background
+# After we now have defined our forward model, we can set up the inference problem
+# itself. This always begins by initializing an object form the InferenceProblem-class,
+# and adding all of the problem's parameters with priors that reflect our current best
+# guesses of what the parameter's values might look like. Please check out the
+# 'Components'-part of this documentation to get more information on the arguments seen
+# below. However, most of the code should be self-explanatory.
+
+# initialize the problem
+problem = InferenceProblem("Linear regression with Gaussian noise", print_header=False)
+
+# add the problem's parameters
 problem.add_parameter(
     "a",
     "model",
@@ -108,52 +132,111 @@ problem.add_parameter(
     prior=("normal", {"loc": 1.0, "scale": 1.0}),
 )
 problem.add_parameter(
-    "sigma",
+    "std_noise",
     "likelihood",
     tex=r"$\sigma$",
-    info="Std. dev, of 0-mean noise model",
+    info="Standard deviation, of zero-mean Gaussian noise model",
     prior=("uniform", {"low": 0.1, "high": 0.8}),
 )
 
 # %%
-# Add the forward model to the problem; note that the first positional
-# argument [{'a': 'm'}, 'b'] passed to LinearModel defines the forward
-# model's parameters by name via a list with elements structured like
-# {<global parameter name>: <local parameter name>}; a global name is a
-# name introduced by problem.add_parameter, while a local name is a name
-# used in the response-method of the forward model class (see the class
-# LinearModel above); note that the use of the local parameter name 'm'
-# for the global parameter 'a' is added here only to highlight the
-# possibility of this feature; it is not necessary at all here; whenever
-# forward model's parameter has a similar local and global name (which
-# should be the case most of the times), one doesn't have to use the
-# verbose notation  {<global parameter name>: <local parameter name>}
-# but can instead just write the parameter's (global=local) name, like
-# it is done with the forward model's parameter 'b' below
-isensor = Sensor("x")
-osensor = Sensor("y")
-linear_model = LinearModel([{"a": "m"}, "b"], [isensor], [osensor])
+# As the next step, we need to add our forward model, the experimental data and the
+# likelihood model. Note that the order is important and cannot be changed.
+
+# forward model
+linear_model = LinearModel()
 problem.add_forward_model("LinearModel", linear_model)
 
-# %%
-# Add test data to the Inference Problem
+# experimental data
 problem.add_experiment(
     "TestSeries_1",
     fwd_model_name="LinearModel",
-    sensor_values={isensor.name: x_test, osensor.name: y_test},
+    sensor_values={"x": x_test, "y": y_test},
 )
 
-# %%
-# add the likelihood model to the problem
+# likelihood model
 problem.add_likelihood_model(
-    GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+    GaussianLikelihoodModel(
+        prms_def={"std_noise": "std_model"}, sensors=linear_model.output_sensor
+    )
 )
 
-# give problem overview
-problem.info()
+# %%
+# Now, our problem definition is complete, and we can take a look at its summary:
 
+# print problem summary
+problem.info(print_header=True)
 
 # %%
-# Estimate the parameters using `emcee`
-emcee_solver = EmceeSolver(problem, show_progress=True)
-inference_data = emcee_solver.run_mcmc(n_walkers=20, n_steps=2_000, n_initial_steps=200)
+# After the problem definition comes the problem solution. There are different solver
+# one can use, but we will just demonstrate how to use two of them: the scipy-solver,
+# which merely provides a point estimate based on a maximum likelihood optimization, and
+# the emcee solver, which is a MCMC-sampling solver. Let's begin with the scipy-solver:
+
+# this is for using the scipy-solver (maximum likelihood estimation)
+scipy_solver = ScipySolver(problem, show_progress=False)
+max_like_data = scipy_solver.run_max_likelihood()
+
+# %%
+# All solver have in common that they are first initialized, and then execute a
+# run-method, which returns its result data in the format of an arviz inference-data
+# object (except for the scipy-solver). Let's now take a look at the emcee-solver. If
+# you want to try out another solver, you just have to change the flags that follow
+# below.
+
+# solver flags
+run_emcee = True
+run_dynesty = False
+run_pyro = False
+
+# this is for running the dynesty-solver
+if run_dynesty:
+    dynesty_solver = DynestySolver(problem, show_progress=False)
+    inference_data = dynesty_solver.run_dynesty()
+
+# this is for using the pyro-solver (NUTS-sampler)
+if run_pyro:
+    pyro_solver = PyroSolver(problem, show_progress=False)
+    inference_data = pyro_solver.run_mcmc(n_steps=2000, n_initial_steps=200)
+
+# this is for using the emcee-solver
+if run_emcee:
+    emcee_solver = EmceeSolver(problem, show_progress=False)
+    inference_data = emcee_solver.run_mcmc(n_steps=2000, n_initial_steps=200)
+
+# %%
+# Finally, we want to plot the results we obtained. To that end, probeye provides some
+# post-processing routines, which are mostly based on the arviz-plotting routines.
+
+# this is optional, since in most cases we don't know the ground truth
+true_values = {"a": a_true, "b": b_true, "std_noise": std_noise}
+
+# this is an overview plot that allows to visualize correlations
+pair_plot_array = create_pair_plot(
+    inference_data,
+    problem,
+    true_values=true_values,
+    show=True,
+    title="Sampling results from emcee-Solver (pair plot)",
+)
+
+# %%
+
+# this is a posterior-focused plot, without including priors
+post_plot_array = create_posterior_plot(
+    inference_data,
+    problem,
+    true_values=true_values,
+    show=True,
+    title="Sampling results from emcee-Solver (posterior plot)",
+)
+
+# %%
+
+# trace plots are used to check for "healthy" sampling
+trace_plot_array = create_trace_plot(
+    inference_data,
+    problem,
+    show=False,
+    title="Sampling results from emcee-Solver (trace plot)",
+)
