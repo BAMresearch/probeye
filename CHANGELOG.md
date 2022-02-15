@@ -1,10 +1,14 @@
 # probeye changelog
 
-## 2.1.1 (2022-Feb-XX)
+## 2.1.0 (2022-Feb-XX)
 ### Changed
 - extended the documentation in README.md
 ### Added
 - added a 'readthedocs' documentation
+
+## 2.0.2 (2022-Feb-15)
+### Added
+- Added some error checks after calling the forward model's definition method to prevent wrong use and weird error messages.
 
 ## 2.0.1 (2022-Feb-14)
 ### Added
