@@ -581,7 +581,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "2.0.1",
+    version: str = "2.0.2",
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",

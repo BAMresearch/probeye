@@ -46,15 +46,31 @@ class ForwardModelBase:
         """
 
         # this is just for consistency; values will be overwritten
-        self.parameters = ["dummy"]
-        self.input_sensors = [Sensor("dummy")]
-        self.output_sensors = [Sensor("dummy")]
+        self.parameters = ["_self.parameters_not_set"]
+        self.input_sensors = [Sensor("_self.input_sensors_not_set")]
+        self.output_sensors = [Sensor("_self.output_sensors_not_set")]
 
         if self.definition() is None:
 
             # in this case, the user has explicitly specified self.definition(), which
-            # means that self.prms_def,, self.input_sensors and self.output sensors are
-            # already set
+            # means that self.prms_def, self.input_sensors and self.output sensors are
+            # already set at this point; before continuing though, let's check if
+            # everything required was already set
+            if self.parameters == ["_self.parameters_not_set"]:
+                raise RuntimeError(
+                    f"You did not set the required attribute 'self.parameters' in the "
+                    f"forward model's 'definition'-method!"
+                )
+            if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
+                raise RuntimeError(
+                    "You did not set the required attribute 'self.input_sensors' in "
+                    "the forward model's 'definition'-method!"
+                )
+            if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
+                raise RuntimeError(
+                    "You did not set the required attribute 'self.output_sensors' in "
+                    "the forward model's 'definition'-method!"
+                )
             self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
             self.input_sensors = make_list(self.input_sensors)
             self.output_sensors = make_list(self.output_sensors)
@@ -70,12 +86,12 @@ class ForwardModelBase:
             self.output_sensors = make_list(output_sensors)
 
         # set the attribute self.input_sensor for forward models with 1 input sensor
-        self.input_sensor = Sensor("dummy")
+        self.input_sensor = Sensor("not_set_because_more_than_one_input_sensor")
         if len(self.input_sensors) == 1:
             self.input_sensor = self.input_sensors[0]
 
         # set the attribute self.output_sensor for forward models with 1 output sensor
-        self.output_sensor = Sensor("dummy")
+        self.output_sensor = Sensor("not_set_because_more_than_one_output_sensor")
         if len(self.output_sensors) == 1:
             self.output_sensor = self.output_sensors[0]
 
@@ -116,7 +132,7 @@ class ForwardModelBase:
         define the forward model's parameters, input and output sensors. Check out the
         integration tests to see examples.
         """
-        self.parameters = ["dummy"]
+        self.parameters = ["_self.parameters_not_set"]
         return True
 
     def response(self, inp: dict) -> dict:

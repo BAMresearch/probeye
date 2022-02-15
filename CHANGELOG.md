@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.0.2 (2022-Feb-15)
+### Added
+- Added some error checks after calling the forward model's definition method to prevent wrong use and weird error messages.
+
 ## 2.0.1 (2022-Feb-14)
 ### Added
 - Added a 'definition' method to the forward model that allows a clearer way of defining a forward model's parameters, input and output sensors. However, the old way of defining a forward model's interface still works too.
