@@ -54,6 +54,7 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         specify it when adding the likelihood model to the problem. It is then named
         automatically before starting the inference engine.
     """
+
     def __init__(
         self,
         prms_def: Union[str, List[Union[str, dict]], dict],
