@@ -5,7 +5,7 @@ import unittest
 import numpy as np
 
 # local imports
-from probeye.inference.scipy_.correlation_models import (
+from probeye.inference.scipy.correlation_models import (
     SpatiotemporalExponentialCorrelationModel,
 )
 

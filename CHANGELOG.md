@@ -1,5 +1,10 @@
 # probeye changelog
 
+## 2.0.3 (2022-Feb-16)
+### Changed
+- For simple cases, it is now not required anymore to specify the likelihood model's experiments and sensors when adding them to an inference problem.
+- Removed the underscores in the inference submodules scipy_, emcee_, torch_ and dynesty_. These underscores resulted in some confusion ("Are functions from these modules intended to be used by the user?").
+
 ## 2.0.2 (2022-Feb-15)
 ### Added
 - Added some error checks after calling the forward model's definition method to prevent wrong use and weird error messages.

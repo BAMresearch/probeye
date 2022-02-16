@@ -6,7 +6,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.sensor import Sensor
-from probeye.inference.scipy_.likelihood_models import AdditiveUncorrelatedModelError
+from probeye.inference.scipy.likelihood_models import AdditiveUncorrelatedModelError
 
 
 class TestProblem(unittest.TestCase):

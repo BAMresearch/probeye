@@ -9,7 +9,7 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.inference.scipy_.solver import ScipySolver
+from probeye.inference.scipy.solver import ScipySolver
 
 
 class TestProblem(unittest.TestCase):
