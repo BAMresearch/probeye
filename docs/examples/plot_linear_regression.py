@@ -216,7 +216,7 @@ pair_plot_array = create_pair_plot(
     inference_data,
     problem,
     true_values=true_values,
-    show=True,
+    focus_on_posterior=True,
     title="Sampling results from emcee-Solver (pair plot)",
 )
 
@@ -227,7 +227,6 @@ post_plot_array = create_posterior_plot(
     inference_data,
     problem,
     true_values=true_values,
-    show=True,
     title="Sampling results from emcee-Solver (posterior plot)",
 )
 
@@ -237,6 +236,5 @@ post_plot_array = create_posterior_plot(
 trace_plot_array = create_trace_plot(
     inference_data,
     problem,
-    show=False,
     title="Sampling results from emcee-Solver (trace plot)",
 )

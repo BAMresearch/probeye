@@ -64,7 +64,7 @@ autodoc_mock_imports = [
     "loguru",
     "dynesty",
     "tri-py",
-    "numba",
+    "numba<1",
 ]
 
 # If true, the current module name will be prepended to all description
