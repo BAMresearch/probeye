@@ -27,23 +27,24 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class PyroSolver:
-    """Solver routines based on pyro/torch for an InferenceProblem."""
+    """
+    Solver routines based on pyro/torch for an InferenceProblem.
+
+    Parameters
+    ----------
+    problem
+        Describes the inference problem including e.g. parameters and data.
+    seed
+        Random state used for random number generation.
+    show_progress
+        When True, the progress of a solver routine will be shown (for example as a
+        progress-bar) if such a feature is available. Otherwise, the progress will
+        not shown.
+    """
 
     def __init__(
         self, problem: "InferenceProblem", seed: int = 1, show_progress: bool = True
     ):
-        """
-        Parameters
-        ----------
-        problem
-            Describes the inference problem including e.g. parameters and data.
-        seed
-            Random state used for random number generation.
-        show_progress
-            When True, the progress of a solver routine will be shown (for example as a
-            progress-bar) if such a feature is available. Otherwise, the progress will
-            not shown.
-        """
 
         # check that the problem does not contain a uninformative prior
         check_for_uninformative_priors(problem)
@@ -146,6 +147,7 @@ class PyroSolver:
         """
         Translates a given forward model (based on non-tensor in/outputs) to a torch-
         compatible forward model based on tensors.
+
         Parameters
         ----------
         forward_model
@@ -161,6 +163,7 @@ class PyroSolver:
                 accept a context ctx as the first argument, followed by any number of
                 arguments (tensors or other types). The context can be used to store
                 arbitrary data that can be then retrieved during the backward pass.
+
                 Parameters
                 ----------
                 ctx
@@ -229,6 +232,7 @@ class PyroSolver:
                 corresponding input. If an input is either not a Tensor or a Tensor not
                 requiring gradients, you can just pass None as a gradient for that
                 particular input.
+
                 Parameters
                 ----------
                 ctx
@@ -237,6 +241,7 @@ class PyroSolver:
                     The jacobian of the likelihood with respect to the forward model
                     evaluations, i.e., dl/dy. Since the likelihood returns a scalar
                     value, this is a tuple of length 1.
+
                 Returns
                 -------
                     Each element i of the tuple is a tensor that represents the
@@ -287,17 +292,19 @@ class PyroSolver:
         """
         Evaluates the model response for each forward model for the given parameter
         vector theta and the given experiments.
+
         Parameters
         ----------
         theta
             A numeric vector for which the model responses should be evaluated. Which
-            parameters these numbers refer to can be checked by calling self.theta_
-            explanation() once the problem is set up.
+            parameters these numbers refer to can be checked by calling
+            self.theta_explanation() once the problem is set up.
         experiment_names
             Contains the names of all or some of the experiments added to the inference
             problem. If this argument is None (which is a common use case) then all
             experiments defined in the problem (self.experiments) are used. The names
             provided here define the experiments that the fwd. model is evaluated for.
+
         Returns
         -------
         model_response_dict
@@ -353,6 +360,7 @@ class PyroSolver:
     def get_theta_samples(self) -> th.Tensor:
         """
         Provides a list of latent-parameter samples in form of torch.Tensors.
+
         Returns
         -------
             The sampled values based on the latent parameter's priors.
@@ -380,6 +388,7 @@ class PyroSolver:
     def loglike(self, theta: th.Tensor):
         """
         Evaluates the log-likelihood function of the problem at theta.
+
         Parameters
         ----------
         theta
@@ -401,6 +410,7 @@ class PyroSolver:
     def posterior_model(self):
         """
         Returns the sampled log-likelihood in form of a torch.Tensor.
+
         Returns
         -------
         ll : torch.Tensor
@@ -420,6 +430,7 @@ class PyroSolver:
         """
         Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
+
         Parameters
         ----------
         n_walkers
@@ -432,6 +443,7 @@ class PyroSolver:
             The number of steps for the burn-in phase.
         kwargs
             Additional keyword arguments passed to NUTS.
+
         Returns
         -------
         inference_data

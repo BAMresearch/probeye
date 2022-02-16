@@ -11,7 +11,19 @@ from probeye.subroutines import len_or_one
 
 
 class PriorNormal(PriorBase):
-    """Prior class for a uni- or multivariate normal distribution."""
+    """
+    Prior class for a uni- or multivariate normal distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for
+        more detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -19,17 +31,6 @@ class PriorNormal(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
         super().__init__(ref_prm, prms_def, name, "normal distribution")
 
     def __call__(
@@ -118,7 +119,19 @@ class PriorNormal(PriorBase):
 
 
 class PriorLognormal(PriorBase):
-    """Prior class for a log-normal distribution."""
+    """
+    Prior class for a log-normal distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for
+        more detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -126,17 +139,6 @@ class PriorLognormal(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
         super().__init__(ref_prm, prms_def, name, "log-normal distribution")
 
     def __call__(
@@ -219,7 +221,19 @@ class PriorLognormal(PriorBase):
 
 
 class PriorTruncnormal(PriorBase):
-    """Prior class for a trunc-normal distribution."""
+    """
+    Prior class for a trunc-normal distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for
+        more detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -227,17 +241,7 @@ class PriorTruncnormal(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
+
         super().__init__(ref_prm, prms_def, name, "trunc-normal distribution")
 
     def __call__(
@@ -314,7 +318,19 @@ class PriorTruncnormal(PriorBase):
 
 
 class PriorUniform(PriorBase):
-    """Prior class for a uniform distribution."""
+    """
+    Prior class for a uniform distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for
+        more detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -322,17 +338,7 @@ class PriorUniform(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
+
         super().__init__(ref_prm, prms_def, name, "uniform distribution")
 
     def __call__(
@@ -398,7 +404,19 @@ class PriorUniform(PriorBase):
 
 
 class PriorWeibull(PriorBase):
-    """Prior class for a three-parameter Weibull distribution."""
+    """
+    Prior class for a three-parameter Weibull distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for
+        more detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -406,17 +424,7 @@ class PriorWeibull(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
+
         super().__init__(ref_prm, prms_def, name, "Weibull distribution")
 
     def __call__(

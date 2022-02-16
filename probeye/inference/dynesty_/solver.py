@@ -31,12 +31,22 @@ class DynestySolver(ScipySolver):
 
     _Note:_ For full details on the `dynesty` library see:
         https://dynesty.readthedocs.io/en/latest/index.html.
+
+    Parameters
+    ----------
+    problem
+        Describes the inference problem including e.g. parameters and data.
+    seed
+        Random state used for random number generation.
+    show_progress
+        When True, the progress of a solver routine will be shown (for example as a
+        progress-bar) if such a feature is available. Otherwise, the progress will
+        not shown.
     """
 
     def __init__(
         self, problem: "InferenceProblem", seed: int = 1, show_progress: bool = True
     ):
-        """See docstring of ScipySolver for information on the arguments."""
         logger.debug("Initializing EmceeSolver")
         # check that the problem does not contain a uninformative prior
         check_for_uninformative_priors(problem)

@@ -22,7 +22,6 @@ auto_examples/index
 motivation
 components
 api
-references
 ```
 
 ```{toctree}

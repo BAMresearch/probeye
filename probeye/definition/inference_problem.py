@@ -27,6 +27,26 @@ class InferenceProblem:
     This class provides a general framework for defining an inference problem (more
     specifically, a parameter estimation problem) without specifying or providing any
     computational means for solving the problem.
+
+    Parameters
+    ----------
+    name
+        This is the name of the problem and has only descriptive value, for example when
+        working with several inference problems.
+    use_default_logger
+        When True, the logger will be set up with some useful default values. Otherwise,
+        no logger configurations are applied and a logger can be defined outside of the
+        problem definition.
+    log_level
+        The log-level used by the default logger for printing to std out. This argument
+        is intended for quickly controlling the amount of logging output the user sees
+        on the screen when running probeye.
+    log_file
+        Path to the log-file, if the logging-stream should be printed to file. If None
+        is given, no logging-file will be created.
+    print_header
+        If True, a probeye header is logged when an instance of this class is created.
+        Otherwise, the header will not be logged.
     """
 
     def __init__(
@@ -37,27 +57,6 @@ class InferenceProblem:
         log_file: Optional[str] = None,
         print_header: bool = True,
     ):
-        """
-        Parameters
-        ----------
-        name
-            This is the name of the problem and has only descriptive value, for example
-            when working with several inference problems.
-        use_default_logger
-            When True, the logger will be set up with some useful default values.
-            Otherwise, no logger configurations are applied and a logger can be defined
-            outside of the problem definition.
-        log_level
-            The log-level used by the default logger for printing to std out. This
-            argument is intended for quickly controlling the amount of logging output
-            the user sees on the screen when running probeye.
-        log_file
-            Path to the log-file, if the logging-stream should be printed to file.
-            If None is given, no logging-file will be created.
-        print_header
-            If True, a probeye header is logged when an instance of this class is
-            created. Otherwise, the header will not be logged.
-        """
 
         # the name of the problem
         self.name = name

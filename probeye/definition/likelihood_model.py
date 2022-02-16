@@ -17,6 +17,44 @@ class GaussianLikelihoodModel:
     It contains information such as the likelihood model's latent parameters, its scope
     with respect to the given experiments, the sensors it considers, its error model
     specification as well as its correlation structure.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_model_error
+        If True, the model error is assumed to be additive and not multiplicative. Note
+        that in this case 'multiplicative_model_error' must be False.
+    multiplicative_model_error
+        If True, the model error is assumed to be multiplicative and not additive. Note
+        that in this case 'additive_model_error' must be False.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -31,45 +69,6 @@ class GaussianLikelihoodModel:
         correlation_model: str = "exp",
         name: str = "",
     ):
-        """
-        Parameters
-        ----------
-        prms_def
-            Parameter names defining which parameters are used by the likelihood model.
-            For example prms_def = ['mu', 'sigma']. To check out the other possible
-            formats, see the explanation for the same parameter in probeye/definition/
-            forward_model.py:ForwardModelBase.__init__.
-        sensors
-            These are the sensor objects which serve as output sensors in one of the
-            problem's forward models, that the likelihood model should refer to. This
-            means, the likelihood model should describe the model error between the
-            model response for all sensors specified in this 'sensors'-argument and the
-            corresponding experimental data.
-        experiment_names
-            The names of the experiments in the scope of the likelihood model.
-        additive_model_error
-            If True, the model error is assumed to be additive and not multiplicative.
-            Note that in this case 'multiplicative_model_error' must be False.
-        multiplicative_model_error
-            If True, the model error is assumed to be multiplicative and not additive.
-            Note that in this case 'additive_model_error' must be False.
-        additive_measurement_error
-            If True, next to the model error, a normal, zero-mean i.i.d. measurement
-            error is assumed to be present.
-        correlation_variables
-            Defines the correlation variables. This argument can be any combination of
-            the characters 'x', 'y', 'z', 't', each one appearing at most once. Examples
-            are: 'x', 't', 'xy', 'yzt'.
-        correlation_model
-            Defines the correlation function to be used in case correlation is
-            considered (which is the case, when correlation_variables is a non-empty
-            string). Currently, there is only one option 'exp' which represents an
-            exponential model. In the future, more options should be added.
-        name
-            Unique name of the likelihood model. This name is None, if the user does not
-            specify it when adding the likelihood model to the problem. It is then named
-            automatically before starting the inference engine.
-        """
 
         # general attributes
         self.name = name

@@ -59,11 +59,12 @@ autodoc_mock_imports = [
     "emcee",
     "tabulate",
     "torch",
-    "pyro-ppl",
+    "pyro",
     "arviz",
     "loguru",
     "dynesty",
     "tri-py",
+    "numba",
 ]
 
 # If true, the current module name will be prepended to all description

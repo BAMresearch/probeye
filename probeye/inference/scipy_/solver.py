@@ -20,23 +20,24 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class ScipySolver:
-    """Solver routines based on scipy and numpy for an InferenceProblem."""
+    """
+    Solver routines based on scipy and numpy for an InferenceProblem.
+
+    Parameters
+    ----------
+    problem
+        Describes the inference problem including e.g. parameters and data.
+    seed
+        Random state used for random number generation.
+    show_progress
+        When True, the progress of a solver routine will be shown (for example as a
+        progress-bar) if such a feature is available. Otherwise, the progress will
+        not shown.
+    """
 
     def __init__(
         self, problem: "InferenceProblem", seed: int = 1, show_progress: bool = True
     ):
-        """
-        Parameters
-        ----------
-        problem
-            Describes the inference problem including e.g. parameters and data.
-        seed
-            Random state used for random number generation.
-        show_progress
-            When True, the progress of a solver routine will be shown (for example as a
-            progress-bar) if such a feature is available. Otherwise, the progress will
-            not shown.
-        """
 
         # log at beginning so that errors can be associated
         logger.debug("Initializing ScipySolver")
@@ -75,8 +76,8 @@ class ScipySolver:
         ----------
         theta
             A numeric vector for which the model responses should be evaluated. Which
-            parameters these numbers refer to can be checked by calling self.theta_
-            explanation() once the problem is set up.
+            parameters these numbers refer to can be checked by calling
+            self.theta_explanation() once the problem is set up.
         experiment_names
             Contains the names of all or some of the experiments added to the inference
             problem. If this argument is None (which is a common use case) then all
@@ -276,8 +277,8 @@ class ScipySolver:
     ):
         """
         Prints a summary of the results of the maximum likelihood estimation. For an
-        explanation of the arguments, check out the docstring of the self.run_max_
-        likelihood-method.
+        explanation of the arguments, check out the docstring of the
+        self.run_max_likelihood-method.
         """
 
         # the first part of the summary contains process information

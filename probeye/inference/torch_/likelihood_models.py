@@ -1,5 +1,5 @@
 # standard library imports
-from typing import Union, List, Optional, TYPE_CHECKING
+from typing import Union, List, TYPE_CHECKING
 
 
 # third party imports
@@ -17,6 +17,43 @@ if TYPE_CHECKING:  # pragma: no cover
 
 
 class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
+    """
+    This is a likelihood model based on a multivariate normal distribution without any
+    correlations, i.e., with a diagonal covariance matrix. Both the model error as well
+    as the measurement error (if considered) are assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
+    """
     def __init__(
         self,
         prms_def: Union[str, List[Union[str, dict]], dict],
@@ -28,12 +65,6 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel. The only
-        additional argument is 'problem_experiments' which is simply a pointer to
-        InferenceProblem._experiments (a dictionary of all the problem's experiments).
-        """
 
         # initialize the super-class (GaussianLikelihoodModel) based on the given input
         super().__init__(
@@ -54,12 +85,14 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         Computes the residuals for all of the likelihood model's experiments and returns
         them in a dictionary that is sorted by output sensor_values. This method
         overwrites the corresponding method of the parent class.
+
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
+
         Returns
         -------
         model_error
@@ -86,12 +119,14 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
         """
         Computes the model residuals for all of the likelihood model's sensors over all
         of the likelihood model's experiments and returns them in a single vector.
+
         Parameters
         ----------
         model_response_dict
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
+
         Returns
         -------
         residuals_vector
@@ -109,10 +144,13 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
             idx += m
         return residuals_vector
 
-    def sample_cond_likelihood(self, model_response: dict, prms: dict) -> pyro.sample:
+    def sample_cond_likelihood(self, model_response: dict, prms: dict):
         """
         Creates a likelihood-sample conditioned on the observed errors.
-        model_response_dict
+
+        Parameters
+        ----------
+        model_response
             The first key is the name of the experiment. The values are dicts which
             contain the forward model's output sensor's names as keys have the
             corresponding model responses as values.
@@ -132,11 +170,13 @@ def translate_likelihood_model(
     Translates a given instance of GaussianLikelihoodModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
     likelihood model object which does contain SciPy-based computing-methods.
+
     Parameters
     ----------
     like_def
         An instance of GaussianLikelihoodModel which contains general information on the
         likelihood model but no computing-methods.
+
     Returns
     -------
     likelihood_computer
