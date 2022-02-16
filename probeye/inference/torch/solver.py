@@ -13,8 +13,8 @@ import time
 import contextlib
 
 # local imports
-from probeye.inference.torch_.priors import translate_prior_template
-from probeye.inference.torch_.likelihood_models import translate_likelihood_model
+from probeye.inference.torch.priors import translate_prior_template
+from probeye.inference.torch.likelihood_models import translate_likelihood_model
 from probeye.subroutines import len_or_one, make_list
 from probeye.subroutines import pretty_time_delta, stream_to_logger
 from probeye.subroutines import print_dict_in_rows

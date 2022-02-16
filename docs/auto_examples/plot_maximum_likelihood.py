@@ -23,7 +23,7 @@ from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (inference related)
-from probeye.inference.scipy_.solver import ScipySolver
+from probeye.inference.scipy.solver import ScipySolver
 
 # %%
 # We start by generating a synthetic data set from a known linear model. Later we

@@ -18,7 +18,7 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
-from probeye.inference.emcee_.solver import EmceeSolver
+from probeye.inference.emcee.solver import EmceeSolver
 
 # %%
 # We start by generating a synthetic data set from a known linear model. Later we
