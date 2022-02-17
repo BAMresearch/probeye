@@ -22,10 +22,10 @@ from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (problem solving)
-from probeye.inference.scipy_.solver import ScipySolver
-from probeye.inference.emcee_.solver import EmceeSolver
-from probeye.inference.torch_.solver import PyroSolver
-from probeye.inference.dynesty_.solver import DynestySolver
+from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.emcee.solver import EmceeSolver
+from probeye.inference.torch.solver import PyroSolver
+from probeye.inference.dynesty.solver import DynestySolver
 
 # local imports (inference data post-processing)
 from probeye.postprocessing.sampling import create_pair_plot

@@ -5,10 +5,10 @@ from typing import Optional, TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 # local imports (inference engines)
-from probeye.inference.scipy_.solver import ScipySolver
-from probeye.inference.emcee_.solver import EmceeSolver
-from probeye.inference.torch_.solver import PyroSolver
-from probeye.inference.dynesty_.solver import DynestySolver
+from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.emcee.solver import EmceeSolver
+from probeye.inference.torch.solver import PyroSolver
+from probeye.inference.dynesty.solver import DynestySolver
 
 # local imports (post-processing)
 from probeye.postprocessing.sampling import create_pair_plot
@@ -62,8 +62,8 @@ def run_inference_engines(
         If True, the problem is solved with the emcee solver. Otherwise, the
         emcee solver will not be used.
     run_torch
-        If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
-        pyro/torch_ solver will not be used.
+        If True, the problem is solved with the pyro/torch solver. Otherwise, the
+        pyro/torch solver will not be used.
     run_dynesty
         If True, the problem is solved with the dynesty solver. Otherwise, the
         dynesty solver will not be used.

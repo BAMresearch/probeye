@@ -10,8 +10,8 @@ from scipy.optimize import minimize
 from loguru import logger
 
 # local imports
-from probeye.inference.scipy_.priors import translate_prior
-from probeye.inference.scipy_.likelihood_models import translate_likelihood_model
+from probeye.inference.scipy.priors import translate_prior
+from probeye.inference.scipy.likelihood_models import translate_likelihood_model
 from probeye.subroutines import print_dict_in_rows, make_list
 
 # imports only needed for type hints
