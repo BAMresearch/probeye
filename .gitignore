@@ -1,5 +1,6 @@
 ### Sphinx gallery ###
 */auto_examples/
+./docs/auto_examples/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -133,4 +134,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-./docs/auto_examples/

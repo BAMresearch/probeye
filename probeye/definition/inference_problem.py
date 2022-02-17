@@ -1054,7 +1054,8 @@ class InferenceProblem:
         tablefmt: str = "presto",
         check_consistency: bool = True,
         print_header: bool = False,
-    ) -> str:
+        return_string: bool = False,
+    ) -> Union[str, None]:
         """
         Logs an overview of the problem definition and returns the generated string.
 
@@ -1069,10 +1070,14 @@ class InferenceProblem:
         print_header
             When True, the probeye header is printed before printing the problem
             information. Otherwise, the header is not printed.
+        return_string
+            When True, the constructed string is returned. Otherwise it is just logged
+            without it being returned.
 
         Returns
         -------
-            The constructed string providing the problem's definition.
+            The constructed string providing the problem's definition if 'return_string'
+            was set to True. Otherwise, None is returned.
         """
 
         # print the header if requested
@@ -1169,16 +1174,19 @@ class InferenceProblem:
         full_string += theta_string + exp_str + like_str
 
         # log and return the string
-        for line in full_string.split("\n"):
-            logger.info(line)
-        return full_string
+        if return_string:
+            return full_string
+        else:
+            for line in full_string.split("\n"):
+                logger.info(line)
+            return None
 
     def __str__(self) -> str:
         """
         Allows to print the problem definition via print(problem) if problem is
         an instance of InferenceProblem. See self.info for more details.
         """
-        return self.info()
+        return self.info(return_string=True)  # type: ignore
 
     def check_problem_consistency(self):
         """

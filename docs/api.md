@@ -55,10 +55,10 @@ package.
 ```
 
 ## `probeye.inference`
-### `scipy_`
+### `scipy`
 #### `solver`
 ```{eval-rst}
-.. automodule:: probeye.inference.scipy_.solver
+.. automodule:: probeye.inference.scipy.solver
     :members:
     :undoc-members:
     :private-members:
@@ -66,7 +66,7 @@ package.
 ```
 #### `priors`
 ```{eval-rst}
-.. automodule:: probeye.inference.scipy_.priors
+.. automodule:: probeye.inference.scipy.priors
     :members:
     :undoc-members:
     :private-members:
@@ -74,34 +74,34 @@ package.
 ```
 #### `likelihood_models`
 ```{eval-rst}
-.. automodule:: probeye.inference.scipy_.likelihood_models
+.. automodule:: probeye.inference.scipy.likelihood_models
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
 ```
-### `emcee_`
+### `emcee`
 #### `solver`
 ```{eval-rst}
-.. automodule:: probeye.inference.emcee_.solver
+.. automodule:: probeye.inference.emcee.solver
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
 ```
-### `dynesty_`
+### `dynesty`
 #### `solver`
 ```{eval-rst}
-.. automodule:: probeye.inference.dynesty_.solver
+.. automodule:: probeye.inference.dynesty.solver
     :members:
     :undoc-members:
     :private-members:
     :show-inheritance:
 ```
-### `torch_`
+### `torch`
 #### `solver`
 ```{eval-rst}
-.. automodule:: probeye.inference.torch_.solver
+.. automodule:: probeye.inference.torch.solver
     :members:
     :undoc-members:
     :private-members:
@@ -109,7 +109,7 @@ package.
 ```
 #### `priors`
 ```{eval-rst}
-.. automodule:: probeye.inference.torch_.priors
+.. automodule:: probeye.inference.torch.priors
     :members:
     :undoc-members:
     :private-members:
@@ -117,7 +117,7 @@ package.
 ```
 #### `likelihood_models`
 ```{eval-rst}
-.. automodule:: probeye.inference.torch_.likelihood_models
+.. automodule:: probeye.inference.torch.likelihood_models
     :members:
     :undoc-members:
     :private-members:
