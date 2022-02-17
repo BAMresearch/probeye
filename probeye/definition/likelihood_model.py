@@ -60,7 +60,7 @@ class GaussianLikelihoodModel:
     def __init__(
         self,
         prms_def: Union[str, List[Union[str, dict]], dict],
-        sensors: Union[Sensor, List[Sensor]],
+        sensors: Union[Sensor, List[Sensor], None] = None,
         experiment_names: Union[str, List[str], None] = None,
         additive_model_error: bool = True,
         multiplicative_model_error: bool = False,
@@ -80,9 +80,9 @@ class GaussianLikelihoodModel:
         self.additive_measurement_error = additive_measurement_error
 
         # sensor-related attributes
-        self.sensors = make_list(sensors)
-        self.sensor_names = [sensor.name for sensor in self.sensors]
-        self.n_sensors = len(self.sensor_names)
+        self.sensors = []
+        if sensors is not None:
+            self.sensors = make_list(sensors)
 
         # correlation-related attributes from the given input
         self.correlation_variables = correlation_variables
@@ -116,6 +116,20 @@ class GaussianLikelihoodModel:
         were assigned to the log-likelihood model.
         """
         return len(self.experiment_names)
+
+    @property
+    def n_sensors(self) -> int:
+        """
+        Dynamic attributes stating the number of the likelihood model's sensors.
+        """
+        return len(self.sensors)
+
+    @property
+    def sensor_names(self) -> List[str]:
+        """
+        Dynamic attributes stating a list of the likelihood model's sensor names.
+        """
+        return [sensor.name for sensor in self.sensors]
 
     def add_experiments(self, experiment_names_: Union[str, List[str]]):
         """

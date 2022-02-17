@@ -131,9 +131,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=linear_model.output_sensor
-            )
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
         )
 
         # give problem overview

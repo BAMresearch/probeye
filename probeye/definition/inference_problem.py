@@ -988,25 +988,12 @@ class InferenceProblem:
         likelihood_model.problem_experiments = self._experiments
 
         # check/assign the likelihood model's experiments
-        if len(likelihood_model.experiment_names) > 0:
-            # in this case, the user has manually specified the experiments (by name)
-            # she wants to assign to the likelihood model; these experiments will now
-            # be properly added by the intended method; note that this is not possible
-            # to do in the __init__ of GaussianLikelihoodModel because at that time
-            # the attribute self.problem_experiments is not set yet
-            experiment_names_user = copy.copy(likelihood_model.experiment_names)
-            likelihood_model.experiment_names = []
-            likelihood_model.add_experiments(experiment_names_user)
-
-        else:
+        if len(likelihood_model.experiment_names) == 0:
             # in this case, the likelihood model will be assigned its experiments
-            # automatically; this assignment works via the likelihood model's sensors;
-            # it is simply checked which experiments contain all of the likelihood
-            # model's sensors as sensor values; those experiments will be assigned then
-            added_experiment_names = self.get_experiment_names(
-                sensor_names=likelihood_model.sensor_names
-            )
-            likelihood_model.add_experiments(added_experiment_names)
+            # automatically; this assignment works via the likelihood model's sensors
+            # (at least when the sensors have been specified by the user); it is simply
+            # checked which experiments contain all of the likelihood model's sensors as
+            # sensor values; those experiments will be assigned then
             logger.debug(
                 f"No experiments were explicitly defined for likelihood model "
                 f"'{likelihood_model.name}'."
@@ -1015,11 +1002,45 @@ class InferenceProblem:
                 f"The following experiments were added were added automatically "
                 f"to {name}':"
             )
-            for exp_name in added_experiment_names:
-                logger.debug(f"{likelihood_model.name} <--- {exp_name}")
+            if len(likelihood_model.sensors) > 0:
+                added_experiment_names = self.get_experiment_names(
+                    sensor_names=likelihood_model.sensor_names
+                )
+                likelihood_model.add_experiments(added_experiment_names)
+                for exp_name in added_experiment_names:
+                    logger.debug(f"{likelihood_model.name} <--- {exp_name}")
+            else:
+                # in this case, the user did not specify the likelihood model's sensors
+                # and also did not specify the assigned experiments; this minimal
+                # specification is interpreted as all of the problem's experiments being
+                # assigned to the likelihood model
+                for exp_name in self._experiments:
+                    likelihood_model.add_experiments(exp_name)
+                    logger.debug(f"{likelihood_model.name} <--- {exp_name}")
 
         # set the likelihood's forward model
         likelihood_model.determine_forward_model()
+
+        # the following case is relevant when the user did not specify the likelihood
+        # model's sensors when initializing a GaussianLikelihoodModel instance; this
+        # case is mostly for convenience
+        if len(likelihood_model.sensors) == 0:
+            logger.debug(
+                f"No sensors were assigned to likelihood model "
+                f"'{likelihood_model.name}'."
+            )
+            logger.debug(f"Assigning sensors automatically based on its forward model.")
+            likelihood_model.sensors = self.forward_models[
+                likelihood_model.forward_model
+            ].output_sensors
+            logger.debug(f"Assigned sensors: {likelihood_model.sensor_names}")
+
+        # this step is necessary here again, since the likelihood model's
+        # add_experiments-method does a few things more, when the likelihood model's
+        # sensors are defined; this is given for sure not before this point
+        experiment_names_user = copy.copy(likelihood_model.experiment_names)
+        likelihood_model.experiment_names = []
+        likelihood_model.add_experiments(experiment_names_user)
 
         # finally, add the likelihood_model to the internal dict
         self._likelihood_models[name] = likelihood_model
