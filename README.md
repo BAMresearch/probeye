@@ -16,4 +16,4 @@ The parameter estimation problems _probeye_ aims at are problems that are center
 The idea and source code of _probeye_ have been initially developed at the [_German Federal Institute for Materials Research and Testing (BAM)_](https://www.bam.de/Navigation/EN/About-us/Organisation/Organisation-Chart/President/Department-7/Division-77/division77.html) for calibrating parameterized constitutive material models and quantifying the uncertainties in the obtained estimates.
 
 ## Documentation
-A documentation including explanations on the package's use as well as some examples can be [here](https://probeye.readthedocs.io/en/latest/index.html).
+A documentation including explanations on the package's use as well as some examples can be found [here](https://probeye.readthedocs.io/en/latest/index.html).
