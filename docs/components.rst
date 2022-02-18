@@ -195,7 +195,7 @@ The inference problem's likelihood model's purpose is to compute the likelihood 
             GaussianLikelihoodModel(
                 prms_def={"sigma": "std_model"},
                 experiment_names=["TestSeries_Aug12_2018"],
-                sensors="y",
+                sensors=linear_model.output_sensors,
             )
         )
 

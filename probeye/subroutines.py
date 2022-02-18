@@ -1032,3 +1032,19 @@ def translate_simple_correlation(corr_string: str) -> dict:
             )
         corr_dict[sensors[0]][character] = character
     return corr_dict
+
+
+class HiddenPrints:
+    """
+    Allows to create a context manager that suppresses prints to stdout. Taken from
+    stackoverflow, apparently originally proposed by @FakeRainBrigand. In probeye, this
+    class is currently only used to prevent some outputs from other packages during the
+    generation of the documentation.
+    """
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, 'w')
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout
