@@ -9,6 +9,9 @@ import sys
 import numpy as np
 from loguru import logger
 
+# local imports
+from probeye import __version__
+
 # local imports for type checking
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inference_problem import InferenceProblem
@@ -581,7 +584,7 @@ def translate_prms_def(prms_def_given: Union[str, list, dict]) -> Tuple[dict, in
 def print_probeye_header(
     width: int = 100,
     header_file: str = "probeye.txt",
-    version: str = "2.0.3",
+    version: str = __version__,
     margin: int = 5,
     h_symbol: str = "=",
     v_symbol: str = "#",
@@ -1029,3 +1032,20 @@ def translate_simple_correlation(corr_string: str) -> dict:
             )
         corr_dict[sensors[0]][character] = character
     return corr_dict
+
+
+class HiddenPrints:
+    """
+    Allows to create a context manager that suppresses prints to stdout. Taken from
+    stackoverflow, apparently originally proposed by @FakeRainBrigand. In probeye, this
+    class is currently only used to prevent some outputs from other packages during the
+    generation of the documentation.
+    """
+
+    def __enter__(self):
+        self._original_stdout = sys.stdout
+        sys.stdout = open(os.devnull, "w")
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        sys.stdout.close()
+        sys.stdout = self._original_stdout

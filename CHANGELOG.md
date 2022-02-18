@@ -1,5 +1,11 @@
 # probeye changelog
 
+## 2.1.0 (2022-Feb-18)
+### Changed
+- extended the documentation in README.md
+### Added
+- added a 'readthedocs' documentation
+
 ## 2.0.3 (2022-Feb-16)
 ### Changed
 - For simple cases, it is now not required anymore to specify the likelihood model's experiments and sensors when adding them to an inference problem.

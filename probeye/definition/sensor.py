@@ -15,6 +15,30 @@ class Sensor:
     the corresponding unit can be defined. If the sensors position(s) are important,
     they can be defined as attributes. Further attributes can be defined by the user by
     creating new classes derived from this one.
+
+    Parameters
+    ----------
+    name
+        The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
+    measurand
+        Defines what the sensor measures, e.g. 'deflection'.
+    unit
+        Defines what unit is associated with the sensor's measurements, e.g. 'mm'.
+    x
+        x-coordinate of the sensor. When given, the coords- argument must be None.
+    y
+        y-coordinate of the sensor. When given, the coords- argument must be None.
+    z
+        z-coordinate of the sensor. When given, the coords-argument must be None.
+    coords
+        Some or all of the coordinates x, y, z concatenated as an array. Each row
+        corresponds to a constant coordinate. Which row corresponds to which
+        coordinate is defined via the order-argument. When given, the arguments x, y
+        and z must be None.
+    order
+        Only relevant when coords is given. Defines which row in coords corresponds to
+        which coordinate. For example, order=('x', 'y', 'z') means that the 1st row are
+        x-coordinates, the 2nd row are y-coords and the 3rd row are the z-coordinates.
     """
 
     def __init__(
@@ -28,32 +52,6 @@ class Sensor:
         coords: Optional[np.ndarray] = None,
         order: Tuple[str, ...] = ("x", "y", "z"),
     ):
-        """
-        Parameters
-        ----------
-        name
-            The name of the sensor, e.g. 'Deflection-Sensor bottom-left'.
-        measurand
-            Defines what the sensor measures, e.g. 'deflection'.
-        unit
-            Defines what unit is associated with the sensor's measurements, e.g. 'mm'.
-        x
-            x-coordinate of the sensor. When given, the coords- argument must be None.
-        y
-            y-coordinate of the sensor. When given, the coords- argument must be None.
-        z
-            z-coordinate of the sensor. When given, the coords-argument must be None.
-        coords
-            Some or all of the coordinates x, y, z concatenated as an array. Each row
-            corresponds to a constant coordinate. Which row corresponds to which
-            coordinate is defined via the order-argument. When given, the arguments x, y
-            and z must be None.
-        order
-            Only relevant when coords is given. Defines which row in coords corresponds
-            to which coordinate. For example, order=('x', 'y', 'z') means that the 1st
-            row are x-coordinates, the 2nd row are y-coords and the 3rd row are the
-            z-coordinates.
-        """
 
         # basic attributes
         self.name = name

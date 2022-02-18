@@ -12,7 +12,19 @@ from probeye.subroutines import len_or_one
 
 
 class PriorNormal(PriorBase):
-    """Prior class for a normal distribution."""
+    """
+    Prior class for a normal distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for more
+        detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -20,17 +32,6 @@ class PriorNormal(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
         super().__init__(ref_prm, prms_def, name, "normal distribution")
 
     def sample(self, prms: dict) -> pyro.sample:
@@ -58,7 +59,19 @@ class PriorNormal(PriorBase):
 
 
 class PriorUniform(PriorBase):
-    """Prior class for a uniform distribution."""
+    """
+    Prior class for a uniform distribution.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        Defines the prior's parameter names. See the docstring of PriorBase for
+        more detailed information.
+    name
+        Defining the priors name.
+    """
 
     def __init__(
         self,
@@ -66,17 +79,7 @@ class PriorUniform(PriorBase):
         prms_def: Union[str, dict, List[Union[str, dict]]],
         name: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            Defines the prior's parameter names. See the docstring of PriorBase for
-            more detailed information.
-        name
-            Defining the priors name.
-        """
+
         super().__init__(ref_prm, prms_def, name, "uniform distribution")
 
     def sample(self, prms: dict) -> pyro.sample:

@@ -27,6 +27,38 @@ class ScipyLikelihoodBase(GaussianLikelihoodModel):
     that follow below. All of these classes have in common that they contain computation
     methods based on numpy/scipy. In particular, these methods use numpy.ndarrays (in
     contrast to torch.Tensor objects as in pyro).
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -40,10 +72,7 @@ class ScipyLikelihoodBase(GaussianLikelihoodModel):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -92,8 +121,39 @@ class UncorrelatedModelError(ScipyLikelihoodBase):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     do not account for correlation. These model-classes are:
-        - AdditiveUncorrelatedModelError
-        - MultiplicativeUncorrelatedModelError
+    AdditiveUncorrelatedModelError and MultiplicativeUncorrelatedModelError.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -107,10 +167,7 @@ class UncorrelatedModelError(ScipyLikelihoodBase):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -237,9 +294,40 @@ class UncorrelatedModelError(ScipyLikelihoodBase):
 class CorrelatedModelError(ScipyLikelihoodBase):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
-    do account for correlation. These model-classes are:
-        - SpaceOrTimeCorrelatedModelError
-        - SpaceAndTimeCorrelatedModelError
+    do account for correlation. These model-classes are: SpaceOrTimeCorrelatedModelError
+    and SpaceAndTimeCorrelatedModelError.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -253,10 +341,7 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -385,8 +470,8 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         unionized values, and the values of the likelihood model's sensors will be
         interpolated at the values of the unionized sensor values.
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         correlation_variable
             A default correlation variable character, i.e., 'x', 'y', 'z' or 't'.
 
@@ -551,8 +636,39 @@ class SpaceOrTimeCorrelatedModelError(CorrelatedModelError):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     account for correlation in either space or time (not both). These classes are:
-        - CorrelatedModelError1D
-        - SpaceCorrelatedModelError2D3D
+    CorrelatedModelError1D and SpaceCorrelatedModelError2D3D.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -566,10 +682,7 @@ class SpaceOrTimeCorrelatedModelError(CorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -679,8 +792,39 @@ class SpaceAndTimeCorrelatedModelError(CorrelatedModelError):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     account for correlation in both space and time (not both). These classes are:
-        - SpaceTimeCorrelatedModelError1D
-        - SpaceTimeCorrelatedModelError2D3D
+    SpaceTimeCorrelatedModelError1D and SpaceTimeCorrelatedModelError2D3D.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -694,10 +838,7 @@ class SpaceAndTimeCorrelatedModelError(CorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -870,9 +1011,40 @@ class CorrelatedModelError1D(SpaceOrTimeCorrelatedModelError):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     account for correlation effects either in time or in one spatial coordinate. These
-    model-classes are:
-        - AdditiveCorrelatedModelError1D
-        - MultiplicativeCorrelatedModelError1D
+    model-classes are AdditiveCorrelatedModelError1D and
+    MultiplicativeCorrelatedModelError1D.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -886,10 +1058,6 @@ class CorrelatedModelError1D(SpaceOrTimeCorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
 
         super().__init__(
             prms_def,
@@ -921,9 +1089,40 @@ class SpaceCorrelatedModelError2D3D(SpaceOrTimeCorrelatedModelError):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     account for correlation effects in two or three spatial coordinates (and not in
-    time). These model-classes are:
-        - AdditiveSpaceCorrelatedModelError2D3D
-        - MultiplicativeSpaceCorrelatedModelError2D3D
+    time). These model-classes are AdditiveSpaceCorrelatedModelError2D3D and
+    MultiplicativeSpaceCorrelatedModelError2D3D.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -937,10 +1136,7 @@ class SpaceCorrelatedModelError2D3D(SpaceOrTimeCorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -960,9 +1156,40 @@ class SpaceTimeCorrelatedModelError1D(SpaceAndTimeCorrelatedModelError):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     account for correlation effects both in time and in one spatial coordinate. These
-    model-classes are:
-        - AdditiveSpaceTimeCorrelatedModelError1D
-        - MultiplicativeSpaceTimeCorrelatedModelError1D
+    model-classes are AdditiveSpaceTimeCorrelatedModelError1D and
+    MultiplicativeSpaceTimeCorrelatedModelError1D.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -976,10 +1203,7 @@ class SpaceTimeCorrelatedModelError1D(SpaceAndTimeCorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1010,9 +1234,40 @@ class SpaceTimeCorrelatedModelError2D3D(SpaceAndTimeCorrelatedModelError):
     """
     This class serves as a parent class for the two scipy-based likelihood models that
     account for correlation effects both in time and in 2 or 3 spatial coordinates.
-    These model-classes are:
-        - AdditiveSpaceTimeCorrelatedModelError2D3D
-        - MultiplicativeSpaceTimeCorrelatedModelError2D3D
+    These model-classes are AdditiveSpaceTimeCorrelatedModelError2D3D and
+    MultiplicativeSpaceTimeCorrelatedModelError2D3D.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1026,10 +1281,7 @@ class SpaceTimeCorrelatedModelError2D3D(SpaceAndTimeCorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1063,6 +1315,38 @@ class AdditiveUncorrelatedModelError(UncorrelatedModelError):
     This is a likelihood model based on a multivariate normal distribution without any
     correlations, i.e., with a diagonal covariance matrix. Both the model error as well
     as the measurement error (if considered) are assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1076,10 +1360,7 @@ class AdditiveUncorrelatedModelError(UncorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1124,6 +1405,38 @@ class AdditiveCorrelatedModelError1D(CorrelatedModelError1D):
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time or in one spatial coordinate. Both the model
     error as well as the measurement error (if considered) are assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1137,10 +1450,7 @@ class AdditiveCorrelatedModelError1D(CorrelatedModelError1D):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1188,6 +1498,38 @@ class AdditiveSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D):
     includes correlation effects in more than one spatial coordinate. Time correlation
     effects are not considered. Both the model error as well as the measurement error
     (if considered) are assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1201,10 +1543,7 @@ class AdditiveSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1261,6 +1600,38 @@ class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time and one spatial coordinate. Both the model
     error as well as the measurement error (if considered) are assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1274,10 +1645,7 @@ class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1334,6 +1702,38 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time and 2 or 3 spatial coordinates. Both the model
     error as well as the measurement error (if considered) are assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1347,10 +1747,7 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1412,6 +1809,38 @@ class MultiplicativeUncorrelatedModelError(UncorrelatedModelError):
     This is a likelihood model based on a multivariate normal distribution without any
     correlations, i.e., with a diagonal covariance matrix. The model error is assumed to
     be multiplicative while the measurement error (if considered) is assumed additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1425,10 +1854,7 @@ class MultiplicativeUncorrelatedModelError(UncorrelatedModelError):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1483,6 +1909,38 @@ class MultiplicativeCorrelatedModelError1D(CorrelatedModelError1D):
     includes correlation effects in time or in one spatial coordinate. The model error
     is assumed to be multiplicative while the measurement error (if considered) is
     assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1496,10 +1954,7 @@ class MultiplicativeCorrelatedModelError1D(CorrelatedModelError1D):
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1551,6 +2006,38 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D)
     includes correlation effects in more than one spatial coordinate. Time correlation
     effects are not considered. The model error is assumed to be multiplicative while
     the measurement error (if considered) is assumed to be additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1564,10 +2051,7 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D)
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1628,6 +2112,38 @@ class MultiplicativeSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelErro
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time and one spatial coordinate. The model error is
     multiplicative, while the measurement error (if considered) is additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1641,10 +2157,7 @@ class MultiplicativeSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelErro
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,
@@ -1701,6 +2214,38 @@ class MultiplicativeSpaceTimeCorrelatedModelError2D3D(
     This is a likelihood model based on a multivariate normal distribution with that
     includes correlation effects in time and 2 or 3 spatial coordinates. The model error
     is multiplicative, while the measurement error (if considered) is additive.
+
+    Parameters
+    ----------
+    prms_def
+        Parameter names defining which parameters are used by the likelihood model. For
+        example prms_def = ['mu', 'sigma']. To check out the other possible formats, see
+        the explanation for the same parameter in probeye/definition/forward_model.py:
+        ForwardModelBase.__init__.
+    sensors
+        These are the sensor objects which serve as output sensors in one of the
+        problem's forward models, that the likelihood model should refer to. This means,
+        the likelihood model should describe the model error between the model response
+        for all sensors specified in this 'sensors'-argument and the corresponding
+        experimental data.
+    experiment_names
+        The names of the experiments in the scope of the likelihood model.
+    additive_measurement_error
+        If True, next to the model error, a normal, zero-mean i.i.d. measurement error
+        is assumed to be present.
+    correlation_variables
+        Defines the correlation variables. This argument can be any combination of the
+        characters 'x', 'y', 'z', 't', each one appearing at most once. Examples are:
+        'x', 't', 'xy', 'yzt'.
+    correlation_model
+        Defines the correlation function to be used in case correlation is considered
+        (which is the case, when correlation_variables is a non-empty string).
+        Currently, there is only one option 'exp' which represents an exponential model.
+        In the future, more options should be added.
+    name
+        Unique name of the likelihood model. This name is None, if the user does not
+        specify it when adding the likelihood model to the problem. It is then named
+        automatically before starting the inference engine.
     """
 
     def __init__(
@@ -1714,10 +2259,7 @@ class MultiplicativeSpaceTimeCorrelatedModelError2D3D(
         correlation_model: str,
         name: str,
     ):
-        """
-        For a detailed explanation of the input arguments check out the docstring given
-        in probeye/definition/likelihood_models.py:GaussianLikelihoodModel.
-        """
+
         super().__init__(
             prms_def,
             sensors,

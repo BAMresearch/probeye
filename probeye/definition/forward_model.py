@@ -16,6 +16,24 @@ class ForwardModelBase:
     specific forward model, you need to derive your own class from this one, and then
     define the '__call__' method. The latter essentially describes the model function
     mapping the model input to the output.
+
+    Parameters
+    ----------
+    prms_def_
+        Contains the model's latent parameter names. The list may only contain strings
+        or one-element dictionaries. It could look, for example, like [{'a': 'm'}, 'b'].
+        The one-element dictionaries account for the possibility to define a local name
+        for a latent parameter that is different from the global name. In the example
+        above, the latent parameter with the global name 'a' will be referred to as 'm'
+        within the model. So, the one-element dicts have the meaning {<global name>:
+        <local name>}. String-elements are interpreted as having similar local and
+        global names. Note that the local-name option will not be required most of the
+        times. The input from global to local name can also be provided as a dict. In
+        the example above it would look like {'a': 'm', 'b': 'b'}.
+    input_sensors
+        Contains sensor-objects structuring the model input.
+    output_sensors
+        Contains sensor-objects structuring the model output.
     """
 
     def __init__(
@@ -24,26 +42,6 @@ class ForwardModelBase:
         input_sensors: Union[Sensor, List[Sensor]] = Sensor("dummy"),
         output_sensors: Union[Sensor, List[Sensor]] = Sensor("dummy"),
     ):
-        """
-        Parameters
-        ----------
-        prms_def_
-            Contains the model's latent parameter names. The list may only contain
-            strings or one-element dictionaries. It could look, for example, like
-            [{'a': 'm'}, 'b']. The one-element dictionaries account for the possibility
-            to define a local name for a latent parameter that is different from the
-            global name. In the example above, the latent parameter with the global name
-            'a' will be referred to as 'm' within the model. So, the one-element dicts
-            have the meaning {<global name>: <local name>}. String-elements are
-            interpreted as having similar local and global names. Note that the local-
-            name option will not be required most of the times. The input from global to
-            local name can also be provided as a dict. In the example above it would
-            look like {'a': 'm', 'b': 'b'}.
-        input_sensors
-            Contains sensor-objects structuring the model input.
-        output_sensors
-            Contains sensor-objects structuring the model output.
-        """
 
         # this is just for consistency; values will be overwritten
         self.parameters = ["_self.parameters_not_set"]
