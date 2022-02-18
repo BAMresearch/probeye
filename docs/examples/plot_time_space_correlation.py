@@ -178,11 +178,11 @@ for j, (exp_name, exp_dict) in enumerate(experiments_def.items()):
 
     # load experimental setting
     v = exp_dict["car_speed_m/s"]
-    F = exp_dict["car_mass_kg"] * g
+    F = exp_dict["car_mass_kg"] * g  # type: ignore
 
     # compute the 'true' deflections for each sensor which will serve as mean
     # values; note that the values are concatenated to a long vector
-    t_end = L_bridge / v
+    t_end = L_bridge / v  # type: ignore
     t = np.arange(0, t_end, dt)
     if t[-1] != t_end:
         t = np.append(t, t[-1] + dt)
