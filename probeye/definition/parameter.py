@@ -455,18 +455,17 @@ class ParameterProperties:
     this class are associated with the parameter's name in the dictionary class
     'Parameters', see above. The use of this class as opposed to a standard dictionary
     allows convenient auto-completion while coding.
+
+    Parameters
+    ----------
+    prm_dict
+        The keys are 'index', 'dim', 'type', 'role', 'prior', 'value', 'info' and 'tex',
+        while the values are the corresponding values of these properties. See also the
+        explanations in InferenceProblem.__init__() for more detailed information.
     """
 
     def __init__(self, prm_dict: dict):
-        """
-        Parameters
-        ----------
-        prm_dict
-            The keys are 'index', 'dim', 'type', 'role', 'prior', 'value', 'info' and
-            'tex', while the values are the corresponding values of these properties.
-            See also the explanations in InferenceProblem.__init__() for more detailed
-            information.
-        """
+
         # write attributes
         self._index = prm_dict["index"]
         self._type = prm_dict["type"]

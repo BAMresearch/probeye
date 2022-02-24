@@ -64,8 +64,8 @@ class TestProblem(unittest.TestCase):
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
         run_torch
-            If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
-            pyro/torch_ solver will not be used.
+            If True, the problem is solved with the pyro/torch solver. Otherwise, the
+            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
@@ -194,9 +194,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=linear_model.output_sensor
-            )
+            GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
         )
 
         # give problem overview

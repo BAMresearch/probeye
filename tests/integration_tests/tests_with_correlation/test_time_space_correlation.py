@@ -69,8 +69,8 @@ class TestProblem(unittest.TestCase):
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
         run_torch
-            If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
-            pyro/torch_ solver will not be used.
+            If True, the problem is solved with the pyro/torch solver. Otherwise, the
+            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
@@ -138,6 +138,7 @@ class TestProblem(unittest.TestCase):
 
         # settings for the data generation
         plot_data = False
+        ns = 2  # two sensors in this example
         seed = 1
 
         # ============================================================================ #
@@ -157,14 +158,14 @@ class TestProblem(unittest.TestCase):
             def beam_deflect(x_sensor, x_load, L_in, F_in, EI_in):
                 """Convenience method used by self.response during a for-loop."""
                 y = np.zeros(len_or_one(x_load))
-                for i, x_load_i in enumerate(x_load):
+                for ii, x_load_i in enumerate(x_load):
                     if x_sensor <= x_load_i:
                         b = L - x_load_i
                         x = x_sensor
                     else:
                         b = x_load_i
                         x = L_in - x_sensor
-                    y[i] = (
+                    y[ii] = (
                         -(F_in * b * x)
                         / (6 * L * EI_in)
                         * (L_in ** 2 - b ** 2 - x ** 2)
@@ -258,12 +259,12 @@ class TestProblem(unittest.TestCase):
             # compute the 'true' deflections for each sensor which will serve as mean
             # values; note that the values are concatenated to a long vector
             t = np.arange(0, L / v, dt)  # type: ignore
+            nt = len(t)
             inp_1 = {"v": v, "t": t, "L": L, "F": F, "EI": EI_true}
             mean_dict = beam_model.response(inp_1)
-            mean = np.append(
-                mean_dict[beam_model.output_sensors[0].name],
-                mean_dict[beam_model.output_sensors[1].name],
-            )
+            mean = np.zeros(ns * nt)
+            for i, mean_vector in enumerate([*mean_dict.values()]):
+                mean[i::ns] = mean_vector
 
             # compute the covariance matrix using tripy
             cov_compiler = MeasurementSpaceTimePoints()
@@ -282,13 +283,14 @@ class TestProblem(unittest.TestCase):
             cov_compiler.add_measurement_time_within_group_correlation(
                 group="time", correlation_func=correlation_func_time
             )
+            # note here that the rows/columns have the reference order:
+            # y1(t1), y2(t1), y3(t1), ..., y1(t2), y2(t2), y3(t2), ....
             cov = cov_compiler.compile_covariance_matrix()
 
             # generate the experimental data and add it to the problem
             y_test = np.random.multivariate_normal(mean=mean, cov=cov)
-            n = len(t)
-            y1 = y_test[:n]
-            y2 = y_test[n : 2 * n]
+            y1 = y_test[0::ns]
+            y2 = y_test[1::ns]
 
             # finally, add the experiment to the problem
             problem.add_experiment(
@@ -313,12 +315,12 @@ class TestProblem(unittest.TestCase):
             if plot_data:
 
                 # first sensor
-                plt.plot(t, mean[:n], "--", label=f"y1 (mean, {exp_name})", color=c)
-                plt.plot(t, y_test[:n], "-o", label=f"y1 (sampled, {exp_name})", c=c)
+                plt.plot(t, mean[0::ns], "-", label=f"y1 (true, {exp_name})", color=c)
+                plt.scatter(t, y1, marker="o", label=f"y1 (sampled, {exp_name})", c=c)
 
                 # second sensor
-                plt.plot(t, mean[n:], "-.", label=f"y2 (mean, {exp_name})", color=c)
-                plt.plot(t, y_test[n:], "-x", label=f"y2 (sampled, {exp_name})", c=c)
+                plt.plot(t, mean[1::ns], "--", label=f"y2 (true, {exp_name})", color=c)
+                plt.scatter(t, y2, marker="x", label=f"y2 (sampled, {exp_name})", c=c)
 
         # finish and show the plot
         if plot_data:

@@ -18,6 +18,23 @@ class PriorBase:
     Template class for prior definitions. Note that the main motivation of how this
     class is implemented was to avoid storing any numeric values for any of the priors
     parameters within the prior object.
+
+    Parameters
+    ----------
+    ref_prm
+        The name of the latent parameter the prior refers to.
+    prms_def
+        A list of strings, or list of one-element-dicts defining the prior's parameter
+        names. E.g. ['loc_a', 'scale_a'] or {'loc_a': 'loc_a', 'scale_a': 'scale_a'}.
+        The latter example is the notation for the use of global and local names, which
+        should not be necessary for the definition of prior-parameters. A special case
+        is the uninformative prior (see below) which hasn't got an parameters. So, in
+        this case prms_def might also be None.
+    name
+        Defining the priors name.
+    prior_type
+        Stating the prior's type, e.g. "normal distribution". This is just used for
+        printing information on the prior.
     """
 
     def __init__(
@@ -27,24 +44,7 @@ class PriorBase:
         name: str,
         prior_type: str,
     ):
-        """
-        Parameters
-        ----------
-        ref_prm
-            The name of the latent parameter the prior refers to.
-        prms_def
-            A list of strings, or list of one-element-dicts defining the prior's
-            parameter names. E.g. ['loc_a', 'scale_a'] or {'loc_a': 'loc_a', 'scale_a':
-            'scale_a'}. The latter example is the notation for the use of global and
-            local names, which should not be necessary for the definition of prior-
-            parameters. A special case is the uninformative prior (see below) which
-            hasn't got an parameters. So, in this case prms_def might also be None.
-        name
-            Defining the priors name.
-        prior_type
-            Stating the prior's type, e.g. "normal distribution". This is just used for
-            printing information on the prior.
-        """
+
         # write arguments to attributes
         self.ref_prm = ref_prm
         self.name = name

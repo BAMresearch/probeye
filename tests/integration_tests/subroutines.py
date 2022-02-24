@@ -5,10 +5,10 @@ from typing import Optional, TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 # local imports (inference engines)
-from probeye.inference.scipy_.solver import ScipySolver
-from probeye.inference.emcee_.solver import EmceeSolver
-from probeye.inference.torch_.solver import PyroSolver
-from probeye.inference.dynesty_.solver import DynestySolver
+from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.emcee.solver import EmceeSolver
+from probeye.inference.torch.solver import PyroSolver
+from probeye.inference.dynesty.solver import DynestySolver
 
 # local imports (post-processing)
 from probeye.postprocessing.sampling import create_pair_plot
@@ -62,90 +62,91 @@ def run_inference_engines(
         If True, the problem is solved with the emcee solver. Otherwise, the
         emcee solver will not be used.
     run_torch
-        If True, the problem is solved with the pyro/torch_ solver. Otherwise, the
-        pyro/torch_ solver will not be used.
+        If True, the problem is solved with the pyro/torch solver. Otherwise, the
+        pyro/torch solver will not be used.
     run_dynesty
         If True, the problem is solved with the dynesty solver. Otherwise, the
         dynesty solver will not be used.
     """
 
-    def create_plots(inference_data, problem, true_values):
+    def create_plots(inference_data, problem_cp, true_values_cp):
+        # the '_cp'-suffix is just added to prevent inner-scope/outer-scope warnings
         create_pair_plot(
             inference_data,
-            problem,
-            true_values=true_values,
+            problem_cp,
+            true_values=true_values_cp,
             show=False,
             title="plot_priors=True, focus_on_posterior=False (default)",
         )
         create_pair_plot(
             inference_data,
-            problem,
+            problem_cp,
             focus_on_posterior=True,
             kind="hexbin",
-            true_values=true_values,
+            true_values=true_values_cp,
             show=False,
             marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
             title="plot_priors=True, focus_on_posterior=True (hex + hist)",
         )
         create_pair_plot(
             inference_data,
-            problem,
+            problem_cp,
             plot_priors=False,
             kind="scatter",
-            true_values=true_values,
+            true_values=true_values_cp,
             show=False,
             marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
             title="plot_priors=False (scatter + hist)",
         )
         create_pair_plot(
             inference_data,
-            problem,
+            problem_cp,
             plot_priors=False,
-            true_values=true_values,
+            true_values=true_values_cp,
             show=False,
             title="plot_priors=False",
         )
         create_posterior_plot(
             inference_data,
-            problem,
-            true_values=true_values,
+            problem_cp,
+            true_values=true_values_cp,
             show=False,
             title="This is a posterior-plot",
         )
         create_trace_plot(
-            inference_data, problem, show=False, title="This is a trace-plot"
+            inference_data, problem_cp, show=False, title="This is a trace-plot"
         )
         if plot:
             plt.show()  # shows all plots at once due to 'show=False' above
 
     if run_scipy:
         scipy_solver = ScipySolver(problem, show_progress=show_progress)
-        inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+        _ = scipy_solver.run_max_likelihood(true_values=true_values)
         # no post processing for scipy solver as that is no sampler
 
     if run_emcee:
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)
-        inference_data = emcee_solver.run_mcmc(
+        inference_data_emcee = emcee_solver.run_mcmc(
             n_walkers=n_walkers,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
             true_values=true_values,
         )
-        create_plots(inference_data, problem, true_values)
+        create_plots(inference_data_emcee, problem, true_values)
 
     if run_torch:
         n_walkers_used = 1  # getting errors when trying to use more
         pyro_solver = PyroSolver(problem, show_progress=show_progress)
-        inference_data = pyro_solver.run_mcmc(
+        inference_data_torch = pyro_solver.run_mcmc(
             n_walkers=n_walkers_used,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
         )
-        create_plots(inference_data, problem, true_values)
+        create_plots(inference_data_torch, problem, true_values)
 
     if run_dynesty:
         dynesty_solver = DynestySolver(problem, show_progress=show_progress)
-        inference_data = dynesty_solver.run_dynesty(
+        inference_data_dynesty = dynesty_solver.run_dynesty(
             "static", nlive=250, true_values=true_values
         )
-        create_plots(inference_data, problem, true_values)
+        create_plots(inference_data_dynesty, problem, true_values)
