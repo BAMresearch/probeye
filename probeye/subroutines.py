@@ -1181,7 +1181,7 @@ def add_constant_to_graph(
         t3 = Literal(info, datatype=XSD.string)
         graph.add((t1, t2, t3))
 
-        
+
 class HiddenPrints:
     """
     Allows to create a context manager that suppresses prints to stdout. Taken from
