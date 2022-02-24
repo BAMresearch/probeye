@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.1.1 (2022-Feb-18)
+### Changed
+- extended the documentation
+
 ## 2.1.0 (2022-Feb-18)
 ### Changed
 - extended the documentation in README.md
