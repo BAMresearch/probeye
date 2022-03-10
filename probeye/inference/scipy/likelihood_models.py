@@ -2090,9 +2090,10 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D)
         # assemble covariance matrix
         n = self.n_averaged_response_vector
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        y_diag_squared = np.diag(y_model ** 2)
         cov_matrix = std_model ** 2 * correlation_matrix(self.space_vector, f_corr)
-        cov_matrix = np.matmul(y_diag_squared, np.matmul(cov_matrix, y_diag_squared))
+        cov_matrix = np.multiply(
+            y_model.reshape(-1, 1), np.multiply(y_model, cov_matrix)
+        )
         if self.additive_measurement_error:
             cov_matrix += std_meas ** 2 * np.eye(n)
 
