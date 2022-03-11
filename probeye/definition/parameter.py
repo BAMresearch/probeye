@@ -1,5 +1,6 @@
 # standard library
 from typing import Union, Optional, List
+import re
 
 # third party imports
 from tabulate import tabulate
@@ -10,6 +11,8 @@ import numpy as np
 from probeye.subroutines import titled_table
 from probeye.subroutines import simplified_list_string
 from probeye.subroutines import len_or_one
+from probeye.subroutines import translate_number_string
+from probeye.subroutines import count_intervals
 from probeye.definition.prior import PriorBase
 
 
@@ -25,7 +28,7 @@ class Parameters(dict):
         prm_name: str,
         prm_type: str,
         dim: Optional[int] = 1,
-        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
+        domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",
@@ -82,7 +85,9 @@ class Parameters(dict):
             # which is given to self.loglike and self.logprior
             prm_index = self.n_latent_prms_dim  # type: Union[int, None]
             prm_dim = dim
-            prm_domain = domain if type(domain) == list else [domain]  # type: ignore
+            prm_domain = domain
+            if count_intervals(domain) == 1 and dim > 1:
+                prm_domain *= dim
             # the prm_value is reserved for 'const'-parameter; hence, it is set to None
             # in this case, where we are adding a 'latent'-param.
             prm_value = None
@@ -484,6 +489,14 @@ class ParameterProperties:
         else:
             # latent parameter
             self._dim = prm_dict["dim"]
+            self._domain = self.translate_domain_string(prm_dict["domain"])
+
+            # check if each component has its domain
+            if self._dim != len(self._domain):
+                raise RuntimeError(
+                    f"The dimension of the parameter ({self._dim}) is not identical "
+                    f"with the number of provided domains ({len(self._domain)})!"
+                )
 
         # whitespace in the tex strings is a problem for some plotting routines, so they
         # are replaced here by a math-command for whitespace that does not contain
@@ -493,6 +506,46 @@ class ParameterProperties:
 
         # check the given values
         self.check_consistency()
+
+    @staticmethod
+    def translate_domain_string(domain_string: str) -> list:
+        """
+        Translate a domain string like "(0, 1]" into a list of ScalarInterval objects.
+
+        Parameters
+        ----------
+        domain_string
+            A string like "(0, 1]" or "[0, 1] [0, 1]" defining the domain of a (possibly
+            vector-valued) parameter.
+
+        Returns
+        -------
+        intervals
+            List of ScalarInterval objects derived form 'domain_string'.
+        """
+
+        # perform simple check on the given domain string
+        _ = count_intervals(domain_string)
+
+        # extract the intervals
+        p_number = r"[-+]?[0-9]*\.?[0-9]*"
+        p_infinity = r"[+-]?oo"
+        p_value = rf"{p_number}|{p_infinity}"
+        pattern = re.compile(rf"([\[(])({p_value})\W*?({p_value})([])])")
+        interval_groups = pattern.findall(domain_string)
+        intervals = []
+        for interval_group in interval_groups:
+            lower_bound_included = interval_group[0] == "["
+            lower_bound = translate_number_string(interval_group[1])
+            upper_bound = translate_number_string(interval_group[2])
+            upper_bound_included = interval_group[3] == "["
+            intervals.append(
+                ScalarInterval(
+                    lower_bound, upper_bound, lower_bound_included, upper_bound_included
+                )
+            )
+
+        return intervals
 
     # noinspection PyShadowingBuiltins
     def changed_copy(
@@ -717,3 +770,40 @@ class ParameterProperties:
     def value(self, value: Union[int, float]):
         """Raise a specific error when trying to directly set self.value."""
         raise AttributeError("Changing a parameter's value directly is prohibited!")
+
+
+class ScalarInterval:
+    """
+    Describes a one-dimensional interval. Used for the domain-definition of parameters.
+
+    Parameters
+    ----------
+    lower_bound
+        The lower bound of the interval (if the interval is [a, b], this here is a).
+    upper_bound
+        The upper bound of the interval (if the interval is [a, b], this here is b).
+    lower_bound_included
+        Defines if the lower bound is included in the interval.
+    upper_bound_included
+        Defines if the upper bound is included in the interval.
+    """
+
+    def __init__(
+        self,
+        lower_bound: float,
+        upper_bound: float,
+        lower_bound_included: bool,
+        upper_bound_included: bool,
+    ):
+        # write arguments to attributes
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.lower_bound_included = lower_bound_included
+        self.upper_bound_included = upper_bound_included
+
+    def __str__(self):
+        s1 = "[" if self.lower_bound_included else "("
+        s2 = "-oo" if self.lower_bound == -np.infty else self.lower_bound
+        s3 = "+oo" if self.upper_bound == np.infty else self.upper_bound
+        s4 = "]" if self.upper_bound_included else ")"
+        return f"{s1}{s2}, {s3}{s4}"

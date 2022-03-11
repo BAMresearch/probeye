@@ -13,6 +13,7 @@ example using maximum likelihood estimation as well as sampling via emcee and dy
 
 # standard library
 import unittest
+import os
 
 # third party imports
 import numpy as np
@@ -26,6 +27,7 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
+from probeye.interface.export_rdf import export_rdf
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -209,6 +211,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "EI",
             "model",
+            domain="(0, +oo)",
             tex="$EI$",
             info="Bending stiffness of the beam [Nm^2]",
             prior=("normal", {"loc": loc_EI, "scale": scale_EI}),
@@ -219,6 +222,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$\sigma$",
             info="Std. dev, of 0-mean noise model",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -226,6 +230,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "l_corr_x",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$l_\mathrm{corr,x}$",
             info="Spatial correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr_x, "high": high_l_corr_x}),
@@ -233,6 +238,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "l_corr_t",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$l_\mathrm{corr,t}$",
             info="Temporal correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr_t, "high": high_l_corr_t}),
@@ -356,6 +362,20 @@ class TestProblem(unittest.TestCase):
 
         # give problem overview
         problem.info()
+
+        # ============================================================================ #
+        #                   Export the described problem to triples                    #
+        # ============================================================================ #
+
+        # create the knowledge graph and print it to file
+        dir_path = os.path.dirname(__file__)
+        ttl_file = os.path.join(dir_path, "../test_time_space_correlation.ttl")
+        export_rdf(
+            problem,
+            ttl_file,
+            include_explanations=True,
+            write_array_data=True,
+        )
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #

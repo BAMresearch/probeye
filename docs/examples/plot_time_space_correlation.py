@@ -256,6 +256,7 @@ problem = InferenceProblem(
 problem.add_parameter(
     "EI",
     "model",
+    domain="(0, +oo)",
     tex="$EI$",
     info="Bending stiffness of the beam [Nm^2]",
     prior=("normal", {"loc": 0.9 * EI_true, "scale": 0.25 * EI_true}),
@@ -266,6 +267,7 @@ problem.add_parameter(
 problem.add_parameter(
     "sigma",
     "likelihood",
+    domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Std. dev, of 0-mean noise model",
     prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -273,6 +275,7 @@ problem.add_parameter(
 problem.add_parameter(
     "l_corr_x",
     "likelihood",
+    domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,x}$",
     info="Spatial correlation length of correlation model",
     prior=("uniform", {"low": low_l_corr_x, "high": high_l_corr_x}),
@@ -280,6 +283,7 @@ problem.add_parameter(
 problem.add_parameter(
     "l_corr_t",
     "likelihood",
+    domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,t}$",
     info="Temporal correlation length of correlation model",
     prior=("uniform", {"low": low_l_corr_t, "high": high_l_corr_t}),

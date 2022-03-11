@@ -12,6 +12,7 @@ estimation and via sampling using emcee, pyro and dynesty.
 
 # standard library imports
 import unittest
+import os
 
 # third party imports
 import numpy as np
@@ -21,6 +22,7 @@ from probeye.definition.inference_problem import InferenceProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.interface.export_rdf import export_rdf
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -158,6 +160,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma_1",
             "likelihood",
+            domain="(0, +oo)",
             prior=("uniform", {"low": low_S1, "high": high_S1}),
             info="Standard deviation, of zero-mean additive model error for S1",
             tex=r"$\sigma_1$",
@@ -165,6 +168,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma_2",
             "likelihood",
+            domain="(0, +oo)",
             prior=("uniform", {"low": low_S2, "high": high_S2}),
             info="Standard deviation, of zero-mean additive model error for S2",
             tex=r"$\sigma_2$",
@@ -172,6 +176,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma_3",
             "likelihood",
+            domain="(0, +oo)",
             prior=("uniform", {"low": low_S3, "high": high_S3}),
             info="Standard deviation, of zero-mean additive model error S3",
             tex=r"$\sigma_3$",
@@ -236,6 +241,20 @@ class TestProblem(unittest.TestCase):
 
         # give problem overview
         problem.info()
+
+        # ============================================================================ #
+        #                   Export the described problem to triples                    #
+        # ============================================================================ #
+
+        # create the knowledge graph and print it to file
+        dir_path = os.path.dirname(__file__)
+        ttl_file = os.path.join(dir_path, "../test_multiple_sensors.ttl")
+        export_rdf(
+            problem,
+            ttl_file,
+            include_explanations=True,
+            write_array_data=True,
+        )
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #

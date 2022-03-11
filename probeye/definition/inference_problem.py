@@ -229,7 +229,7 @@ class InferenceProblem:
         prm_name: str,
         prm_type: str,
         dim: Optional[int] = 1,
-        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
+        domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",

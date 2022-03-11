@@ -75,14 +75,16 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
+            def definition(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
-                response = {}
-                for out in self.output_sensors:
-                    response[out.name] = a * x + b
-                return response
+                return {"y": a * x + b}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
@@ -121,16 +123,14 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
-            domain=(0.0, np.infty),
+            domain="(0, +oo)",
             info="Std. dev, of 0-mean noise model",
             tex=r"$\sigma$",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
 
         # add the forward model to the problem
-        isensor = Sensor("x")
-        osensor = Sensor("y")
-        linear_model = LinearModel(["a", "b"], isensor, osensor)
+        linear_model = LinearModel()
         problem.add_forward_model("LinearModel", linear_model)
 
         # ============================================================================ #
@@ -140,9 +140,9 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal noise with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model({isensor.name: x_test, "a": a_true, "b": b_true})[
-            osensor.name
-        ]
+        y_true = linear_model(
+            {linear_model.input_sensor.name: x_test, "a": a_true, "b": b_true}
+        )[linear_model.output_sensor.name]
         y_test_1 = np.random.normal(loc=y_true, scale=sigma_noise)
         y_test_2 = np.random.normal(loc=y_true, scale=sigma_noise)
 
@@ -150,12 +150,18 @@ class TestProblem(unittest.TestCase):
         problem.add_experiment(
             f"TestSeries_1",
             fwd_model_name="LinearModel",
-            sensor_values={isensor.name: x_test, osensor.name: y_test_1},
+            sensor_values={
+                linear_model.input_sensor.name: x_test,
+                linear_model.output_sensor.name: y_test_1,
+            },
         )
         problem.add_experiment(
             f"TestSeries_2",
             fwd_model_name="LinearModel",
-            sensor_values={isensor.name: x_test, osensor.name: y_test_2},
+            sensor_values={
+                linear_model.input_sensor.name: x_test,
+                linear_model.output_sensor.name: y_test_2,
+            },
         )
 
         # plot the true and noisy data
@@ -164,8 +170,8 @@ class TestProblem(unittest.TestCase):
                 x_test, y_test_1, label="measured data", s=10, c="red", zorder=10
             )
             plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(isensor.name)
-            plt.ylabel(osensor.name)
+            plt.xlabel(linear_model.input_sensor.name)
+            plt.ylabel(linear_model.output_sensor.name)
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
@@ -176,7 +182,9 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"}, sensors=linear_model.output_sensor
+            )
         )
 
         # give problem overview
@@ -192,8 +200,8 @@ class TestProblem(unittest.TestCase):
         export_rdf(
             problem,
             ttl_file,
-            include_explanations=include_explanations,
-            write_array_data=write_array_data,
+            include_explanations=True,
+            write_array_data=True,
         )
 
         # remove the created file again if requested

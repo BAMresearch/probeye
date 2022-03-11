@@ -139,3 +139,4 @@ dmypy.json
 catalog-*.xml
 *.ttl
 *.sqlite3
+*.sqlite3-journal
