@@ -12,6 +12,7 @@ from rdflib.namespace import RDF, XSD
 
 # local imports
 from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.subroutines import get_global_name
 
 
@@ -753,7 +754,31 @@ def add_constant_to_graph(
             graph.add((t1, t2, t3))
 
 
-def identify_likelihood_model(likelihood_model, peo):
+def identify_likelihood_model(
+    likelihood_model: GaussianLikelihoodModel,
+    peo: owlready2.namespace.Ontology,
+) -> tuple:
+    """
+    Matches the corresponding likelihood class from the ontology to the given
+    likelihood instance.
+
+    Parameters
+    ----------
+    likelihood_model
+        An instance of GaussianLikelihoodModel.
+    peo
+        Ontology object required to add triples in line with the parameter estimation
+        ontology.
+
+    Returns
+    -------
+    t1
+        Subject of the 'is_a' data triple for the likelihood model to be added to the
+        knowledge graph.
+    t3
+        Object of the 'is_a' data triple for the likelihood model to be added to the
+        knowledge graph.
+    """
 
     if likelihood_model.considers_correlation:
 

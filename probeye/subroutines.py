@@ -1035,15 +1035,43 @@ def translate_simple_correlation(corr_string: str) -> dict:
     return corr_dict
 
 
-def get_global_name(local_name_given, prms_def):
+def get_global_name(local_name_given: str, prms_def: dict) -> str:
+    """
+    Gets the global name of a parameter based on a given local name from a 'prms_def'
+    dictionary, which holds <global_name>: <local name> items.
 
+    Parameters
+    ----------
+    local_name_given
+        The given local name of some parameter.
+    prms_def
+        A dict holding global names as keys and local names (all unique) as values.
+
+    Returns
+    -------
+    global_name
+        The global name to the given local name taken from prms_def.
+    """
     for global_name, local_name in prms_def.items():
         if local_name == local_name_given:
             return global_name
     raise RuntimeError(f"Given local name '{local_name_given}' not found!")
 
 
-def translate_number_string(s):
+def translate_number_string(s: str) -> float:
+    """
+    Translates a given string that describes a number or infinity into a float.
+
+    Parameters
+    ----------
+    s
+        A string that describes a number or +/- infinity.
+
+    Returns
+    -------
+        Either the number described by the string, or +/- np.infty in the case of an
+        infinity value.
+    """
     if s in ["oo", "+oo"]:
         return np.infty
     elif s == "-oo":
@@ -1053,6 +1081,20 @@ def translate_number_string(s):
 
 
 def count_intervals(domain_string: str) -> int:
+    """
+    Counts the number of 1D intervals given by a domain string, i.e., something like
+    '(0, 1) [0, 1] (0, 1] (0, 1)'.
+
+    Parameters
+    ----------
+    domain_string
+        A string describing one or more intervals. Valid values are for example '[0, 1]'
+        or '(-1,1)(-1,5]'.
+
+    Returns
+    -------
+        The number of intervals given via the domain string.
+    """
     n_lower_brackets = domain_string.count("[")
     n_lower_parenthesis = domain_string.count("(")
     n_lower = n_lower_brackets + n_lower_parenthesis
