@@ -1,5 +1,10 @@
 # probeye changelog
 
+## 2.1.1 (2022-Mar-14)
+### Changed
+- Optimized general log-likelihood evaluation.
+- Faster method for scaling covariance matrix by model output.
+
 ## 2.1.0 (2022-Feb-18)
 ### Changed
 - extended the documentation in README.md
