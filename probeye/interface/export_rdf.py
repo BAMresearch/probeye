@@ -1,6 +1,6 @@
 # standard library
 import os
-from typing import Union
+from typing import Union, Optional
 import urllib
 
 # third party imports
@@ -19,6 +19,7 @@ def export_rdf(
     problem: InferenceProblem,
     ttl_file: str,
     owl_basename: str = "parameter_estimation_ontology.owl",
+    quadstore_file: Optional[str] = None,
     part_of_iri: str = "http://www.obofoundry.org/ro/#OBO_REL:part_of",
     has_part_iri: str = "http://www.obofoundry.org/ro/#OBO_REL:has_part",
     include_explanations: bool = False,
@@ -38,6 +39,8 @@ def export_rdf(
         The basename plus extension of the owl-file that contains the parameter
         estimation ontology. This file must be contained in the probeye directory one
         level above the directory of this file.
+    quadstore_file
+        Path to the quadstore-file used by owlready2.
     part_of_iri
         The IRI used for the BFO object relation 'part_of'.
     has_part_iri
@@ -61,8 +64,11 @@ def export_rdf(
 
     # owlready2 stores every triple in a so-called 'World' object which connects to a
     # quadstore which can be written to a file; this is prepared here
-    quadstore_file = os.path.join(owl_dir, "peo_quadstore.sqlite3")
-    peo_world = owlready2.World(filename=quadstore_file)
+    quadstore_file = os.path.join(owl_dir, quadstore_file)
+    if quadstore_file is not None:
+        peo_world = owlready2.World(filename=quadstore_file)
+    else:
+        peo_world = owlready2.World()
 
     # instantiate a plain knowledge graph; one can also instantiate a graph that is
     # connected to the World object and will hence contain the entire ontology via the

@@ -41,7 +41,7 @@ class TestProblem(unittest.TestCase):
             {
                 "index": 2,
                 "dim": 1,
-                "domain": (-np.infty, np.infty),
+                "domain": "(-oo, +oo)",
                 "type": "model",
                 "prior": c_prior,
                 "value": None,
@@ -77,7 +77,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = {
                 "index": 3,
                 "dim": 1,
-                "domain": (-np.infty, np.infty),
+                "domain": "(-oo, +oo)",
                 "type": "model",
                 "role": "latent",
                 "prior": d_prior,
@@ -123,7 +123,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": -1,
                     "dim": 1,
-                    "domain": (-np.infty, np.infty),
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": None,
                     "value": 1.0,
@@ -138,7 +138,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": True,
-                    "domain": (-np.infty, np.infty),
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -146,14 +146,14 @@ class TestProblem(unittest.TestCase):
                     "tex": r"$d$",
                 }
             )
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
             # dim has invalid value
             d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
                     "dim": 0,
-                    "domain": (-np.infty, np.infty),
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -207,7 +207,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": None,
-                    "domain": (-np.infty, np.infty),
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -221,7 +221,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 1,
-                    "domain": (-np.infty, np.infty),
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -236,7 +236,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 1,
-                    "domain": (-np.infty, np.infty),
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": 1.0,

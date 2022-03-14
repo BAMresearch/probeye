@@ -271,7 +271,7 @@ class InferenceProblem:
         prm_name: str,
         const: Union[int, float, None] = None,
         prior: Union[tuple, None] = None,
-        domain: Union[tuple, List[tuple]] = (-np.infty, np.infty),
+        domain: str = "(-oo, +oo)",
     ):
         """
         Performs the necessary tasks to change a parameter's role in the problem

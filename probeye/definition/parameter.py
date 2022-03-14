@@ -86,6 +86,7 @@ class Parameters(dict):
             prm_index = self.n_latent_prms_dim  # type: Union[int, None]
             prm_dim = dim
             prm_domain = domain
+            assert dim is not None  # this check has been added for the mypy-check
             if count_intervals(domain) == 1 and dim > 1:
                 prm_domain *= dim
             # the prm_value is reserved for 'const'-parameter; hence, it is set to None
@@ -489,7 +490,8 @@ class ParameterProperties:
         else:
             # latent parameter
             self._dim = prm_dict["dim"]
-            self._domain = self.translate_domain_string(prm_dict["domain"])
+            if type(prm_dict["domain"]) == str:
+                self._domain = self.translate_domain_string(prm_dict["domain"])
 
             # check if each component has its domain
             if self._dim != len(self._domain):
