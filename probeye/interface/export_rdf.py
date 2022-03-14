@@ -64,7 +64,6 @@ def export_rdf(
 
     # owlready2 stores every triple in a so-called 'World' object which connects to a
     # quadstore which can be written to a file; this is prepared here
-    quadstore_file = os.path.join(owl_dir, quadstore_file)
     if quadstore_file is not None:
         peo_world = owlready2.World(filename=quadstore_file)
     else:
