@@ -1,6 +1,6 @@
 # standard library
 import copy
-from typing import Union, List, Optional, Callable
+from typing import Union, List, Optional, Callable, Tuple
 import copy as cp
 import urllib
 import os
@@ -1166,7 +1166,7 @@ class InferenceProblem:
                     max_length = len(sensor_name)
                 if len(str(len_or_one(sensor_values))) > max_digits:
                     max_digits = len(str(len_or_one(sensor_values)))
-        rows_exp = []  # type: List[tuple[str, str, str]]
+        rows_exp = []  # type: List[Tuple[str, str, str]]
         for exp_name, exp_dict in self._experiments.items():
             sensor_name_1 = [*exp_dict["sensor_values"].keys()][0]
             sensor_values_1 = [*exp_dict["sensor_values"].values()][0]

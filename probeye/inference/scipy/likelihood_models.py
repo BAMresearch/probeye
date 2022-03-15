@@ -8,6 +8,8 @@ from tripy.loglikelihood import chol_loglike_1D
 from tripy.loglikelihood import kron_loglike_2D_tridiag
 from tripy.loglikelihood import kron_loglike_2D
 from tripy.loglikelihood import chol_loglike_2D
+from tripy.loglikelihood import _loglike_multivariate_normal
+from tripy.loglikelihood import log_likelihood_linear_normal
 from tripy.utils import inv_cov_vec_1D
 from tripy.utils import correlation_matrix
 from tripy.utils import correlation_function
@@ -1587,12 +1589,7 @@ class AdditiveSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D):
             cov_matrix += std_meas ** 2 * np.eye(n)
 
         # evaluate log-likelihood (no efficient algorithm available in this case)
-        inv_cov_matrix = np.linalg.inv(cov_matrix)
-        _, log_det_cov_matrix = np.linalg.slogdet(cov_matrix)
-        ll = -(n * np.log(2 * np.pi) + log_det_cov_matrix) / 2
-        ll += -np.dot(res_vector, inv_cov_matrix.dot(res_vector)) / 2
-
-        return ll
+        return _loglike_multivariate_normal(res_vector, cov_matrix)
 
 
 class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
@@ -2093,18 +2090,15 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D)
         # assemble covariance matrix
         n = self.n_averaged_response_vector
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        y_diag_squared = np.diag(y_model ** 2)
         cov_matrix = std_model ** 2 * correlation_matrix(self.space_vector, f_corr)
-        cov_matrix = np.dot(y_diag_squared, cov_matrix)
+        cov_matrix = np.multiply(
+            y_model.reshape(-1, 1), np.multiply(y_model, cov_matrix)
+        )
         if self.additive_measurement_error:
             cov_matrix += std_meas ** 2 * np.eye(n)
 
         # evaluate log-likelihood (no efficient algorithm available in this case)
-        inv_cov_matrix = np.linalg.inv(cov_matrix)
-        _, log_det_cov_matrix = np.linalg.slogdet(cov_matrix)
-        ll = -(n * np.log(2 * np.pi) + log_det_cov_matrix) / 2
-        ll += -np.dot(residuals, inv_cov_matrix.dot(residuals)) / 2
-        return ll
+        return _loglike_multivariate_normal(residuals, cov_matrix)
 
 
 class MultiplicativeSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
