@@ -476,6 +476,31 @@ class InferenceProblem:
                     prms[local_name] = theta[idx:idx_end]
         return prms
 
+    def check_parameter_domains(self, theta: Union[np.ndarray, th.Tensor]) -> bool:
+        """
+        Checks whether the given values of the latent parameters are within their
+        specified domains.
+
+        Parameters
+        ----------
+        theta
+            A numeric vector or tensor, which contains the current values of all latent
+            parameters.
+
+        Returns
+        -------
+            True if all values given by theta are within their specified domains.
+            Otherwise, False is returned.
+        """
+        for theta_name in self.get_theta_names():
+            theta_dim = self._parameters[theta_name].dim
+            theta_idx = self._parameters[theta_name].index
+            for i in range(theta_dim):
+                domain = self._parameters[theta_name].domain[i]
+                if not domain.check_bounds(theta[theta_idx + i]):
+                    return False
+        return True
+
     def get_theta_names(self, tex: bool = False, components: bool = False) -> list:
         """
         Returns the parameter names of the latent parameter vector theta in the
@@ -1303,24 +1328,3 @@ class InferenceProblem:
                     f"The globally defined experiment '{exp_name}' does not appear in "
                     f"any of the likelihood models!"
                 )
-    
-    def check_parameters_domain(self, theta):
-        """
-        Checks weather the given values of the latent parameters are within the
-        specified domain.
-
-        Parameters
-        ----------
-        theta
-            A numeric vector or tensor, which contains the current values of all latent parameters.
-
-        Returns
-        -------
-        True if all values are within the specified domain. Otherwise, False is returned.
-        """
-        for theta_idx, theta_name in enumerate(self.get_theta_names()):
-            if theta[theta_idx] < self._parameters[theta_name].domain[0][0]:
-                return False
-            elif theta[theta_idx] > self._parameters[theta_name].domain[0][1]:
-                return False
-        return True       

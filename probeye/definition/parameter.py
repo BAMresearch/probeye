@@ -803,6 +803,94 @@ class ScalarInterval:
         self.lower_bound_included = lower_bound_included
         self.upper_bound_included = upper_bound_included
 
+        # set the check_bounds-method; the distinction with respect to the inclusion of
+        # bounds is done here and not in the check_bounds-method so that this check is
+        # not repeated each time this method is called
+        if lower_bound_included and upper_bound_included:
+            self.check_bounds = self.check_bounds_inc_inc
+        elif (not lower_bound_included) and upper_bound_included:
+            self.check_bounds = self.check_bounds_ninc_inc
+        elif lower_bound_included and (not upper_bound_included):
+            self.check_bounds = self.check_bounds_inc_ninc
+        else:
+            self.check_bounds = self.check_bounds_ninc_ninc
+
+    def check_bounds_inc_inc(self, value: float) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where both bounds are
+        included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound <= value <= self.upper_bound:
+            return True
+        else:
+            return False
+
+    def check_bounds_ninc_inc(self, value: float) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where only the upper
+        bound is included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound < value <= self.upper_bound:
+            return True
+        else:
+            return False
+
+    def check_bounds_inc_ninc(self, value: float) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where only the lower
+        bound is included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound <= value < self.upper_bound:
+            return True
+        else:
+            return False
+
+    def check_bounds_ninc_ninc(self, value: float) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where only the upper
+        bound is included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound < value < self.upper_bound:
+            return True
+        else:
+            return False
+
     def __str__(self):
         s1 = "[" if self.lower_bound_included else "("
         s2 = "-oo" if self.lower_bound == -np.infty else self.lower_bound
