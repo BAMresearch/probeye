@@ -195,6 +195,13 @@ class ScipySolver:
         ll
             The evaluated log-likelihood function for the given theta-vector.
         """
+        
+        # check whether the values of the latent parameters are within the specified domain.
+        # if they are outside of the domain, break calculating the log-likelihood function
+        # and return instead of it minus infinity.
+        if self.problem.check_parameters_domain(theta) == False:
+            return -np.inf
+        
         # compute the contribution to the log-likelihood function for each likelihood
         # model and sum it all up
         ll = 0.0
