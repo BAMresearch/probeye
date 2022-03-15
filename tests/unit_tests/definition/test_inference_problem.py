@@ -473,6 +473,38 @@ class TestProblem(unittest.TestCase):
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        # add an experiment with an invalid sensor_value type
+        with self.assertRaises(ValueError):
+            p.add_experiment(
+                "Exp_invalid_sensor_value_type",
+                sensor_values={"x": 1, "y": "1"},
+                fwd_model_name="TestModel",
+            )
+        # add an experiment with an multidimensional array as a sensor value
+        with self.assertRaises(ValueError):
+            p.add_experiment(
+                "Exp_invalid_array_shape",
+                sensor_values={"x": 1, "y": np.ones((2, 2))},
+                fwd_model_name="TestModel",
+            )
+        # add an experiment with a scalar that is given in array format
+        with self.assertRaises(ValueError):
+            p.add_experiment(
+                "Exp_invalid_scalar_as_array",
+                sensor_values={"x": 1, "y": np.array([1.0])},
+                fwd_model_name="TestModel",
+            )
+        # check that you cannot add experiments after adding a likelihood model
+        p.add_parameter("sigma", "likelihood", prior=("uniform", {"low": 0, "high": 1}))
+        likelihood_model = GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
+        p.add_likelihood_model(likelihood_model)
+        # now an experiment is added which is not allowed
+        with self.assertRaises(RuntimeError):
+            p.add_experiment(
+                "Experiment_not_allowed",
+                sensor_values={"x": 1, "y": 1},
+                fwd_model_name="TestModel",
+            )
 
     def test_get_parameters(self):
         # check a simple use case

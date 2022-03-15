@@ -772,7 +772,7 @@ class InferenceProblem:
                     raise ValueError(
                         f"The sensor values of an experiment must be given as 1D "
                         f"arrays. However, the sensor_values of '{sensor_name}' in "
-                        f"experiment '{exp_name}' are given as an {values.ndim}D array."
+                        f"experiment '{exp_name}' are given as a {values.ndim}D array."
                     )
                 if values.size == 1:
                     raise ValueError(
@@ -783,12 +783,12 @@ class InferenceProblem:
                 sensor_values_numpy[sensor_name] = values
             elif isinstance(values, (float, int)):
                 sensor_values_numpy[sensor_name] = values
-            else:
-                raise ValueError(
-                    f"Encountered invalid type '{type(values)}' in the sensor values "
-                    f"of sensor '{sensor_name}' in experiment '{exp_name}'.\n Sensor"
-                    f"data must be given as int, float, np.ndarray, list or tuple."
-                )
+            # else:
+            #     raise ValueError(
+            #         f"Encountered invalid type '{type(values)}' in the sensor values "
+            #         f"of sensor '{sensor_name}' in experiment '{exp_name}'.\n Sensor"
+            #         f"data must be given as int, float, np.ndarray, list or tuple."
+            #     )
 
         # throw warning when the experiment name was defined before
         if exp_name in self._experiments.keys():
