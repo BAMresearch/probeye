@@ -433,11 +433,11 @@ class TestProblem(unittest.TestCase):
         logger.info("This text should also be written to the log-file.")
         self.assertTrue(os.path.exists(log_file))
         # now, check the overwrite-option
-        logger.stop()  # necessary to remove the logfile
+        logger.remove()  # necessary to remove the logfile
         logging_setup(log_file=log_file, overwrite_log_file=True)
         logger.info("This text should be overwriting the previous one.")
         self.assertTrue(os.path.exists(log_file))
-        logger.stop()  # necessary to remove the logfile
+        logger.remove()  # necessary to remove the logfile
         os.remove(log_file)
 
     def test_print_dict_in_rows(self):

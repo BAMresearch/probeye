@@ -70,7 +70,7 @@ class TestProblem(unittest.TestCase):
         # check that the solver can be run now; note that the additional solver option
         # is a default value, and only provided to check that this argument-pipeline
         # works
-        scipy_solver.run_max_likelihood(solver_options={"jac": None})
+        scipy_solver.run_max_likelihood(solver_options={"maxiter": 1000})
 
         # check the warning when the problem cannot be deep-copied
         problem.no_deepcopy_possible = (i for i in (1, 2, 3))

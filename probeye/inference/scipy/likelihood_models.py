@@ -9,7 +9,6 @@ from tripy.loglikelihood import kron_loglike_2D_tridiag
 from tripy.loglikelihood import kron_loglike_2D
 from tripy.loglikelihood import chol_loglike_2D
 from tripy.loglikelihood import _loglike_multivariate_normal
-from tripy.loglikelihood import log_likelihood_linear_normal
 from tripy.utils import inv_cov_vec_1D
 from tripy.utils import correlation_matrix
 from tripy.utils import correlation_function

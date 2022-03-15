@@ -279,7 +279,7 @@ class ScipySolver:
 
     def summarize_ml_results(
         self,
-        minimize_results: sp.optimize.optimize.OptimizeResult,
+        minimize_results: sp.optimize.OptimizeResult,
         true_values: Optional[dict],
         x0_dict: dict,
     ):
@@ -339,7 +339,7 @@ class ScipySolver:
         true_values: Optional[dict] = None,
         method: str = "Nelder-Mead",
         solver_options: Optional[dict] = None,
-    ) -> sp.optimize.optimize.OptimizeResult:
+    ) -> sp.optimize.OptimizeResult:
         """
         Finds values for an InferenceProblem's latent parameters that maximize the
         problem's likelihood function. The used method is scipy's minimize function from
