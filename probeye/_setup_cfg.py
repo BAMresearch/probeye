@@ -4,6 +4,7 @@ the package works with the latest versions of its dependencies."""
 
 import configparser
 import re
+import os
 from typing import List
 
 
@@ -39,7 +40,9 @@ def version_constraint_free_packages(setup_cfg_packages: str) -> List[str]:
     return packages_without_version
 
 
-def version_constraint_free_dependencies(options_field: str) -> None:
+def version_constraint_free_dependencies(
+    options_field: str, test: bool = False, setup_cfg: str = "setup.cfg"
+) -> None:
     """
     Remove version constraints from the packages listed in `options_field` (
     provided as input argument or read from `setup.cfg`) and overwrite the
@@ -52,10 +55,15 @@ def version_constraint_free_dependencies(options_field: str) -> None:
         Field name in `setup.cfg` options that list package dependencies,
         e.g. `"install_requires"`. For further information see:
         https://setuptools.pypa.io/en/latest/userguide/declarative_config.html#options
+    test
+        Flag only used for testing. If this method is tested during CI, it is set to
+        True. In all other cases it should be False.
+    setup_cfg
+        Path to the setup.cfg file. Added as an argument for testing.
 
     """
     config = configparser.ConfigParser()
-    config.read("setup.cfg")
+    config.read(setup_cfg)
     packages = config["options"][options_field]
 
     packages_without_version = version_constraint_free_packages(packages)
@@ -63,12 +71,22 @@ def version_constraint_free_dependencies(options_field: str) -> None:
 
     config["options"][options_field] = setup_cfg_packages_without_version
 
-    with open("setup.cfg", "w") as configfile:
+    # just for testing during CI
+    if test:
+        setup_cfg = "setup_test.cfg"
+
+    with open(setup_cfg, "w") as configfile:
         config.write(configfile)
+
+    # just for testing during CI
+    if test:
+        os.remove(setup_cfg)
 
 
 # to ease running the version number constraint removal from the command line
 if __name__ == "__main__":
     # this is meant to be run only during CI: to test if the package works with the
     # latest versions of its dependencies
-    version_constraint_free_dependencies(options_field="install_requires")
+    version_constraint_free_dependencies(
+        options_field="install_requires"
+    )  # pragma: no cover

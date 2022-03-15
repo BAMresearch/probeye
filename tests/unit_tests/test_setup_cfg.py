@@ -1,4 +1,9 @@
+# standard library
+import os
+
+# local imports
 from probeye._setup_cfg import version_constraint_free_packages
+from probeye._setup_cfg import version_constraint_free_dependencies
 
 
 def test_version_removal():
@@ -55,3 +60,11 @@ def test_version_removal():
             p_in = "\n".join(p_in_list_ii[:2]) + "\n" + ";".join(p_in_list_ii[2:])
             p_out_list_ii = version_constraint_free_packages(setup_cfg_packages=p_in)
             assert p_out_list_ii == expected_p_out_list_ii
+
+
+def test_version_constraint_free_dependencies():
+    dir_path = os.path.dirname(__file__)
+    setup_cfg = os.path.join(dir_path, "../../setup.cfg")
+    version_constraint_free_dependencies(
+        options_field="install_requires", test=True, setup_cfg=setup_cfg
+    )
