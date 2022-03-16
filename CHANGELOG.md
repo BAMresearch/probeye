@@ -1,11 +1,16 @@
 # probeye changelog
 
-## 2.2.1 (2022-Mar-15)
+## 2.2.0 (2022-Mar-XX)
 ### Changed
 - Before the evaluation of a likelihood function, the parameter domains are checked.
 ### Added
 - Added an 'interface' submodule which contains a method 'export_to_rdf' that allows to print a defined problem to an rdf-file.
 - Latent parameters have domains now. A respective class has been added to the parameters.py-file.
+
+## 2.1.2 (2022-Mar-16)
+### Changed
+- Fixed a bug in the pyro-solver.
+- Extended the linear_regression test to two and one variables (special cases).
 
 ## 2.1.1 (2022-Mar-14)
 ### Changed
