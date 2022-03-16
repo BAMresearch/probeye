@@ -133,7 +133,9 @@ class TestProblem(unittest.TestCase):
         p = InferenceProblem("TestProblem")
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter(
+            "a2", "model", prior=("normal", {"loc": 0, "scale": 1}), domain="[0, 1]"
+        )
         p.add_parameter("sigma", "likelihood", const=1.0)
 
         class FwdModel(ForwardModelBase):
@@ -201,6 +203,9 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(
             computed_result["Exp3"]["y"][1], expected_result["Exp3"]["y"][1]
         )
+        # check the likelihood out of a parameter domain
+        computed_result = pyro_solver.loglike(theta)
+        self.assertEqual(computed_result, -np.infty)
 
 
 if __name__ == "__main__":

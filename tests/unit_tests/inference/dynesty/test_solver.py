@@ -55,6 +55,10 @@ class TestProblem(unittest.TestCase):
         # run the dynesty solver with deactivated output
         logging.root.disabled = True
         dynesty_solver = DynestySolver(problem, show_progress=True, seed=6174)
+        with self.assertRaises(RuntimeError):
+            dynesty_solver.run_dynesty(
+                "invalid_method", nlive_init=10, nlive_batch=10, maxbatch=2
+            )
         dynesty_solver.run_dynesty("dynamic", nlive_init=10, nlive_batch=10, maxbatch=2)
 
         sample_means = dynesty_solver.summary["mean"]

@@ -502,7 +502,7 @@ class InferenceProblem:
             theta_idx = self._parameters[theta_name].index
             for i in range(theta_dim):
                 domain = self._parameters[theta_name].domain[i]
-                if not domain.check_bounds(theta[theta_idx + i]):
+                if not domain.check_bounds(float(theta[theta_idx + i])):
                     return False
         return True
 

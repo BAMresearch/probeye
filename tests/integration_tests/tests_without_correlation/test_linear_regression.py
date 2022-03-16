@@ -275,9 +275,30 @@ class TestProblem(unittest.TestCase):
             run_dynesty=run_dynesty,
         )
 
+        # again, only two parameters; this case is done to have a uniform prior plotted
+        # on the vertical axis in a 2-parameter pairplot
+        problem.change_parameter_role(
+            "sigma", prior=("uniform", {"low": low_sigma, "high": high_sigma})
+        )
+        problem.change_parameter_role("b", const=b_true)
+        true_values = {"a": a_true, "sigma": sigma}
+        run_inference_engines(
+            problem,
+            true_values=true_values,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            n_walkers=n_walkers,
+            plot=plot,
+            show_progress=show_progress,
+            run_scipy=run_scipy,
+            run_emcee=run_emcee,
+            run_torch=run_torch,
+            run_dynesty=run_dynesty,
+        )
+
         # reduce the number of latent parameters to one; this is done to check if some
         # plotting routines also work in this setup
-        problem.change_parameter_role("b", const=b_true)
+        problem.change_parameter_role("sigma", const=sigma)
         true_values = {"a": a_true}
         run_inference_engines(
             problem,

@@ -551,7 +551,7 @@ class ParameterProperties:
             lower_bound_included = interval_group[0] == "["
             lower_bound = translate_number_string(interval_group[1])
             upper_bound = translate_number_string(interval_group[2])
-            upper_bound_included = interval_group[3] == "["
+            upper_bound_included = interval_group[3] == "]"
             intervals.append(
                 ScalarInterval(
                     lower_bound, upper_bound, lower_bound_included, upper_bound_included
