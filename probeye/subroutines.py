@@ -4,7 +4,6 @@ from typing import Union, List, Tuple, Any, Optional, Generator, Callable
 from typing import TYPE_CHECKING
 import os
 import sys
-import re
 
 # third party imports
 import numpy as np
@@ -225,48 +224,6 @@ def simplified_dict_string(dict_: dict) -> str:
         str(dict_), remove=["{", "}", "'"], replace={": ": "="}
     )
     return simplified_dict_str
-
-
-def unvectorize_dict_values(dict_: dict) -> list:
-    """
-    Takes a dict with items like <name>: <vector> and converts it into a list, where
-    each element is a 'fraction' or the whole dictionary. The following example will
-    illustrate it: {'x': [1, 2, 3], 'y': [4, 5, 6]} will be converted into
-    [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, {'x': 3, 'y': 6}].
-
-    Parameters
-    ----------
-    dict_
-        The dictionary that should be converted. All values must be 1D arrays of the
-        same length.
-
-    Returns
-    -------
-    result_list
-        The 'un-vectorized' dictionary. Check out the example above.
-    """
-
-    # all values must be iterable
-    dict_copy = copy(dict_)
-    for key, value in dict_.items():
-        if not hasattr(value, "__len__"):
-            dict_copy[key] = [value]
-
-    # check if all lengths are the same
-    if len({len(vector) for vector in dict_copy.values()}) != 1:
-        raise RuntimeError("The values of the dictionary have different lengths!")
-
-    # create the result list
-    vector_length = len([*dict_copy.values()][0])
-    keys = [*dict_.keys()]
-    result_list = []
-    for i in range(vector_length):
-        atom_dict = dict()
-        for key in keys:
-            atom_dict[key] = dict_copy[key][i]
-        result_list.append(atom_dict)
-
-    return result_list
 
 
 def sub_when_empty(string: str, empty_str: str = "-") -> str:

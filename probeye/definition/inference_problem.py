@@ -788,12 +788,6 @@ class InferenceProblem:
                 sensor_values_numpy[sensor_name] = values
             elif isinstance(values, (float, int)):
                 sensor_values_numpy[sensor_name] = values
-            # else:
-            #     raise ValueError(
-            #         f"Encountered invalid type '{type(values)}' in the sensor values "
-            #         f"of sensor '{sensor_name}' in experiment '{exp_name}'.\n Sensor"
-            #         f"data must be given as int, float, np.ndarray, list or tuple."
-            #     )
 
         # throw warning when the experiment name was defined before
         if exp_name in self._experiments.keys():

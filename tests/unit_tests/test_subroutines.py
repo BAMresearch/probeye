@@ -15,7 +15,6 @@ from probeye.subroutines import titled_table
 from probeye.subroutines import replace_string_chars
 from probeye.subroutines import simplified_list_string
 from probeye.subroutines import simplified_dict_string
-from probeye.subroutines import unvectorize_dict_values
 from probeye.subroutines import sub_when_empty
 from probeye.subroutines import dict2list
 from probeye.subroutines import list2dict
@@ -97,17 +96,6 @@ class TestProblem(unittest.TestCase):
         # check common use case
         self.assertEqual(simplified_dict_string({"a": 1, "b": 2}), "a=1, b=2")
         self.assertEqual(simplified_dict_string({"a": 1.0}), "a=1.0")
-
-    def test_unvectorize_dict_values(self):
-        # check common use case
-        self.assertEqual(
-            unvectorize_dict_values({"x": [1, 2], "y": [3, 4]}),
-            [{"x": 1, "y": 3}, {"x": 2, "y": 4}],
-        )
-        # check for cases with invalid input
-        with self.assertRaises(RuntimeError):
-            # values cannot have different lengths
-            unvectorize_dict_values({"x": [1, 2, 3], "y": [3, 4]})
 
     def test_sub_when_empty(self):
         # check common use cases
