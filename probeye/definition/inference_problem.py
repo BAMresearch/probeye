@@ -143,6 +143,11 @@ class InferenceProblem:
         return self._parameters.latent_prms_dims
 
     @property
+    def n_latent_model_prms_dim(self) -> int:
+        """Access the combined dimensions of the latent model parameters."""
+        return self._parameters.n_latent_model_prms_dim
+
+    @property
     def n_constant_prms(self) -> int:
         """Provides n_constant_prms attribute."""
         return self._parameters.n_constant_prms

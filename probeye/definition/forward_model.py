@@ -115,6 +115,11 @@ class ForwardModelBase:
         return [sensor.name for sensor in self.input_sensors]
 
     @property
+    def n_input_sensors(self) -> int:
+        """Provides number of input_sensors as an attribute."""
+        return len(self.input_sensor_names)
+
+    @property
     def input_channel_names(self) -> List[str]:
         """Provides input_channel_names attribute."""
         return self.input_sensor_names + [*self.prms_def.values()]
