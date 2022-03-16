@@ -176,7 +176,12 @@ class PyroSolver:
                 # the idea is that the given forward model only takes numeric
                 # (non-tensor) inputs; so there needs to be a conversion which takes
                 # place here; also, the given values must be rearranged in the dict-
-                # format required by forward_model's response method
+                # format required by forward_model's response method; 'values' are
+                # tensors and 'inp' is going to be the input dict for the forward model
+                # where the tensors from 'values' appear as numpy-arrays; in parallel,
+                # the forward_model input-structure is read from the given 'values';
+                # note that the 'values' are assumed to be in the order of the forward
+                # models input_channel_names
                 inp = {}
                 keys = forward_model.input_channel_names
                 for key, value in zip(keys, values):
@@ -192,7 +197,10 @@ class PyroSolver:
                 response_dict = forward_model.response(inp)
                 jac_dict = forward_model.jacobian(inp)
                 jac_numpy = forward_model.jacobian_dict_to_array(
-                    inp, jac_dict, self.problem.n_latent_prms_dim
+                    inp,
+                    jac_dict,
+                    self.problem.n_latent_model_prms_dim
+                    + forward_model.n_input_sensors,  # self.problem.n_latent_prms_dim
                 )
 
                 # now we have the forward model's response in dict format; however, in
@@ -274,7 +282,9 @@ class PyroSolver:
                 # not being sampled (for example the value of an input sensor of the
                 # forward model) are not required to have their gradients evaluated,
                 # so these elements will have 'False' entries in ctx.needs_input_grad
-                return_val = [None] * self.problem.n_latent_prms
+                return_val = [None] * len(
+                    forward_model.input_structure
+                )  # self.problem.n_latent_prms
                 j = 0
                 for i, dim in enumerate(forward_model.input_structure.values()):
                     if ctx.needs_input_grad[i]:
