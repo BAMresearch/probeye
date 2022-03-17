@@ -558,7 +558,7 @@ class TestProblem(unittest.TestCase):
 
         # standard use case
         computed_value = translate_simple_correlation("T1:xy")
-        expected_value = {'T1': {'x': 'x', 'y': 'y'}}
+        expected_value = {"T1": {"x": "x", "y": "y"}}
         self.assertEqual(computed_value, expected_value)
 
         # invalid input with a non-standard correlation variable
