@@ -109,7 +109,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": True,
                     "dim": 1,
-                    "domain": None,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -138,6 +138,21 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": True,
+                    "domain": "(-oo, +oo)",
+                    "type": "model",
+                    "prior": d_prior,
+                    "value": None,
+                    "info": "...",
+                    "tex": r"$d$",
+                }
+            )
+        with self.assertRaises(RuntimeError):
+            # dim is an integer smaller than 1
+            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            parameters["d"] = ParameterProperties(
+                {
+                    "index": 3,
+                    "dim": 0,
                     "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,

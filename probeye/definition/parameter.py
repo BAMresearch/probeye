@@ -669,11 +669,6 @@ class ParameterProperties:
                     f"When ParameterProperties._index is not None "
                     f"ParameterProperties._prior cannot be None!"
                 )
-            if self._dim is None:
-                raise RuntimeError(
-                    f"When ParameterProperties._index is not None "
-                    f"ParameterProperties._dim cannot be None!"
-                )
 
         else:
             # in this case, we have a constant parameter

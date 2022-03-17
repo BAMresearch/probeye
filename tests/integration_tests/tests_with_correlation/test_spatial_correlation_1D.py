@@ -199,6 +199,7 @@ class TestProblem(unittest.TestCase):
             problem.add_experiment(
                 exp_name,
                 fwd_model_name="LinearModel",
+                correlation_info="y:x",
                 sensor_values={
                     linear_model.input_sensor.name: x_test,
                     linear_model.output_sensor.name: y_test,

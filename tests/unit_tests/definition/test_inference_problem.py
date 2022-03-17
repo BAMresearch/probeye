@@ -53,7 +53,7 @@ class TestProblem(unittest.TestCase):
         # try out different options
         p.info(tablefmt="presto", check_consistency=False)
         _ = p.info(tablefmt="presto", check_consistency=False)
-        p.info(tablefmt="presto", check_consistency=False)
+        p.info(tablefmt="presto", check_consistency=False, print_header=True)
         p.info(tablefmt="plain", check_consistency=False)
         sys.stdout = sys.__stdout__  # reset printout to console
         with self.assertRaises(AssertionError):
@@ -402,10 +402,16 @@ class TestProblem(unittest.TestCase):
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        # add an unused experiment
+        p.add_experiment(
+            "Experiment_unused",
+            sensor_values={"y": 1, "x": 1},
+            fwd_model_name="TestModel",
+        )
         # add a noise model
         p.add_parameter("s", "likelihood", const=1.0)
-        noise_model = GaussianLikelihoodModel("s", sensors=[Sensor("y")])
-        p.add_likelihood_model(noise_model)
+        like_model = GaussianLikelihoodModel("s", experiment_names=["Experiment_1"])
+        p.add_likelihood_model(like_model)
         # now the problem should be consistent
         p.check_problem_consistency()
 
@@ -473,6 +479,40 @@ class TestProblem(unittest.TestCase):
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
+        # add an experiment the correlation_info of which has a key that does not
+        # appear in the experiment's sensor_value
+        with self.assertRaises(RuntimeError):
+            p.add_experiment(
+                "Experiment_CORR_1",
+                sensor_values={"x": 1, "y": 1},
+                fwd_model_name="TestModel",
+                correlation_info="g:x",  # g is the intended problem here
+            )
+        # add an experiment the correlation_info of which has a key that does not
+        # appear in the forward model's output sensor names
+        with self.assertRaises(RuntimeError):
+            p.add_experiment(
+                "Experiment_CORR_2",
+                sensor_values={"x": 1, "y": 1, "z": 1},
+                fwd_model_name="TestModel",
+                correlation_info="z:x",  # z is the intended problem here
+            )
+        # add an experiment the correlation_info of which has a wrong format
+        with self.assertRaises(TypeError):
+            p.add_experiment(
+                "Experiment_CORR_2",
+                sensor_values={"x": 1, "y": 1, "z": 1},
+                fwd_model_name="TestModel",
+                correlation_info={"y": "x"},  # correct would be {"y": {"x": "x"}}
+            )
+        # add an experiment the correlation_info of which has a wrong format
+        with self.assertRaises(RuntimeError):
+            p.add_experiment(
+                "Experiment_CORR_2",
+                sensor_values={"x": 1, "y": 1, "z": 1},
+                fwd_model_name="TestModel",
+                correlation_info={"y": {"x": "u"}},  # u is not in the sensor_values
+            )
         # add an experiment with an invalid sensor_value type
         with self.assertRaises(ValueError):
             p.add_experiment(
@@ -684,6 +724,11 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("s3", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
         test_model = ForwardModelBase("a", Sensor("x"), [Sensor("y1"), Sensor("y2")])
         p.add_forward_model("TestModel", test_model)
+        # try to add a likelihood model before adding experiments (not allowed)
+        with self.assertRaises(RuntimeError):
+            p.add_likelihood_model(
+                GaussianLikelihoodModel("s1", sensors=[Sensor("y1"), Sensor("y2")])
+            )
         p.add_experiment(
             "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
         )
