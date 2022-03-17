@@ -31,6 +31,10 @@ from probeye.subroutines import compute_reduction_array
 from probeye.subroutines import get_dictionary_depth
 from probeye.subroutines import incrementalize
 from probeye.subroutines import extract_true_values
+from probeye.subroutines import translate_simple_correlation
+from probeye.subroutines import get_global_name
+from probeye.subroutines import count_intervals
+from probeye.subroutines import HiddenPrints
 
 
 class TestProblem(unittest.TestCase):
@@ -549,6 +553,53 @@ class TestProblem(unittest.TestCase):
         expected_array = np.array([2, 3, 4, 1])
         computed_array = extract_true_values(true_values, var_names)
         self.assertTrue(np.allclose(expected_array, computed_array))
+
+    def test_translate_simple_correlation(self):
+
+        # standard use case
+        computed_value = translate_simple_correlation("T1:xy")
+        expected_value = {'T1': {'x': 'x', 'y': 'y'}}
+        self.assertEqual(computed_value, expected_value)
+
+        # invalid input with a non-standard correlation variable
+        with self.assertRaises(ValueError):
+            translate_simple_correlation("T1:xu")
+
+        # invalid input with no colon
+        with self.assertRaises(ValueError):
+            translate_simple_correlation("T1xy")
+
+        # invalid input with more than one colon
+        with self.assertRaises(ValueError):
+            translate_simple_correlation("T1:x:y")
+
+    def test_get_global_name(self):
+
+        # default use case
+        computed_value = get_global_name("a_loc", {"a_glob": "a_loc", "b": "B"})
+        expected_value = "a_glob"
+        self.assertEqual(computed_value, expected_value)
+
+        # case when the given local name is not found
+        with self.assertRaises(RuntimeError):
+            get_global_name("not_a_value", {"a_glob": "a_loc", "b": "B"})
+
+    def test_count_intervals(self):
+
+        # default use case
+        computed_value = count_intervals("[0, 1](0,1)(0,1][0, 1)")
+        expected_value = 4
+        self.assertEqual(computed_value, expected_value)
+
+        # invalid input with an incomplete domain
+        with self.assertRaises(RuntimeError):
+            count_intervals("[0, 1](0,1)(0,1][0, 1")
+
+    def test_HiddenPrints(self):
+
+        # default use case for coverage
+        with HiddenPrints():
+            print("This string will not appear in stdout.")
 
 
 if __name__ == "__main__":

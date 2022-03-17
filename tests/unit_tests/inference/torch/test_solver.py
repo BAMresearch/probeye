@@ -207,6 +207,83 @@ class TestProblem(unittest.TestCase):
         computed_result = pyro_solver.loglike(theta)
         self.assertEqual(computed_result, -np.infty)
 
+    def test_likelihood_model_with_multiplicative_model_error(self):
+        # prepare for checks
+        p = InferenceProblem("TestProblem")
+        p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("sigma", "likelihood", const=1.0)
+
+        class FwdModel(ForwardModelBase):
+            def response(self, inp):
+                x = inp["x"]
+                a0 = inp["a0"]
+                a1 = inp["a1"]
+                a2 = inp["a2"]
+                return {"y": a0 + a1 * x + a2 * x ** 2}
+
+        # add forward model
+        fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
+        p.add_forward_model("M1", fwd_model)
+
+        # add experiment_names
+        p.add_experiment("Exp1", sensor_values={"x": 1, "y": 2}, fwd_model_name="M1")
+        p.add_experiment("Exp2", sensor_values={"x": 2, "y": 3}, fwd_model_name="M1")
+
+        # add the likelihood model
+        p.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"},
+                sensors=Sensor("y"),
+                multiplicative_model_error=True,
+                additive_model_error=False,
+            )
+        )
+
+        # initialize the solver object; this will raises an error since the
+        # multiplicative model error is not implemented for pyro yet
+        with self.assertRaises(NotImplementedError):
+            PyroSolver(p)
+
+    def test_likelihood_model_with_correlation(self):
+        # prepare for checks
+        p = InferenceProblem("TestProblem")
+        p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("sigma", "likelihood", const=1.0)
+
+        class FwdModel(ForwardModelBase):
+            def response(self, inp):
+                x = inp["x"]
+                a0 = inp["a0"]
+                a1 = inp["a1"]
+                a2 = inp["a2"]
+                return {"y": a0 + a1 * x + a2 * x ** 2}
+
+        # add forward model
+        fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
+        p.add_forward_model("M1", fwd_model)
+
+        # add experiment_names
+        p.add_experiment("Exp1", sensor_values={"x": 1, "y": 2}, fwd_model_name="M1")
+        p.add_experiment("Exp2", sensor_values={"x": 2, "y": 3}, fwd_model_name="M1")
+
+        # add the likelihood model
+        p.add_likelihood_model(
+            GaussianLikelihoodModel(
+                prms_def={"sigma": "std_model"},
+                sensors=Sensor("y"),
+                correlation_variables="x",
+            )
+        )
+
+        # initialize the solver object; this will raises an error since the
+        # multiplicative model error is not implemented for pyro yet
+        with self.assertRaises(NotImplementedError):
+            PyroSolver(p)
+
 
 if __name__ == "__main__":
     unittest.main()
