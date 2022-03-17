@@ -2,11 +2,11 @@
 import unittest
 
 # third party imports
-import numpy as np
 
 # local imports
 from probeye.definition.parameter import Parameters
 from probeye.definition.parameter import ParameterProperties
+from probeye.definition.parameter import ScalarInterval
 from probeye.definition.prior import PriorBase
 
 
@@ -286,6 +286,44 @@ class TestProblem(unittest.TestCase):
                     "tex": r"$d$",
                 }
             )
+
+    def test_ScalarInterval(self):
+
+        # check the closed interval
+        interval_inc_inc = ScalarInterval(0.0, 1.0, True, True)
+        self.assertTrue(not interval_inc_inc.check_bounds(-1.0))
+        self.assertTrue(interval_inc_inc.check_bounds(0))
+        self.assertTrue(interval_inc_inc.check_bounds(0.5))
+        self.assertTrue(interval_inc_inc.check_bounds(1))
+        self.assertTrue(not interval_inc_inc.check_bounds(2.0))
+        self.assertEqual(interval_inc_inc.__str__(), "[0.0, 1.0]")
+
+        # check the left-open-right-closed interval
+        interval_ninc_inc = ScalarInterval(0.0, 1.0, False, True)
+        self.assertTrue(not interval_ninc_inc.check_bounds(-1.0))
+        self.assertTrue(not interval_ninc_inc.check_bounds(0))
+        self.assertTrue(interval_ninc_inc.check_bounds(0.5))
+        self.assertTrue(interval_ninc_inc.check_bounds(1))
+        self.assertTrue(not interval_ninc_inc.check_bounds(2.0))
+        self.assertEqual(interval_ninc_inc.__str__(), "(0.0, 1.0]")
+
+        # check the left-closed-right-open interval
+        interval_inc_ninc = ScalarInterval(0.0, 1.0, True, False)
+        self.assertTrue(not interval_inc_ninc.check_bounds(-1.0))
+        self.assertTrue(interval_inc_ninc.check_bounds(0))
+        self.assertTrue(interval_inc_ninc.check_bounds(0.5))
+        self.assertTrue(not interval_inc_ninc.check_bounds(1))
+        self.assertTrue(not interval_inc_ninc.check_bounds(2.0))
+        self.assertEqual(interval_inc_ninc.__str__(), "[0.0, 1.0)")
+
+        # check the open interval
+        interval_ninc_ninc = ScalarInterval(0.0, 1.0, False, False)
+        self.assertTrue(not interval_ninc_ninc.check_bounds(-1.0))
+        self.assertTrue(not interval_ninc_ninc.check_bounds(0))
+        self.assertTrue(interval_ninc_ninc.check_bounds(0.5))
+        self.assertTrue(not interval_ninc_ninc.check_bounds(1))
+        self.assertTrue(not interval_ninc_ninc.check_bounds(2.0))
+        self.assertEqual(interval_ninc_ninc.__str__(), "(0.0, 1.0)")
 
 
 if __name__ == "__main__":

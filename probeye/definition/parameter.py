@@ -623,11 +623,11 @@ class ParameterProperties:
                 f"int or None, but found {type(self._dim)}."
             )
 
-        if (self._dim is not None) and (self._dim < 1):
-            raise ValueError(
-                f"Found value < 1 for ParameterProperties._dim! This attribute must be "
-                f"an integer >= 1, but found a value of {self._dim}."
-            )
+        # if (self._dim is not None) and (self._dim < 1):
+        #     raise ValueError(
+        #         f"Found value < 1 for ParameterProperties._dim! This attribute must be "
+        #         f"an integer >= 1, but found a value of {self._dim}."
+        #     )
 
         if self._type not in ["model", "prior", "likelihood"]:
             raise RuntimeError(
@@ -821,7 +821,7 @@ class ScalarInterval:
         else:
             self.check_bounds = self.check_bounds_ninc_ninc
 
-    def check_bounds_inc_inc(self, value: float) -> bool:
+    def check_bounds_inc_inc(self, value: Union[int, float]) -> bool:
         """
         Checks if a given value is within the specified bounds (where both bounds are
         included).
@@ -840,7 +840,7 @@ class ScalarInterval:
         else:
             return False
 
-    def check_bounds_ninc_inc(self, value: float) -> bool:
+    def check_bounds_ninc_inc(self, value: Union[int, float]) -> bool:
         """
         Checks if a given value is within the specified bounds (where only the upper
         bound is included).
@@ -859,7 +859,7 @@ class ScalarInterval:
         else:
             return False
 
-    def check_bounds_inc_ninc(self, value: float) -> bool:
+    def check_bounds_inc_ninc(self, value: Union[int, float]) -> bool:
         """
         Checks if a given value is within the specified bounds (where only the lower
         bound is included).
@@ -878,7 +878,7 @@ class ScalarInterval:
         else:
             return False
 
-    def check_bounds_ninc_ninc(self, value: float) -> bool:
+    def check_bounds_ninc_ninc(self, value: Union[int, float]) -> bool:
         """
         Checks if a given value is within the specified bounds (where only the upper
         bound is included).
