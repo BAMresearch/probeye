@@ -8,6 +8,8 @@ import numpy as np
 import owlready2
 import rdflib
 from rdflib import URIRef, Graph, Literal
+
+# noinspection PyProtectedMember
 from rdflib.namespace import RDF, XSD
 
 # local imports

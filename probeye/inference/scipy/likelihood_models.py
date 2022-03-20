@@ -1383,21 +1383,19 @@ class AdditiveUncorrelatedModelError(UncorrelatedModelError):
         # compute the residuals over all experiments
         res_vector = self.stacked_residuals_vector(model_response_dict)
         # process the standard deviation(s)
-        std = prms["std_model"]
-        if std <= 0:
+        if prms["std_model"] <= 0:
             return worst_value
         if self.additive_measurement_error:
             if prms["std_measurement"] <= 0:
                 return worst_value
-            # this is the formula for the std. dev. of the sum of two normal dist.
-            std = np.sqrt(prms["std_model"] ** 2 + prms["std_measurement"] ** 2)
-        # the precision 'prec' is defined as the inverse of the variance, hence
-        # prec = 1 / sigma**2 where sigma denotes the standard deviation
-        prec = 1.0 / std ** 2.0
+            # this is the formula for the variance of the sum of two normal dist.
+            var = prms["std_model"] ** 2 + prms["std_measurement"] ** 2
+        else:
+            var = prms["std_model"] ** 2
         # evaluate the Gaussian log-PDF with zero mean and a variance of 1/prec for
         # each error term and sum them up
-        ll = -len(res_vector) / 2 * np.log(2 * np.pi / prec)
-        ll -= 0.5 * prec * np.sum(np.square(res_vector))
+        ll = -len(res_vector) / 2 * np.log(2 * np.pi * var)
+        ll -= 0.5 / var * np.sum(np.square(res_vector))
         return ll
 
 
