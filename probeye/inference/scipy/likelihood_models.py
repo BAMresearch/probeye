@@ -597,7 +597,7 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 s_values_1 = first_experiment["sensor_values"]
                 corr_info_1 = first_experiment["correlation_info"]
                 local_name_1 = corr_info_1[lm_sensor_name][spatial_variable]
-                values_1 = len_or_one(s_values_1[local_name_1])
+                values_1 = s_values_1[local_name_1]
                 for exp_name in self.experiment_names[1:]:
                     s_values = self.problem_experiments[exp_name]["sensor_values"]
                     corr_info = self.problem_experiments[exp_name]["correlation_info"]
