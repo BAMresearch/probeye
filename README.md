@@ -13,7 +13,7 @@ This package provides a transparent and easy-to-use framework for solving parame
 
 The parameter estimation problems _probeye_ aims at are problems that are centered around forward models that are computationally expensive (e.g., parameterized finite element models), and the corresponding observations of which are not particularly numerous (around tens or hundreds of data points instead of thousands or millions). Such problems are often encountered in engineering problems where simulation models are calibrated based on laboratory tests, which are - due to their relatively high costs - not available in high numbers. 
 
-The idea and source code of _probeye_ have been initially developed at the [_German Federal Institute for Materials Research and Testing (BAM)_](https://www.bam.de/Navigation/EN/About-us/Organisation/Organisation-Chart/President/Department-7/Division-77/division77.html) for calibrating parameterized constitutive material models and quantifying the uncertainties in the obtained estimates.
+The source code of _probeye_ is jointly developed by [_Bundesanstalt für Materialforschung und -prüfung (BAM)_](https://www.bam.de) and [_Netherlands Organisation for applied scientific research (TNO)_](https://www.tno.nl) for calibrating parameterized physics-based models and quantifying uncertainties in the obtained parameter estimates.
 
 ## Documentation
 A documentation including explanations on the package's use as well as some examples can be found [here](https://probeye.readthedocs.io/en/latest/index.html).
