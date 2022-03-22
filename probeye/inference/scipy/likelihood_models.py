@@ -418,7 +418,7 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 if "t" in is_vector_dict[sensor_name]:
                     if is_vector_dict[sensor_name]["t"]:
                         raise RuntimeError(
-                            f"Found both a time and a space correlation variable given"
+                            f"Found both a time and a space correlation variable given "
                             f"as a vector in the experiments of likelihood model"
                             f"'{self.name}'."
                         )
@@ -1660,7 +1660,7 @@ class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
         """
 
         # compute the model residuals via a method from the parent class
-        y_model = self.residual_array(model_response_dict)
+        res_array = self.residual_array(model_response_dict)
 
         # parameters for the model prediction error
         std_model = prms["std_model"]
@@ -1679,7 +1679,7 @@ class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
 
         # efficient log-likelihood evaluation via tripy
         ll = kron_loglike_2D_tridiag(
-            y_model,
+            res_array,
             self.space_vector,
             self.time_vector,
             l_corr_x,
@@ -2184,8 +2184,10 @@ class MultiplicativeSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelErro
             if std_meas <= 0:
                 return worst_value
         else:
-            # consistent with tripy interface
-            std_meas = None
+            # in case of zero-residuals, a value of std_meas = 0 leads to a covariance
+            # matrix that is not invertible; however, there might be a better option
+            # how to handle this case compared to this solution
+            std_meas = 1e-9
 
         # get the main diagonal and off-diagonal of the space covariance matrix inverse
         d0_x, d1_x = inv_cov_vec_1D(self.space_vector, l_corr_x, std_model)
