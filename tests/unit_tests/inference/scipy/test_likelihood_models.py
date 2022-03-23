@@ -6,6 +6,7 @@ import numpy as np
 from tripy.loglikelihood import chol_loglike_1D
 from tripy.loglikelihood import kron_loglike_2D_tridiag
 from tripy.loglikelihood import chol_loglike_2D
+from tripy.loglikelihood import kron_loglike_2D
 from tripy.loglikelihood import _loglike_multivariate_normal
 from tripy.utils import correlation_matrix
 from tripy.utils import correlation_function
@@ -19,10 +20,12 @@ from probeye.inference.scipy.likelihood_models import (
     AdditiveCorrelatedModelError1D,
     AdditiveSpaceCorrelatedModelError2D3D,
     AdditiveSpaceTimeCorrelatedModelError1D,
+    AdditiveSpaceTimeCorrelatedModelError2D3D,
     MultiplicativeUncorrelatedModelError,
     MultiplicativeCorrelatedModelError1D,
     MultiplicativeSpaceCorrelatedModelError2D3D,
     MultiplicativeSpaceTimeCorrelatedModelError1D,
+    MultiplicativeSpaceTimeCorrelatedModelError2D3D,
 )
 
 
@@ -871,7 +874,206 @@ class TestProblem(unittest.TestCase):
         )
         self.assertAlmostEqual(computed_ll, expected_ll)
 
+        # check now, if a negative std_measurement is handled correctly
+        std_model = 2.0
+        std_measurement = -2.0
+        l_corr_space = 2.0
+        l_corr_time = -2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "std_measurement": std_measurement,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+    def test_AdditiveSpaceTimeCorrelatedModelError2D3D(self):
+
+        # prepare the dummy problem experiments
+        n_data_points_exp = 100
+        dummy_data = np.linspace(-1, 1, n_data_points_exp)
+        sensor_values = {
+            "x1": 0.0,
+            "x2": 1.0,
+            "y1": -1.0,
+            "y2": 2.0,
+            "t": dummy_data,
+            "z1": dummy_data,
+            "z2": dummy_data,
+        }
+        problem_experiments = {
+            "Exp_1": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {
+                    "z1": {"x": "x1", "y": "y1", "t": "t"},
+                    "z2": {"x": "x2", "y": "y2", "t": "t"},
+                },
+            },
+            "Exp_2": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {
+                    "z1": {"x": "x1", "y": "y1", "t": "t"},
+                    "z2": {"x": "x2", "y": "y2", "t": "t"},
+                },
+            },
+        }
+
+        # checks for additive_measurement_error=False
+        like_model = AdditiveSpaceTimeCorrelatedModelError2D3D(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            problem_experiments=problem_experiments,
+            additive_measurement_error=False,
+            correlation_variables="xyt",
+            correlation_model="exp",
+            name="L1",
+        )
+        # the dummy-response is chosen identical to the dummy-data, resulting in zero
+        # residuals; this allows a simple check if the computation works as expected
+        std_model = 2.0
+        l_corr_space = 2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
+        space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
+        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
+        expected_ll = kron_loglike_2D(
+            np.zeros((len(problem_experiments), n_data_points_exp)),
+            spatial_cov_matrix,
+            [d0_t, d1_t],
+            None,
+        )
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative std_model is handled correctly
+        std_model = -2.0
+        l_corr_space = 2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative l_corr_space is handled correctly
+        std_model = 2.0
+        l_corr_space = -2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
         # check now, if a negative l_corr_time is handled correctly
+        std_model = 2.0
+        l_corr_space = 2.0
+        l_corr_time = -2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # checks for additive_measurement_error=True
+        like_model = AdditiveSpaceTimeCorrelatedModelError2D3D(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            problem_experiments=problem_experiments,
+            additive_measurement_error=True,
+            correlation_variables="xyt",
+            correlation_model="exp",
+            name="L1",
+        )
+        # the dummy-response is chosen identical to the dummy-data, resulting in zero
+        # residuals; this allows a simple check if the computation works as expected
+        std_model = 2.0
+        std_measurement = 2.0
+        l_corr_space = 2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "std_measurement": std_measurement,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
+        space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
+        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
+        expected_ll = kron_loglike_2D(
+            np.zeros((len(problem_experiments), n_data_points_exp)),
+            spatial_cov_matrix,
+            [d0_t, d1_t],
+            std_measurement,
+        )
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative std_measurement is handled correctly
         std_model = 2.0
         std_measurement = -2.0
         l_corr_space = 2.0
@@ -1244,6 +1446,207 @@ class TestProblem(unittest.TestCase):
         expected_ll = chol_loglike_2D(
             np.zeros((2, n_data_points_exp)),
             [d0_x, d1_x],
+            [d0_t, d1_t],
+            std_measurement,
+            np.array([dummy_data, dummy_data]),
+        )
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative std_measurement is handled correctly
+        std_model = 2.0
+        std_measurement = -2.0
+        l_corr_space = 2.0
+        l_corr_time = -2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "std_measurement": std_measurement,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+    def test_MultiplicativeSpaceTimeCorrelatedModelError2D3D(self):
+
+        # prepare the dummy problem experiments
+        n_data_points_exp = 100
+        dummy_data = np.linspace(-1, 1, n_data_points_exp)
+        sensor_values = {
+            "x1": 0.0,
+            "x2": 1.0,
+            "y1": -1.0,
+            "y2": 2.0,
+            "t": dummy_data,
+            "z1": dummy_data,
+            "z2": dummy_data,
+        }
+        problem_experiments = {
+            "Exp_1": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {
+                    "z1": {"x": "x1", "y": "y1", "t": "t"},
+                    "z2": {"x": "x2", "y": "y2", "t": "t"},
+                },
+            },
+            "Exp_2": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {
+                    "z1": {"x": "x1", "y": "y1", "t": "t"},
+                    "z2": {"x": "x2", "y": "y2", "t": "t"},
+                },
+            },
+        }
+
+        # checks for additive_measurement_error=False
+        like_model = MultiplicativeSpaceTimeCorrelatedModelError2D3D(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            problem_experiments=problem_experiments,
+            additive_measurement_error=False,
+            correlation_variables="xyt",
+            correlation_model="exp",
+            name="L1",
+        )
+        # the dummy-response is chosen identical to the dummy-data, resulting in zero
+        # residuals; this allows a simple check if the computation works as expected
+        std_model = 2.0
+        l_corr_space = 2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
+        f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
+        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
+        expected_ll = chol_loglike_2D(
+            np.zeros((len(problem_experiments), n_data_points_exp)),
+            spatial_cov_matrix,
+            [d0_t, d1_t],
+            1e-9,
+            np.array([dummy_data, dummy_data]),
+        )
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative std_model is handled correctly
+        std_model = -2.0
+        l_corr_space = 2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative l_corr_space is handled correctly
+        std_model = 2.0
+        l_corr_space = -2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # check now, if a negative l_corr_time is handled correctly
+        std_model = 2.0
+        l_corr_space = 2.0
+        l_corr_time = -2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        expected_ll = -np.infty
+        self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # checks for additive_measurement_error=True
+        like_model = MultiplicativeSpaceTimeCorrelatedModelError2D3D(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            problem_experiments=problem_experiments,
+            additive_measurement_error=True,
+            correlation_variables="xyt",
+            correlation_model="exp",
+            name="L1",
+        )
+        # the dummy-response is chosen identical to the dummy-data, resulting in zero
+        # residuals; this allows a simple check if the computation works as expected
+        std_model = 2.0
+        std_measurement = 2.0
+        l_corr_space = 2.0
+        l_corr_time = 2.0
+        dummy_response = dummy_data
+        model_response_dict = {
+            "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+            "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        }
+        computed_ll = like_model.loglike(
+            model_response_dict,
+            {
+                "std_model": std_model,
+                "std_measurement": std_measurement,
+                "l_corr_space": l_corr_space,
+                "l_corr_time": l_corr_time,
+            },
+        )
+        space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
+        f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
+        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
+        expected_ll = chol_loglike_2D(
+            np.zeros((len(problem_experiments), n_data_points_exp)),
+            spatial_cov_matrix,
             [d0_t, d1_t],
             std_measurement,
             np.array([dummy_data, dummy_data]),

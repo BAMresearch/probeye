@@ -1762,7 +1762,7 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
         """
 
         # compute the model residuals via a method from the parent class
-        y_model = self.residual_array(model_response_dict)
+        res_array = self.residual_array(model_response_dict)
 
         # parameters for the model prediction error
         std_model = prms["std_model"]
@@ -1788,7 +1788,7 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
         d0_t, d1_t = inv_cov_vec_1D(self.time_vector, l_corr_t, 1.0)
 
         # efficient log-likelihood evaluation via tripy
-        ll = kron_loglike_2D(y_model, spatial_cov_matrix, [d0_t, d1_t], std_meas)
+        ll = kron_loglike_2D(res_array, spatial_cov_matrix, [d0_t, d1_t], std_meas)
 
         return ll
 
@@ -2288,8 +2288,10 @@ class MultiplicativeSpaceTimeCorrelatedModelError2D3D(
             if std_meas <= 0:
                 return worst_value
         else:
-            # consistent with tripy interface
-            std_meas = None
+            # in case of zero-residuals, a value of std_meas = 0 leads to a covariance
+            # matrix that is not invertible; however, there might be a better option
+            # how to handle this case compared to this solution
+            std_meas = 1e-9
 
         # assemble the dense spatial covariance matrix
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_x)
