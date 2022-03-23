@@ -870,7 +870,7 @@ class SpaceAndTimeCorrelatedModelError(CorrelatedModelError):
                 if len_or_one(value) > 1:
                     raise ValueError(
                         f"The correlation variable '{sensor_name}' in experiment "
-                        f"'{exp_name}' is not scalar! It contains {len(value)}"
+                        f"'{exp_name}' is not scalar! It contains {len(value)} "
                         f"elements."
                     )
                 scalars.add(value)
