@@ -448,18 +448,6 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 f"variables in likelihood model '{self.name}'."
             )
 
-        # check that exactly one of space/time is given as vector
-        if space_given_as_vector and time_given_as_vector:
-            raise RuntimeError(
-                f"Both the space and the time correlation variable seem to be given in "
-                f"a vector-format! However, only one must be given as a vector."
-            )
-        if (not space_given_as_vector) and (not time_given_as_vector):
-            raise RuntimeError(
-                f"Neither the space nor the time correlation variable seems to be "
-                f"given in a vector-format! However, one must be given as a vector."
-            )
-
         return space_given_as_vector, time_given_as_vector
 
     def unionize_correlation_variable(self, correlation_variable: str) -> np.ndarray:
@@ -524,14 +512,6 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 values = self.problem_experiments[exp_name]["sensor_values"][
                     sensor_name
                 ]
-                if len_or_one(values) == 1:
-                    raise RuntimeError(
-                        f"Unionization is intended for vector-valued correlation "
-                        f"variables. However, the given correlation variable "
-                        f"'{correlation_variable}' is scalar-valued for the likelihood "
-                        f"model's sensor '{lm_sensor_name}' in experiment "
-                        f"'{first_exp_name}'"
-                    )
                 union_set_i = set(values)
                 if union_set != union_set_i:
                     shared_by_all = False

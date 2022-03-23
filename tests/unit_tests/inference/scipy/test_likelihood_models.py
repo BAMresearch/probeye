@@ -896,6 +896,98 @@ class TestProblem(unittest.TestCase):
         expected_ll = -np.infty
         self.assertAlmostEqual(computed_ll, expected_ll)
 
+        # test for the error that is raised when both time and space correlation
+        # variables are given as vectors
+        n_data_points_exp = 100
+        dummy_data = np.linspace(-1, 1, n_data_points_exp)
+        sensor_values_error = {
+            "x1": dummy_data,
+            "x2": dummy_data,
+            "t": dummy_data,
+            "z1": dummy_data,
+            "z2": dummy_data,
+        }
+        problem_experiments_error = {
+            "Exp_1": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values_error,
+                "correlation_info": {
+                    "z1": {"x": "x1", "t": "t"},
+                    "z2": {"x": "x2", "t": "t"},
+                },
+            },
+            "Exp_2": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values_error,
+                "correlation_info": {
+                    "z1": {"x": "x1", "t": "t"},
+                    "z2": {"x": "x2", "t": "t"},
+                },
+            },
+        }
+        with self.assertRaises(RuntimeError):
+            AdditiveSpaceTimeCorrelatedModelError1D(
+                prms_def=["std_model", "l_corr_space", "l_corr_time"],
+                sensors=[Sensor("z1"), Sensor("z2")],
+                experiment_names=["Exp_1", "Exp_2"],
+                problem_experiments=problem_experiments_error,
+                additive_measurement_error=False,
+                correlation_variables="xt",
+                correlation_model="exp",
+                name="L1",
+            )
+
+    def test_unionize_correlation_variable(self):
+
+        # prepare the dummy problem experiments
+        n_data_points_exp = 100
+        dummy_data = np.linspace(-1, 1, n_data_points_exp)
+        sensor_values = {
+            "x1": 0.0,
+            "x2": 1.0,
+            "t": dummy_data,
+            "z1": dummy_data,
+            "z2": dummy_data,
+        }
+        problem_experiments = {
+            "Exp_1": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {
+                    "z1": {"x": "x1", "t": "t"},
+                    "z2": {"x": "x2", "t": "t"},
+                },
+            },
+            "Exp_2": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {
+                    "z1": {"x": "x1", "t": "t"},
+                    "z2": {"x": "x2", "t": "t"},
+                },
+            },
+        }
+
+        # prepare an instance of CorrelatedModelError in order to test the method
+        like_model = AdditiveSpaceTimeCorrelatedModelError1D(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            problem_experiments=problem_experiments,
+            additive_measurement_error=False,
+            correlation_variables="xt",
+            correlation_model="exp",
+            name="L1",
+        )
+
+        # here, the correlation variable is not valid
+        with self.assertRaises(ValueError):
+            like_model.unionize_correlation_variable("u")
+
+        # here, the requested correlation variable is scalar-valued
+        with self.assertRaises(RuntimeError):
+            like_model.unionize_correlation_variable("x")
+
     def test_AdditiveSpaceTimeCorrelatedModelError2D3D(self):
 
         # prepare the dummy problem experiments
@@ -1094,6 +1186,51 @@ class TestProblem(unittest.TestCase):
         )
         expected_ll = -np.infty
         self.assertAlmostEqual(computed_ll, expected_ll)
+
+        # test for the error that is raised when both vector-scalar structure in the
+        # correlation variables does not make sense
+        n_data_points_exp = 100
+        dummy_data = np.linspace(-1, 1, n_data_points_exp)
+        sensor_values_error = {
+            "x1": 0.0,
+            "x2": 1.0,
+            "x": np.array([0.0, 1.0]),
+            "y1": -1.0,
+            "y2": 2.0,
+            "t1": 0.0,
+            "t": dummy_data,
+            "z1": dummy_data,
+            "z2": dummy_data,
+        }
+        problem_experiments_error = {
+            "Exp_1": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values_error,
+                "correlation_info": {
+                    "z1": {"x": "x1", "y": "y1", "t": "t"},
+                    "z2": {"x": "x", "y": "y2", "t": "t1"},
+                },
+            },
+            "Exp_2": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values_error,
+                "correlation_info": {
+                    "z1": {"x": "x1", "y": "y1", "t": "t"},
+                    "z2": {"x": "x", "y": "y2", "t": "t1"},
+                },
+            },
+        }
+        with self.assertRaises(RuntimeError):
+            AdditiveSpaceTimeCorrelatedModelError2D3D(
+                prms_def=["std_model", "l_corr_space", "l_corr_time"],
+                sensors=[Sensor("z1"), Sensor("z2")],
+                experiment_names=["Exp_1", "Exp_2"],
+                problem_experiments=problem_experiments_error,
+                additive_measurement_error=False,
+                correlation_variables="xyt",
+                correlation_model="exp",
+                name="L1",
+            )
 
     def test_MultiplicativeSpaceCorrelatedModelError2D3D(self):
 
