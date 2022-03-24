@@ -326,6 +326,17 @@ class Parameters(dict):
         return len(self.model_prms)
 
     @property
+    def n_latent_model_prms_dim(self) -> int:
+        """Access the combined dimensions of the latent model parameters."""
+        return sum(
+            [
+                self[prm_name].dim
+                for prm_name in self.model_prms
+                if self[prm_name].is_latent
+            ]
+        )
+
+    @property
     def prior_prms(self) -> List[str]:
         """Access the names of all 'prior'-parameters as an attribute."""
         return [name for name, prm in self.items() if prm.type == "prior"]

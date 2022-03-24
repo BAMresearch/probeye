@@ -1,8 +1,18 @@
 # probeye changelog
 
-## 2.1.1 (2022-Feb-18)
+## 2.1.3 (2022-Mar-24)
 ### Changed
 - extended the documentation
+
+## 2.1.2 (2022-Mar-16)
+### Changed
+- Fixed a bug in the pyro-solver.
+- Extended the linear_regression test to two and one variables (special cases).
+
+## 2.1.1 (2022-Mar-14)
+### Changed
+- Optimized general log-likelihood evaluation.
+- Faster method for scaling covariance matrix by model output.
 
 ## 2.1.0 (2022-Feb-18)
 ### Changed
