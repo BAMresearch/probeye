@@ -14,7 +14,9 @@ from tripy.utils import inv_cov_vec_1D
 
 # local imports
 from probeye.definition.sensor import Sensor
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.scipy.likelihood_models import ScipyLikelihoodBase
+from probeye.inference.scipy.likelihood_models import translate_likelihood_model
 from probeye.inference.scipy.likelihood_models import (
     AdditiveUncorrelatedModelError,
     AdditiveCorrelatedModelError1D,
@@ -49,6 +51,22 @@ class TestProblem(unittest.TestCase):
             "Exp_2": {"forward_model": "FwdModel", "sensor_values": sensor_values},
         }
         n_data_points = len(problem_experiments) * n_data_points_exp
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model"],
+            sensors=[Sensor("y")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            correlation_variables="",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is AdditiveUncorrelatedModelError
 
         # checks for additive_measurement_error=False
         like_model = AdditiveUncorrelatedModelError(
@@ -138,6 +156,22 @@ class TestProblem(unittest.TestCase):
             "Exp_2": {"forward_model": "FwdModel", "sensor_values": sensor_values},
         }
         n_data_points = len(problem_experiments) * n_data_points_exp
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model"],
+            sensors=[Sensor("y")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=False,
+            correlation_variables="",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is MultiplicativeUncorrelatedModelError
 
         # checks for additive_measurement_error=False
         like_model = MultiplicativeUncorrelatedModelError(
@@ -249,6 +283,22 @@ class TestProblem(unittest.TestCase):
                 "correlation_info": {"y": {"x": "x"}},
             },
         }
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr"],
+            sensors=[Sensor("y")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=False,
+            correlation_variables="x",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is MultiplicativeCorrelatedModelError1D
 
         # checks for additive_measurement_error=False
         like_model = MultiplicativeCorrelatedModelError1D(
@@ -388,6 +438,22 @@ class TestProblem(unittest.TestCase):
                 "correlation_info": {"y": {"x": "x"}},
             },
         }
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr"],
+            sensors=[Sensor("y")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            correlation_variables="x",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is AdditiveCorrelatedModelError1D
 
         # test for the correlation variable check; here the correlation_variable 'z' is
         # not found in the experiment's correlation_info, hence an error is raised
@@ -547,6 +613,35 @@ class TestProblem(unittest.TestCase):
         expected_ll = -np.infty
         self.assertAlmostEqual(computed_ll, expected_ll)
 
+        # prepare the dummy problem experiments
+        sensor_values = {"x": dummy_data, "y": dummy_data}
+        problem_experiments_error = {
+            "Exp_1": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {"y": {"x": "x", "y": "y"}},
+            },
+            "Exp_2": {
+                "forward_model": "FwdModel",
+                "sensor_values": sensor_values,
+                "correlation_info": {"y": {"x": "x", "y": "y"}},
+            },
+        }
+
+        # test for the correlation variable check; here, two instead of one correlation
+        # variables is defined
+        with self.assertRaises(RuntimeError):
+            AdditiveCorrelatedModelError1D(
+                prms_def=["std_model", "l_corr"],
+                sensors=[Sensor("y")],
+                experiment_names=["Exp_1", "Exp_2"],
+                problem_experiments=problem_experiments_error,
+                additive_measurement_error=False,
+                correlation_variables="xy",
+                correlation_model="exp",
+                name="L1",
+            )
+
     def test_AdditiveSpaceCorrelatedModelError2D3D(self):
 
         # prepare the dummy problem experiments
@@ -565,6 +660,22 @@ class TestProblem(unittest.TestCase):
                 "correlation_info": {"z": {"x": "x", "y": "y"}},
             },
         }
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr"],
+            sensors=[Sensor("z")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            correlation_variables="xy",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is AdditiveSpaceCorrelatedModelError2D3D
 
         # checks for additive_measurement_error=False
         like_model = AdditiveSpaceCorrelatedModelError2D3D(
@@ -762,6 +873,22 @@ class TestProblem(unittest.TestCase):
             },
         }
 
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            correlation_variables="xt",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is AdditiveSpaceTimeCorrelatedModelError1D
+
         # checks for additive_measurement_error=False
         like_model = AdditiveSpaceTimeCorrelatedModelError1D(
             prms_def=["std_model", "l_corr_space", "l_corr_time"],
@@ -913,7 +1040,7 @@ class TestProblem(unittest.TestCase):
         std_model = 2.0
         std_measurement = -2.0
         l_corr_space = 2.0
-        l_corr_time = -2.0
+        l_corr_time = 2.0
         dummy_response = dummy_data
         model_response_dict = {
             "Exp_1": {"z1": dummy_response, "z2": dummy_response},
@@ -1121,6 +1248,22 @@ class TestProblem(unittest.TestCase):
             },
         }
 
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            correlation_variables="xt",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is AdditiveSpaceTimeCorrelatedModelError1D
+
         # prepare an instance of CorrelatedModelError in order to test the method
         like_model = AdditiveSpaceTimeCorrelatedModelError1D(
             prms_def=["std_model", "l_corr_space", "l_corr_time"],
@@ -1227,6 +1370,22 @@ class TestProblem(unittest.TestCase):
                 },
             },
         }
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=True,
+            multiplicative_model_error=False,
+            additive_measurement_error=False,
+            correlation_variables="xyt",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert type(like_model_translated) is AdditiveSpaceTimeCorrelatedModelError2D3D
 
         # checks for additive_measurement_error=False
         like_model = AdditiveSpaceTimeCorrelatedModelError2D3D(
@@ -1376,7 +1535,7 @@ class TestProblem(unittest.TestCase):
         std_model = 2.0
         std_measurement = -2.0
         l_corr_space = 2.0
-        l_corr_time = -2.0
+        l_corr_time = 2.0
         dummy_response = dummy_data
         model_response_dict = {
             "Exp_1": {"z1": dummy_response, "z2": dummy_response},
@@ -1439,6 +1598,73 @@ class TestProblem(unittest.TestCase):
                 name="L1",
             )
 
+        # # here, time is given via scalars instead of by a vector
+        # sensor_values = {
+        #     "x": dummy_data,
+        #     "y": dummy_data,
+        #     "t1": 0.0,
+        #     "t2": 1.0,
+        #     "z1": dummy_data,
+        #     "z2": dummy_data,
+        # }
+        # problem_experiments = {
+        #     "Exp_1": {
+        #         "forward_model": "FwdModel",
+        #         "sensor_values": sensor_values,
+        #         "correlation_info": {
+        #             "z1": {"x": "x", "y": "y", "t": "t1"},
+        #             "z2": {"x": "x", "y": "y", "t": "t2"},
+        #         },
+        #     },
+        #     "Exp_2": {
+        #         "forward_model": "FwdModel",
+        #         "sensor_values": sensor_values,
+        #         "correlation_info": {
+        #             "z1": {"x": "x", "y": "y", "t": "t1"},
+        #             "z2": {"x": "x", "y": "y", "t": "t2"},
+        #         },
+        #     },
+        # }
+        # like_model = AdditiveSpaceTimeCorrelatedModelError2D3D(
+        #     prms_def=["std_model", "l_corr_space", "l_corr_time"],
+        #     sensors=[Sensor("z1"), Sensor("z2")],
+        #     experiment_names=["Exp_1", "Exp_2"],
+        #     problem_experiments=problem_experiments,
+        #     additive_measurement_error=False,
+        #     correlation_variables="xyt",
+        #     correlation_model="exp",
+        #     name="L1",
+        # )
+        # # the dummy-response is chosen identical to the dummy-data, resulting in zero
+        # # residuals; this allows a simple check if the computation works as expected
+        # std_model = 2.0
+        # l_corr_space = 2.0
+        # l_corr_time = 2.0
+        # dummy_response = dummy_data
+        # model_response_dict = {
+        #     "Exp_1": {"z1": dummy_response, "z2": dummy_response},
+        #     "Exp_2": {"z1": dummy_response, "z2": dummy_response},
+        # }
+        # computed_ll = like_model.loglike(
+        #     model_response_dict,
+        #     {
+        #         "std_model": std_model,
+        #         "l_corr_space": l_corr_space,
+        #         "l_corr_time": l_corr_time,
+        #     },
+        # )
+        # f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
+        # space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
+        # spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        # d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
+        # expected_ll = kron_loglike_2D(
+        #     np.zeros((len(problem_experiments), n_data_points_exp)),
+        #     spatial_cov_matrix,
+        #     [d0_t, d1_t],
+        #     None,
+        # )
+        # self.assertAlmostEqual(computed_ll, expected_ll)
+
     def test_MultiplicativeSpaceCorrelatedModelError2D3D(self):
 
         # prepare the dummy problem experiments
@@ -1457,6 +1683,24 @@ class TestProblem(unittest.TestCase):
                 "correlation_info": {"z": {"x": "x", "y": "y"}},
             },
         }
+
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr"],
+            sensors=[Sensor("z")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=False,
+            correlation_variables="xy",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert (
+            type(like_model_translated) is MultiplicativeSpaceCorrelatedModelError2D3D
+        )
 
         # test for the error that is raised when the correlation variables are given
         # as scalars and vectors at the same time
@@ -1654,6 +1898,24 @@ class TestProblem(unittest.TestCase):
             },
         }
 
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=False,
+            correlation_variables="xt",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert (
+            type(like_model_translated) is MultiplicativeSpaceTimeCorrelatedModelError1D
+        )
+
         # checks for additive_measurement_error=False
         like_model = MultiplicativeSpaceTimeCorrelatedModelError1D(
             prms_def=["std_model", "l_corr_space", "l_corr_time"],
@@ -1800,7 +2062,7 @@ class TestProblem(unittest.TestCase):
         std_model = 2.0
         std_measurement = -2.0
         l_corr_space = 2.0
-        l_corr_time = -2.0
+        l_corr_time = 2.0
         dummy_response = dummy_data
         model_response_dict = {
             "Exp_1": {"z1": dummy_response, "z2": dummy_response},
@@ -1920,6 +2182,25 @@ class TestProblem(unittest.TestCase):
             },
         }
 
+        # check if the translation to this likelihood model works
+        lm_base = GaussianLikelihoodModel(
+            prms_def=["std_model", "l_corr_space", "l_corr_time"],
+            sensors=[Sensor("z1"), Sensor("z2")],
+            experiment_names=["Exp_1", "Exp_2"],
+            additive_model_error=False,
+            multiplicative_model_error=True,
+            additive_measurement_error=False,
+            correlation_variables="xyt",
+            correlation_model="exp",
+            name="L1",
+        )
+        lm_base.problem_experiments = problem_experiments
+        like_model_translated = translate_likelihood_model(lm_base)
+        assert (
+            type(like_model_translated)
+            is MultiplicativeSpaceTimeCorrelatedModelError2D3D
+        )
+
         # checks for additive_measurement_error=False
         like_model = MultiplicativeSpaceTimeCorrelatedModelError2D3D(
             prms_def=["std_model", "l_corr_space", "l_corr_time"],
@@ -2070,7 +2351,7 @@ class TestProblem(unittest.TestCase):
         std_model = 2.0
         std_measurement = -2.0
         l_corr_space = 2.0
-        l_corr_time = -2.0
+        l_corr_time = 2.0
         dummy_response = dummy_data
         model_response_dict = {
             "Exp_1": {"z1": dummy_response, "z2": dummy_response},
