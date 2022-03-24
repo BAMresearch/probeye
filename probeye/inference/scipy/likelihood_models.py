@@ -598,18 +598,29 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         corr_info_1 = self.problem_experiments[first_exp_name]["correlation_info"]
 
         # assemble the spatial coordinate array
-        arrays = []
-        for lm_sensor_name in self.sensor_names:
-            local_name_1 = corr_info_1[lm_sensor_name][spatial_variables[0]]
+        if self.space_given_as_vector:
+            first_sensor = self.sensor_names[0]
+            local_name_1 = corr_info_1[first_sensor][spatial_variables[0]]
             values_1 = sensor_values[local_name_1]
             coords = np.zeros((len_or_one(values_1), len(spatial_variables)))
             coords[:, 0] = values_1
             for i, spatial_variable in enumerate(spatial_variables[1:], start=1):
-                local_name = corr_info_1[lm_sensor_name][spatial_variable]
+                local_name = corr_info_1[first_sensor][spatial_variable]
                 values_i = sensor_values[local_name]
                 coords[:, i] = values_i
-            arrays.append(coords)
-        coords = np.concatenate(arrays, axis=0)
+        else:
+            arrays = []
+            for lm_sensor_name in self.sensor_names:
+                local_name_1 = corr_info_1[lm_sensor_name][spatial_variables[0]]
+                values_1 = sensor_values[local_name_1]
+                coords = np.zeros((len_or_one(values_1), len(spatial_variables)))
+                coords[:, 0] = values_1
+                for i, spatial_variable in enumerate(spatial_variables[1:], start=1):
+                    local_name = corr_info_1[lm_sensor_name][spatial_variable]
+                    values_i = sensor_values[local_name]
+                    coords[:, i] = values_i
+                arrays.append(coords)
+            coords = np.concatenate(arrays, axis=0)
         return coords
 
 
