@@ -623,12 +623,6 @@ class ParameterProperties:
                 f"int or None, but found {type(self._dim)}."
             )
 
-        # if (self._dim is not None) and (self._dim < 1):
-        #     raise ValueError(
-        #         f"Found value < 1 for ParameterProperties._dim! This attribute must be "
-        #         f"an integer >= 1, but found a value of {self._dim}."
-        #     )
-
         if self._type not in ["model", "prior", "likelihood"]:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can only "

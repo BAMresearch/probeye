@@ -66,10 +66,10 @@ def export_rdf(
     # quadstore which can also be written to a file; this is prepared here
     peo_world = owlready2.World()
 
-    # instantiate a plain knowledge graph; one can also instantiate a graph that is
-    # connected to the World object and will hence contain the entire ontology via the
-    # command 'peo_world.as_rdflib_graph()'
-    graph = Graph()
+    # instantiate a plain knowledge graph via 'Graph()'; one can also instantiate a
+    # graph that is connected to the World object and will hence contain the entire
+    # ontology via the command 'peo_world.as_rdflib_graph()'
+    graph = peo_world.as_rdflib_graph()
 
     # the following command loads the ontology from the given owl-file into the
     # quadstore which is connected to the peo_world object; this means that the

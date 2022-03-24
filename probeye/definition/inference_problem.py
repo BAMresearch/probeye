@@ -2,8 +2,6 @@
 import copy
 from typing import Union, List, Optional, Callable, Tuple
 import copy as cp
-import urllib
-import os
 
 # third party imports
 from tabulate import tabulate

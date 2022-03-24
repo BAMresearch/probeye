@@ -4,7 +4,7 @@
 ### Changed
 - Before the evaluation of a likelihood function, the parameter domains are checked.
 ### Added
-- Added an 'interface' submodule which contains a method 'export_to_rdf' that allows to print a defined problem to an rdf-file.
+- Added an 'interface' submodule which contains a method 'export_to_rdf' that allows to export a defined problem to an rdf-file.
 - Latent parameters have domains now. A respective class has been added to the parameters.py-file.
 
 ## 2.1.2 (2022-Mar-16)
