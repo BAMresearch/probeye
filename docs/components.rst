@@ -113,15 +113,18 @@ Parameter's name and type
 -------------------------
 Each parameter (latent and constant) must have a name and a type. The parameter's name, which is given by the first argument in the :code:`add_parameter`-method,  must be unique in the scope of the problem, i.e., no other parameter can have the same name. The parameter's type, on the other hand, states where the parameter appears in the problem definition. There are three possible types :code:`model`, :code:`prior` and :code:`likelihood`. A parameter of type :code:`model` appears in one the problem's forward models, while a parameter of type :code:`prior` will be used in the definition of some latent parameter's prior. Finally, a parameter of type :code:`likelihood` will appear in one of the problem's likelihood models.
 
-The name assigned to a parameter in the :code:`add_parameter`-method is also referred to as the parameter's `global` name. However, sometimes it is convenient or even required to refer to a parameter in one of the submodules (e.g. forward model or likelihood model) by a different name. This name of a parameter used by one of the submodules is referred to as a parameter's `local` name. The definition of a local name is applied, when the submodule in initialized that should use the local name. Here, we will give an example with a likelihood model that uses a local name:
+The name assigned to a parameter in the :code:`add_parameter`-method is also referred to as the parameter's `global` name. However, sometimes it is convenient or even required to refer to a parameter in one of the submodules (e.g. forward model or likelihood model) by a different name. For example, the standard deviation of the model error in a likelihood model is internally, i.e., in the source code of the likelihood model, referred to as :code:`std_model`. However, it is not required to use this name globally. You could for example use the name :code:`sigma` as the global name instead. The name of a parameter used internally by one of the submodules is referred to as a parameter's `local` name. The definition of a local name is applied, when the submodule in initialized. Here, we will give an example with two likelihood models:
 
 .. code-block:: python
 
     problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def=[{"sigma": "std_model"}, "l_corr"], sensors="y")
+            GaussianLikelihoodModel(prms_def=[{"sigma_1": "std_model"}, "l_corr"])
+        )
+    problem.add_likelihood_model(
+            GaussianLikelihoodModel(prms_def=[{"sigma_2": "std_model"}, "l_corr"])
         )
 
-The only thing that should be of interest from this short code block is the argument :code:`prms_def=[{"sigma": "std_model"}, "l_corr"]`. Here we see the declaration that the likelihood model will have two parameters: :code:`sigma` and :code:`l_corr`. However, :code:`sigma` is known to this likelihood model under the local name :code:`std_model`, while :code:`l_corr`'s local name is identical with the its global name. A more verbose definition would be :code:`prms_def=[{"sigma": "std_model"}, {"l_corr": "l_corr"}]`.
+In this example, two likelihood models are added to the problem, where each one has two parameters given by the argument :code:`prms_def`. They both use the same parameter :code:`l_corr` (a correlation length), but they use different standard deviations with the _global_ names :code:`sigma_1` and :code:`sigma_2`. However, both of these standard deviations are mapped to the same internal name :code:`std_model`, which is in both cases the _local_ name of the parameter. If a local-global name mapping is intended, it always has to be given as a one-element dictionary like in the example above. If no mapping is required, the parameter name can simply be given as a string like it is done for the :code:`l_corr` parameter in the example above.
 
 Tex and info
 ------------

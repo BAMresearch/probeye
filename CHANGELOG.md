@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.1.3 (2022-Mar-24)
+### Changed
+- extended the documentation
+
 ## 2.1.2 (2022-Mar-16)
 ### Changed
 - Fixed a bug in the pyro-solver.
