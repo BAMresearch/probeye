@@ -7,6 +7,10 @@
 - Added an 'interface' submodule which contains a method 'export_to_rdf' that allows to export a defined problem to an rdf-file.
 - Latent parameters have domains now. A respective class has been added to the parameters.py-file.
 
+## 2.1.3 (2022-Mar-24)
+### Changed
+- extended the documentation
+
 ## 2.1.2 (2022-Mar-16)
 ### Changed
 - Fixed a bug in the pyro-solver.
