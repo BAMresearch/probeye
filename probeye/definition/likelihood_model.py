@@ -214,7 +214,7 @@ class GaussianLikelihoodModel:
         """
 
         # obviously, there has to be at least one experiment defined
-        if self.experiment_names is None:
+        if len(self.experiment_names) == 0:
             raise RuntimeError(
                 f"No experiments defined for likelihood model '{self.name}'!"
             )

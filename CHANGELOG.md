@@ -1,5 +1,12 @@
 # probeye changelog
 
+## 2.1.4 (2022-Mar-27)
+### Changed
+- Before the evaluation of a likelihood function, the parameter domains are checked.
+### Added
+- Latent parameters have domains now. A respective class has been added to the parameters.py-file.
+- More tests have been added.
+
 ## 2.1.3 (2022-Mar-24)
 ### Changed
 - extended the documentation

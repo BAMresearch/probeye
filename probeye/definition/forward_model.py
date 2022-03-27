@@ -129,6 +129,11 @@ class ForwardModelBase:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
 
+    @property
+    def sensor_names(self) -> List[str]:
+        """Provides a list of all sensor names as an attribute."""
+        return self.input_sensor_names + self.output_sensor_names
+
     def definition(self) -> Union[bool, None]:
         """
         This method can be overwritten by the user. It should be used to explicitly

@@ -168,6 +168,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$\sigma$",
             info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -175,6 +176,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "l_corr",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),

@@ -15,7 +15,6 @@ from probeye.subroutines import titled_table
 from probeye.subroutines import replace_string_chars
 from probeye.subroutines import simplified_list_string
 from probeye.subroutines import simplified_dict_string
-from probeye.subroutines import unvectorize_dict_values
 from probeye.subroutines import sub_when_empty
 from probeye.subroutines import dict2list
 from probeye.subroutines import list2dict
@@ -32,6 +31,10 @@ from probeye.subroutines import compute_reduction_array
 from probeye.subroutines import get_dictionary_depth
 from probeye.subroutines import incrementalize
 from probeye.subroutines import extract_true_values
+from probeye.subroutines import translate_simple_correlation
+from probeye.subroutines import get_global_name
+from probeye.subroutines import count_intervals
+from probeye.subroutines import HiddenPrints
 
 
 class TestProblem(unittest.TestCase):
@@ -97,17 +100,6 @@ class TestProblem(unittest.TestCase):
         # check common use case
         self.assertEqual(simplified_dict_string({"a": 1, "b": 2}), "a=1, b=2")
         self.assertEqual(simplified_dict_string({"a": 1.0}), "a=1.0")
-
-    def test_unvectorize_dict_values(self):
-        # check common use case
-        self.assertEqual(
-            unvectorize_dict_values({"x": [1, 2], "y": [3, 4]}),
-            [{"x": 1, "y": 3}, {"x": 2, "y": 4}],
-        )
-        # check for cases with invalid input
-        with self.assertRaises(RuntimeError):
-            # values cannot have different lengths
-            unvectorize_dict_values({"x": [1, 2, 3], "y": [3, 4]})
 
     def test_sub_when_empty(self):
         # check common use cases
@@ -433,11 +425,11 @@ class TestProblem(unittest.TestCase):
         logger.info("This text should also be written to the log-file.")
         self.assertTrue(os.path.exists(log_file))
         # now, check the overwrite-option
-        logger.stop()  # necessary to remove the logfile
+        logger.remove()  # necessary to remove the logfile
         logging_setup(log_file=log_file, overwrite_log_file=True)
         logger.info("This text should be overwriting the previous one.")
         self.assertTrue(os.path.exists(log_file))
-        logger.stop()  # necessary to remove the logfile
+        logger.remove()  # necessary to remove the logfile
         os.remove(log_file)
 
     def test_print_dict_in_rows(self):
@@ -561,6 +553,53 @@ class TestProblem(unittest.TestCase):
         expected_array = np.array([2, 3, 4, 1])
         computed_array = extract_true_values(true_values, var_names)
         self.assertTrue(np.allclose(expected_array, computed_array))
+
+    def test_translate_simple_correlation(self):
+
+        # standard use case
+        computed_value = translate_simple_correlation("T1:xy")
+        expected_value = {"T1": {"x": "x", "y": "y"}}
+        self.assertEqual(computed_value, expected_value)
+
+        # invalid input with a non-standard correlation variable
+        with self.assertRaises(ValueError):
+            translate_simple_correlation("T1:xu")
+
+        # invalid input with no colon
+        with self.assertRaises(ValueError):
+            translate_simple_correlation("T1xy")
+
+        # invalid input with more than one colon
+        with self.assertRaises(ValueError):
+            translate_simple_correlation("T1:x:y")
+
+    def test_get_global_name(self):
+
+        # default use case
+        computed_value = get_global_name("a_loc", {"a_glob": "a_loc", "b": "B"})
+        expected_value = "a_glob"
+        self.assertEqual(computed_value, expected_value)
+
+        # case when the given local name is not found
+        with self.assertRaises(RuntimeError):
+            get_global_name("not_a_value", {"a_glob": "a_loc", "b": "B"})
+
+    def test_count_intervals(self):
+
+        # default use case
+        computed_value = count_intervals("[0, 1](0,1)(0,1][0, 1)")
+        expected_value = 4
+        self.assertEqual(computed_value, expected_value)
+
+        # invalid input with an incomplete domain
+        with self.assertRaises(RuntimeError):
+            count_intervals("[0, 1](0,1)(0,1][0, 1")
+
+    def test_HiddenPrints(self):
+
+        # default use case for coverage
+        with HiddenPrints():
+            print("This string will not appear in stdout.")
 
 
 if __name__ == "__main__":

@@ -158,6 +158,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma_1",
             "likelihood",
+            domain="(0, +oo)",
             prior=("uniform", {"low": low_S1, "high": high_S1}),
             info="Standard deviation, of zero-mean additive model error for S1",
             tex=r"$\sigma_1$",
@@ -165,6 +166,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma_2",
             "likelihood",
+            domain="(0, +oo)",
             prior=("uniform", {"low": low_S2, "high": high_S2}),
             info="Standard deviation, of zero-mean additive model error for S2",
             tex=r"$\sigma_2$",
@@ -172,6 +174,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma_3",
             "likelihood",
+            domain="(0, +oo)",
             prior=("uniform", {"low": low_S3, "high": high_S3}),
             info="Standard deviation, of zero-mean additive model error S3",
             tex=r"$\sigma_3$",

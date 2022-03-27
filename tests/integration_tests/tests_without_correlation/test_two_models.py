@@ -161,6 +161,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$\sigma$ (likelihood)",
             info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),

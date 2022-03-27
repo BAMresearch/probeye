@@ -195,6 +195,14 @@ class ScipySolver:
         ll
             The evaluated log-likelihood function for the given theta-vector.
         """
+
+        # check whether the values of the latent parameters are within their domains;
+        # they can end up outside their domains for example during sampling, when a
+        # parameter vector is proposed, that contains a value that is not within the
+        # specified bounds of a parameter
+        if not self.problem.check_parameter_domains(theta):
+            return -np.inf
+
         # compute the contribution to the log-likelihood function for each likelihood
         # model and sum it all up
         ll = 0.0
@@ -271,7 +279,7 @@ class ScipySolver:
 
     def summarize_ml_results(
         self,
-        minimize_results: sp.optimize.optimize.OptimizeResult,
+        minimize_results: sp.optimize.OptimizeResult,
         true_values: Optional[dict],
         x0_dict: dict,
     ):
@@ -331,7 +339,7 @@ class ScipySolver:
         true_values: Optional[dict] = None,
         method: str = "Nelder-Mead",
         solver_options: Optional[dict] = None,
-    ) -> sp.optimize.optimize.OptimizeResult:
+    ) -> sp.optimize.OptimizeResult:
         """
         Finds values for an InferenceProblem's latent parameters that maximize the
         problem's likelihood function. The used method is scipy's minimize function from

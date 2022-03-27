@@ -134,6 +134,7 @@ problem.add_parameter(
 problem.add_parameter(
     "std_noise",
     "likelihood",
+    domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Standard deviation, of zero-mean Gaussian noise model",
     prior=("uniform", {"low": 0.1, "high": 0.8}),

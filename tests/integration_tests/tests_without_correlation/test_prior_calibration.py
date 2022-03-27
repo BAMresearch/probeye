@@ -11,7 +11,6 @@ via sampling using emcee, pyro and dynesty.
 # standard library imports
 import unittest
 
-
 # third party imports
 import numpy as np
 import matplotlib.pyplot as plt
@@ -147,6 +146,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
+            domain="(0, +oo)",
             info="Standard deviation, of zero-mean additive model error",
             tex=r"$\sigma$",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),

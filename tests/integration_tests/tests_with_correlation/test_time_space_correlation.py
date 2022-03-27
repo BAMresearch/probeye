@@ -209,6 +209,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "EI",
             "model",
+            domain="(0, +oo)",
             tex="$EI$",
             info="Bending stiffness of the beam [Nm^2]",
             prior=("normal", {"loc": loc_EI, "scale": scale_EI}),
@@ -219,6 +220,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$\sigma$",
             info="Std. dev, of 0-mean noise model",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
@@ -226,6 +228,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "l_corr_x",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$l_\mathrm{corr,x}$",
             info="Spatial correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr_x, "high": high_l_corr_x}),
@@ -233,6 +236,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "l_corr_t",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$l_\mathrm{corr,t}$",
             info="Temporal correlation length of correlation model",
             prior=("uniform", {"low": low_l_corr_t, "high": high_l_corr_t}),

@@ -61,6 +61,17 @@ class TestProblem(unittest.TestCase):
             ),
             prior_truncnormal(prms, "logpdf"),
         )
+        # check the evaluation of the mean
+        mean = prior_truncnormal(prms, method="mean", use_ref_prm=False)
+        self.assertAlmostEqual(
+            mean,
+            stats.truncnorm.mean(
+                prms["a_sigma"],
+                prms["b_sigma"],
+                loc=prms["loc_sigma"],
+                scale=prms["scale_sigma"],
+            ),
+        )
         # check the sampling-method (samples are checked one by one)
         prms = {"loc_sigma": 0.0, "scale_sigma": 1.0, "a_sigma": 0.0, "b_sigma": 5.0}
         prior_samples = prior_truncnormal.generate_samples(prms, 10, seed=1)

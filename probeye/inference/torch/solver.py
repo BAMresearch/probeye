@@ -405,6 +405,14 @@ class PyroSolver:
             A vector of pyro.samples (i.e. tensors) for which the log-likelihood
             function should be evaluated.
         """
+
+        # check whether the values of the latent parameters are within their domains;
+        # they can end up outside their domains for example during sampling, when a
+        # parameter vector is proposed, that contains a value that is not within the
+        # specified bounds of a parameter
+        if not self.problem.check_parameter_domains(theta):
+            return -np.inf
+
         # compute the contribution to the log-likelihood function for each likelihood
         # model and sum it all up
         for likelihood_model in self.likelihood_models:

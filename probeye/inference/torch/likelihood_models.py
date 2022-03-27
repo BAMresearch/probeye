@@ -8,7 +8,6 @@ import pyro
 import pyro.distributions as dist
 
 # local imports
-from probeye.subroutines import len_or_one
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # imports only needed for type hints
@@ -115,35 +114,6 @@ class AdditiveUncorrelatedModelError(GaussianLikelihoodModel):
                     (residuals_dict[sensor_name], residuals_vector)
                 )
         return residuals_dict
-
-    def residuals_vector(self, model_response_dict: dict) -> th.Tensor:
-        """
-        Computes the model residuals for all of the likelihood model's sensors over all
-        of the likelihood model's experiments and returns them in a single vector.
-
-        Parameters
-        ----------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
-
-        Returns
-        -------
-        residuals_vector
-            A one-dimensional vector containing the model residuals.
-        """
-        residuals_dict = self.residuals(model_response_dict)
-        n = 0
-        for residuals_sub_vector in residuals_dict.values():
-            n += len_or_one(residuals_sub_vector)
-        residuals_vector = th.zeros(n)
-        idx = 0
-        for residuals_sub_vector in residuals_dict.values():
-            m = len_or_one(residuals_sub_vector)
-            residuals_vector[idx : idx + m] = residuals_sub_vector
-            idx += m
-        return residuals_vector
 
     def sample_cond_likelihood(self, model_response: dict, prms: dict):
         """

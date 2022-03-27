@@ -232,6 +232,7 @@ class InferenceProblem:
         prm_name: str,
         prm_type: str,
         dim: Optional[int] = 1,
+        domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",
@@ -245,7 +246,14 @@ class InferenceProblem:
         # add the parameter to the central parameter dictionary; checks and translations
         # are conducted by the Parameters.add_parameter method
         self._parameters.add_parameter(
-            prm_name, prm_type, dim=dim, const=const, prior=prior, info=info, tex=tex
+            prm_name,
+            prm_type,
+            dim=dim,
+            domain=domain,
+            const=const,
+            prior=prior,
+            info=info,
+            tex=tex,
         )
 
     def remove_parameter(self, prm_name: str):
@@ -266,6 +274,7 @@ class InferenceProblem:
         prm_name: str,
         const: Union[int, float, None] = None,
         prior: Union[tuple, None] = None,
+        domain: str = "(-oo, +oo)",
     ):
         """
         Performs the necessary tasks to change a parameter's role in the problem
@@ -284,6 +293,9 @@ class InferenceProblem:
             If the new role is 'latent', this argument has to be given as a 2-tuple.
             Check out the explanations in self.add_parameter for more information on
             this argument.
+        domain
+            The parameter's domain (i.e., values it may assume). Note that this argument
+            is only considered for latent parameter, but not for a constant.
         """
         # first, make sure that the given parameter exists
         self._parameters.confirm_that_parameter_exists(prm_name)
@@ -327,6 +339,7 @@ class InferenceProblem:
             prm_name,
             prm.type,
             dim=dim,
+            domain=domain,
             const=const,
             prior=prior,
             info=prm.info,
@@ -465,6 +478,31 @@ class InferenceProblem:
                 else:
                     prms[local_name] = theta[idx:idx_end]
         return prms
+
+    def check_parameter_domains(self, theta: Union[np.ndarray, th.Tensor]) -> bool:
+        """
+        Checks whether the given values of the latent parameters are within their
+        specified domains.
+
+        Parameters
+        ----------
+        theta
+            A numeric vector or tensor, which contains the current values of all latent
+            parameters.
+
+        Returns
+        -------
+            True if all values given by theta are within their specified domains.
+            Otherwise, False is returned.
+        """
+        for theta_name in self.get_theta_names():
+            theta_dim = self._parameters[theta_name].dim
+            theta_idx = self._parameters[theta_name].index
+            for i in range(theta_dim):
+                domain = self._parameters[theta_name].domain[i]
+                if not domain.check_bounds(float(theta[theta_idx + i])):
+                    return False
+        return True
 
     def get_theta_names(self, tex: bool = False, components: bool = False) -> list:
         """
@@ -737,7 +775,7 @@ class InferenceProblem:
                     raise ValueError(
                         f"The sensor values of an experiment must be given as 1D "
                         f"arrays. However, the sensor_values of '{sensor_name}' in "
-                        f"experiment '{exp_name}' are given as an {values.ndim}D array."
+                        f"experiment '{exp_name}' are given as a {values.ndim}D array."
                     )
                 if values.size == 1:
                     raise ValueError(
@@ -748,12 +786,6 @@ class InferenceProblem:
                 sensor_values_numpy[sensor_name] = values
             elif isinstance(values, (float, int)):
                 sensor_values_numpy[sensor_name] = values
-            else:
-                raise ValueError(
-                    f"Encountered invalid type '{type(values)}' in the sensor values "
-                    f"of sensor '{sensor_name}' in experiment '{exp_name}'.\n Sensor"
-                    f"data must be given as int, float, np.ndarray, list or tuple."
-                )
 
         # throw warning when the experiment name was defined before
         if exp_name in self._experiments.keys():

@@ -30,6 +30,7 @@ class TestProblem(unittest.TestCase):
 
         # check the __call__-method
         forward_model = ForwardModel(["a", "b"], [Sensor("x")], [Sensor("y")])
+        self.assertEqual(forward_model.sensor_names, ["x", "y"])
         prms = {"a": 1, "b": 2}
         computed_result = forward_model({**{"x": 1.0}, **prms})
         expected_result = {"y": 3.0}
@@ -124,6 +125,55 @@ class TestProblem(unittest.TestCase):
             np.allclose(computed_result, expected_result, atol=1e-3)
             and computed_result.shape == expected_result.shape
         )
+
+    def test_invalid_forward_model_definitions(self):
+        class ParametersNotSet(ForwardModelBase):
+            def definition(self):
+                # self.parameters = [{"a": "m"}, "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
+            def response(self, inp: dict) -> dict:
+                # this method *must* be provided by the user
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
+
+        with self.assertRaises(RuntimeError):
+            ParametersNotSet()
+
+        class InputSensorsNotSet(ForwardModelBase):
+            def definition(self):
+                self.parameters = [{"a": "m"}, "b"]
+                # self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
+            def response(self, inp: dict) -> dict:
+                # this method *must* be provided by the user
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
+
+        with self.assertRaises(RuntimeError):
+            InputSensorsNotSet()
+
+        class OutputSensorsNotSet(ForwardModelBase):
+            def definition(self):
+                self.parameters = [{"a": "m"}, "b"]
+                self.input_sensors = Sensor("x")
+                # self.output_sensors = Sensor("y")
+
+            def response(self, inp: dict) -> dict:
+                # this method *must* be provided by the user
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
+
+        with self.assertRaises(RuntimeError):
+            OutputSensorsNotSet()
 
 
 if __name__ == "__main__":

@@ -12,18 +12,18 @@ from probeye.definition.sensor import Sensor
 class TestProblem(unittest.TestCase):
     def test_init(self):
         # initialize an instance and check if everything is there
-        noise_template = GaussianLikelihoodModel(["bias", "sigma"], Sensor("y"))
-        self.assertEqual(noise_template.prms_def, {"bias": "bias", "sigma": "sigma"})
-        self.assertEqual(noise_template.prms_dim, 2)
-        noise_template = GaussianLikelihoodModel(["b", {"sd": "sigma"}], Sensor("y"))
-        self.assertEqual(noise_template.prms_def, {"b": "b", "sd": "sigma"})
-        self.assertEqual(noise_template.prms_dim, 2)
-        self.assertEqual(noise_template.sensor_names, ["y"])
-        self.assertEqual(noise_template.experiment_names, [])
+        like = GaussianLikelihoodModel(["bias", "sigma"], Sensor("y"))
+        self.assertEqual(like.prms_def, {"bias": "bias", "sigma": "sigma"})
+        self.assertEqual(like.prms_dim, 2)
+        like = GaussianLikelihoodModel(["b", {"sd": "sigma"}], Sensor("y"))
+        self.assertEqual(like.prms_def, {"b": "b", "sd": "sigma"})
+        self.assertEqual(like.prms_dim, 2)
+        self.assertEqual(like.sensor_names, ["y"])
+        self.assertEqual(like.experiment_names, [])
 
     def test_add_experiment_names(self):
         # prepare the setup for the tests
-        noise_template = GaussianLikelihoodModel(["bias", "sigma"], Sensor("y"))
+        like = GaussianLikelihoodModel(["bias", "sigma"], Sensor("y"))
         problem_experiments = {
             "Exp1": {"sensor_values": {"x": 1, "y": 2}, "forward_model": "TestModel"},
             "Exp2": {"sensor_values": {"x": 3, "y": 4}, "forward_model": "TestModel"},
@@ -34,22 +34,72 @@ class TestProblem(unittest.TestCase):
         }
         # the following is usually done automatically when adding the noise model to the
         # inference problem
-        noise_template.problem_experiments = problem_experiments
+        like.problem_experiments = problem_experiments
         # perform some simple tests for valid usage
-        noise_template.add_experiments("Exp1")
-        self.assertEqual(noise_template.experiment_names, ["Exp1"])
-        noise_template.add_experiments(["Exp2", "Exp3"])
-        self.assertEqual(noise_template.experiment_names, ["Exp1", "Exp2", "Exp3"])
+        like.add_experiments("Exp1")
+        self.assertEqual(like.experiment_names, ["Exp1"])
+        like.add_experiments(["Exp2", "Exp3"])
+        self.assertEqual(like.experiment_names, ["Exp1", "Exp2", "Exp3"])
         # now check some invalid input arguments
         with self.assertRaises(RuntimeError):
             # add an experiment, that does not have the noise model's sensors
-            noise_template.add_experiments("Exp4")
+            like.add_experiments("Exp4")
         with self.assertRaises(RuntimeError):
             # add experiments that refer to more than one forward model
-            noise_template.add_experiments(["Exp5", "Exp6"])
+            like.add_experiments(["Exp5", "Exp6"])
         with self.assertRaises(RuntimeError):
             # adding the same experiment again
-            noise_template.add_experiments("Exp1")
+            like.add_experiments("Exp1")
+        # when self.problem_experiments is not set yet, an error will be thrown when
+        # trying to add experiments
+        like.problem_experiments = None
+        with self.assertRaises(ValueError):
+            like.add_experiments("Exp1")
+
+    def test_check_experiment_consistency(self):
+        # check for the error when no experiments have been defined
+        like = GaussianLikelihoodModel(["bias", "sigma"], Sensor("y"))
+        with self.assertRaises(RuntimeError):
+            like.check_experiment_consistency()
+
+        # check for the error when the likelihood's model have different fwd models
+        problem_experiments = {
+            "Exp1": {"sensor_values": {"x": 1, "y": 2}, "forward_model": "TestModel1"},
+            "Exp2": {"sensor_values": {"x": 3, "y": 4}, "forward_model": "TestModel2"},
+        }
+        like.problem_experiments = problem_experiments
+        like.add_experiments("Exp1")
+        like.add_experiments("Exp2")
+        with self.assertRaises(RuntimeError):
+            like.check_experiment_consistency()
+
+    def test_process_correlation_definition(self):
+        # check for the error when using an invalid correlation model
+        with self.assertRaises(ValueError):
+            _ = GaussianLikelihoodModel(
+                ["bias", "sigma"], Sensor("y"), correlation_model="INVALID"
+            )
+
+        # check for the error when using both additive and multiplicative model error
+        with self.assertRaises(RuntimeError):
+            _ = GaussianLikelihoodModel(
+                ["bias", "sigma"],
+                Sensor("y"),
+                additive_model_error=True,
+                multiplicative_model_error=True,
+            )
+
+        # check for the error when using an invalid correlation variable
+        with self.assertRaises(RuntimeError):
+            _ = GaussianLikelihoodModel(
+                ["bias", "sigma"], Sensor("y"), correlation_variables="u"
+            )
+
+        # check for the error when using an invalid string for the corr. variables
+        with self.assertRaises(RuntimeError):
+            _ = GaussianLikelihoodModel(
+                ["bias", "sigma"], Sensor("y"), correlation_variables="xx"
+            )
 
 
 if __name__ == "__main__":

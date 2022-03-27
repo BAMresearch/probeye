@@ -1,9 +1,12 @@
 # standard library imports
 import unittest
 
+# third party imports
+
 # local imports
 from probeye.definition.parameter import Parameters
 from probeye.definition.parameter import ParameterProperties
+from probeye.definition.parameter import ScalarInterval
 from probeye.definition.prior import PriorBase
 
 
@@ -14,6 +17,7 @@ class TestProblem(unittest.TestCase):
         parameters["a"] = ParameterProperties(
             {
                 "index": None,
+                "domain": None,
                 "type": "model",
                 "prior": None,
                 "value": 1.0,
@@ -24,6 +28,7 @@ class TestProblem(unittest.TestCase):
         parameters["b"] = ParameterProperties(
             {
                 "index": None,
+                "domain": None,
                 "type": "model",
                 "prior": None,
                 "value": 2.0,
@@ -36,6 +41,7 @@ class TestProblem(unittest.TestCase):
             {
                 "index": 2,
                 "dim": 1,
+                "domain": "(-oo, +oo)",
                 "type": "model",
                 "prior": c_prior,
                 "value": None,
@@ -49,6 +55,7 @@ class TestProblem(unittest.TestCase):
             parameters[True] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": 3.0,
@@ -70,6 +77,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = {
                 "index": 3,
                 "dim": 1,
+                "domain": "(-oo, +oo)",
                 "type": "model",
                 "role": "latent",
                 "prior": d_prior,
@@ -83,6 +91,8 @@ class TestProblem(unittest.TestCase):
             parameters["a"].index = -1
         with self.assertRaises(AttributeError):
             parameters["a"].dim = -1
+        with self.assertRaises(AttributeError):
+            parameters["a"].domain = -1
         with self.assertRaises(AttributeError):
             parameters["a"].type = -1
         with self.assertRaises(AttributeError):
@@ -99,6 +109,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": True,
                     "dim": 1,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -112,6 +123,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": -1,
                     "dim": 1,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": None,
                     "value": 1.0,
@@ -126,6 +138,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": True,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -133,13 +146,29 @@ class TestProblem(unittest.TestCase):
                     "tex": r"$d$",
                 }
             )
-        with self.assertRaises(ValueError):
+        with self.assertRaises(RuntimeError):
+            # dim is an integer smaller than 1
+            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            parameters["d"] = ParameterProperties(
+                {
+                    "index": 3,
+                    "dim": 0,
+                    "domain": "(-oo, +oo)",
+                    "type": "model",
+                    "prior": d_prior,
+                    "value": None,
+                    "info": "...",
+                    "tex": r"$d$",
+                }
+            )
+        with self.assertRaises(RuntimeError):
             # dim has invalid value
             d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
                     "dim": 0,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -152,6 +181,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "invalid value",
                     "prior": None,
                     "value": 1.0,
@@ -164,6 +194,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": True,
                     "value": 1.0,
@@ -176,6 +207,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": True,
@@ -190,6 +222,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": None,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": None,
@@ -203,6 +236,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 1,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -217,6 +251,7 @@ class TestProblem(unittest.TestCase):
                 {
                     "index": 3,
                     "dim": 1,
+                    "domain": "(-oo, +oo)",
                     "type": "model",
                     "prior": d_prior,
                     "value": 1.0,
@@ -230,6 +265,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": d_prior,
                     "value": 1.0,
@@ -242,6 +278,7 @@ class TestProblem(unittest.TestCase):
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,
+                    "domain": None,
                     "type": "model",
                     "prior": None,
                     "value": None,
@@ -249,6 +286,44 @@ class TestProblem(unittest.TestCase):
                     "tex": r"$d$",
                 }
             )
+
+    def test_ScalarInterval(self):
+
+        # check the closed interval
+        interval_inc_inc = ScalarInterval(0.0, 1.0, True, True)
+        self.assertTrue(not interval_inc_inc.check_bounds(-1.0))
+        self.assertTrue(interval_inc_inc.check_bounds(0))
+        self.assertTrue(interval_inc_inc.check_bounds(0.5))
+        self.assertTrue(interval_inc_inc.check_bounds(1))
+        self.assertTrue(not interval_inc_inc.check_bounds(2.0))
+        self.assertEqual(interval_inc_inc.__str__(), "[0.0, 1.0]")
+
+        # check the left-open-right-closed interval
+        interval_ninc_inc = ScalarInterval(0.0, 1.0, False, True)
+        self.assertTrue(not interval_ninc_inc.check_bounds(-1.0))
+        self.assertTrue(not interval_ninc_inc.check_bounds(0))
+        self.assertTrue(interval_ninc_inc.check_bounds(0.5))
+        self.assertTrue(interval_ninc_inc.check_bounds(1))
+        self.assertTrue(not interval_ninc_inc.check_bounds(2.0))
+        self.assertEqual(interval_ninc_inc.__str__(), "(0.0, 1.0]")
+
+        # check the left-closed-right-open interval
+        interval_inc_ninc = ScalarInterval(0.0, 1.0, True, False)
+        self.assertTrue(not interval_inc_ninc.check_bounds(-1.0))
+        self.assertTrue(interval_inc_ninc.check_bounds(0))
+        self.assertTrue(interval_inc_ninc.check_bounds(0.5))
+        self.assertTrue(not interval_inc_ninc.check_bounds(1))
+        self.assertTrue(not interval_inc_ninc.check_bounds(2.0))
+        self.assertEqual(interval_inc_ninc.__str__(), "[0.0, 1.0)")
+
+        # check the open interval
+        interval_ninc_ninc = ScalarInterval(0.0, 1.0, False, False)
+        self.assertTrue(not interval_ninc_ninc.check_bounds(-1.0))
+        self.assertTrue(not interval_ninc_ninc.check_bounds(0))
+        self.assertTrue(interval_ninc_ninc.check_bounds(0.5))
+        self.assertTrue(not interval_ninc_ninc.check_bounds(1))
+        self.assertTrue(not interval_ninc_ninc.check_bounds(2.0))
+        self.assertEqual(interval_ninc_ninc.__str__(), "(0.0, 1.0)")
 
 
 if __name__ == "__main__":

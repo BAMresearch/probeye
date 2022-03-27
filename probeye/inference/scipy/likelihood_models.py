@@ -9,7 +9,6 @@ from tripy.loglikelihood import kron_loglike_2D_tridiag
 from tripy.loglikelihood import kron_loglike_2D
 from tripy.loglikelihood import chol_loglike_2D
 from tripy.loglikelihood import _loglike_multivariate_normal
-from tripy.loglikelihood import log_likelihood_linear_normal
 from tripy.utils import inv_cov_vec_1D
 from tripy.utils import correlation_matrix
 from tripy.utils import correlation_function
@@ -419,7 +418,7 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 if "t" in is_vector_dict[sensor_name]:
                     if is_vector_dict[sensor_name]["t"]:
                         raise RuntimeError(
-                            f"Found both a time and a space correlation variable given"
+                            f"Found both a time and a space correlation variable given "
                             f"as a vector in the experiments of likelihood model"
                             f"'{self.name}'."
                         )
@@ -447,18 +446,6 @@ class CorrelatedModelError(ScipyLikelihoodBase):
             raise RuntimeError(
                 f"Found mixed scalar/vector definitions for the spatial correlation "
                 f"variables in likelihood model '{self.name}'."
-            )
-
-        # check that exactly one of space/time is given as vector
-        if space_given_as_vector and time_given_as_vector:
-            raise RuntimeError(
-                f"Both the space and the time correlation variable seem to be given in "
-                f"a vector-format! However, only one must be given as a vector."
-            )
-        if (not space_given_as_vector) and (not time_given_as_vector):
-            raise RuntimeError(
-                f"Neither the space nor the time correlation variable seems to be "
-                f"given in a vector-format! However, one must be given as a vector."
             )
 
         return space_given_as_vector, time_given_as_vector
@@ -525,14 +512,6 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 values = self.problem_experiments[exp_name]["sensor_values"][
                     sensor_name
                 ]
-                if len_or_one(values) == 1:
-                    raise RuntimeError(
-                        f"Unionization is intended for vector-valued correlation "
-                        f"variables. However, the given correlation variable "
-                        f"'{correlation_variable}' is scalar-valued for the likelihood "
-                        f"model's sensor '{lm_sensor_name}' in experiment "
-                        f"'{first_exp_name}'"
-                    )
                 union_set_i = set(values)
                 if union_set != union_set_i:
                     shared_by_all = False
@@ -598,7 +577,7 @@ class CorrelatedModelError(ScipyLikelihoodBase):
                 s_values_1 = first_experiment["sensor_values"]
                 corr_info_1 = first_experiment["correlation_info"]
                 local_name_1 = corr_info_1[lm_sensor_name][spatial_variable]
-                values_1 = len_or_one(s_values_1[local_name_1])
+                values_1 = s_values_1[local_name_1]
                 for exp_name in self.experiment_names[1:]:
                     s_values = self.problem_experiments[exp_name]["sensor_values"]
                     corr_info = self.problem_experiments[exp_name]["correlation_info"]
@@ -619,18 +598,29 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         corr_info_1 = self.problem_experiments[first_exp_name]["correlation_info"]
 
         # assemble the spatial coordinate array
-        arrays = []
-        for lm_sensor_name in self.sensor_names:
-            local_name_1 = corr_info_1[lm_sensor_name][spatial_variables[0]]
+        if self.space_given_as_vector:
+            first_sensor = self.sensor_names[0]
+            local_name_1 = corr_info_1[first_sensor][spatial_variables[0]]
             values_1 = sensor_values[local_name_1]
             coords = np.zeros((len_or_one(values_1), len(spatial_variables)))
             coords[:, 0] = values_1
             for i, spatial_variable in enumerate(spatial_variables[1:], start=1):
-                local_name = corr_info_1[lm_sensor_name][spatial_variable]
+                local_name = corr_info_1[first_sensor][spatial_variable]
                 values_i = sensor_values[local_name]
                 coords[:, i] = values_i
-            arrays.append(coords)
-        coords = np.concatenate(arrays, axis=0)
+        else:
+            arrays = []
+            for lm_sensor_name in self.sensor_names:
+                local_name_1 = corr_info_1[lm_sensor_name][spatial_variables[0]]
+                values_1 = sensor_values[local_name_1]
+                coords = np.zeros((len_or_one(values_1), len(spatial_variables)))
+                coords[:, 0] = values_1
+                for i, spatial_variable in enumerate(spatial_variables[1:], start=1):
+                    local_name = corr_info_1[lm_sensor_name][spatial_variable]
+                    values_i = sensor_values[local_name]
+                    coords[:, i] = values_i
+                arrays.append(coords)
+            coords = np.concatenate(arrays, axis=0)
         return coords
 
 
@@ -891,7 +881,7 @@ class SpaceAndTimeCorrelatedModelError(CorrelatedModelError):
                 if len_or_one(value) > 1:
                     raise ValueError(
                         f"The correlation variable '{sensor_name}' in experiment "
-                        f"'{exp_name}' is not scalar! It contains {len(value)}"
+                        f"'{exp_name}' is not scalar! It contains {len(value)} "
                         f"elements."
                     )
                 scalars.add(value)
@@ -1384,21 +1374,19 @@ class AdditiveUncorrelatedModelError(UncorrelatedModelError):
         # compute the residuals over all experiments
         res_vector = self.stacked_residuals_vector(model_response_dict)
         # process the standard deviation(s)
-        std = prms["std_model"]
-        if std <= 0:
+        if prms["std_model"] <= 0:
             return worst_value
         if self.additive_measurement_error:
             if prms["std_measurement"] <= 0:
                 return worst_value
-            # this is the formula for the std. dev. of the sum of two normal dist.
-            std = np.sqrt(prms["std_model"] ** 2 + prms["std_measurement"] ** 2)
-        # the precision 'prec' is defined as the inverse of the variance, hence
-        # prec = 1 / sigma**2 where sigma denotes the standard deviation
-        prec = 1.0 / std ** 2.0
+            # this is the formula for the variance of the sum of two normal dist.
+            var = prms["std_model"] ** 2 + prms["std_measurement"] ** 2
+        else:
+            var = prms["std_model"] ** 2
         # evaluate the Gaussian log-PDF with zero mean and a variance of 1/prec for
         # each error term and sum them up
-        ll = -len(res_vector) / 2 * np.log(2 * np.pi / prec)
-        ll -= 0.5 * prec * np.sum(np.square(res_vector))
+        ll = -len(res_vector) / 2 * np.log(2 * np.pi * var)
+        ll -= 0.5 / var * np.sum(np.square(res_vector))
         return ll
 
 
@@ -1663,7 +1651,7 @@ class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
         """
 
         # compute the model residuals via a method from the parent class
-        y_model = self.residual_array(model_response_dict)
+        res_array = self.residual_array(model_response_dict)
 
         # parameters for the model prediction error
         std_model = prms["std_model"]
@@ -1682,7 +1670,7 @@ class AdditiveSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelError1D):
 
         # efficient log-likelihood evaluation via tripy
         ll = kron_loglike_2D_tridiag(
-            y_model,
+            res_array,
             self.space_vector,
             self.time_vector,
             l_corr_x,
@@ -1765,7 +1753,7 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
         """
 
         # compute the model residuals via a method from the parent class
-        y_model = self.residual_array(model_response_dict)
+        res_array = self.residual_array(model_response_dict)
 
         # parameters for the model prediction error
         std_model = prms["std_model"]
@@ -1791,7 +1779,7 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
         d0_t, d1_t = inv_cov_vec_1D(self.time_vector, l_corr_t, 1.0)
 
         # efficient log-likelihood evaluation via tripy
-        ll = kron_loglike_2D(y_model, spatial_cov_matrix, [d0_t, d1_t], std_meas)
+        ll = kron_loglike_2D(res_array, spatial_cov_matrix, [d0_t, d1_t], std_meas)
 
         return ll
 
@@ -2187,8 +2175,10 @@ class MultiplicativeSpaceTimeCorrelatedModelError1D(SpaceTimeCorrelatedModelErro
             if std_meas <= 0:
                 return worst_value
         else:
-            # consistent with tripy interface
-            std_meas = None
+            # in case of zero-residuals, a value of std_meas = 0 leads to a covariance
+            # matrix that is not invertible; however, there might be a better option
+            # how to handle this case compared to this solution
+            std_meas = 1e-9
 
         # get the main diagonal and off-diagonal of the space covariance matrix inverse
         d0_x, d1_x = inv_cov_vec_1D(self.space_vector, l_corr_x, std_model)
@@ -2289,8 +2279,10 @@ class MultiplicativeSpaceTimeCorrelatedModelError2D3D(
             if std_meas <= 0:
                 return worst_value
         else:
-            # consistent with tripy interface
-            std_meas = None
+            # in case of zero-residuals, a value of std_meas = 0 leads to a covariance
+            # matrix that is not invertible; however, there might be a better option
+            # how to handle this case compared to this solution
+            std_meas = 1e-9
 
         # assemble the dense spatial covariance matrix
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_x)

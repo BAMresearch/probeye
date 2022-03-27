@@ -134,3 +134,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Ontology stuff
+catalog-*.xml
+*.ttl
+*.sqlite3
+*.sqlite3-journal

@@ -118,6 +118,8 @@ def run_inference_engines(
         )
         if plot:
             plt.show()  # shows all plots at once due to 'show=False' above
+        else:
+            plt.close("all")
 
     if run_scipy:
         scipy_solver = ScipySolver(problem, show_progress=show_progress)

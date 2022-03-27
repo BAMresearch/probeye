@@ -226,48 +226,6 @@ def simplified_dict_string(dict_: dict) -> str:
     return simplified_dict_str
 
 
-def unvectorize_dict_values(dict_: dict) -> list:
-    """
-    Takes a dict with items like <name>: <vector> and converts it into a list, where
-    each element is a 'fraction' or the whole dictionary. The following example will
-    illustrate it: {'x': [1, 2, 3], 'y': [4, 5, 6]} will be converted into
-    [{'x': 1, 'y': 4}, {'x': 2, 'y': 5}, {'x': 3, 'y': 6}].
-
-    Parameters
-    ----------
-    dict_
-        The dictionary that should be converted. All values must be 1D arrays of the
-        same length.
-
-    Returns
-    -------
-    result_list
-        The 'un-vectorized' dictionary. Check out the example above.
-    """
-
-    # all values must be iterable
-    dict_copy = copy(dict_)
-    for key, value in dict_.items():
-        if not hasattr(value, "__len__"):
-            dict_copy[key] = [value]
-
-    # check if all lengths are the same
-    if len({len(vector) for vector in dict_copy.values()}) != 1:
-        raise RuntimeError("The values of the dictionary have different lengths!")
-
-    # create the result list
-    vector_length = len([*dict_copy.values()][0])
-    keys = [*dict_.keys()]
-    result_list = []
-    for i in range(vector_length):
-        atom_dict = dict()
-        for key in keys:
-            atom_dict[key] = dict_copy[key][i]
-        result_list.append(atom_dict)
-
-    return result_list
-
-
 def sub_when_empty(string: str, empty_str: str = "-") -> str:
     """
     Just returns a given string if it is not empty. If it is empty though, a default
@@ -1032,6 +990,77 @@ def translate_simple_correlation(corr_string: str) -> dict:
             )
         corr_dict[sensors[0]][character] = character
     return corr_dict
+
+
+def get_global_name(local_name_given: str, prms_def: dict) -> str:
+    """
+    Gets the global name of a parameter based on a given local name from a 'prms_def'
+    dictionary, which holds <global_name>: <local name> items.
+
+    Parameters
+    ----------
+    local_name_given
+        The given local name of some parameter.
+    prms_def
+        A dict holding global names as keys and local names (all unique) as values.
+
+    Returns
+    -------
+    global_name
+        The global name to the given local name taken from prms_def.
+    """
+    for global_name, local_name in prms_def.items():
+        if local_name == local_name_given:
+            return global_name
+    raise RuntimeError(f"Given local name '{local_name_given}' not found!")
+
+
+def translate_number_string(s: str) -> float:
+    """
+    Translates a given string that describes a number or infinity into a float.
+
+    Parameters
+    ----------
+    s
+        A string that describes a number or +/- infinity.
+
+    Returns
+    -------
+        Either the number described by the string, or +/- np.infty in the case of an
+        infinity value.
+    """
+    if s in ["oo", "+oo"]:
+        return np.infty
+    elif s == "-oo":
+        return -np.infty
+    else:
+        return float(s)
+
+
+def count_intervals(domain_string: str) -> int:
+    """
+    Counts the number of 1D intervals given by a domain string, i.e., something like
+    '(0, 1) [0, 1] (0, 1] (0, 1)'.
+
+    Parameters
+    ----------
+    domain_string
+        A string describing one or more intervals. Valid values are for example '[0, 1]'
+        or '(-1,1)(-1,5]'.
+
+    Returns
+    -------
+        The number of intervals given via the domain string.
+    """
+    n_lower_brackets = domain_string.count("[")
+    n_lower_parenthesis = domain_string.count("(")
+    n_lower = n_lower_brackets + n_lower_parenthesis
+    n_upper_brackets = domain_string.count("]")
+    n_upper_parenthesis = domain_string.count(")")
+    n_upper = n_upper_brackets + n_upper_parenthesis
+    if n_lower != n_upper:
+        raise RuntimeError(f"The given domain string '{domain_string}' is invalid!")
+    return n_lower
 
 
 class HiddenPrints:

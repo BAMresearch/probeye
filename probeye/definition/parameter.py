@@ -1,5 +1,6 @@
 # standard library
 from typing import Union, Optional, List
+import re
 
 # third party imports
 from tabulate import tabulate
@@ -10,6 +11,8 @@ import numpy as np
 from probeye.subroutines import titled_table
 from probeye.subroutines import simplified_list_string
 from probeye.subroutines import len_or_one
+from probeye.subroutines import translate_number_string
+from probeye.subroutines import count_intervals
 from probeye.definition.prior import PriorBase
 
 
@@ -25,6 +28,7 @@ class Parameters(dict):
         prm_name: str,
         prm_type: str,
         dim: Optional[int] = 1,
+        domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
         prior: Union[tuple, list, None] = None,
         info: str = "No explanation provided",
@@ -45,6 +49,9 @@ class Parameters(dict):
             'likelihood' (for a likelihood parameter).
         dim
             The parameter's dimension.
+        domain
+            The parameter's domain (i.e., values it may assume). Note that this argument
+            is only considered for latent parameter, but not for a constant.
         const
             If the added parameter is a 'const'-parameter, the corresponding value has
             to be specified by this argument.
@@ -78,6 +85,10 @@ class Parameters(dict):
             # which is given to self.loglike and self.logprior
             prm_index = self.n_latent_prms_dim  # type: Union[int, None]
             prm_dim = dim
+            prm_domain = domain
+            assert dim is not None  # this check has been added for the mypy-check
+            if count_intervals(domain) == 1 and dim > 1:
+                prm_domain *= dim
             # the prm_value is reserved for 'const'-parameter; hence, it is set to None
             # in this case, where we are adding a 'latent'-param.
             prm_value = None
@@ -150,6 +161,7 @@ class Parameters(dict):
             # prm_index and prm_prior values are not used here
             prm_index = None
             prm_dim = len_or_one(const)
+            prm_domain = None  # type: ignore
             prm_prior = None
             prm_value = const
             logger.debug(
@@ -162,6 +174,7 @@ class Parameters(dict):
             {
                 "index": prm_index,
                 "dim": prm_dim,
+                "domain": prm_domain,
                 "type": prm_type,
                 "prior": prm_prior,
                 "value": prm_value,
@@ -473,6 +486,7 @@ class ParameterProperties:
         # write attributes
         self._index = prm_dict["index"]
         self._type = prm_dict["type"]
+        self._domain = prm_dict["domain"]
         self._prior = prm_dict["prior"]
         self._value = prm_dict["value"]
         self.info = prm_dict["info"]
@@ -487,6 +501,15 @@ class ParameterProperties:
         else:
             # latent parameter
             self._dim = prm_dict["dim"]
+            if type(prm_dict["domain"]) == str:
+                self._domain = self.translate_domain_string(prm_dict["domain"])
+
+            # check if each component has its domain
+            if self._dim != len(self._domain):
+                raise RuntimeError(
+                    f"The dimension of the parameter ({self._dim}) is not identical "
+                    f"with the number of provided domains ({len(self._domain)})!"
+                )
 
         # whitespace in the tex strings is a problem for some plotting routines, so they
         # are replaced here by a math-command for whitespace that does not contain
@@ -497,11 +520,52 @@ class ParameterProperties:
         # check the given values
         self.check_consistency()
 
+    @staticmethod
+    def translate_domain_string(domain_string: str) -> list:
+        """
+        Translate a domain string like "(0, 1]" into a list of ScalarInterval objects.
+
+        Parameters
+        ----------
+        domain_string
+            A string like "(0, 1]" or "[0, 1] [0, 1]" defining the domain of a (possibly
+            vector-valued) parameter.
+
+        Returns
+        -------
+        intervals
+            List of ScalarInterval objects derived form 'domain_string'.
+        """
+
+        # perform simple check on the given domain string
+        _ = count_intervals(domain_string)
+
+        # extract the intervals
+        p_number = r"[-+]?[0-9]*\.?[0-9]*"
+        p_infinity = r"[+-]?oo"
+        p_value = rf"{p_number}|{p_infinity}"
+        pattern = re.compile(rf"([\[(])({p_value})\W*?({p_value})([])])")
+        interval_groups = pattern.findall(domain_string)
+        intervals = []
+        for interval_group in interval_groups:
+            lower_bound_included = interval_group[0] == "["
+            lower_bound = translate_number_string(interval_group[1])
+            upper_bound = translate_number_string(interval_group[2])
+            upper_bound_included = interval_group[3] == "]"
+            intervals.append(
+                ScalarInterval(
+                    lower_bound, upper_bound, lower_bound_included, upper_bound_included
+                )
+            )
+
+        return intervals
+
     # noinspection PyShadowingBuiltins
     def changed_copy(
         self,
         index: Optional[int] = None,
         dim: Optional[int] = None,
+        domain: Union[tuple, List[tuple]] = None,
         type: Optional[str] = None,
         prior: Union[list, tuple, None] = None,
         value: Union[int, float, np.ndarray, None] = None,
@@ -521,6 +585,7 @@ class ParameterProperties:
             {
                 "index": index if index is not None else self._index,
                 "dim": dim or self._dim,
+                "domain": domain or self._domain,
                 "type": type or self._type,
                 "prior": prior or self._prior,
                 "value": value or self._value,
@@ -556,12 +621,6 @@ class ParameterProperties:
             raise TypeError(
                 f"Found invalid ParameterProperties._dim attribute! It must be of type "
                 f"int or None, but found {type(self._dim)}."
-            )
-
-        if (self._dim is not None) and (self._dim < 1):
-            raise ValueError(
-                f"Found value < 1 for ParameterProperties._dim! This attribute must be "
-                f"an integer >= 1, but found a value of {self._dim}."
             )
 
         if self._type not in ["model", "prior", "likelihood"]:
@@ -604,11 +663,6 @@ class ParameterProperties:
                     f"When ParameterProperties._index is not None "
                     f"ParameterProperties._prior cannot be None!"
                 )
-            if self._dim is None:
-                raise RuntimeError(
-                    f"When ParameterProperties._index is not None "
-                    f"ParameterProperties._dim cannot be None!"
-                )
 
         else:
             # in this case, we have a constant parameter
@@ -646,6 +700,16 @@ class ParameterProperties:
         raise AttributeError(
             "Changing a parameter's dimension (dim) directly is prohibited!"
         )
+
+    @property
+    def domain(self) -> Union[tuple, list]:
+        """Access self._domain from outside via self.domain."""
+        return self._domain
+
+    @domain.setter
+    def domain(self, value: Union[tuple, list]):
+        """Raise a specific error when trying to directly set self.domain."""
+        raise AttributeError("Changing a parameter's domain directly is prohibited!")
 
     @property
     def index_end(self) -> int:
@@ -708,3 +772,128 @@ class ParameterProperties:
     def value(self, value: Union[int, float]):
         """Raise a specific error when trying to directly set self.value."""
         raise AttributeError("Changing a parameter's value directly is prohibited!")
+
+
+class ScalarInterval:
+    """
+    Describes a one-dimensional interval. Used for the domain-definition of parameters.
+
+    Parameters
+    ----------
+    lower_bound
+        The lower bound of the interval (if the interval is [a, b], this here is a).
+    upper_bound
+        The upper bound of the interval (if the interval is [a, b], this here is b).
+    lower_bound_included
+        Defines if the lower bound is included in the interval.
+    upper_bound_included
+        Defines if the upper bound is included in the interval.
+    """
+
+    def __init__(
+        self,
+        lower_bound: float,
+        upper_bound: float,
+        lower_bound_included: bool,
+        upper_bound_included: bool,
+    ):
+        # write arguments to attributes
+        self.lower_bound = lower_bound
+        self.upper_bound = upper_bound
+        self.lower_bound_included = lower_bound_included
+        self.upper_bound_included = upper_bound_included
+
+        # set the check_bounds-method; the distinction with respect to the inclusion of
+        # bounds is done here and not in the check_bounds-method so that this check is
+        # not repeated each time this method is called
+        if lower_bound_included and upper_bound_included:
+            self.check_bounds = self.check_bounds_inc_inc
+        elif (not lower_bound_included) and upper_bound_included:
+            self.check_bounds = self.check_bounds_ninc_inc
+        elif lower_bound_included and (not upper_bound_included):
+            self.check_bounds = self.check_bounds_inc_ninc
+        else:
+            self.check_bounds = self.check_bounds_ninc_ninc
+
+    def check_bounds_inc_inc(self, value: Union[int, float]) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where both bounds are
+        included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound <= value <= self.upper_bound:
+            return True
+        else:
+            return False
+
+    def check_bounds_ninc_inc(self, value: Union[int, float]) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where only the upper
+        bound is included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound < value <= self.upper_bound:
+            return True
+        else:
+            return False
+
+    def check_bounds_inc_ninc(self, value: Union[int, float]) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where only the lower
+        bound is included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound <= value < self.upper_bound:
+            return True
+        else:
+            return False
+
+    def check_bounds_ninc_ninc(self, value: Union[int, float]) -> bool:
+        """
+        Checks if a given value is within the specified bounds (where only the upper
+        bound is included).
+
+        Parameters
+        ----------
+        value
+            The given scalar value.
+
+        Returns
+        -------
+            True, if the value is within its bounds, otherwise False is returned.
+        """
+        if self.lower_bound < value < self.upper_bound:
+            return True
+        else:
+            return False
+
+    def __str__(self):
+        s1 = "[" if self.lower_bound_included else "("
+        s2 = "-oo" if self.lower_bound == -np.infty else self.lower_bound
+        s3 = "+oo" if self.upper_bound == np.infty else self.upper_bound
+        s4 = "]" if self.upper_bound_included else ")"
+        return f"{s1}{s2}, {s3}{s4}"

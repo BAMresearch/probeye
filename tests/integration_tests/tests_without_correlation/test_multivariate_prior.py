@@ -145,6 +145,7 @@ class TestProblem(unittest.TestCase):
             "mb",
             "model",
             dim=2,
+            domain="(-oo, +oo) (-oo, +oo)",
             tex="$mb$",
             info="Slope and intercept of the graph",
             prior=(
@@ -158,6 +159,7 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "sigma",
             "likelihood",
+            domain="(0, +oo)",
             tex=r"$\sigma$",
             info="Standard deviation, of zero-mean additive model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
