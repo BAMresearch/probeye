@@ -1,11 +1,11 @@
 # probeye changelog
 
-## 2.2.0 (2022-Mar-XX)
+## 2.1.4 (2022-Mar-27)
 ### Changed
 - Before the evaluation of a likelihood function, the parameter domains are checked.
 ### Added
-- Added an 'interface' submodule which contains a method 'export_to_rdf' that allows to export a defined problem to an rdf-file.
 - Latent parameters have domains now. A respective class has been added to the parameters.py-file.
+- More tests have been added.
 
 ## 2.1.3 (2022-Mar-24)
 ### Changed

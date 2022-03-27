@@ -13,7 +13,6 @@ example using maximum likelihood estimation as well as sampling via emcee and dy
 
 # standard library
 import unittest
-import os
 
 # third party imports
 import numpy as np
@@ -27,7 +26,6 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
-from probeye.interface.export_rdf import export_rdf
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -362,20 +360,6 @@ class TestProblem(unittest.TestCase):
 
         # give problem overview
         problem.info()
-
-        # ============================================================================ #
-        #                   Export the described problem to triples                    #
-        # ============================================================================ #
-
-        # create the knowledge graph and print it to file
-        dir_path = os.path.dirname(__file__)
-        ttl_file = os.path.join(dir_path, "../test_time_space_correlation.ttl")
-        export_rdf(
-            problem,
-            ttl_file,
-            include_explanations=True,
-            write_array_data=True,
-        )
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
