@@ -703,16 +703,6 @@ class InverseProblem:
         # log at beginning so that errors can be associated
         logger.debug(f"Adding experiment '{exp_name}'")
 
-        # make sure that no likelihood model has been defined yet
-        if self._likelihood_models:
-            raise RuntimeError(
-                f"You are trying to add an experiment after already having defined "
-                f"likelihood models.\nSince version 1.0.17 this is not allowed "
-                f"anymore. Please add all experiments before\n defining any likelihood "
-                f"model. After you have defined a likelihood model, you cannot add\n"
-                f"experiments anymore."
-            )
-
         # check types of input arguments
         if type(sensor_values) is not dict:
             raise TypeError(
@@ -832,6 +822,9 @@ class InverseProblem:
                             f"The value '{val_sensor}' in the argument correlation_info"
                             f" does not appear in the given sensor_values!"
                         )
+
+        # make the experimental data accessible in the corresponding sensors
+        fwd_model.connect_experimental_data_to_sensors(exp_name, sensor_values_numpy)
 
         # add the experiment to the central dictionary
         self._experiments[exp_name] = {

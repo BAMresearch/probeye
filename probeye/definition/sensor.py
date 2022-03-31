@@ -8,13 +8,15 @@ import numpy as np
 from probeye.subroutines import process_spatiotemporal_coordinates
 
 
-class Sensor:
+class Sensor(dict):
     """
-    Base class for a sensor of the forward model. In its simplest form just a class with
+    Base class for a sensor of the forward model. In its simplest form just a dict with
     a 'name' attribute. Additional attributes for the measured quality (measurand) and
     the corresponding unit can be defined. If the sensors position(s) are important,
     they can be defined as attributes. Further attributes can be defined by the user by
-    creating new classes derived from this one.
+    creating new classes derived from this one. The keys of the sensor-dict are the
+    experiment's names, while the values are the measured values of the respective
+    experiment.
 
     Parameters
     ----------
@@ -65,6 +67,9 @@ class Sensor:
 
         # this contains the information which row contains which coordinate
         self.index_dict = {coord: i for i, coord in enumerate(self._order)}
+
+        # required due to inheriting from dict-class
+        super().__init__()
 
     @property
     def x(self) -> Union[np.ndarray, None]:

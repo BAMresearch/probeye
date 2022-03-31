@@ -115,6 +115,11 @@ class ForwardModelBase:
         return [sensor.name for sensor in self.input_sensors]
 
     @property
+    def input_sensor_dict(self) -> dict:
+        """Returns dict with input sensor names as keys and sensor objects as values."""
+        return {sensor.name: sensor for sensor in self.input_sensors}
+
+    @property
     def n_input_sensors(self) -> int:
         """Provides number of input_sensors as an attribute."""
         return len(self.input_sensor_names)
@@ -128,6 +133,16 @@ class ForwardModelBase:
     def output_sensor_names(self) -> List[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.output_sensors]
+
+    @property
+    def output_sensor_dict(self) -> dict:
+        """Returns dict with outp. sensor names as keys and sensor objects as values."""
+        return {sensor.name: sensor for sensor in self.output_sensors}
+
+    @property
+    def sensor_dict(self) -> dict:
+        """Returns dict all sensor names as keys and sensor objects as values."""
+        return {**self.input_sensor_dict, **self.output_sensor_dict}
 
     @property
     def sensor_names(self) -> List[str]:
@@ -310,3 +325,24 @@ class ForwardModelBase:
                 jac[idx_start:idx_end, j : (j + ncomp)] = derivative
                 j += ncomp
         return jac
+
+    def connect_experimental_data_to_sensors(self, exp_name: str, sensor_values: dict):
+        """
+        Connects the experimental data from an experiments to the corresponding sensors
+        of the forward model. Note that sensor-objects are essentially dictionaries, so
+        the connection is established by adding the 'exp_name' as key to the respective
+        sensor-(dict)-object with the measurements as the dict-values. There are no
+        checks in this method because it is only used by InferenceProblem.add_experiment
+        which already does the consistency checks before calling this method.
+
+        Parameters
+        ----------
+        exp_name
+            The name of the experiment the 'sensor_values' are coming from.
+        sensor_values
+            Keys are the sensor names (like "x" or "y") and values are either floats or
+            numpy-ndarrays representing the measured values.
+        """
+        for sensor_name, values in sensor_values.items():
+            if sensor_name in self.sensor_dict:
+                self.sensor_dict[sensor_name][exp_name] = values
