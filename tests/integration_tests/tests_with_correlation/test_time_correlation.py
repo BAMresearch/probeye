@@ -22,7 +22,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # local imports (problem definition)
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -78,7 +78,7 @@ class TestProblem(unittest.TestCase):
 
         if run_torch:
             raise RuntimeError(
-                "The pyro-solver is not available for inference problems including "
+                "The pyro-solver is not available for inverse problems including "
                 "correlations yet."
             )
 
@@ -124,8 +124,8 @@ class TestProblem(unittest.TestCase):
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inference problem with a useful name
-        problem = InferenceProblem("Estimate gravitational acceleration")
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Estimate gravitational acceleration")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -205,7 +205,7 @@ class TestProblem(unittest.TestCase):
                 t_vector = t
 
             # derived parameters
-            mu = 0.5 * cd * (np.pi * r ** 2) * rho / m
+            mu = 0.5 * cd * (np.pi * r**2) * rho / m
             t_f = 1 / np.sqrt(g * mu)
             v_inf = np.sqrt(g / mu)
 

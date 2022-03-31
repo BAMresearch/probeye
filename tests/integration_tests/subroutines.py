@@ -17,11 +17,11 @@ from probeye.postprocessing.sampling import create_trace_plot
 
 # imports only needed for type hints
 if TYPE_CHECKING:
-    from probeye.definition.inference_problem import InferenceProblem
+    from probeye.definition.inverse_problem import InverseProblem
 
 
 def run_inference_engines(
-    problem: "InferenceProblem",
+    problem: "InverseProblem",
     true_values: Optional[dict] = None,
     n_steps: int = 1000,
     n_initial_steps: int = 100,
@@ -41,7 +41,7 @@ def run_inference_engines(
     Parameters
     ----------
     problem
-        Describes the inference problem including e.g. parameters and data.
+        Describes the inverse problem including e.g. parameters and data.
     true_values
         Used for plotting 'true' parameter values. Keys are the parameter names and
         values are the values that are supposed to be shown in the marginal plots.

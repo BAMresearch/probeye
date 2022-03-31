@@ -7,7 +7,7 @@ import numpy as np
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.scipy.solver import ScipySolver
 
@@ -21,7 +21,7 @@ class TestProblem(unittest.TestCase):
                 return {"y": inp["m"] * inp["x"] + inp["b"]}
 
         # define parameters with with an uninformative prior
-        problem = InferenceProblem("Problem with uninformative prior")
+        problem = InverseProblem("Problem with uninformative prior")
         problem.add_parameter("m", "model")  # uninformative prior
         problem.add_parameter(
             "b", "model", prior=("normal", {"loc": 1.0, "scale": 1.0})
@@ -81,7 +81,7 @@ class TestProblem(unittest.TestCase):
 
     def test_evaluate_model_response(self):
         # prepare for checks
-        p = InferenceProblem("TestProblem")
+        p = InverseProblem("TestProblem")
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
@@ -93,7 +93,7 @@ class TestProblem(unittest.TestCase):
                 a0 = inp["a0"]
                 a1 = inp["a1"]
                 a2 = inp["a2"]
-                return {"y": a0 + a1 * x + a2 * x ** 2}
+                return {"y": a0 + a1 * x + a2 * x**2}
 
         # add forward and likelihood model
         fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))

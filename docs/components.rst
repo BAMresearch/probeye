@@ -12,10 +12,10 @@ These four components have to be defined by the user by `adding` them to the pro
 
 .. code-block:: python
 
-    from probeye.definition import InferenceProblem
+    from probeye.definition import InverseProblem
 
     # initialize the problem
-    problem = InferenceProblem("MyProblem")
+    problem = InverseProblem("MyProblem")
 
     # add the four components
     problem.add_parameter(...)

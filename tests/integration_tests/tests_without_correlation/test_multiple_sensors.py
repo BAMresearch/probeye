@@ -17,7 +17,7 @@ import unittest
 import numpy as np
 
 # local imports (problem definition)
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -137,8 +137,8 @@ class TestProblem(unittest.TestCase):
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inference problem with a useful name
-        problem = InferenceProblem("Linear model with three likelihood models")
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear model with three likelihood models")
 
         # add all parameters to the problem
         problem.add_parameter(

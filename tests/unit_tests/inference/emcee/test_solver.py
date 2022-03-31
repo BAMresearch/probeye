@@ -8,7 +8,7 @@ import numpy as np
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.emcee.solver import EmceeSolver
 
@@ -27,7 +27,7 @@ class TestProblem(unittest.TestCase):
                 return {"y": a * x + b}
 
         # set up the problem
-        problem = InferenceProblem("Linear regression")
+        problem = InverseProblem("Linear regression")
         problem.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
         problem.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
         problem.add_parameter(

@@ -33,7 +33,7 @@ class TestProblem(unittest.TestCase):
             "Exp6": {"sensor_values": {"x": 7, "y": 8}, "forward_model": "OtherModel"},
         }
         # the following is usually done automatically when adding the noise model to the
-        # inference problem
+        # inverse problem
         like.problem_experiments = problem_experiments
         # perform some simple tests for valid usage
         like.add_experiments("Exp1")
