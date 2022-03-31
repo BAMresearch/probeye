@@ -67,7 +67,7 @@ y_true = a_true * x_test + b_true
 # assemble the spatial covariance matrix
 x_test_as_column_matrix = x_test.reshape((n_points, -1))
 f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-cov = std_noise ** 2 * correlation_matrix(x_test_as_column_matrix, f_corr)
+cov = std_noise**2 * correlation_matrix(x_test_as_column_matrix, f_corr)
 
 # now generate the noisy test data including correlations; we assume here that
 # there are n_experiments test series

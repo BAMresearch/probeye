@@ -168,7 +168,7 @@ class TestProblem(unittest.TestCase):
                     y[ii] = (
                         -(F_in * b * x)
                         / (6 * L * EI_in)
-                        * (L_in ** 2 - b ** 2 - x ** 2)
+                        * (L_in**2 - b**2 - x**2)
                     )
                 return y
 

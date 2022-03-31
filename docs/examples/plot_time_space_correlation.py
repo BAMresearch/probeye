@@ -130,7 +130,7 @@ class BridgeModel(ForwardModelBase):
             else:
                 b = x_load_i
                 x = L_in - x_sensor
-            y[i] = -(F_in * b * x) / (6 * L_in * EI_in) * (L_in ** 2 - b ** 2 - x ** 2)
+            y[i] = -(F_in * b * x) / (6 * L_in * EI_in) * (L_in**2 - b**2 - x**2)
         return y
 
     def response(self, inp: dict) -> dict:

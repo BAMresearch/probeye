@@ -1572,9 +1572,9 @@ class AdditiveSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D):
 
         # assemble covariance matrix
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        cov_matrix = std_model ** 2 * correlation_matrix(self.space_vector, f_corr)
+        cov_matrix = std_model**2 * correlation_matrix(self.space_vector, f_corr)
         if self.additive_measurement_error:
-            cov_matrix += std_meas ** 2 * np.eye(n)
+            cov_matrix += std_meas**2 * np.eye(n)
 
         # evaluate log-likelihood (no efficient algorithm available in this case)
         return _loglike_multivariate_normal(res_vector, cov_matrix)
@@ -1773,7 +1773,7 @@ class AdditiveSpaceTimeCorrelatedModelError2D3D(SpaceTimeCorrelatedModelError2D3
 
         # assemble the dense spatial covariance matrix
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_x)
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(self.space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(self.space_vector, f)
 
         # get the main diagonal and off-diagonal of the time covariance matrix inverse
         d0_t, d1_t = inv_cov_vec_1D(self.time_vector, l_corr_t, 1.0)
@@ -2078,12 +2078,12 @@ class MultiplicativeSpaceCorrelatedModelError2D3D(SpaceCorrelatedModelError2D3D)
         # assemble covariance matrix
         n = self.n_averaged_response_vector
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        cov_matrix = std_model ** 2 * correlation_matrix(self.space_vector, f_corr)
+        cov_matrix = std_model**2 * correlation_matrix(self.space_vector, f_corr)
         cov_matrix = np.multiply(
             y_model.reshape(-1, 1), np.multiply(y_model, cov_matrix)
         )
         if self.additive_measurement_error:
-            cov_matrix += std_meas ** 2 * np.eye(n)
+            cov_matrix += std_meas**2 * np.eye(n)
 
         # evaluate log-likelihood (no efficient algorithm available in this case)
         return _loglike_multivariate_normal(residuals, cov_matrix)
@@ -2286,7 +2286,7 @@ class MultiplicativeSpaceTimeCorrelatedModelError2D3D(
 
         # assemble the dense spatial covariance matrix
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_x)
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(self.space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(self.space_vector, f)
 
         # get the main diagonal and off-diagonal of the time covariance matrix inverse
         d0_t, d1_t = inv_cov_vec_1D(self.time_vector, l_corr_t, 1.0)

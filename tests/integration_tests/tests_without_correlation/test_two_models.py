@@ -125,7 +125,7 @@ class TestProblem(unittest.TestCase):
                 x = inp["x"]
                 alpha = inp["alpha"]
                 beta = inp["beta"]
-                return {"y_quadratic": alpha * x ** 2 + beta}
+                return {"y_quadratic": alpha * x**2 + beta}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #

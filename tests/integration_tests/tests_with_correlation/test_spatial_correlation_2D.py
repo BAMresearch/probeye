@@ -202,8 +202,8 @@ class TestProblem(unittest.TestCase):
 
         # now, we need to provide each point on the grid as an xy-pair; the x-values of
         # these pairs are stored in x_test, and the y-values in y_test
-        x_test = np.zeros(n_points ** 2)
-        y_test = np.zeros(n_points ** 2)
+        x_test = np.zeros(n_points**2)
+        y_test = np.zeros(n_points**2)
         i = 0
         for x_i in x_test_grid:
             for y_j in y_test_grid:
@@ -217,11 +217,11 @@ class TestProblem(unittest.TestCase):
         )[linear_model.output_sensor.name]
 
         # assemble the spatial covariance matrix
-        coords = np.zeros((n_points ** 2, 2))
+        coords = np.zeros((n_points**2, 2))
         coords[:, 0] = x_test
         coords[:, 1] = y_test
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        cov = sigma ** 2 * correlation_matrix(coords, f_corr)
+        cov = sigma**2 * correlation_matrix(coords, f_corr)
 
         # initialize a 3D-plot with the true mean-value-plane
         if plot_data:

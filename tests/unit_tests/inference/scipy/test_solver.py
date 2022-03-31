@@ -93,7 +93,7 @@ class TestProblem(unittest.TestCase):
                 a0 = inp["a0"]
                 a1 = inp["a1"]
                 a2 = inp["a2"]
-                return {"y": a0 + a1 * x + a2 * x ** 2}
+                return {"y": a0 + a1 * x + a2 * x**2}
 
         # add forward and likelihood model
         fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))

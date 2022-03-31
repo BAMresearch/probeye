@@ -83,7 +83,7 @@ class TestProblem(unittest.TestCase):
         # residuals; this allows a simple check if the computation works as expected
         std_model = 2.0
         dummy_response = dummy_data
-        expected_ll = -n_data_points / 2 * np.log(2 * np.pi * std_model ** 2)
+        expected_ll = -n_data_points / 2 * np.log(2 * np.pi * std_model**2)
         model_response_dict = {
             "Exp_1": {"y": dummy_response},
             "Exp_2": {"y": dummy_response},
@@ -118,8 +118,8 @@ class TestProblem(unittest.TestCase):
         std_model = 2.0
         std_measurement = 2.0
         dummy_response = dummy_data
-        std = np.sqrt(std_model ** 2 + std_measurement ** 2)
-        expected_ll = -n_data_points / 2 * np.log(2 * np.pi * std ** 2)
+        std = np.sqrt(std_model**2 + std_measurement**2)
+        expected_ll = -n_data_points / 2 * np.log(2 * np.pi * std**2)
         model_response_dict = {
             "Exp_1": {"y": dummy_response},
             "Exp_2": {"y": dummy_response},
@@ -236,7 +236,7 @@ class TestProblem(unittest.TestCase):
             n_data_points * np.log(2.0 * np.pi)
             + np.sum(
                 np.log(
-                    np.power(dummy_response_total * std_model, 2) + std_measurement ** 2
+                    np.power(dummy_response_total * std_model, 2) + std_measurement**2
                 )
             )
         )
@@ -739,7 +739,7 @@ class TestProblem(unittest.TestCase):
         space_vector = np.zeros((n_data_points_exp, 2))
         space_vector[:, 0] = dummy_data
         space_vector[:, 1] = dummy_data
-        cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f_corr)
+        cov_matrix = std_model**2 * correlation_matrix(space_vector, f_corr)
         expected_ll = _loglike_multivariate_normal(
             np.zeros(n_data_points_exp), cov_matrix
         )
@@ -814,8 +814,8 @@ class TestProblem(unittest.TestCase):
         space_vector = np.zeros((n_data_points_exp, 2))
         space_vector[:, 0] = dummy_data
         space_vector[:, 1] = dummy_data
-        cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f_corr)
-        cov_matrix += std_measurement ** 2 * np.eye(n_data_points_exp)
+        cov_matrix = std_model**2 * correlation_matrix(space_vector, f_corr)
+        cov_matrix += std_measurement**2 * np.eye(n_data_points_exp)
         expected_ll = _loglike_multivariate_normal(
             np.zeros(n_data_points_exp), cov_matrix
         )
@@ -1449,7 +1449,7 @@ class TestProblem(unittest.TestCase):
         )
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
         space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(space_vector, f)
         d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
         expected_ll = kron_loglike_2D(
             np.zeros((len(problem_experiments), n_data_points_exp)),
@@ -1552,7 +1552,7 @@ class TestProblem(unittest.TestCase):
         )
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
         space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(space_vector, f)
         d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
         expected_ll = kron_loglike_2D(
             np.zeros((len(problem_experiments), n_data_points_exp)),
@@ -1686,7 +1686,7 @@ class TestProblem(unittest.TestCase):
         )
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
         space_vector = np.array([dummy_data, dummy_data]).transpose()
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(space_vector, f)
         d0_t, d1_t = inv_cov_vec_1D(np.array([0.0, 1.0]), l_corr_time, 1.0)
         expected_ll = kron_loglike_2D(
             np.zeros((n_data_points_exp, len(problem_experiments))),
@@ -1790,7 +1790,7 @@ class TestProblem(unittest.TestCase):
         space_vector = np.zeros((n_data_points_exp, 2))
         space_vector[:, 0] = dummy_data
         space_vector[:, 1] = dummy_data
-        cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f_corr)
+        cov_matrix = std_model**2 * correlation_matrix(space_vector, f_corr)
         cov_matrix = np.multiply(
             dummy_data.reshape(-1, 1), np.multiply(dummy_data, cov_matrix)
         )
@@ -1868,11 +1868,11 @@ class TestProblem(unittest.TestCase):
         space_vector = np.zeros((n_data_points_exp, 2))
         space_vector[:, 0] = dummy_data
         space_vector[:, 1] = dummy_data
-        cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f_corr)
+        cov_matrix = std_model**2 * correlation_matrix(space_vector, f_corr)
         cov_matrix = np.multiply(
             dummy_data.reshape(-1, 1), np.multiply(dummy_data, cov_matrix)
         )
-        cov_matrix += std_measurement ** 2 * np.eye(n_data_points_exp)
+        cov_matrix += std_measurement**2 * np.eye(n_data_points_exp)
         expected_ll = _loglike_multivariate_normal(
             np.zeros(n_data_points_exp), cov_matrix
         )
@@ -2263,7 +2263,7 @@ class TestProblem(unittest.TestCase):
         )
         space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(space_vector, f)
         d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
         expected_ll = chol_loglike_2D(
             np.zeros((len(problem_experiments), n_data_points_exp)),
@@ -2367,7 +2367,7 @@ class TestProblem(unittest.TestCase):
         )
         space_vector = np.array([[0.0, -1.0], [1.0, 2.0]])
         f = lambda a: correlation_function(d=a, correlation_length=l_corr_space)
-        spatial_cov_matrix = std_model ** 2 * correlation_matrix(space_vector, f)
+        spatial_cov_matrix = std_model**2 * correlation_matrix(space_vector, f)
         d0_t, d1_t = inv_cov_vec_1D(dummy_data, l_corr_time, 1.0)
         expected_ll = chol_loglike_2D(
             np.zeros((len(problem_experiments), n_data_points_exp)),

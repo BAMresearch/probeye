@@ -26,7 +26,7 @@ class TestProblem(unittest.TestCase):
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
-                return {"y": a * x ** 2 + b}
+                return {"y": a * x**2 + b}
 
         # check the __call__-method
         forward_model = ForwardModel(["a", "b"], [Sensor("x")], [Sensor("y")])
@@ -78,7 +78,7 @@ class TestProblem(unittest.TestCase):
                 b = inp["b"]
                 response_dict = dict()
                 for os in self.output_sensors:
-                    response_dict[os.name] = a * x1 ** 2 + b * x2 + os.offset
+                    response_dict[os.name] = a * x1**2 + b * x2 + os.offset
                 return response_dict
 
         # check the __call__-method

@@ -205,7 +205,7 @@ class TestProblem(unittest.TestCase):
                 t_vector = t
 
             # derived parameters
-            mu = 0.5 * cd * (np.pi * r ** 2) * rho / m
+            mu = 0.5 * cd * (np.pi * r**2) * rho / m
             t_f = 1 / np.sqrt(g * mu)
             v_inf = np.sqrt(g / mu)
 
