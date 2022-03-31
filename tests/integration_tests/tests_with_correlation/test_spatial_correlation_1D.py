@@ -22,7 +22,7 @@ from tripy.utils import correlation_function
 from tripy.utils import correlation_matrix
 
 # local imports (problem definition)
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -78,7 +78,7 @@ class TestProblem(unittest.TestCase):
 
         if run_torch:
             raise RuntimeError(
-                "The pyro-solver is not available for inference problems including "
+                "The pyro-solver is not available for inverse problems including "
                 "correlations yet."
             )
 
@@ -132,8 +132,8 @@ class TestProblem(unittest.TestCase):
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inference problem with a useful name
-        problem = InferenceProblem("Linear regression with normal additive error")
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression with normal additive error")
 
         # add all parameters to the problem
         problem.add_parameter(

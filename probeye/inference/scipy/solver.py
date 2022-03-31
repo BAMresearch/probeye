@@ -16,17 +16,17 @@ from probeye.subroutines import print_dict_in_rows, make_list
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
-    from probeye.definition.inference_problem import InferenceProblem
+    from probeye.definition.inverse_problem import InverseProblem
 
 
 class ScipySolver:
     """
-    Solver routines based on scipy and numpy for an InferenceProblem.
+    Solver routines based on scipy and numpy for an InverseProblem.
 
     Parameters
     ----------
     problem
-        Describes the inference problem including e.g. parameters and data.
+        Describes the inverse problem including e.g. parameters and data.
     seed
         Random state used for random number generation.
     show_progress
@@ -36,7 +36,7 @@ class ScipySolver:
     """
 
     def __init__(
-        self, problem: "InferenceProblem", seed: int = 1, show_progress: bool = True
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
 
         # log at beginning so that errors can be associated
@@ -233,7 +233,7 @@ class ScipySolver:
         -------
         x0
             A numeric vector with the derived start values in the order of
-            InferenceProblem.get_theta_names().
+            InverseProblem.get_theta_names().
         x0_dict
             Keys are the latent parameters, while the keys are their start values.
         """
@@ -341,7 +341,7 @@ class ScipySolver:
         solver_options: Optional[dict] = None,
     ) -> sp.optimize.OptimizeResult:
         """
-        Finds values for an InferenceProblem's latent parameters that maximize the
+        Finds values for an InverseProblem's latent parameters that maximize the
         problem's likelihood function. The used method is scipy's minimize function from
         the optimize submodule.
 

@@ -21,7 +21,7 @@ from tripy.base import MeasurementSpaceTimePoints
 from tripy.utils import correlation_function
 
 # local imports (problem definition)
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
@@ -78,7 +78,7 @@ class TestProblem(unittest.TestCase):
 
         if run_torch:
             raise RuntimeError(
-                "The pyro-solver is not available for inference problems including "
+                "The pyro-solver is not available for inverse problems including "
                 "correlations yet."
             )
 
@@ -200,8 +200,8 @@ class TestProblem(unittest.TestCase):
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inference problem with a useful name
-        problem = InferenceProblem(
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem(
             "Simply supported beam with time-space correlation", log_level="DEBUG"
         )
 

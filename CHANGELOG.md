@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.1.5 (2022-Mar-31)
+### Changed
+- The main class InferenceProblem was renamed to InverseProblem.
+
 ## 2.1.4 (2022-Mar-27)
 ### Changed
 - Before the evaluation of a likelihood function, the parameter domains are checked.

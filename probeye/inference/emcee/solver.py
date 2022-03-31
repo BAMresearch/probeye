@@ -21,7 +21,7 @@ from probeye.subroutines import extract_true_values
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
-    from probeye.definition.inference_problem import InferenceProblem
+    from probeye.definition.inverse_problem import InverseProblem
 
 
 class EmceeSolver(ScipySolver):
@@ -33,7 +33,7 @@ class EmceeSolver(ScipySolver):
     Parameters
     ----------
     problem
-        Describes the inference problem including e.g. parameters and data.
+        Describes the inverse problem including e.g. parameters and data.
     seed
         Random state used for random number generation.
     show_progress
@@ -43,7 +43,7 @@ class EmceeSolver(ScipySolver):
     """
 
     def __init__(
-        self, problem: "InferenceProblem", seed: int = 1, show_progress: bool = True
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
         logger.debug("Initializing EmceeSolver")
         # check that the problem does not contain a uninformative prior
@@ -149,7 +149,7 @@ class EmceeSolver(ScipySolver):
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
-        Runs the emcee-sampler for the InferenceProblem the EmceeSolver was initialized
+        Runs the emcee-sampler for the InverseProblem the EmceeSolver was initialized
         with and returns the results as an arviz InferenceData obj.
 
         Parameters

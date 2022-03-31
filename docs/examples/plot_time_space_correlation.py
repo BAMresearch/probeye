@@ -21,7 +21,7 @@ from tripy.base import MeasurementSpaceTimePoints
 from tripy.utils import correlation_function
 
 # local imports (problem definition)
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
@@ -241,14 +241,14 @@ plt.show()
 
 # %%
 # At this point we have some data to calibrate our model against. Hence, we can set up
-# the inference problem itself. This always begins by initializing an object form the
-# InferenceProblem-class and adding all of the problem's parameters with priors that
+# the inverse problem itself. This always begins by initializing an object form the
+# InverseProblem-class and adding all of the problem's parameters with priors that
 # reflect our current best guesses of what the parameter's values might look like.
 # Please check out the 'Components'-part of this documentation to get more information
 # on the arguments seen below. However, most of the code should be self-explanatory.
 
-# initialize the inference problem with a useful name
-problem = InferenceProblem(
+# initialize the inverse problem with a useful name
+problem = InverseProblem(
     "Simple bridge model with time-space correlation", print_header=False
 )
 

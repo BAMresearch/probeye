@@ -105,7 +105,7 @@ class GaussianLikelihoodModel:
             self.experiment_names = make_list(experiment_names)
 
         # these attributes are not directly set by the user, but derived and set by the
-        # method InferenceProblem.add_likelihood_model
+        # method InverseProblem.add_likelihood_model
         self.forward_model = None  # type: Optional[ForwardModelBase]
         self.problem_experiments = {}  # type: dict
 
@@ -139,7 +139,7 @@ class GaussianLikelihoodModel:
         Parameters
         ----------
         experiment_names_
-            Names (strings) of experiments from the InferenceProblem that should be
+            Names (strings) of experiments from the InverseProblem that should be
             added to the log-likelihood model.
         """
 

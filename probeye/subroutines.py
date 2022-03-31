@@ -14,7 +14,7 @@ from probeye import __version__
 
 # local imports for type checking
 if TYPE_CHECKING:  # pragma: no cover
-    from probeye.definition.inference_problem import InferenceProblem
+    from probeye.definition.inverse_problem import InverseProblem
 
 
 def len_or_one(obj: Any) -> int:
@@ -549,7 +549,7 @@ def print_probeye_header(
     use_logger: bool = True,
 ):
     """
-    Prints the probeye header which is printed, when an inference problem is set up.
+    Prints the probeye header which is printed, when an inverse problem is set up.
     Mostly just nice to have. The only useful information it contains is the version
     number of the package.
 
@@ -765,9 +765,9 @@ def add_index_to_tex_prm_name(tex: str, index: int) -> str:
     return tex_mod
 
 
-def check_for_uninformative_priors(problem: "InferenceProblem"):
+def check_for_uninformative_priors(problem: "InverseProblem"):
     """
-    Checks if all priors defined within a given InferenceProblem are not uninformative.
+    Checks if all priors defined within a given InverseProblem are not uninformative.
 
     Parameters
     ----------
@@ -971,7 +971,7 @@ def translate_simple_correlation(corr_string: str) -> dict:
     corr_dict
         In the example, 'T1:xy' would be translated to {'T1': {'x': 'x', 'y': 'y'}}.
         This dictionary can be used for the 'correlation_info' argument when adding new
-        experiments to an InferenceProblem.
+        experiments to an InverseProblem.
     """
     if not (":" in corr_string):
         raise ValueError(f"The given 'corr_string' ('{corr_string}') contains no ':'!")
@@ -1078,3 +1078,8 @@ class HiddenPrints:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
+
+
+from probeye.definition.inference_problem import InferenceProblem
+
+problem = InferenceProblem("adfadf")

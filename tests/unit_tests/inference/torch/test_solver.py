@@ -8,7 +8,7 @@ import numpy as np
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.torch.solver import PyroSolver
 
@@ -22,7 +22,7 @@ class TestProblem(unittest.TestCase):
                 return {"y": inp["m"] * inp["x"] + inp["b"]}
 
         # define parameters with a circular dependency between loc_m and m
-        problem = InferenceProblem("Problem with circular dependency")
+        problem = InverseProblem("Problem with circular dependency")
         problem.add_parameter(
             "loc_m", "prior", prior=("uniform", {"low": 2.0, "high": 3.0})
         )
@@ -73,7 +73,7 @@ class TestProblem(unittest.TestCase):
 
         # define parameters where 'm' depends on 'loc_m', but 'loc_m' is added after
         # 'm', so that it has to be corrected for pyro to work
-        problem = InferenceProblem("Problem with circular dependency")
+        problem = InverseProblem("Problem with circular dependency")
         problem.add_parameter(
             "loc_m", "prior", prior=("uniform", {"low": 2.0, "high": 3.0})
         )
@@ -130,7 +130,7 @@ class TestProblem(unittest.TestCase):
 
     def test_evaluate_model_response(self):
         # prepare for checks
-        p = InferenceProblem("TestProblem")
+        p = InverseProblem("TestProblem")
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter(
@@ -209,7 +209,7 @@ class TestProblem(unittest.TestCase):
 
     def test_likelihood_model_with_multiplicative_model_error(self):
         # prepare for checks
-        p = InferenceProblem("TestProblem")
+        p = InverseProblem("TestProblem")
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
@@ -248,7 +248,7 @@ class TestProblem(unittest.TestCase):
 
     def test_likelihood_model_with_correlation(self):
         # prepare for checks
-        p = InferenceProblem("TestProblem")
+        p = InverseProblem("TestProblem")
         p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
         p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))

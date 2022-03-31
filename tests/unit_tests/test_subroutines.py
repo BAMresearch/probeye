@@ -7,7 +7,7 @@ import os
 import numpy as np
 
 # local imports
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.subroutines import len_or_one
 from probeye.subroutines import make_list
 from probeye.subroutines import underlined_string
@@ -464,7 +464,7 @@ class TestProblem(unittest.TestCase):
 
     def test_check_for_uninformative_priors(self):
         # check if the detection works as expected
-        problem = InferenceProblem("Problem with uninformative prior")
+        problem = InverseProblem("Problem with uninformative prior")
         problem.add_parameter(
             "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )

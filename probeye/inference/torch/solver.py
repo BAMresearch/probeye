@@ -22,18 +22,18 @@ from probeye.subroutines import check_for_uninformative_priors
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
-    from probeye.definition.inference_problem import InferenceProblem
+    from probeye.definition.inverse_problem import InverseProblem
     from probeye.definition.forward_model import ForwardModelBase
 
 
 class PyroSolver:
     """
-    Solver routines based on pyro/torch for an InferenceProblem.
+    Solver routines based on pyro/torch for an InverseProblem.
 
     Parameters
     ----------
     problem
-        Describes the inference problem including e.g. parameters and data.
+        Describes the inverse problem including e.g. parameters and data.
     seed
         Random state used for random number generation.
     show_progress
@@ -43,7 +43,7 @@ class PyroSolver:
     """
 
     def __init__(
-        self, problem: "InferenceProblem", seed: int = 1, show_progress: bool = True
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
 
         # check that the problem does not contain a uninformative prior
@@ -446,7 +446,7 @@ class PyroSolver:
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
-        Runs MCMC with NUTS kernel for the InferenceProblem the PyroSolver was
+        Runs MCMC with NUTS kernel for the InverseProblem the PyroSolver was
         initialized with and returns the results as an arviz InferenceData obj.
 
         Parameters

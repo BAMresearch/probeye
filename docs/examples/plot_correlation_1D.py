@@ -23,7 +23,7 @@ from tripy.utils import correlation_function
 from tripy.utils import correlation_matrix
 
 # local imports (problem definition)
-from probeye.definition.inference_problem import InferenceProblem
+from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -122,15 +122,15 @@ class LinearModel(ForwardModelBase):
 # dictionary, while the output sensors must be contained in the returned dictionary.
 
 # %%
-# After we now have defined our forward model, we can set up the inference problem
-# itself. This always begins by initializing an object form the InferenceProblem-class,
+# After we now have defined our forward model, we can set up the inverse problem
+# itself. This always begins by initializing an object form the InverseProblem-class,
 # and adding all of the problem's parameters with priors that reflect our current best
 # guesses of what the parameter's values might look like. Please check out the
 # 'Components'-part of this documentation to get more information on the arguments seen
 # below. However, most of the code should be self-explanatory.
 
-# initialize the inference problem with a useful name
-problem = InferenceProblem("Linear regression with 1D correlation", print_header=False)
+# initialize the inverse problem with a useful name
+problem = InverseProblem("Linear regression with 1D correlation", print_header=False)
 
 # add the problem's parameters
 problem.add_parameter(

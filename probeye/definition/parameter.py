@@ -478,7 +478,7 @@ class ParameterProperties:
     prm_dict
         The keys are 'index', 'dim', 'type', 'role', 'prior', 'value', 'info' and 'tex',
         while the values are the corresponding values of these properties. See also the
-        explanations in InferenceProblem.__init__() for more detailed information.
+        explanations in InverseProblem.__init__() for more detailed information.
     """
 
     def __init__(self, prm_dict: dict):
@@ -578,7 +578,7 @@ class ParameterProperties:
         approach is that some of the attributes are private, and cannot (or at least
         should not) be changed directly from outside.
 
-        See the explanations in InferenceProblem.__init__() for more detailed
+        See the explanations in InverseProblem.__init__() for more detailed
         information on the arguments.
         """
         return ParameterProperties(
@@ -738,7 +738,7 @@ class ParameterProperties:
         """Raise a specific error when trying to directly set self.role."""
         raise AttributeError(
             "You cannot change a parameter's role directly! Use "
-            "InferenceProblem.change_parameter_role instead."
+            "InverseProblem.change_parameter_role instead."
         )
 
     @property

@@ -13,12 +13,12 @@ from probeye.subroutines import add_index_to_tex_prm_name
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
-    from probeye.definition.inference_problem import InferenceProblem
+    from probeye.definition.inverse_problem import InverseProblem
 
 
 def create_pair_plot(
     inference_data: az.data.inference_data.InferenceData,
-    problem: "InferenceProblem",
+    problem: "InverseProblem",
     plot_with: str = "arviz",
     plot_priors: bool = True,
     focus_on_posterior: bool = False,
@@ -40,7 +40,7 @@ def create_pair_plot(
     inference_data
         Contains the results of the sampling procedure.
     problem
-        The inference problem the inference data refers to.
+        The inverse problem the inference data refers to.
     plot_with
         Defines the python package the plot will be generated with. Options are:
         {'arviz', 'seaborn', 'matplotlib'}.
@@ -298,7 +298,7 @@ def create_pair_plot(
 
 def create_posterior_plot(
     inference_data: az.data.inference_data.InferenceData,
-    problem: "InferenceProblem",
+    problem: "InverseProblem",
     plot_with: str = "arviz",
     kind: str = "hist",
     figsize: Optional[tuple] = (10, 3),
@@ -318,7 +318,7 @@ def create_posterior_plot(
     inference_data
         Contains the results of the sampling procedure.
     problem
-        The inference problem the inference data refers to.
+        The inverse problem the inference data refers to.
     plot_with
         Defines the python package the plot will be generated with. Options are:
         {'arviz', 'seaborn', 'matplotlib'}.
@@ -402,7 +402,7 @@ def create_posterior_plot(
 
 def create_trace_plot(
     inference_data: az.data.inference_data.InferenceData,
-    problem: "InferenceProblem",
+    problem: "InverseProblem",
     plot_with: str = "arviz",
     kind: str = "trace",
     figsize: Optional[tuple] = (10, 6),
@@ -420,7 +420,7 @@ def create_trace_plot(
     inference_data
         Contains the results of the sampling procedure.
     problem
-        The inference problem the inference data refers to.
+        The inverse problem the inference data refers to.
     plot_with
         Defines the python package the plot will be generated with. Options are:
         {'arviz', 'seaborn', 'matplotlib'}.
