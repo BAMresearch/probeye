@@ -1094,6 +1094,7 @@ def vectorize_numpy_dict(numpy_dict: dict) -> np.ndarray:
         idx_start = idx_end
     return vector
 
+
 def assemble_covariance_matrix(
     coords_array: np.ndarray,
     std_model: Union[int, float, np.ndarray],
