@@ -3,7 +3,7 @@ Simple linear regression example with two model and one noise parameter
 ----------------------------------------------------------------------------------------
 The model equation is y = a * x + b with a, b being the model parameters and the noise
 model is a normal zero-mean distribution with the std. deviation to infer. The problem
-is solved via max likelihood estimation and via sampling using emcee, pyro and dynesty.
+is solved via max likelihood estimation and via sampling using emcee and dynesty.
 """
 
 # standard library imports
@@ -33,7 +33,6 @@ class TestProblem(unittest.TestCase):
         show_progress: bool = False,
         run_scipy: bool = True,
         run_emcee: bool = True,
-        run_torch: bool = True,
         run_dynesty: bool = True,
     ):
         """
@@ -60,9 +59,6 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
@@ -74,13 +70,13 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of a, and its normal prior parameters
         a_true = 2.5
-        loc_a = 2.0
-        scale_a = 1.0
+        mean_a = 2.0
+        std_a = 1.0
 
         # 'true' value of b, and its normal prior parameters
         b_true = 1.7
-        loc_b = 1.0
-        scale_b = 1.0
+        mean_b = 1.0
+        std_b = 1.0
 
         # 'true' value of model error sd, and its uniform prior parameters
         sigma = 0.5
@@ -96,10 +92,10 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["mb"]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y")
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 # this method *must* be provided by the user
@@ -151,8 +147,8 @@ class TestProblem(unittest.TestCase):
             prior=(
                 "normal",
                 {
-                    "loc": np.array([loc_a, loc_b]),
-                    "scale": np.array([[scale_a, 0], [0, scale_b]]),
+                    "mean": np.array([mean_a, mean_b]),
+                    "cov": np.array([[std_a**2, 0], [0, std_b**2]]),
                 },
             ),
         )
@@ -178,8 +174,8 @@ class TestProblem(unittest.TestCase):
         # notation  {<global parameter name>: <local parameter name>} but can instead
         # just write the parameter's (global=local) name, like it is done with the
         # forward model's parameter 'b' below
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -219,7 +215,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
+            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
         )
 
         # give problem overview
@@ -242,7 +238,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

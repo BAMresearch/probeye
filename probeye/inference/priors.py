@@ -59,23 +59,24 @@ class PriorNormal(PriorBase):
             The result of stats.(multivariate_)norm.<method>(x, loc, scale) or of
             stats.(multivariate_)norm.<method>(loc, scale).
         """
-        loc = prms[f"loc_{self.ref_prm}"]
-        scale = prms[f"scale_{self.ref_prm}"]
-        if len_or_one(loc) == 1:
+        mean = prms[f"mean_{self.ref_prm}"]
+        if len_or_one(mean) == 1:
+            std = prms[f"std_{self.ref_prm}"]
             fun = getattr(stats.norm, method)
             if use_ref_prm:
                 x = prms[self.ref_prm]
-                return fun(x, loc=loc, scale=scale, **kwargs)
+                return fun(x, loc=mean, scale=std, **kwargs)
             else:
-                return fun(loc=loc, scale=scale, **kwargs)
+                return fun(loc=mean, scale=std, **kwargs)
         else:
+            cov = prms[f"cov_{self.ref_prm}"]
             try:
                 fun = getattr(stats.multivariate_normal, method)
             except AttributeError:
                 # this try-catch construct accounts for the fact, that the multivariate
                 # normal distribution does not have a 'mean' or 'median' method
                 if method in ["mean", "median"]:
-                    return loc
+                    return mean
                 else:
                     raise AttributeError(
                         f"stats.multivariate_normal does "
@@ -83,9 +84,9 @@ class PriorNormal(PriorBase):
                     )
             if use_ref_prm:
                 x = prms[self.ref_prm]
-                return fun(x, mean=loc, cov=scale, **kwargs)
+                return fun(x, mean=mean, cov=cov, **kwargs)
             else:
-                return fun(mean=loc, cov=scale, **kwargs)
+                return fun(mean=mean, cov=cov, **kwargs)
 
     def generate_samples(
         self, prms: dict, size: int, seed: Optional[int] = None
@@ -108,13 +109,14 @@ class PriorNormal(PriorBase):
         numpy.ndarray
             The generate samples.
         """
-        loc = prms[f"loc_{self.ref_prm}"]
-        scale = prms[f"scale_{self.ref_prm}"]
-        if len_or_one(loc) == 1:
-            return stats.norm.rvs(loc=loc, scale=scale, size=size, random_state=seed)
+        mean = prms[f"mean_{self.ref_prm}"]
+        if len_or_one(mean) == 1:
+            std = prms[f"std_{self.ref_prm}"]
+            return stats.norm.rvs(loc=mean, scale=std, size=size, random_state=seed)
         else:
+            cov = prms[f"cov_{self.ref_prm}"]
             return stats.multivariate_normal.rvs(
-                mean=loc, cov=scale, size=size, random_state=seed
+                mean=mean, cov=cov, size=size, random_state=seed
             )
 
 
@@ -145,7 +147,6 @@ class PriorLognormal(PriorBase):
         self,
         prms: dict,
         method: str,
-        shape: Union[float, int] = 1,
         use_ref_prm: bool = True,
         **kwargs,
     ) -> float:
@@ -160,10 +161,6 @@ class PriorLognormal(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method
             The method of stats.lognorm to be evaluated (e.g. 'pdf', 'logpdf').
-        shape
-            Scipy uses this shape parameter, which is not considered as a prior
-            parameter here. So, it is set to 1, which results in the standard version
-            of the lognormal distribution.
         use_ref_prm
             If True stats.lognorm.<method>(x, loc, scale) is evaluated, hence 'x' must
             be provided in the prms dictionary. Otherwise, the evaluated method is
@@ -177,20 +174,23 @@ class PriorLognormal(PriorBase):
             <method>(loc, scale).
         """
         fun = getattr(stats.lognorm, method)
-        loc = prms[f"loc_{self.ref_prm}"]
-        scale = prms[f"scale_{self.ref_prm}"]
+        # for understanding the following parameter-juggling check out the scipy-docs at
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.lognorm.html
+        mu = prms[f"mean_{self.ref_prm}"]
+        sigma = prms[f"std_{self.ref_prm}"]
+        scale = np.exp(mu)
+        shape = sigma
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, shape, loc=loc, scale=scale, **kwargs)
+            return fun(x, shape, scale=scale, **kwargs)
         else:
-            return fun(shape, loc=loc, scale=scale, **kwargs)
+            return fun(shape, scale=scale, **kwargs)
 
     def generate_samples(
         self,
         prms: dict,
         size: int,
         seed: Optional[int] = None,
-        shape: Union[float, int] = 1,
     ) -> np.ndarray:
         """
         Randomly draws samples from this prior distribution. This method is used to
@@ -204,20 +204,19 @@ class PriorLognormal(PriorBase):
             Number of samples to generate.
         seed
             Used for the random state of the random number generation.
-        shape
-            Scipy uses a shape parameter. For the common lognormal distribution this
-            shape parameter is one.
 
         Returns
         -------
             The generate samples.
         """
-        loc = prms[f"loc_{self.ref_prm}"]
-        scale = prms[f"scale_{self.ref_prm}"]
+        # for understanding the following parameter-juggling check out the scipy-docs at
+        # https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.lognorm.html
+        mu = prms[f"mean_{self.ref_prm}"]
+        sigma = prms[f"std_{self.ref_prm}"]
+        scale = np.exp(mu)
+        shape = sigma
 
-        return stats.lognorm.rvs(
-            shape, loc=loc, scale=scale, size=size, random_state=seed
-        )
+        return stats.lognorm.rvs(shape, scale=scale, size=size, random_state=seed)
 
 
 class PriorTruncnormal(PriorBase):
@@ -275,15 +274,15 @@ class PriorTruncnormal(PriorBase):
             <method>(loc, scale).
         """
         fun = getattr(stats.truncnorm, method)
-        loc = prms[f"loc_{self.ref_prm}"]
-        scale = prms[f"scale_{self.ref_prm}"]
-        a = (prms[f"a_{self.ref_prm}"] - loc) / scale
-        b = (prms[f"b_{self.ref_prm}"] - loc) / scale
+        mean = prms[f"mean_{self.ref_prm}"]
+        std = prms[f"std_{self.ref_prm}"]
+        a = (prms[f"a_{self.ref_prm}"] - mean) / std
+        b = (prms[f"b_{self.ref_prm}"] - mean) / std
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, a=a, b=b, loc=loc, scale=scale, **kwargs)
+            return fun(x, a=a, b=b, loc=mean, scale=std, **kwargs)
         else:
-            return fun(a=a, b=b, loc=loc, scale=scale, **kwargs)
+            return fun(a=a, b=b, loc=mean, scale=std, **kwargs)
 
     def generate_samples(
         self,
@@ -308,12 +307,12 @@ class PriorTruncnormal(PriorBase):
         -------
             The generate samples.
         """
-        loc = prms[f"loc_{self.ref_prm}"]
-        scale = prms[f"scale_{self.ref_prm}"]
-        a = (prms[f"a_{self.ref_prm}"] - loc) / scale
-        b = (prms[f"b_{self.ref_prm}"] - loc) / scale
+        mean = prms[f"mean_{self.ref_prm}"]
+        std = prms[f"std_{self.ref_prm}"]
+        a = (prms[f"a_{self.ref_prm}"] - mean) / std
+        b = (prms[f"b_{self.ref_prm}"] - mean) / std
         return stats.truncnorm.rvs(
-            a=a, b=b, loc=loc, scale=scale, size=size, random_state=seed
+            a=a, b=b, loc=mean, scale=std, size=size, random_state=seed
         )
 
 

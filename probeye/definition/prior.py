@@ -25,7 +25,7 @@ class PriorBase:
         The name of the latent parameter the prior refers to.
     prms_def
         A list of strings, or list of one-element-dicts defining the prior's parameter
-        names. E.g. ['loc_a', 'scale_a'] or {'loc_a': 'loc_a', 'scale_a': 'scale_a'}.
+        names. For example ['mean_a', 'std_a'] or {'mean_a': 'std_a', 'std_a': 'std_a'}.
         The latter example is the notation for the use of global and local names, which
         should not be necessary for the definition of prior-parameters. A special case
         is the uninformative prior (see below) which hasn't got an parameters. So, in
@@ -108,8 +108,8 @@ class PriorBase:
         """
 
         if self.prior_type == "normal":
-            mu = prms[self.prms_def[f"loc_{self.ref_prm}"]].value
-            sigma = prms[self.prms_def[f"scale_{self.ref_prm}"]].value
+            mu = prms[self.prms_def[f"mean_{self.ref_prm}"]].value
+            sigma = prms[self.prms_def[f"std_{self.ref_prm}"]].value
             # proceed, only if both values are constants and not latent
             # parameters themselves
             if mu and sigma:

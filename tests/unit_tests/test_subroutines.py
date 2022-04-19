@@ -34,6 +34,7 @@ from probeye.subroutines import extract_true_values
 from probeye.subroutines import translate_simple_correlation
 from probeye.subroutines import get_global_name
 from probeye.subroutines import count_intervals
+from probeye.subroutines import vectorize_numpy_dict
 from probeye.subroutines import HiddenPrints
 
 
@@ -594,6 +595,20 @@ class TestProblem(unittest.TestCase):
         # invalid input with an incomplete domain
         with self.assertRaises(RuntimeError):
             count_intervals("[0, 1](0,1)(0,1][0, 1")
+
+    def test_vectorize_numpy_dict(self):
+
+        # default use case
+        d = {"y1": np.array([1.0, 2.0, 3.0])}
+        computed_value = vectorize_numpy_dict(d)
+        expected_value = np.array([1.0, 2.0, 3.0])
+        self.assertTrue(np.allclose(computed_value, expected_value))
+
+        # default use case
+        d = {"y1": np.array([1.0, 2.0, 3.0]), "y2": np.array([4.0, 5.0, 6.0])}
+        computed_value = vectorize_numpy_dict(d)
+        expected_value = np.array([1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
+        self.assertTrue(np.allclose(computed_value, expected_value))
 
     def test_HiddenPrints(self):
 

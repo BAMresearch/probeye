@@ -7,7 +7,7 @@ A and B are latent ones while c is a constant. Measurements are made at three di
 positions (x-values) each of which is associated with an own zero-mean, uncorrelated
 normal error model with the standard deviations to infer. This results in five latent
 parameters (parameters to be inferred). The problem is solved via max likelihood
-estimation and via sampling using emcee, pyro and dynesty.
+estimation and via sampling using emcee and dynesty.
 """
 
 # standard library imports
@@ -36,7 +36,6 @@ class TestProblem(unittest.TestCase):
         show_progress: bool = False,
         run_scipy: bool = True,
         run_emcee: bool = True,
-        run_torch: bool = True,
         run_dynesty: bool = True,
     ):
         """
@@ -63,9 +62,6 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
@@ -77,13 +73,13 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of A, and its normal prior parameters
         A_true = 1.3
-        loc_A = 1.0
-        scale_A = 1.0
+        mean_A = 1.0
+        std_A = 1.0
 
         # 'true' value of B, and its normal prior parameters
         B_true = -1.0
-        loc_B = -2.0
-        scale_B = 1.5
+        mean_B = -2.0
+        std_B = 1.5
 
         # 'true' value of sd_S1, and its uniform prior parameters
         sd_S1_true = 0.2
@@ -114,13 +110,13 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["A", "B", {"c": "const"}]
                 self.input_sensors = Sensor("time")
                 self.output_sensors = [
-                    Sensor("y1", x=pos_s1),
-                    Sensor("y2", x=pos_s2),
-                    Sensor("y3", x=pos_s3),
+                    Sensor("y1", x=pos_s1, std_model="sigma_1"),
+                    Sensor("y2", x=pos_s2, std_model="sigma_2"),
+                    Sensor("y3", x=pos_s3, std_model="sigma_3"),
                 ]
 
             def response(self, inp: dict) -> dict:
@@ -144,14 +140,14 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "A",
             "model",
-            prior=("normal", {"loc": loc_A, "scale": scale_A}),
+            prior=("normal", {"mean": mean_A, "std": std_A}),
             info="Slope of the graph",
             tex="$A$",
         )
         problem.add_parameter(
             "B",
             "model",
-            prior=("normal", {"loc": loc_B, "scale": scale_B}),
+            prior=("normal", {"mean": mean_B, "std": std_B}),
             info="Intersection of graph with y-axis",
             tex="$B$",
         )
@@ -182,8 +178,8 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("c", "model", const=c)
 
         # add the forward model to the problem
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -197,7 +193,7 @@ class TestProblem(unittest.TestCase):
             linear_model.output_sensors[2].name: sd_S3_true,
         }
 
-        def generate_data(n_time_steps, n=None):
+        def generate_data(n_time_steps, idx=None):
             time_steps = np.linspace(0, 1, n_time_steps)
             inp = {"A": A_true, "B": B_true, "const": c, "time": time_steps}
             sensors = linear_model(inp)
@@ -207,11 +203,11 @@ class TestProblem(unittest.TestCase):
                 )
             sensors[linear_model.input_sensor.name] = time_steps
             problem.add_experiment(
-                f"TestSeries_{n}", sensor_values=sensors, fwd_model_name="LinearModel"
+                f"TestSeries_{idx}", sensor_values=sensors, fwd_model_name="LinearModel"
             )
 
-        for n_exp, n_t in enumerate([101, 51]):
-            generate_data(n_t, n=n_exp)
+        for i, n_t in enumerate([101, 51]):
+            generate_data(n_t, idx=i + 1)
 
         # ============================================================================ #
         #                              Add noise model(s)                              #
@@ -220,20 +216,14 @@ class TestProblem(unittest.TestCase):
         # add the noise models to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def={"sigma_1": "std_model"},
-                sensors=linear_model.output_sensors[0],
+                experiment_name="TestSeries_1",
+                prms_def=["sigma_1", "sigma_2", "sigma_3"],
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def={"sigma_2": "std_model"},
-                sensors=linear_model.output_sensors[1],
-            )
-        )
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel(
-                prms_def={"sigma_3": "std_model"},
-                sensors=linear_model.output_sensors[2],
+                experiment_name="TestSeries_2",
+                prms_def=["sigma_1", "sigma_2", "sigma_3"],
             )
         )
 
@@ -263,7 +253,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

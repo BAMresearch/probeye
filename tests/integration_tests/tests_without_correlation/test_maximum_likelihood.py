@@ -58,10 +58,10 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["m", "b"]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y")
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 # this method *must* be provided by the user
@@ -90,8 +90,8 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("sigma", "likelihood", domain="(0, +oo)", tex=r"$\sigma$")
 
         # add the forward model to the problem
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -131,7 +131,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
+            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
         )
 
         # give problem overview

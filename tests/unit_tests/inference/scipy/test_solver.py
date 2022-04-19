@@ -17,38 +17,40 @@ class TestProblem(unittest.TestCase):
 
         # define a simple linear model for this case
         class LinearModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = ["m", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma")
+
             def response(self, inp):
                 return {"y": inp["m"] * inp["x"] + inp["b"]}
 
         # define parameters with with an uninformative prior
         problem = InverseProblem("Problem with uninformative prior")
         problem.add_parameter("m", "model")  # uninformative prior
-        problem.add_parameter(
-            "b", "model", prior=("normal", {"loc": 1.0, "scale": 1.0})
-        )
+        problem.add_parameter("b", "model", prior=("normal", {"mean": 1.0, "std": 1.0}))
         problem.add_parameter(
             "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
         )
 
         # add forward model and likelihood model
-        isensor, osensor = Sensor("x"), Sensor("y")
-        linear_model = LinearModel(["m", "b"], [isensor], [osensor])
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # add experimental data
         np.random.seed(1)
         x_test = np.linspace(0.0, 1.0, 10)
-        y_true = linear_model({isensor.name: x_test, "m": 2.5, "b": 1.7})[osensor.name]
+        y_true = linear_model({"x": x_test, "m": 2.5, "b": 1.7})["y"]
         y_test = np.random.normal(loc=y_true, scale=0.5)
         problem.add_experiment(
             f"TestSeries_1",
             fwd_model_name="LinearModel",
-            sensor_values={isensor.name: x_test, osensor.name: y_test},
+            sensor_values={"x": x_test, "y": y_test},
         )
 
         # add the likelihood model
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"}, sensors=osensor)
+            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
         )
 
         # test the get_start_values method for given x0_dict
@@ -82,12 +84,19 @@ class TestProblem(unittest.TestCase):
     def test_evaluate_model_response(self):
         # prepare for checks
         p = InverseProblem("TestProblem")
-        p.add_parameter("a0", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("a1", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("a2", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a0", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a1", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter(
+            "a2", "model", prior=("normal", {"mean": 0, "std": 1}), domain="[0, 1]"
+        )
         p.add_parameter("sigma", "likelihood", const=1.0)
 
         class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = ["a0", "a1", "a2"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma")
+
             def response(self, inp):
                 x = inp["x"]
                 a0 = inp["a0"]
@@ -96,8 +105,8 @@ class TestProblem(unittest.TestCase):
                 return {"y": a0 + a1 * x + a2 * x**2}
 
         # add forward and likelihood model
-        fwd_model = FwdModel(["a0", "a1", "a2"], Sensor("x"), Sensor("y"))
-        p.add_forward_model("FwdModel", fwd_model)
+        fwd_model = FwdModel("FwdModel")
+        p.add_forward_model(fwd_model)
 
         # add experiment_names
         p.add_experiment(
@@ -112,46 +121,29 @@ class TestProblem(unittest.TestCase):
 
         # add the likelihood model
         p.add_likelihood_model(
-            GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=Sensor("y")
-            )
+            GaussianLikelihoodModel(prms_def="sigma", experiment_name="Exp1")
         )
 
         # initialize the solver object
-        pyro_solver = ScipySolver(p)
+        scipy_solver = ScipySolver(p)
 
         # perform a check for all experiments
         a0_value, a1_value, a2_value = 1, 2, 3
         theta = np.array([a0_value, a1_value, a2_value])
-        computed_result = pyro_solver.evaluate_model_response(theta)
-        expected_result = {
-            "Exp1": {"y": 6},
-            "Exp2": {"y": 17},
-            "Exp3": {"y": np.array([6, 17])},
-        }
+        fwd_model = scipy_solver.problem.forward_models["FwdModel"]
 
-        # check for each item, because the last contains an array, which results in an
-        # error is you do assertEqual on the whole thing
-        self.assertEqual(computed_result["Exp1"], expected_result["Exp1"])
-        self.assertEqual(computed_result["Exp2"], expected_result["Exp2"])
-        self.assertEqual(
-            computed_result["Exp3"]["y"][0], expected_result["Exp3"]["y"][0]
-        )
-        self.assertEqual(
-            computed_result["Exp3"]["y"][1], expected_result["Exp3"]["y"][1]
-        )
+        comp_result, _ = scipy_solver.evaluate_model_response(theta, fwd_model, "Exp1")
+        self.assertEqual(comp_result, np.array(6.0))
 
-        # perform a check for a subset of experiments
-        computed_result = pyro_solver.evaluate_model_response(
-            theta, experiment_names="Exp3"
-        )
-        expected_result = {"Exp3": {"y": np.array([6, 17])}}
-        self.assertEqual(
-            computed_result["Exp3"]["y"][0], expected_result["Exp3"]["y"][0]
-        )
-        self.assertEqual(
-            computed_result["Exp3"]["y"][1], expected_result["Exp3"]["y"][1]
-        )
+        comp_result, _ = scipy_solver.evaluate_model_response(theta, fwd_model, "Exp2")
+        self.assertEqual(comp_result, np.array(17.0))
+
+        comp_result, _ = scipy_solver.evaluate_model_response(theta, fwd_model, "Exp3")
+        self.assertTrue(np.allclose(comp_result, np.array([6.0, 17.0])))
+
+        # check the likelihood out of a parameter domain
+        comp_result = scipy_solver.loglike(theta)
+        self.assertEqual(comp_result, -np.infty)
 
 
 if __name__ == "__main__":

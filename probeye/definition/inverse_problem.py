@@ -1,5 +1,4 @@
 # standard library
-import copy
 from typing import Union, List, Optional, Callable, Tuple
 import copy as cp
 
@@ -7,7 +6,6 @@ import copy as cp
 from tabulate import tabulate
 from loguru import logger
 import numpy as np
-import torch as th
 
 # local imports
 from probeye.definition.parameter import Parameters
@@ -433,9 +431,7 @@ class InverseProblem:
             value=new_value
         )
 
-    def get_parameters(
-        self, theta: Union[np.ndarray, th.Tensor], prm_def: dict
-    ) -> dict:
+    def get_parameters(self, theta: np.ndarray, prm_def: dict) -> dict:
         """
         Extracts the numeric values for given parameters that have been defined within
         the inverse problem. The numeric values are extracted either from the latent
@@ -458,8 +454,7 @@ class InverseProblem:
         prms
             Contains <local parameter name> : <(global) parameter value> pairs. If a
             parameter is scalar, its value will be returned as a float. In case of a
-            vector-valued parameter, its value will be returned either as a np.ndarray
-            or a th.Tensor, depending on the format theta was provided in.
+            vector-valued parameter, its value will be returned as a np.ndarray.
         """
         prms = {}
         for global_name, local_name in prm_def.items():
@@ -479,7 +474,7 @@ class InverseProblem:
                     prms[local_name] = theta[idx:idx_end]
         return prms
 
-    def check_parameter_domains(self, theta: Union[np.ndarray, th.Tensor]) -> bool:
+    def check_parameter_domains(self, theta: np.ndarray) -> bool:
         """
         Checks whether the given values of the latent parameters are within their
         specified domains.
@@ -605,15 +600,13 @@ class InverseProblem:
     #                  Forward model related methods                  #
     # =============================================================== #
 
-    def add_forward_model(self, name: str, forward_model: ForwardModelBase):
+    def add_forward_model(self, forward_model: ForwardModelBase):
         """
         Adds a forward model to the inverse problem. Note that multiple forward models
         can be added to one problem.
 
         Parameters
         ----------
-        name
-            The name of the forward model to be added.
         forward_model
             Defines the forward model. Check out forward_model.py to see a template for
             the forward model definition. The user will then have to derive his own
@@ -622,7 +615,7 @@ class InverseProblem:
         """
 
         # log at beginning so that errors can be quickly associated
-        logger.debug(f"Adding forward model '{name}'")
+        logger.debug(f"Adding forward model '{forward_model.name}'")
 
         # check if all given model parameters have already been added to the inverse
         # problem; note that the forward model can only be added to the problem after
@@ -631,28 +624,16 @@ class InverseProblem:
             self._parameters.confirm_that_parameter_exists(prm_name)
 
         # check if the given name for the forward model has already been used
-        if name in self._forward_models:
+        if forward_model.name in self._forward_models:
             raise RuntimeError(
-                f"The given name '{name}' for the forward model has already been used "
-                f"for another forward model. Please choose another name."
+                f"The name '{forward_model.name}' of the forward model you are trying "
+                f"to add to the problem has already been used for another forward "
+                f"model within the problem scope. Please choose another name."
             )
-
-        # check if the given forward model has an output sensor with a name that is
-        # already used for an output sensor of another forward model
-        for existing_name, existing_fwd_model in self._forward_models.items():
-            for output_sensor in existing_fwd_model.output_sensor_names:
-                if output_sensor in forward_model.output_sensor_names:
-                    raise RuntimeError(
-                        f"The given forward model '{name}' has an output sensor "
-                        f"'{output_sensor}', \nwhich is also defined as an output "
-                        f"sensor in the already defined forward model "
-                        f"'{existing_name}'.\nPlease choose a different name for "
-                        f"output sensor '{output_sensor}' in forward model '{name}'."
-                    )
 
         # add the given forward model to the internal forward model dictionary under
         # the given forward model name
-        self._forward_models[name] = forward_model
+        self._forward_models[forward_model.name] = forward_model
 
     # =============================================================== #
     #                   Experiments related methods                   #
@@ -905,8 +886,8 @@ class InverseProblem:
         Returns a copy of the problem the experimental data of which is transformed in
         some way. This might be a necessary pre-processing step for an inverse engine
         in order to be able to solve the problem. Note that the problem is not fully
-        deep-copied. The forward models are excluded from deep-copying, as this might
-        result in problems. The rest of the problem is deep-copied however.
+        deep-copied. The forward models might be excluded from deep-copying, if this
+        result in an error. The rest of the problem is deep-copied however.
 
         Parameters
         ----------
@@ -938,13 +919,15 @@ class InverseProblem:
         )
         self_copy._parameters = cp.deepcopy(self._parameters)
         self_copy._experiments = cp.deepcopy(self._experiments)
-        self_copy._forward_models = cp.copy(self._forward_models)  # no deep-copy here!
+        try:
+            self_copy._forward_models = cp.deepcopy(self._forward_models)
+        except RuntimeError:
+            logger.warning(
+                "The forward model(s) could not bee deep-copied. As a consequence, "
+                "the original problem will be modified."
+            )
+            self_copy._forward_models = cp.copy(self._forward_models)
         self_copy._likelihood_models = cp.deepcopy(self._likelihood_models)
-        # the following step is necessary since the attribute 'problem_experiments' of
-        # the deep-copied likelihood models in self_copy still refer to the experiments
-        # of self; hence, we need to set this pointer to the experiments of self_copy
-        for likelihood_model in self_copy._likelihood_models.values():
-            likelihood_model.problem_experiments = self_copy._experiments
 
         # transform the sensor values from the experiments by applying the specified
         # function with the given arguments to them
@@ -954,6 +937,25 @@ class InverseProblem:
                 sensor_values[sensor_name] = func(
                     sensor_values[sensor_name], *args, **kwargs
                 )
+
+        # the experimental data that is referenced by the forward model's sensors is
+        # still pointing to the original problem (i.e., self); for that reason they have
+        # to be re-referenced (to self_copy), which is done in the loop below
+        for forward_model in self_copy._forward_models.values():
+            forward_model_experiment_names = cp.deepcopy(forward_model.experiment_names)
+            forward_model.experiment_names = []
+            for exp_name in forward_model_experiment_names:
+                sensor_values = self_copy._experiments[exp_name]["sensor_values"]
+                forward_model.connect_experimental_data_to_sensors(
+                    exp_name, sensor_values
+                )
+
+        # due to the deep-copying, the likelihood models of self_copy still reference
+        # the forward models of the original problem (i.e., self); this is adjusted here
+        for likelihood_model in self_copy._likelihood_models.values():
+            likelihood_model.forward_model = self_copy._forward_models[
+                likelihood_model.forward_model.name
+            ]
 
         return self_copy
 
@@ -1013,64 +1015,13 @@ class InverseProblem:
                     f"'add_parameter' method for this purpose."
                 )
 
-        # add the problem's experiments to the likelihood model (note that this is just
-        # a pointer!) for likelihood_model-internal checks
-        likelihood_model.problem_experiments = self._experiments
-
-        # check/assign the likelihood model's experiments
-        if len(likelihood_model.experiment_names) == 0:
-            # in this case, the likelihood model will be assigned its experiments
-            # automatically; this assignment works via the likelihood model's sensors
-            # (at least when the sensors have been specified by the user); it is simply
-            # checked which experiments contain all of the likelihood model's sensors as
-            # sensor values; those experiments will be assigned then
-            logger.debug(
-                f"No experiments were explicitly defined for likelihood model "
-                f"'{likelihood_model.name}'."
-            )
-            logger.debug(
-                f"The following experiments were added were added automatically "
-                f"to {name}':"
-            )
-            if len(likelihood_model.sensors) > 0:
-                added_experiment_names = self.get_experiment_names(
-                    sensor_names=likelihood_model.sensor_names
-                )
-                likelihood_model.add_experiments(added_experiment_names)
-                for exp_name in added_experiment_names:
-                    logger.debug(f"{likelihood_model.name} <--- {exp_name}")
-            else:
-                # in this case, the user did not specify the likelihood model's sensors
-                # and also did not specify the assigned experiments; this minimal
-                # specification is interpreted as all of the problem's experiments being
-                # assigned to the likelihood model
-                for exp_name in self._experiments:
-                    likelihood_model.add_experiments(exp_name)
-                    logger.debug(f"{likelihood_model.name} <--- {exp_name}")
-
-        # set the likelihood's forward model
-        likelihood_model.determine_forward_model()
-
-        # the following case is relevant when the user did not specify the likelihood
-        # model's sensors when initializing a GaussianLikelihoodModel instance; this
-        # case is mostly for convenience
-        if len(likelihood_model.sensors) == 0:
-            logger.debug(
-                f"No sensors were assigned to likelihood model "
-                f"'{likelihood_model.name}'."
-            )
-            logger.debug(f"Assigning sensors automatically based on its forward model.")
-            likelihood_model.sensors = self.forward_models[
-                likelihood_model.forward_model
-            ].output_sensors
-            logger.debug(f"Assigned sensors: {likelihood_model.sensor_names}")
-
-        # this step is necessary here again, since the likelihood model's
-        # add_experiments-method does a few things more, when the likelihood model's
-        # sensors are defined; this is given for sure not before this point
-        experiment_names_user = copy.copy(likelihood_model.experiment_names)
-        likelihood_model.experiment_names = []
-        likelihood_model.add_experiments(experiment_names_user)
+        # set the likelihood's forward model based on the likelihood's experiment; only
+        # after the forward model has been set, the correlation definitions can be
+        # checked on consistency which is done via process_correlation_definition()
+        exp_name = likelihood_model.experiment_name
+        fwd_model_name = self._experiments[exp_name]["forward_model"]
+        likelihood_model.forward_model = self.forward_models[fwd_model_name]
+        likelihood_model.process_correlation_definition()
 
         # finally, add the likelihood_model to the internal dict
         self._likelihood_models[name] = likelihood_model
@@ -1187,15 +1138,12 @@ class InverseProblem:
         rows_like = []
         for l_name, l_model in self._likelihood_models.items():
             prms_glob = simplified_list_string([*l_model.prms_def.keys()])
-            prms_loc = simplified_list_string([*l_model.prms_def.values()])
-            l_sensors = simplified_list_string(l_model.sensor_names)
-            exp_name_1 = l_model.experiment_names[0]
-            rows_like.append((l_name, prms_glob, prms_loc, l_sensors, exp_name_1))
-            for exp_name in l_model.experiment_names:
-                if exp_name == exp_name_1:
-                    continue
-                rows_like.append(("", "", "", "", exp_name))
-        headers = ["Name", "Glob. prms", "Loc. prms", "Target sensors", "Experiments"]
+            l_sensors = simplified_list_string(
+                l_model.forward_model.output_sensor_names
+            )
+            exp_name_1 = l_model.experiment_name
+            rows_like.append((l_name, prms_glob, l_sensors, exp_name_1))
+        headers = ["Name", "Parameters", "Target sensors", "Experiment"]
         like_table = tabulate(rows_like, headers=headers, tablefmt=tablefmt)
         like_str = titled_table("Added likelihood models", like_table)
 
@@ -1303,15 +1251,10 @@ class InverseProblem:
         for parameter in self._parameters.values():
             parameter.check_consistency()
 
-        # check the consistency of each likelihood model
-        for likelihood_model in self._likelihood_models.values():
-            likelihood_model.check_experiment_consistency()
-
         # check that each defined experiment appears in one of the likelihood models
         exp_names_in_likelihood_models = set()
         for likelihood_model in self._likelihood_models.values():
-            for exp_name_likelihood in likelihood_model.experiment_names:
-                exp_names_in_likelihood_models.add(exp_name_likelihood)
+            exp_names_in_likelihood_models.add(likelihood_model.experiment_name)
         for exp_name in self._experiments.keys():
             if exp_name not in exp_names_in_likelihood_models:
                 logger.warning(

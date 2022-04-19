@@ -42,7 +42,6 @@ class TestProblem(unittest.TestCase):
         show_progress: bool = False,
         run_scipy: bool = True,
         run_emcee: bool = True,
-        run_torch: bool = False,
         run_dynesty: bool = True,
     ):
         """
@@ -69,19 +68,10 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
         """
-
-        if run_torch:
-            raise RuntimeError(
-                "The pyro-solver is not available for inverse problems including "
-                "correlations yet."
-            )
 
         # ============================================================================ #
         #                              Set numeric values                              #
@@ -89,18 +79,18 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of ax, and its normal prior parameters
         ax_true = 1.5
-        loc_ax = 2.0
-        scale_ax = 1.0
+        mean_ax = 2.0
+        std_ax = 1.0
 
         # 'true' value of ay, and its normal prior parameters
         ay_true = -1.0
-        loc_ay = -0.5
-        scale_ay = 1.0
+        mean_ay = -0.5
+        std_ay = 1.0
 
         # 'true' value of b, and its normal prior parameters
         b_true = 1.7
-        loc_b = 1.0
-        scale_b = 1.0
+        mean_b = 1.0
+        std_b = 1.0
 
         # 'true' value of additive error sd, and its uniform prior parameters
         sigma = 0.2
@@ -123,10 +113,12 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["ax", "ay", "b"]
                 self.input_sensors = [Sensor("x"), Sensor("y")]
-                self.output_sensors = Sensor("z")
+                self.output_sensors = Sensor(
+                    "z", std_model="sigma", correlated_in={("x", "y"): "l_corr"}
+                )
 
             def response(self, inp: dict) -> dict:
                 ax = inp["ax"]
@@ -149,21 +141,21 @@ class TestProblem(unittest.TestCase):
             "model",
             tex="$a_x$",
             info="Slope of the graph-intersection with y=0 in x-direction",
-            prior=("normal", {"loc": loc_ax, "scale": scale_ax}),
+            prior=("normal", {"mean": mean_ax, "std": std_ax}),
         )
         problem.add_parameter(
             "ay",
             "model",
             tex="$a_y$",
             info="Slope of the graph-intersection with x=0 in y-direction",
-            prior=("normal", {"loc": loc_ay, "scale": scale_ay}),
+            prior=("normal", {"mean": mean_ay, "std": std_ay}),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of plane with z-axis",
             tex="$b$",
-            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+            prior=("normal", {"mean": mean_b, "std": std_b}),
         )
         problem.add_parameter(
             "sigma",
@@ -183,8 +175,8 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -266,14 +258,11 @@ class TestProblem(unittest.TestCase):
         # of each other)
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
-                prms_def=[{"sigma": "std_model"}, "l_corr"],
-                sensors=linear_model.output_sensor,
-                correlation_variables="xy",
+                prms_def=["sigma", "l_corr"],
+                experiment_name=f"Test_{i}",
+                correlation_variables=[("x", "y")],
                 correlation_model="exp",
-                experiment_names=f"Test_{i}",
-                additive_model_error=True,
-                multiplicative_model_error=False,
-                additive_measurement_error=False,
+                model_error="additive",
             )
             problem.add_likelihood_model(likelihood_model)
 
@@ -303,7 +292,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

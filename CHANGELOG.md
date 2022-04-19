@@ -1,5 +1,13 @@
 # probeye changelog
 
+## 2.2.0 (2022-Apr-XX)
+### Changed
+- The user-definition of the forward model's 'definition'-method is now mandatory.
+- The forward model's 'definition'-method was renamed to 'interface'.
+- The prior-parameters of the normal and lognormal distribution have been renamed from 'loc', 'scale' to 'mean', 'std'.
+- The pyro-solver has (and its dependencies have) been removed from the package. All solvers are now based on numpy-arrays.
+- Fixed a bug resulting from an update of numpy causing an error when using dynesty with a given seed.
+
 ## 2.1.5 (2022-Mar-31)
 ### Changed
 - The main class InferenceProblem was renamed to InverseProblem.

@@ -17,26 +17,24 @@ class TestProblem(unittest.TestCase):
     def test_properties(self):
         p = InverseProblem("TestProblem")
         # add first latent parameter; n_latent_prms should be 1
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0.0, "scale": 1.0}))
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0.0, "std": 1.0}))
         self.assertEqual(p.n_latent_prms, 1)
         self.assertEqual(p.latent_prms_dims, [1])
         # add second latent parameter; n_latent_prms should be 2
-        p.add_parameter("b", "likelihood", prior=("normal", {"loc": 0.0, "scale": 1.0}))
+        p.add_parameter("b", "likelihood", prior=("normal", {"mean": 0.0, "std": 1.0}))
         self.assertEqual(p.n_latent_prms, 2)
         self.assertEqual(p.latent_prms_dims, [1, 1])
         # check the different properties
         self.assertEqual(p.n_prms, 6)
-        self.assertEqual(
-            set(p.prms), {"loc_a", "scale_a", "a", "loc_b", "scale_b", "b"}
-        )
+        self.assertEqual(set(p.prms), {"mean_a", "std_a", "a", "mean_b", "std_b", "b"})
         self.assertEqual(p.n_latent_prms, 2)
         self.assertEqual(set(p.latent_prms), {"a", "b"})
         self.assertEqual(p.n_constant_prms, 4)
-        self.assertEqual(set(p.constant_prms), {"loc_a", "scale_a", "loc_b", "scale_b"})
+        self.assertEqual(set(p.constant_prms), {"mean_a", "std_a", "mean_b", "std_b"})
         self.assertEqual(p.n_model_prms, 1)
         self.assertEqual(set(p.model_prms), {"a"})
         self.assertEqual(p.n_prior_prms, 4)
-        self.assertEqual(set(p.prior_prms), {"loc_a", "scale_a", "loc_b", "scale_b"})
+        self.assertEqual(set(p.prior_prms), {"mean_a", "std_a", "mean_b", "std_b"})
         self.assertEqual(p.n_likelihood_prms, 1)
         self.assertEqual(set(p.likelihood_prms), {"b"})
 
@@ -45,9 +43,9 @@ class TestProblem(unittest.TestCase):
         # is usually printed is redirected
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
-        p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
         p.add_parameter(
-            "sigma_model", "likelihood", prior=("normal", {"loc": 0, "scale": 1})
+            "sigma_model", "likelihood", prior=("normal", {"mean": 0, "std": 1})
         )
         sys.stdout = io.StringIO()
         # try out different options
@@ -61,13 +59,20 @@ class TestProblem(unittest.TestCase):
             # the consistency_check will raise an error
             p.info(tablefmt="presto", check_consistency=True)
         # now add the remaining stuff to make to problem consistent
-        test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
-        p.add_forward_model("TestModel", test_model)
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "b"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma_model")
+
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model)
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
         p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
+            GaussianLikelihoodModel("sigma_model", experiment_name="Experiment_1")
         )
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
@@ -78,17 +83,25 @@ class TestProblem(unittest.TestCase):
         # set up a consistent problem and print it
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
-        p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
         p.add_parameter(
-            "sigma_model", "likelihood", prior=("normal", {"loc": 0, "scale": 1})
+            "sigma_model", "likelihood", prior=("normal", {"mean": 0, "std": 1})
         )
-        test_model = ForwardModelBase("b", Sensor("x"), Sensor("y"))
-        p.add_forward_model("TestModel", test_model)
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "b"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma_model")
+
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model)
+
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
         p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", sensors=Sensor("y"))
+            GaussianLikelihoodModel("sigma_model", experiment_name="Experiment_1")
         )
         sys.stdout = io.StringIO()  # redirect output to console
         print(p)
@@ -98,7 +111,7 @@ class TestProblem(unittest.TestCase):
         p = InverseProblem("TestProblem")
         # check valid use cases for constant parameters
         p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
-        p.add_parameter("loc_a", "prior", const=1.0, info="info", tex=r"$loc_a$")
+        p.add_parameter("mean_a", "prior", const=1.0, info="info", tex=r"$mean_a$")
         p.add_parameter(
             "sigma_1", "likelihood", const=1.0, info="info", tex=r"$\sigma_1$"
         )
@@ -106,12 +119,12 @@ class TestProblem(unittest.TestCase):
         p.add_parameter(
             "b",
             "model",
-            prior=("normal", {"loc": 0, "scale": 1}),
+            prior=("normal", {"mean": 0, "std": 1}),
             info="info",
             tex="$b$",
         )
         p.add_parameter(
-            "scale_a",
+            "std_a",
             "prior",
             info="info",
             tex="$b$",
@@ -129,7 +142,7 @@ class TestProblem(unittest.TestCase):
             "model",
             info="info",
             tex="$a$",
-            prior=("normal", {"loc": "loc_a", "scale": "scale_a"}),
+            prior=("normal", {"mean": "mean_a", "std": "std_a"}),
         )
         p.add_parameter("d", "model")  # latent param. with uninformative prior
         # check invalid input arguments
@@ -204,12 +217,12 @@ class TestProblem(unittest.TestCase):
         # set up a problem with some parameters so we can remove them
         p = InverseProblem("TestProblem")
         p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
-        p.add_parameter("loc_a", "prior", const=1.0, info="info", tex=r"$loc_a$")
+        p.add_parameter("mean_a", "prior", const=1.0, info="info", tex=r"$mean_a$")
         p.add_parameter(
             "sigma_model", "likelihood", const=1.0, info="info", tex=r"$\sigma$"
         )
         p.add_parameter(
-            "scale_a",
+            "std_a",
             "prior",
             info="info",
             tex="$b$",
@@ -227,17 +240,17 @@ class TestProblem(unittest.TestCase):
             "model",
             info="info",
             tex="$a$",
-            prior=("normal", {"loc": "loc_a", "scale": "scale_a"}),
+            prior=("normal", {"mean": "mean_a", "std": "std_a"}),
         )
         # check removing a constant parameter
         self.assertEqual(
             set(p.constant_prms),
             {
                 "c",
-                "loc_a",
+                "mean_a",
                 "sigma_model",
-                "low_scale_a",
-                "high_scale_a",
+                "low_std_a",
+                "high_std_a",
                 "low_sigma",
                 "high_sigma",
             },
@@ -246,19 +259,19 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(
             set(p.constant_prms),
             {
-                "loc_a",
+                "mean_a",
                 "sigma_model",
-                "low_scale_a",
-                "high_scale_a",
+                "low_std_a",
+                "high_std_a",
                 "low_sigma",
                 "high_sigma",
             },
         )
         # check removing a latent parameter; note that removing a latent parameter leads
         # to the removal of all its prior parameters
-        self.assertEqual(set(p.latent_prms), {"scale_a", "sigma", "a"})
+        self.assertEqual(set(p.latent_prms), {"std_a", "sigma", "a"})
         # check that indexes are as expected
-        self.assertEqual(p.parameters["scale_a"].index, 0)
+        self.assertEqual(p.parameters["std_a"].index, 0)
         self.assertEqual(p.parameters["sigma"].index, 1)
         self.assertEqual(p.parameters["a"].index, 2)
         p.remove_parameter("a")  # <-- this is where the removal happens
@@ -277,7 +290,7 @@ class TestProblem(unittest.TestCase):
     def test_check_if_parameter_exists(self):
         # check confirming existing parameter
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
         p.parameters.confirm_that_parameter_exists("a")
         # check RuntimeError for non-existing parameter
         with self.assertRaises(RuntimeError):
@@ -286,10 +299,10 @@ class TestProblem(unittest.TestCase):
     def test_change_parameter_role(self):
         p = InverseProblem("TestProblem")
         # check change of role from latent to constant parameter
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
         self.assertEqual(set(p.latent_prms), {"a"})
-        self.assertEqual(set(p.constant_prms), {"loc_a", "scale_a"})
-        self.assertEqual(set(p.prms), {"a", "loc_a", "scale_a"})
+        self.assertEqual(set(p.constant_prms), {"mean_a", "std_a"})
+        self.assertEqual(set(p.prms), {"a", "mean_a", "std_a"})
         p.change_parameter_role("a", const=1.0)  # <-- here the role changes
         with self.assertRaises(RuntimeError):
             # trying to change a constant to a constant
@@ -298,10 +311,10 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(set(p.constant_prms), {"a"})
         self.assertEqual(set(p.prms), {"a"})
         # check change of role from latent to constant parameter
-        p.change_parameter_role("a", prior=("normal", {"loc": 0, "scale": 1}))
+        p.change_parameter_role("a", prior=("normal", {"mean": 0, "std": 1}))
         self.assertEqual(set(p.latent_prms), {"a"})
-        self.assertEqual(set(p.constant_prms), {"loc_a", "scale_a"})
-        self.assertEqual(set(p.prms), {"a", "loc_a", "scale_a"})
+        self.assertEqual(set(p.constant_prms), {"mean_a", "std_a"})
+        self.assertEqual(set(p.prms), {"a", "mean_a", "std_a"})
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # stated parameter does not exist
@@ -312,16 +325,16 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             # both const and prior are given
             p.change_parameter_role(
-                "a", const=1.0, prior=("normal", {"loc": 0, "scale": 1})
+                "a", const=1.0, prior=("normal", {"mean": 0, "std": 1})
             )
         with self.assertRaises(RuntimeError):
             # change to role the parameter already has
-            p.change_parameter_role("a", prior=("normal", {"loc": 0, "scale": 1}))
+            p.change_parameter_role("a", prior=("normal", {"mean": 0, "std": 1}))
 
     def test_change_parameter_type(self):
         p = InverseProblem("TestProblem")
         # check change of type from 'model' to 'likelihood'
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
         self.assertEqual(p.parameters["a"].type, "model")
         p.change_parameter_type("a", "likelihood")
         self.assertEqual(p.parameters["a"].type, "likelihood")
@@ -335,7 +348,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter(
             "a",
             "model",
-            prior=("normal", {"loc": 0, "scale": 1}),
+            prior=("normal", {"mean": 0, "std": 1}),
             info="Info",
             tex="$a$",
         )
@@ -357,7 +370,7 @@ class TestProblem(unittest.TestCase):
         p = InverseProblem("TestProblem")
         # simple check that the change works and has the expected effect
         p.add_parameter("a", "model", const=0.0)
-        p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
         new_const = 1.0
         p.change_constant("a", new_const)
         self.assertEqual(p.parameters["a"].value, new_const)
@@ -376,8 +389,8 @@ class TestProblem(unittest.TestCase):
             # nothing is defined at this point
             p.check_problem_consistency()
         # define some parameters that do not require priors
-        p.add_parameter("loc_a", "prior", const=0.0)
-        p.add_parameter("scale_a", "prior", const=1.0)
+        p.add_parameter("mean_a", "prior", const=0.0)
+        p.add_parameter("std_a", "prior", const=1.0)
         with self.assertRaises(AssertionError):
             # no priors defined yet
             p.check_problem_consistency()
@@ -387,14 +400,20 @@ class TestProblem(unittest.TestCase):
             "model",
             info="Some model parameter",
             tex="$a$",
-            prior=("normal", {"loc": "loc_a", "scale": "scale_a"}),
+            prior=("normal", {"mean": "mean_a", "std": "std_a"}),
         )
         with self.assertRaises(AssertionError):
             # no forward models defined yet
             p.check_problem_consistency()
-        # add a forward model
-        test_model = ForwardModelBase("a", Sensor("x"), Sensor("y"))
-        p.add_forward_model("TestModel", test_model)
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma_model")
+
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model)
         with self.assertRaises(AssertionError):
             # no noise models defined yet
             p.check_problem_consistency()
@@ -410,7 +429,7 @@ class TestProblem(unittest.TestCase):
         )
         # add a noise model
         p.add_parameter("s", "likelihood", const=1.0)
-        like_model = GaussianLikelihoodModel("s", experiment_names=["Experiment_1"])
+        like_model = GaussianLikelihoodModel("s", experiment_name="Experiment_1")
         p.add_likelihood_model(like_model)
         # now the problem should be consistent
         p.check_problem_consistency()
@@ -418,9 +437,17 @@ class TestProblem(unittest.TestCase):
     def test_add_experiment(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        test_model = ForwardModelBase("a", Sensor("x"), Sensor("y"))
-        p.add_forward_model("TestModel", test_model)
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma_model")
+
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model)
+
         p.add_experiment(
             "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
         )
@@ -534,39 +561,42 @@ class TestProblem(unittest.TestCase):
                 sensor_values={"x": 1, "y": np.array([1.0])},
                 fwd_model_name="TestModel",
             )
-        # check that you cannot add experiments after adding a likelihood model
-        p.add_parameter("sigma", "likelihood", prior=("uniform", {"low": 0, "high": 1}))
-        likelihood_model = GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
-        p.add_likelihood_model(likelihood_model)
-        # now an experiment is added which is not allowed
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_not_allowed",
-                sensor_values={"x": 1, "y": 1},
-                fwd_model_name="TestModel",
-            )
 
     def test_get_parameters(self):
         # check a simple use case
         p = InverseProblem("TestProblem")
         p.add_parameter("c", "model", const=1.0)
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
         a_value, b_value = 3.1, 14.7
-        prms_def = {"b": "b", "a": "a", "loc_b": "loc_b", "c": "c"}
+        prms_def = {"b": "b", "a": "a", "mean_b": "mean_b", "c": "c"}
         computed_result = p.get_parameters(np.array([a_value, b_value]), prms_def)
-        expected_result = {"b": b_value, "a": a_value, "loc_b": 0, "c": 1.0}
+        expected_result = {"b": b_value, "a": a_value, "mean_b": 0, "c": 1.0}
         self.assertEqual(computed_result, expected_result)
 
     def test_get_experiment_names(self):
         # prepare for checks
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        # define two forward models
-        test_model_1 = ForwardModelBase("a", Sensor("x"), [Sensor("y1"), Sensor("y2")])
-        test_model_2 = ForwardModelBase("a", Sensor("x"), [Sensor("z1"), Sensor("z2")])
-        p.add_forward_model("TestModel_1", test_model_1)
-        p.add_forward_model("TestModel_2", test_model_2)
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+
+        class FwdModel1(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = [Sensor("y1"), Sensor("y2")]
+
+        class FwdModel2(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = [Sensor("z1"), Sensor("z2")]
+
+        test_model_1 = FwdModel1("TestModel_1")
+        p.add_forward_model(test_model_1)
+
+        test_model_2 = FwdModel2("TestModel_2")
+        p.add_forward_model(test_model_2)
+
         # define experiment_names to each forward model
         p.add_experiment(
             "Experiment_Y1",
@@ -646,10 +676,10 @@ class TestProblem(unittest.TestCase):
         # check some simple use cases
         p = InverseProblem("TestProblem")
         p.add_parameter(
-            "a", "model", prior=("normal", {"loc": 0, "scale": 1}), tex="$a$"
+            "a", "model", prior=("normal", {"mean": 0, "std": 1}), tex="$a$"
         )
         p.add_parameter(
-            "b", "model", prior=("normal", {"loc": 0, "scale": 1}), tex="$b$"
+            "b", "model", prior=("normal", {"mean": 0, "std": 1}), tex="$b$"
         )
         computed_result = p.get_theta_names(tex=False)
         expected_result = ["a", "b"]
@@ -664,10 +694,10 @@ class TestProblem(unittest.TestCase):
             "model",
             dim=2,
             tex="$a$",
-            prior=("normal", {"loc": [0, 0], "scale": [[1, 0], [0, 1]]}),
+            prior=("normal", {"mean": [0, 0], "cov": [[1, 0], [0, 1]]}),
         )
         p.add_parameter(
-            "b", "model", tex="$b$", prior=("normal", {"loc": 0, "scale": 1})
+            "b", "model", tex="$b$", prior=("normal", {"mean": 0, "std": 1})
         )
         computed_result = p.get_theta_names(tex=False, components=False)
         expected_result = ["a", "b"]
@@ -687,9 +717,9 @@ class TestProblem(unittest.TestCase):
         # that is usually printed is redirected
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "model", const=1.0)
-        p.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
         p.add_parameter(
-            "sigma_model", "likelihood", prior=("normal", {"loc": 0, "scale": 1})
+            "sigma_model", "likelihood", prior=("normal", {"mean": 0, "std": 1})
         )
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
@@ -699,119 +729,76 @@ class TestProblem(unittest.TestCase):
     def test_add_forward_model(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        test_model = ForwardModelBase("a", Sensor("x"), Sensor("y"))
-        p.add_forward_model("TestModel", test_model)
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma_model")
+
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model)
+
         # check for invalid input arguments
         with self.assertRaises(RuntimeError):
             # a given parameter of the forward model has not been added yet
-            test_model_2 = ForwardModelBase("b", Sensor("x"), Sensor("y"))
-            p.add_forward_model("TestModel_2", test_model_2)
+            class FwdModel2(ForwardModelBase):
+                def interface(self):
+                    self.parameters = "b"
+                    self.input_sensors = Sensor("x")
+                    self.output_sensors = Sensor("y", std_model="sigma_model")
+
+            test_model_2 = FwdModel2("TestModel_2")
+            p.add_forward_model(test_model_2)
         with self.assertRaises(RuntimeError):
             # add a forward model with the same name
-            p.add_forward_model("TestModel", test_model)
-        with self.assertRaises(RuntimeError):
-            # add a forward model with already used output sensor name
-            test_model_2 = ForwardModelBase("a", Sensor("x"), Sensor("y"))
-            p.add_forward_model("TestModel_2", test_model_2)
+            p.add_forward_model(test_model)
 
     def test_add_likelihood_model(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s1", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s2", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s3", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
-        test_model = ForwardModelBase("a", Sensor("x"), [Sensor("y1"), Sensor("y2")])
-        p.add_forward_model("TestModel", test_model)
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("s1", "likelihood", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("s2", "likelihood", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("s3", "likelihood", prior=("normal", {"mean": 0, "std": 1}))
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = [Sensor("y1"), Sensor("y2")]
+
+        p.add_forward_model(FwdModel("TestModel"))
         # try to add a likelihood model before adding experiments (not allowed)
         with self.assertRaises(RuntimeError):
-            p.add_likelihood_model(
-                GaussianLikelihoodModel("s1", sensors=[Sensor("y1"), Sensor("y2")])
-            )
+            p.add_likelihood_model(GaussianLikelihoodModel("s1", "Exp"))
         p.add_experiment(
             "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
         )
-        noise_model1 = GaussianLikelihoodModel(
-            "s1", sensors=[Sensor("y1"), Sensor("y2")]
-        )
-        noise_model2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
-        noise_model3 = GaussianLikelihoodModel(
-            ["s1", "s2", "s3"], sensors=[Sensor("y1")], name="NM3"
-        )
-        p.add_likelihood_model(noise_model1)
-        p.add_likelihood_model(noise_model2)
-        p.add_likelihood_model(noise_model3)
-        # adding a noise model with similar sensor interface should not error
-        p.add_likelihood_model(noise_model3)
+        p.add_likelihood_model(GaussianLikelihoodModel("s1", experiment_name="Exp"))
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # the given noise model parameter has not been defined
             p.add_likelihood_model(
                 GaussianLikelihoodModel(
                     "not_existing_parameter",
-                    sensors=[Sensor("y1"), Sensor("y2")],
+                    "Exp",
                 )
             )
-
-    def test_assign_experiments_to_noise_models(self):
-        # some preparations before performing the actual tests
-        p = InverseProblem("TestProblem")
-        # add some parameters
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s1", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s2", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
-        p.add_parameter("s3", "likelihood", prior=("normal", {"loc": 0, "scale": 1}))
-        # add some dummy forward models (only the output sensors are important)
-        test_model_y1 = ForwardModelBase("a", Sensor("x"), Sensor("y1"))
-        test_model_y2 = ForwardModelBase("a", Sensor("x"), Sensor("y2"))
-        test_model_z1z2 = ForwardModelBase(
-            "a", Sensor("x"), [Sensor("z1"), Sensor("z2")]
-        )
-        p.add_forward_model("TestModel_y1", test_model_y1)
-        p.add_forward_model("TestModel_y2", test_model_y2)
-        p.add_forward_model("TestModel_z1z2", test_model_z1z2)
-        # add some experiments
-        p.add_experiment(
-            "Exp_y1", sensor_values={"x": 1, "y1": 2}, fwd_model_name="TestModel_y1"
-        )
-        p.add_experiment(
-            "Exp_y2_1", sensor_values={"x": 3, "y2": 4}, fwd_model_name="TestModel_y2"
-        )
-        p.add_experiment(
-            "Exp_y2_2", sensor_values={"x": 5, "y2": 6}, fwd_model_name="TestModel_y2"
-        )
-        p.add_experiment(
-            "Exp_z1z2",
-            sensor_values={"x": 7, "z1": 8, "z2": 9},
-            fwd_model_name="TestModel_z1z2",
-        )
-        # add some noise models
-        noise_model_y1 = GaussianLikelihoodModel(
-            ["s1", "s2", "s3"], sensors=[Sensor("y1")]
-        )
-        noise_model_y2 = GaussianLikelihoodModel(["s2"], sensors=[Sensor("y2")])
-        noise_model_y1y2 = GaussianLikelihoodModel(
-            "s1", sensors=[Sensor("z1"), Sensor("z2")]
-        )
-        p.add_likelihood_model(noise_model_y1, name="l1")
-        p.add_likelihood_model(noise_model_y2, name="l2")
-        p.add_likelihood_model(noise_model_y1y2, name="l3")
-        # this is the call that should be tested here
-        p.check_problem_consistency()
-        # now check if all experiments have been assigned correctly
-        self.assertEqual(p.likelihood_models["l1"].experiment_names, ["Exp_y1"])
-        self.assertEqual(
-            p.likelihood_models["l2"].experiment_names, ["Exp_y2_1", "Exp_y2_2"]
-        )
-        self.assertEqual(p.likelihood_models["l3"].experiment_names, ["Exp_z1z2"])
 
     def test_transform_experimental_data(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        forward_model = ForwardModelBase("a", Sensor("x"), Sensor("y"))
-        p.add_forward_model("TestModel", forward_model)
+        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
+        p.add_forward_model(FwdModel("TestModel"))
         p.add_experiment(
             "Experiment_1",
             fwd_model_name="TestModel",

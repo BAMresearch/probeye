@@ -1,7 +1,7 @@
 Components
 **********
 
-In order to provide a valid definition of an inference problem four fundamental components are required:
+In order to provide a valid definition of an inverse problem four fundamental components are required:
 
 1. Parameters
 2. Forward models
@@ -23,11 +23,11 @@ These four components have to be defined by the user by `adding` them to the pro
     problem.add_experiment(...)
     problem.add_likelihood_model(...)
 
-Of course the dots in parenthesis :code:`(...)` still need to be further specified (according to the problem at hand), but the fundamental structure of how to define an inference problem is given by the code block above. It should be pointed out that of each component multiple instances can be added - for example five parameters, two forward models, one hundred experiments and ten likelihood models - but at least one instance of each is required to obtain a valid problem definition. Each of these components are explained in more detail in the following sections.
+Of course the dots in parenthesis :code:`(...)` still need to be further specified (according to the problem at hand), but the fundamental structure of how to define an inverse problem is given by the code block above. It should be pointed out that of each component multiple instances can be added - for example five parameters, two forward models, one hundred experiments and ten likelihood models - but at least one instance of each is required to obtain a valid problem definition. Each of these components are explained in more detail in the following sections.
 
 Parameters
 ##########
-In probeye, an inference problem is understood as a parameter estimation problem. Hence, it comes at no surprise that you need to define at least one parameter that should be inferred. After initializing an inference problem, adding the parameters to the problem is the natural next step. In principle, you could also add the experiments first, but we recommend to begin with the parameters, because problem definitions are more readable like that.
+In probeye, an inverse problem is understood as a parameter estimation problem. Hence, it comes at no surprise that you need to define at least one parameter that should be inferred. After initializing an inverse problem, adding the parameters to the problem is the natural next step. In principle, you could also add the experiments first, but we recommend to begin with the parameters, because problem definitions are more readable like that.
 
 Latent and constant parameters
 ------------------------------
@@ -41,7 +41,7 @@ A typical definition of a latent parameter looks like this:
     problem.add_parameter(
         "a",
         "model",
-        prior=("normal", {"loc": 1.0, "scale": 2.0}),
+        prior=("normal", {"mean": 1.0, "std": 2.0}),
         tex="$a$",
         info="Slope of the fitted function",
     )
@@ -73,13 +73,13 @@ As described above, when defining a latent parameter, one has to provide a 2-tup
       - Prior parameters
       - Comments
     * - "normal"
-      - :code:`loc`, :code:`scale`
-      - :code:`loc` refers to the mean and :code:`scale` is the standard deviation.
+      - :code:`mean`, :code:`std`
+      - :code:`mean` refers to the mean and :code:`std` is the standard deviation.
     * - "lognormal"
-      - :code:`low`, :code:`high`
-      - :code:`loc` refers to the mean and :code:`scale` is the standard deviation on the log-scale. Currently not available for pyro-solver.
+      - :code:`mean`, :code:`std`
+      - :code:`mean` refers to the mean and :code:`std` is the standard deviation on the log-scale. Currently not available for pyro-solver.
     * - "truncnormal"
-      - :code:`loc`, :code:`scale`, :code:`a`, :code:`b`
+      - :code:`mean`, :code:`std`, :code:`a`, :code:`b`
       - Same as for "normal", while :code:`a` and :code:`b` refer to the lower and upper bound respectively. Currently not available for pyro-solver.
     * - "uniform"
       - :code:`low`, :code:`high`
@@ -132,19 +132,19 @@ Each parameter can (but does not have to) have a tex and an info attribute. Whil
 
 Forward models
 ##############
-The forward model is a parameterized simulation model (e.g. a finite element model) the predictions of which should be compared against some experimental data. The parameters of the forward model are typically the parameters which are of primary interest within the stated problem. It should be pointed out that many inference problems might contain only one forward model, but it is also possible to set up a problem that contains multiple forward models.
+The forward model is a parameterized simulation model (e.g. a finite element model) the predictions of which should be compared against some experimental data. The parameters of the forward model are typically the parameters which are of primary interest within the stated problem. It should be pointed out that many inverse problems might contain only one forward model, but it is also possible to set up a problem that contains multiple forward models.
 
 .. image:: images/forward_model.png
    :width: 600
 
 In probeye, a forward model is a function that has two kinds of arguments: input sensors and parameters, see also the sketch above. While input sensors refer to specific experimental data, parameters refer to the problem's parameters. Once all input sensors and parameters are provided, the forward model computes a result that it returns via its output sensors.
 
-In order to add a forward model to an inference problem, two steps are required. At first, the forward model has to be defined. This definition is done by setting up a new model class (that can have an arbitrary name) which is based on the probeye-class :code:`ForwardModelBase`. This class must have both a :code:`definition`-method, which defines the forward model's parameters, input sensors and output sensors, and it must have a :code:`response`-method, which describes a forward model call. The :code:`response`-method has only one input, which is a dictionary that contains both the input sensors and the parameters. The method will then perform some computations and returns its results in a dictionary of the forward model's output sensors. For a simple linear model, such a definition could look like this:
+In order to add a forward model to an inverse problem, two steps are required. At first, the forward model has to be defined. This definition is done by setting up a new model class (that can have an arbitrary name) which is based on the probeye-class :code:`ForwardModelBase`. This class must have both a :code:`interface`-method, which defines the forward model's parameters, input sensors and output sensors, and it must have a :code:`response`-method, which describes a forward model call. The :code:`response`-method has only one input, which is a dictionary that contains both the input sensors and the parameters. The method will then perform some computations and returns its results in a dictionary of the forward model's output sensors. For a simple linear model, such a definition could look like this:
 
 .. code-block:: python
 
     class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["m", "b"]
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y")
@@ -166,7 +166,7 @@ The first argument states the name of the forward model within the problem. It w
 
 Experiments
 ###########
-The experiments that are added to an inference problem are the carriers of the experimentally recorded data that is used to calibrate the problem's parameters with. If we stay in the example discussed before, this could look like this:
+The experiments that are added to an inverse problem are the carriers of the experimentally recorded data that is used to calibrate the problem's parameters with. If we stay in the example discussed before, this could look like this:
 
 .. code-block:: python
 
@@ -181,7 +181,7 @@ The experiments that are added to an inference problem are the carriers of the e
 
 The first argument (here: "TestSeries_Aug12_2018") is a unique name of the experiment. The second argument states the name of the forward model this experiment refers to (here: "LinearModel"). This name has to coincide with one of the forward models that have been added before the experiment is added. The third argument states the actual measurement data, i.e., the values that have been recorded by the experiment's sensors. Those values can be given as scalars (float, int) or as vectors in form of numpy arrays. Note however, that these arrays have to be one-dimensional and cannot be of higher dimension.
 
-There are several requirements that have to be met when adding an experiment to the inference problem. Those requirements are:
+There are several requirements that have to be met when adding an experiment to the inverse problem. Those requirements are:
 
 - Experiments are added to the problem after all forward models have been added.
 - All experiments are added to the problem before the likelihood models are added.
@@ -190,7 +190,7 @@ There are several requirements that have to be met when adding an experiment to 
 
 Likelihood models
 #################
-The inference problem's likelihood model's purpose is to compute the likelihood (more precisely the log-likelihood) of a given choice of parameter values by comparing the forward model's predictions (using the given parameter values) with the experimental data. In this section, we will only consider likelihood models that don't account for possible correlations. In such a framework, the addition of a likelihood model to the inference problem for our example could look like this:
+The inverse problem's likelihood model's purpose is to compute the likelihood (more precisely the log-likelihood) of a given choice of parameter values by comparing the forward model's predictions (using the given parameter values) with the experimental data. In this section, we will only consider likelihood models that don't account for possible correlations. In such a framework, the addition of a likelihood model to the inverse problem for our example could look like this:
 
 .. code-block:: python
 
@@ -202,3 +202,6 @@ The inference problem's likelihood model's purpose is to compute the likelihood 
             )
         )
 
+
+.. image:: images/correlation_definition.png
+   :width: 600

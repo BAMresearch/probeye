@@ -112,12 +112,19 @@ seed = 1
 
 
 class BridgeModel(ForwardModelBase):
-    def definition(self):
+    def interface(self):
         self.parameters = ["L", "EI"]
         self.input_sensors = [Sensor("v"), Sensor("t"), Sensor("F")]
         self.output_sensors = []
         for i, x_i in enumerate(x_sensors):
-            self.output_sensors.append(Sensor(f"y{i + 1}", x=x_i))
+            self.output_sensors.append(
+                Sensor(
+                    name=f"y{i + 1}",
+                    x=x_i,
+                    std_model="sigma",
+                    correlated_in={"x": "l_corr_x", "t": "l_corr_t"},
+                )
+            )
 
     @staticmethod
     def beam_deflect(x_sensor, x_load, L_in, F_in, EI_in):
@@ -167,7 +174,7 @@ def correlation_func_time(d):
 # time-space correlation structure (we use tripy for this).
 
 # initialize the bridge model
-bridge_model = BridgeModel()
+bridge_model = BridgeModel("BridgeModel")
 
 # for reproducible results
 np.random.seed(seed)
@@ -190,8 +197,8 @@ for j, (exp_name, exp_dict) in enumerate(experiments_def.items()):
     inp_1 = {"v": v, "t": t, "L": L_bridge, "F": F, "EI": EI_true}
     mean_dict = bridge_model.response(inp_1)
     mean = np.zeros(ns * nt)
-    for i, mean_vector in enumerate([*mean_dict.values()]):
-        mean[i::ns] = mean_vector
+    for ii, mean_vector in enumerate([*mean_dict.values()]):
+        mean[ii::ns] = mean_vector
 
     # compute the covariance matrix using tripy
     cov_compiler = MeasurementSpaceTimePoints()
@@ -219,8 +226,8 @@ for j, (exp_name, exp_dict) in enumerate(experiments_def.items()):
 
     # save the data for later
     data_dict[exp_name] = {"t": t, "v": v, "F": F}
-    for i in range(ns):
-        data_dict[exp_name][f"y{i + 1}"] = y_test[i::ns]
+    for ii in range(ns):
+        data_dict[exp_name][f"y{ii + 1}"] = y_test[ii::ns]
 
     # first sensor
     c = exp_dict["plot_color"]
@@ -259,7 +266,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex="$EI$",
     info="Bending stiffness of the beam [Nm^2]",
-    prior=("normal", {"loc": 0.9 * EI_true, "scale": 0.25 * EI_true}),
+    prior=("normal", {"mean": 0.9 * EI_true, "std": 0.25 * EI_true}),
 )
 problem.add_parameter(
     "L", "model", tex="$L$", info="Length of the beam [m]", const=L_bridge
@@ -294,14 +301,14 @@ problem.add_parameter(
 # likelihood model. Note that the order is important and cannot be changed.
 
 # add the forward model to the problem
-problem.add_forward_model("BridgeModel", bridge_model)
+problem.add_forward_model(bridge_model)
 
 # experimental data
 for exp_name, data in data_dict.items():
 
     sensor_values_vtF = {"v": data["v"], "t": data["t"], "F": data["F"]}
-    sensor_values_x = {f"x{i + 1}": x_sensors[i] for i in range(ns)}
-    sensor_values_y = {f"y{i + 1}": data[f"y{i + 1}"] for i in range(ns)}
+    sensor_values_x = {f"x{k + 1}": x_sensors[k] for k in range(ns)}
+    sensor_values_y = {f"y{k + 1}": data[f"y{k + 1}"] for k in range(ns)}
     sensor_values = {**sensor_values_vtF, **sensor_values_x, **sensor_values_y}
 
     correlation_info = {f"y{i + 1}": {"x": f"x{i + 1}", "t": "t"} for i in range(ns)}
@@ -316,17 +323,11 @@ for exp_name, data in data_dict.items():
 # likelihood models
 for exp_name in problem.experiments.keys():
     loglike = GaussianLikelihoodModel(
-        [
-            {"sigma": "std_model"},
-            {"l_corr_x": "l_corr_space"},
-            {"l_corr_t": "l_corr_time"},
-        ],
-        bridge_model.output_sensors,
-        additive_model_error=True,
-        multiplicative_model_error=False,
+        ["sigma", "l_corr_x", "l_corr_t"],
+        experiment_name=exp_name,
+        model_error="additive",
         additive_measurement_error=False,
-        experiment_names=exp_name,
-        correlation_variables="xt",
+        correlation_variables=["x", "t"],
         correlation_model="exp",
     )
     problem.add_likelihood_model(loglike)

@@ -41,7 +41,6 @@ class TestProblem(unittest.TestCase):
         show_progress: bool = False,
         run_scipy: bool = True,
         run_emcee: bool = True,
-        run_torch: bool = False,
         run_dynesty: bool = True,
     ):
         """
@@ -68,19 +67,10 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
         """
-
-        if run_torch:
-            raise RuntimeError(
-                "The pyro-solver is not available for inverse problems including "
-                "correlations yet."
-            )
 
         # ============================================================================ #
         #                              Set numeric values                              #
@@ -118,8 +108,8 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of EI, and its normal prior parameters
         EI_true = 2.1e11 * 0.25  # [Nm^2]
-        loc_EI = 0.9 * EI_true
-        scale_EI = 0.25 * loc_EI
+        mean_EI = 0.9 * EI_true
+        std_EI = 0.25 * mean_EI
 
         # 'true' value of noise sd, and its uniform prior parameters
         sigma = 1e-3
@@ -146,12 +136,22 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class BeamModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["L", "EI"]
                 self.input_sensors = [Sensor("v"), Sensor("t"), Sensor("F")]
                 self.output_sensors = [
-                    Sensor("y1", x=x_sensor_1),
-                    Sensor("y2", x=x_sensor_2),
+                    Sensor(
+                        name="y1",
+                        x=x_sensor_1,
+                        std_model="sigma",
+                        correlated_in={"x": "l_corr_x", "t": "l_corr_t"},
+                    ),
+                    Sensor(
+                        name="y2",
+                        x=x_sensor_2,
+                        std_model="sigma",
+                        correlated_in={"x": "l_corr_x", "t": "l_corr_t"},
+                    ),
                 ]
 
             @staticmethod
@@ -212,7 +212,7 @@ class TestProblem(unittest.TestCase):
             domain="(0, +oo)",
             tex="$EI$",
             info="Bending stiffness of the beam [Nm^2]",
-            prior=("normal", {"loc": loc_EI, "scale": scale_EI}),
+            prior=("normal", {"mean": mean_EI, "std": std_EI}),
         )
         problem.add_parameter(
             "L", "model", tex="$L$", info="Length of the beam [m]", const=L
@@ -243,8 +243,8 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        beam_model = BeamModel()
-        problem.add_forward_model("BeamModel", beam_model)
+        beam_model = BeamModel("BeamModel")
+        problem.add_forward_model(beam_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -343,17 +343,10 @@ class TestProblem(unittest.TestCase):
         # of each other)
         for exp_name in problem.experiments.keys():
             loglike = GaussianLikelihoodModel(
-                [
-                    {"sigma": "std_model"},
-                    {"l_corr_x": "l_corr_space"},
-                    {"l_corr_t": "l_corr_time"},
-                ],
-                [beam_model.output_sensors[0], beam_model.output_sensors[1]],
-                additive_model_error=True,
-                multiplicative_model_error=False,
-                additive_measurement_error=False,
-                experiment_names=exp_name,
-                correlation_variables="xt",
+                ["sigma", "l_corr_x", "l_corr_t"],
+                experiment_name=exp_name,
+                model_error="additive",
+                correlation_variables=["x", "t"],
                 correlation_model="exp",
             )
             problem.add_likelihood_model(loglike)
@@ -383,7 +376,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

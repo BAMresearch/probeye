@@ -94,10 +94,12 @@ plt.show()
 # now our job to describe this model within the probeye-framework. This is done by
 # defining our own specific model class:
 class LinearModel(ForwardModelBase):
-    def definition(self):
+    def interface(self):
         self.parameters = ["a", "b"]
         self.input_sensors = Sensor("x")
-        self.output_sensors = Sensor("y")
+        self.output_sensors = Sensor(
+            "y", std_model="std_noise", correlated_in={"x": "l_corr"}
+        )
 
     def response(self, inp: dict) -> dict:
         x = inp["x"]
@@ -109,16 +111,16 @@ class LinearModel(ForwardModelBase):
 # %%
 # First, note that this model class is based on the probeye class 'ForwardModelBase'.
 # While this is a requirement, the name of the class can be chosen freely. As you can
-# see, this class has a 'definition' and a 'response' method. In the 'definition' method
+# see, this class has a 'interface' and a 'response' method. In the 'interface' method
 # we define that our model has two parameters, 'a' and 'b', next to one input and one
-# output sensors, called 'x' and 'y' respectively. Keeping this definition in mind,
+# output sensors, called 'x' and 'y' respectively. Keeping this interface in mind,
 # let's now take a look at the 'response' method. This method describes the actual
 # forward model evaluation. The method takes one dictionary as an input and returns one
 # dictionary as its output. The input dictionary 'inp' will have the keys 'a', 'b' and
-# 'x' because of the definitions given in self.definition. Analogously, the returned
+# 'x' because of the definitions given in self.interface. Analogously, the returned
 # dictionary must have the key 'y', because we defined an output sensor with the name
 # 'y'. Note that the entire interface of the 'response' method is described by the
-# 'definition' method. Parameters and input sensors will be contained in the 'inp'
+# 'interface' method. Parameters and input sensors will be contained in the 'inp'
 # dictionary, while the output sensors must be contained in the returned dictionary.
 
 # %%
@@ -138,14 +140,14 @@ problem.add_parameter(
     "model",
     tex="$a$",
     info="Slope of the graph",
-    prior=("normal", {"loc": 2.0, "scale": 1.0}),
+    prior=("normal", {"mean": 2.0, "std": 1.0}),
 )
 problem.add_parameter(
     "b",
     "model",
     info="Intersection of graph with y-axis",
     tex="$b$",
-    prior=("normal", {"loc": 1.0, "scale": 1.0}),
+    prior=("normal", {"mean": 1.0, "std": 1.0}),
 )
 problem.add_parameter(
     "std_noise",
@@ -169,8 +171,7 @@ problem.add_parameter(
 # likelihood model. Note that the order is important and cannot be changed.
 
 # add the forward model to the problem
-linear_model = LinearModel()
-problem.add_forward_model("LinearModel", linear_model)
+problem.add_forward_model(LinearModel("LinearModel"))
 
 # experimental data
 for exp_name, y_test_i in data_dict.items():
@@ -183,12 +184,11 @@ for exp_name, y_test_i in data_dict.items():
 # likelihood model
 for exp_name in data_dict:
     likelihood_model = GaussianLikelihoodModel(
-        prms_def=[{"std_noise": "std_model"}, "l_corr"],
+        prms_def=["std_noise", "l_corr"],
+        experiment_name=exp_name,
         correlation_variables="x",
         correlation_model="exp",
-        experiment_names=exp_name,
-        additive_model_error=True,
-        multiplicative_model_error=False,
+        model_error="additive",
         additive_measurement_error=False,
     )
     problem.add_likelihood_model(likelihood_model)

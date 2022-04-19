@@ -78,15 +78,15 @@ class DynestySolver(ScipySolver):
                 # This branch is active when there is no `ppf` method in
                 # the prior distribution. For the case of a multivariate
                 # normal distribution, we implement a workaround.
-                loc = prms[f"loc_{prior.ref_prm}"]
-                scale = prms[f"scale_{prior.ref_prm}"]
+                mean = prms[f"mean_{prior.ref_prm}"]
+                cov = prms[f"cov_{prior.ref_prm}"]
                 x = prms[prior.ref_prm]
 
                 # Assume the MVN to be uncorrelated, only diagonal nonzero
-                i, j = np.nonzero(scale)
+                i, j = np.nonzero(cov)
                 assert np.all(i == j)
 
-                mvn_qs = norm.ppf(q=x, loc=loc, scale=np.diagonal(scale))
+                mvn_qs = norm.ppf(q=x, loc=mean, scale=np.sqrt(np.diagonal(cov)))
                 qs += list(mvn_qs)
 
         return qs
@@ -219,7 +219,7 @@ class DynestySolver(ScipySolver):
         # ............................................................................ #
         #                                 Pre-process                                  #
         # ............................................................................ #
-        rstate = np.random.RandomState(self.seed)
+        rstate = np.random.default_rng(self.seed)
 
         if estimation_method == "dynamic":
             sampler = dynesty.DynamicNestedSampler(

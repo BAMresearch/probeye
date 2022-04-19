@@ -4,7 +4,7 @@ Simple linear regression example with two model parameters and one likelihood pa
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
 likelihood model is based on a normal zero-mean additive model error distribution with
 the standard deviation to infer. The problem is solved via max likelihood estimation and
-via sampling using emcee, pyro and dynesty.
+via sampling using emcee and dynesty.
 """
 
 # standard library imports
@@ -34,7 +34,6 @@ class TestProblem(unittest.TestCase):
         show_progress: bool = False,
         run_scipy: bool = True,
         run_emcee: bool = True,
-        run_torch: bool = True,
         run_dynesty: bool = True,
     ):
         """
@@ -61,9 +60,6 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
@@ -75,13 +71,13 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of a, and its normal prior parameters
         a_true = 2.5
-        loc_a = 2.0
-        scale_a = 1.0
+        mean_a = 2.0
+        std_a = 1.0
 
         # 'true' value of b, and its normal prior parameters
         b_true = 1.7
-        loc_b = 1.0
-        scale_b = 1.0
+        mean_b = 1.0
+        std_b = 1.0
 
         # 'true' value of additive error sd, and its uniform prior parameters
         sigma = 0.5
@@ -97,10 +93,10 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = [{"a": "m"}, "b"]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y")
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 # this method *must* be provided by the user
@@ -142,14 +138,14 @@ class TestProblem(unittest.TestCase):
             "model",
             tex="$a$",
             info="Slope of the graph",
-            prior=("normal", {"loc": loc_a, "scale": scale_a}),
+            prior=("normal", {"mean": mean_a, "std": std_a}),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+            prior=("normal", {"mean": mean_b, "std": std_b}),
         )
         problem.add_parameter(
             "sigma",
@@ -160,21 +156,9 @@ class TestProblem(unittest.TestCase):
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
 
-        # add the forward model to the problem; note that the first positional argument
-        # [{'a': 'm'}, 'b'] passed to LinearModel defines the forward model's parameters
-        # by name via a list with elements structured like {<global parameter name>:
-        # <local parameter name>}; a global name is a name introduced by problem.
-        # add_parameter, while a local name is a name used in the response-method of the
-        # forward model class (see the class LinearModel above); note that the use of
-        # the local parameter name 'm' for the global parameter 'a' is added here only
-        # to highlight the possibility of this feature; it is not necessary at all here;
-        # whenever forward model's parameter has a similar local and global name (which
-        # should be the case most of the times), one doesn't have to use the verbose
-        # notation  {<global parameter name>: <local parameter name>} but can instead
-        # just write the parameter's (global=local) name, like it is done with the
-        # forward model's parameter 'b' below
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        # add the forward model to the problem
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -214,7 +198,7 @@ class TestProblem(unittest.TestCase):
 
         # add the noise model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
+            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
         )
 
         # give problem overview
@@ -237,7 +221,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 
@@ -255,7 +238,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 
@@ -276,7 +258,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 
@@ -294,7 +275,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 
