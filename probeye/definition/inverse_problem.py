@@ -879,7 +879,9 @@ class InverseProblem:
     # ================================================================ #
 
     def add_likelihood_model(
-        self, likelihood_model: GaussianLikelihoodModel, name: str = "",
+        self,
+        likelihood_model: GaussianLikelihoodModel,
+        name: str = "",
     ):
         """
         Adds a likelihood model to the inverse problem. Note that a single problem
