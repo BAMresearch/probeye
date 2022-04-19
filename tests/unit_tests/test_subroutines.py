@@ -36,6 +36,7 @@ from probeye.subroutines import get_global_name
 from probeye.subroutines import count_intervals
 from probeye.subroutines import vectorize_numpy_dict
 from probeye.subroutines import HiddenPrints
+from probeye.subroutines import assemble_covariance_matrix
 
 
 class TestProblem(unittest.TestCase):
@@ -615,6 +616,59 @@ class TestProblem(unittest.TestCase):
         # default use case for coverage
         with HiddenPrints():
             print("This string will not appear in stdout.")
+
+    def test_assemble_covariance_matrix(self):
+
+        # test for 1D array
+        coords_array_1d = np.array([[0.0], [1.0], [2.0]])
+        computed_result = assemble_covariance_matrix(
+            coords_array_1d, 1, 1, 2, np.array([1])
+        )
+        expected_result = np.eye(3) + np.exp(
+            -0.5
+            * np.array(
+                [
+                    [0.0, 1.0, 2.0],
+                    [1.0, 0.0, 1.0],
+                    [2.0, 1.0, 0.0],
+                ]
+            )
+        )
+        self.assertTrue(np.allclose(computed_result, expected_result))
+
+        # test for 2D array
+        coords_array_2d = np.array([[0.0, 1.0], [1.0, 2.0], [2.0, 3.0]])
+        computed_result = assemble_covariance_matrix(
+            coords_array_2d, 1, 1, 2, np.array([1.0])
+        )
+        expected_result = np.eye(3) + np.exp(
+            -0.5
+            * np.array(
+                [
+                    [0.0, np.sqrt(2.0), np.sqrt(8.0)],
+                    [np.sqrt(2.0), 0.0, np.sqrt(2.0)],
+                    [np.sqrt(8.0), np.sqrt(2.0), 0.0],
+                ]
+            )
+        )
+        self.assertTrue(np.allclose(computed_result, expected_result))
+
+        # test for 3D array
+        coords_array_3d = np.array([[0.0, 1.0, 2.0], [1.0, 2.0, 3.0], [2.0, 3.0, 4.0]])
+        computed_result = assemble_covariance_matrix(
+            coords_array_3d, 1, 1, 2, np.array([1.0])
+        )
+        expected_result = np.eye(3) + np.exp(
+            -0.5
+            * np.array(
+                [
+                    [0.0, np.sqrt(3.0), np.sqrt(12.0)],
+                    [np.sqrt(3.0), 0.0, np.sqrt(3.0)],
+                    [np.sqrt(12.0), np.sqrt(3.0), 0.0],
+                ]
+            )
+        )
+        self.assertTrue(np.allclose(computed_result, expected_result))
 
 
 if __name__ == "__main__":

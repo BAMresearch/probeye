@@ -1139,7 +1139,7 @@ def assemble_covariance_matrix(
 
     # adjust the covariance matrix if an additive measurement error is considered
     if std_meas is not None:
-        n = len_or_one(std_model)
+        n = len_or_one(coords_array)
         cov_matrix += std_meas**2 * np.eye(n)
 
     return cov_matrix

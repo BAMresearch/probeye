@@ -1,5 +1,5 @@
 # standard library
-from typing import Union, List, Optional, Callable, Tuple
+from typing import Union, List, Optional, Tuple
 import copy as cp
 
 # third party imports
@@ -879,7 +879,7 @@ class InverseProblem:
     # ================================================================ #
 
     def add_likelihood_model(
-        self, likelihood_model: GaussianLikelihoodModel, name: Optional[str] = None
+        self, likelihood_model: GaussianLikelihoodModel, name: str = "",
     ):
         """
         Adds a likelihood model to the inverse problem. Note that a single problem
@@ -902,14 +902,14 @@ class InverseProblem:
         """
 
         # check if the likelihood model has been assigned a name; if not, assign one
-        if name is None:
+        if name == "":
             name = f"likelihood_model_{len(self.likelihood_models)}"
             logger.debug(
                 f"Adding likelihood model '{name}' (name assigned automatically)"
             )
         else:
             logger.debug(f"Adding likelihood model '{name}'")
-        likelihood_model.name = name  # this is important e.g. for the torch-solver!
+        likelihood_model.name = name
 
         # ensure that experiments have already been added to the problem
         if not self._experiments:

@@ -127,11 +127,6 @@ class ForwardModelBase:
         return {sensor.name: sensor for sensor in self.input_sensors}
 
     @property
-    def n_input_sensors(self) -> int:
-        """Provides number of input_sensors as an attribute."""
-        return len(self.input_sensor_names)
-
-    @property
     def input_channel_names(self) -> List[str]:
         """Provides input_channel_names attribute."""
         return self.input_sensor_names + [*self.prms_def.values()]
@@ -142,19 +137,9 @@ class ForwardModelBase:
         return [sensor.name for sensor in self.output_sensors]
 
     @property
-    def output_sensor_dict(self) -> dict:
-        """Returns dict with outp. sensor names as keys and sensor objects as values."""
-        return {sensor.name: sensor for sensor in self.output_sensors}
-
-    @property
     def n_output_sensors(self) -> int:
         """Provides number of output_sensors as an attribute."""
         return len(self.output_sensor_names)
-
-    @property
-    def sensor_dict(self) -> dict:
-        """Returns dict all sensor names as keys and sensor objects as values."""
-        return {**self.input_sensor_dict, **self.output_sensor_dict}
 
     @property
     def sensor_names(self) -> List[str]:
