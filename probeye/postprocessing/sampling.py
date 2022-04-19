@@ -110,20 +110,10 @@ def create_pair_plot(
                 dim = problem.parameters[prm_name].dim
                 tex = problem.parameters[prm_name].tex
                 if dim > 1:
-                    if tex in inference_data.posterior.keys():
-                        # in this case, the inference_data object contains samples of a
-                        # multidimensional parameter; the corresponding reference values
-                        # must be given in a dict <tex>\n0, <tex>\n1, <tex>\n2, etc.
-                        for i in range(dim):
-                            key = f"{tex}\n{i}"
-                            reference_values[key] = value[i]
-                    else:
-                        # in this case, the samples of a multidimensional parameter have
-                        # been already decomposed, so all the channels in the inference
-                        # data are 1D
-                        for i in range(dim):
-                            key = add_index_to_tex_prm_name(tex, i + 1)
-                            reference_values[key] = value[i]
+                    # all the channels in the inference data are 1D
+                    for i in range(dim):
+                        key = add_index_to_tex_prm_name(tex, i + 1)
+                        reference_values[key] = value[i]
                 else:
                     key = tex
                     reference_values[key] = value

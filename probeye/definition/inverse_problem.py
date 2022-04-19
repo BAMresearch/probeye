@@ -141,11 +141,6 @@ class InverseProblem:
         return self._parameters.latent_prms_dims
 
     @property
-    def n_latent_model_prms_dim(self) -> int:
-        """Access the combined dimensions of the latent model parameters."""
-        return self._parameters.n_latent_model_prms_dim
-
-    @property
     def n_constant_prms(self) -> int:
         """Provides n_constant_prms attribute."""
         return self._parameters.n_constant_prms
@@ -878,86 +873,6 @@ class InverseProblem:
                     relevant_experiment_names.append(exp_name)
 
         return relevant_experiment_names
-
-    def transform_experimental_data(
-        self, func: Callable, args: tuple = (), **kwargs
-    ) -> "InverseProblem":
-        """
-        Returns a copy of the problem the experimental data of which is transformed in
-        some way. This might be a necessary pre-processing step for an inverse engine
-        in order to be able to solve the problem. Note that the problem is not fully
-        deep-copied. The forward models might be excluded from deep-copying, if this
-        result in an error. The rest of the problem is deep-copied however.
-
-        Parameters
-        ----------
-        func
-            The function that is applied on each of the experiment's sensor values.
-        args
-            Additional positional arguments to be passed to func.
-        kwargs
-            Keyword arguments to be passed to func.
-
-        Returns
-        -------
-        self_copy
-            A copy of self where the experimental data has been transformed in the
-            specified fashion.
-        """
-
-        # for easier error tracing
-        logger.debug(f"Transforming experimental data using f = '{func.__name__}'")
-
-        # the original problem shall not be touched, so we create a copy here to which
-        # the transformation will be applied
-        self_copy = InverseProblem(
-            self.name,
-            use_default_logger=self.use_default_logger,
-            log_level=self.log_level,
-            log_file=self.log_file,
-            print_header=False,
-        )
-        self_copy._parameters = cp.deepcopy(self._parameters)
-        self_copy._experiments = cp.deepcopy(self._experiments)
-        try:
-            self_copy._forward_models = cp.deepcopy(self._forward_models)
-        except RuntimeError:
-            logger.warning(
-                "The forward model(s) could not bee deep-copied. As a consequence, "
-                "the original problem will be modified."
-            )
-            self_copy._forward_models = cp.copy(self._forward_models)
-        self_copy._likelihood_models = cp.deepcopy(self._likelihood_models)
-
-        # transform the sensor values from the experiments by applying the specified
-        # function with the given arguments to them
-        for exp_name in self_copy._experiments.keys():
-            sensor_values = self_copy._experiments[exp_name]["sensor_values"]
-            for sensor_name in sensor_values.keys():
-                sensor_values[sensor_name] = func(
-                    sensor_values[sensor_name], *args, **kwargs
-                )
-
-        # the experimental data that is referenced by the forward model's sensors is
-        # still pointing to the original problem (i.e., self); for that reason they have
-        # to be re-referenced (to self_copy), which is done in the loop below
-        for forward_model in self_copy._forward_models.values():
-            forward_model_experiment_names = cp.deepcopy(forward_model.experiment_names)
-            forward_model.experiment_names = []
-            for exp_name in forward_model_experiment_names:
-                sensor_values = self_copy._experiments[exp_name]["sensor_values"]
-                forward_model.connect_experimental_data_to_sensors(
-                    exp_name, sensor_values
-                )
-
-        # due to the deep-copying, the likelihood models of self_copy still reference
-        # the forward models of the original problem (i.e., self); this is adjusted here
-        for likelihood_model in self_copy._likelihood_models.values():
-            likelihood_model.forward_model = self_copy._forward_models[
-                likelihood_model.forward_model.name
-            ]
-
-        return self_copy
 
     # ================================================================ #
     #                 Likelihood model related methods                 #

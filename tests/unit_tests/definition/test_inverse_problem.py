@@ -787,38 +787,6 @@ class TestProblem(unittest.TestCase):
                 )
             )
 
-    def test_transform_experimental_data(self):
-        # check correct use
-        p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
-
-        class FwdModel(ForwardModelBase):
-            def interface(self):
-                self.parameters = "a"
-                self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y")
-
-        p.add_forward_model(FwdModel("TestModel"))
-        p.add_experiment(
-            "Experiment_1",
-            fwd_model_name="TestModel",
-            sensor_values={"x": [1, 2], "y": [1, 3]},
-        )
-        # apply a simple power function to the experimental data
-        p_copy = p.transform_experimental_data(
-            func=np.power, args=([2, 3],), where=True
-        )
-        x_computed = p_copy.experiments["Experiment_1"]["sensor_values"]["x"]
-        x_expected = np.array([1, 8])
-        self.assertTrue(
-            np.allclose(x_computed, x_expected) and x_computed.shape == x_expected.shape
-        )
-        y_computed = p_copy.experiments["Experiment_1"]["sensor_values"]["y"]
-        y_expected = np.array([1, 27])
-        self.assertTrue(
-            np.allclose(y_computed, y_expected) and y_computed.shape == y_expected.shape
-        )
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -7,6 +7,7 @@
 - The prior-parameters of the normal and lognormal distribution have been renamed from 'loc', 'scale' to 'mean', 'std'.
 - The pyro-solver has (and its dependencies have) been removed from the package. All solvers are now based on numpy-arrays.
 - Fixed a bug resulting from an update of numpy causing an error when using dynesty with a given seed.
+- Removed method InverseProblem.transform_experimental_data since it is no longer necessary without the pyro/torch-solver.
 
 ## 2.1.5 (2022-Mar-31)
 ### Changed
