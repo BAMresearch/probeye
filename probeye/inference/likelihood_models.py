@@ -242,7 +242,9 @@ class CorrelatedModelError(ScipyLikelihoodBase):
 
     def spatial_coordinate_array(self, correlation_variables: tuple) -> np.ndarray:
         """
-        Assemble the coordinate array from the experimental data and return it.
+        Assemble the coordinate array from the experimental data and return it. This
+        method is used in classes that relate to multidimensional (spatial) data, i.e.,
+        CorrelatedModelErrorS23D and CorrelatedModelError1DS23D.
 
         Parameters
         ----------
@@ -562,10 +564,12 @@ class CorrelatedModelError1D1D(CorrelatedModelError2V):
             name=name,
         )
 
+        # prepare the first correlation variable
         corr_var_1 = self.correlation_variables[0]
         self.corr_vector_1 = self.get_correlation_vector(corr_var_1)
         self.l_corr_1 = self.forward_model.output_sensors[0].correlated_in[corr_var_1]
 
+        # prepare the second correlation variable
         corr_var_2 = self.correlation_variables[1]
         self.corr_vector_2 = self.get_correlation_vector(corr_var_2)
         self.l_corr_2 = self.forward_model.output_sensors[1].correlated_in[corr_var_2]
@@ -631,15 +635,22 @@ class CorrelatedModelError1DS23D(CorrelatedModelError2V):
             corr_var_1D = self.correlation_variables[0]
             corr_var_23D = self.correlation_variables[1]
 
+        # the only valid way to define a correlation setup for this kind of likelihood
+        # model is by using a forward model with exactly two sensors; right now, it is
+        # only possible to use one set of correlation parameters for each correlation
+        # variable (they must not vary between sensors), so it is checked here that both
+        # 'correlated_in' attributes are identical as required
+        correlated_in = self.forward_model.output_sensors[0].correlated_in
+        correlated_in_2 = self.forward_model.output_sensors[1].correlated_in
+        assert correlated_in == correlated_in_2
+
         # set attributes related to the 1D correlation variable
         self.corr_vector_1D = self.get_correlation_vector(corr_var_1D)
-        self.l_corr_1D = self.forward_model.output_sensors[0].correlated_in[corr_var_1D]
+        self.l_corr_1D = correlated_in[corr_var_1D]
 
         # set attributes related to the 2D/3D correlation variable
         self.corr_vector_23D = self.spatial_coordinate_array(corr_var_23D)
-        self.l_corr_23D = self.forward_model.output_sensors[1].correlated_in[
-            corr_var_23D
-        ]
+        self.l_corr_23D = correlated_in[corr_var_23D]
 
 
 # ==================================================================================== #

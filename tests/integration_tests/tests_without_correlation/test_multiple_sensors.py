@@ -33,10 +33,10 @@ class TestProblem(unittest.TestCase):
         n_initial_steps: int = 100,
         n_walkers: int = 20,
         plot: bool = False,
-        show_progress: bool = False,
+        show_progress: bool = True,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,
+        run_dynesty: bool = False,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -101,8 +101,8 @@ class TestProblem(unittest.TestCase):
         pos_s2 = 0.5
         pos_s3 = 1.0
 
-        # define global constant; this constant is used here only to test if there are
-        # any problems when using global constants
+        # define global constants
+        sigma_m = 0.1
         c = 0.5
 
         # ============================================================================ #
@@ -114,9 +114,15 @@ class TestProblem(unittest.TestCase):
                 self.parameters = ["A", "B", {"c": "const"}]
                 self.input_sensors = Sensor("time")
                 self.output_sensors = [
-                    Sensor("y1", x=pos_s1, std_model="sigma_1"),
-                    Sensor("y2", x=pos_s2, std_model="sigma_2"),
-                    Sensor("y3", x=pos_s3, std_model="sigma_3"),
+                    Sensor(
+                        "y1", x=pos_s1, std_model="sigma_1", std_measurement="sigma_m"
+                    ),
+                    Sensor(
+                        "y2", x=pos_s2, std_model="sigma_2", std_measurement="sigma_m"
+                    ),
+                    Sensor(
+                        "y3", x=pos_s3, std_model="sigma_3", std_measurement="sigma_m"
+                    ),
                 ]
 
             def response(self, inp: dict) -> dict:
@@ -175,7 +181,18 @@ class TestProblem(unittest.TestCase):
             info="Standard deviation, of zero-mean additive model error S3",
             tex=r"$\sigma_3$",
         )
-        problem.add_parameter("c", "model", const=c)
+        problem.add_parameter(
+            "sigma_m",
+            "likelihood",
+            const=sigma_m,
+            info="Standard deviation, of zero-mean additive measurement error",
+        )
+        problem.add_parameter(
+            "c",
+            "model",
+            const=c,
+            info="Known model constant of forward model",
+        )
 
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
@@ -199,7 +216,7 @@ class TestProblem(unittest.TestCase):
             sensors = linear_model(inp)
             for key, val in sensors.items():
                 sensors[key] = val + np.random.normal(
-                    0.0, sd_dict[key], size=n_time_steps
+                    0.0, np.sqrt(sd_dict[key] ** 2 + sigma_m**2), size=n_time_steps
                 )
             sensors[linear_model.input_sensor.name] = time_steps
             problem.add_experiment(
@@ -210,20 +227,22 @@ class TestProblem(unittest.TestCase):
             generate_data(n_t, idx=i + 1)
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise models to the problem
+        # add the likelihood models to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
                 experiment_name="TestSeries_1",
-                prms_def=["sigma_1", "sigma_2", "sigma_3"],
+                prms_def=["sigma_1", "sigma_2", "sigma_3", "sigma_m"],
+                additive_measurement_error=True,
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
                 experiment_name="TestSeries_2",
-                prms_def=["sigma_1", "sigma_2", "sigma_3"],
+                prms_def=["sigma_1", "sigma_2", "sigma_3", "sigma_m"],
+                additive_measurement_error=True,
             )
         )
 

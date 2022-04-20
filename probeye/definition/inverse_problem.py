@@ -881,7 +881,6 @@ class InverseProblem:
     def add_likelihood_model(
         self,
         likelihood_model: GaussianLikelihoodModel,
-        name: str = "",
     ):
         """
         Adds a likelihood model to the inverse problem. Note that a single problem
@@ -898,20 +897,17 @@ class InverseProblem:
             providing any computational means. The general likelihood model will be
             translated into a likelihood model with computational means in the solver
             that will later be used to 'solve' the inverse problem.
-        name
-            A descriptive name for the likelihood model. If None is given, a default
-            name will be derived automatically (something like 'likelihood_model_1').
         """
 
         # check if the likelihood model has been assigned a name; if not, assign one
-        if name == "":
+        if likelihood_model.name == "":
             name = f"likelihood_model_{len(self.likelihood_models)}"
             logger.debug(
                 f"Adding likelihood model '{name}' (name assigned automatically)"
             )
         else:
+            name = likelihood_model.name
             logger.debug(f"Adding likelihood model '{name}'")
-        likelihood_model.name = name
 
         # ensure that experiments have already been added to the problem
         if not self._experiments:
