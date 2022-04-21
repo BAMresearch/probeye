@@ -1105,8 +1105,15 @@ class AdditiveCorrelatedModelError1DS23D(CorrelatedModelError1DS23D):
         # get the main diagonal and off-diagonal of the time covariance matrix inverse
         d0_t, d1_t = inv_cov_vec_1D(self.corr_vector_1D, l_corr_1D, 1.0)
 
+        # this is a workaround for a bug in tripy 0.8 (21.04.2022)
+        Nx = np.shape(inv_spatial_cov_matrix)[0]
+        Nt = len(d0_t)
+        y_model = np.ones((Nx, Nt))
+
         # efficient log-likelihood evaluation via tripy
-        ll = chol_loglike_2D(res_array, inv_spatial_cov_matrix, [d0_t, d1_t], std_meas)
+        ll = chol_loglike_2D(
+            res_array, inv_spatial_cov_matrix, [d0_t, d1_t], std_meas, y_model=y_model
+        )
 
         return ll
 
