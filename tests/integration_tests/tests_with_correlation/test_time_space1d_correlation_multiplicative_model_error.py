@@ -115,7 +115,7 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of noise sd, and its uniform prior parameters
         sigma = 1e-3
-        low_sigma = 1e-4
+        low_sigma = 0
         high_sigma = 1e-2
 
         # 'true' value of spatial correlation length, and its uniform prior parameters
@@ -129,7 +129,7 @@ class TestProblem(unittest.TestCase):
         high_l_corr_t = 5.0  # [s]
 
         # settings for the data generation
-        plot_data = False
+        plot_data = True
         ns = 2  # two sensors in this example
         seed = 1
 
@@ -310,12 +310,6 @@ class TestProblem(unittest.TestCase):
                     beam_model.input_sensors[2].name: F,
                     beam_model.output_sensors[0].name: y1,
                     beam_model.output_sensors[1].name: y2,
-                    "x1": float(beam_model.output_sensors[0].x),  # type: ignore
-                    "x2": float(beam_model.output_sensors[1].x),  # type: ignore
-                },
-                correlation_info={
-                    beam_model.output_sensors[0].name: {"x": "x1", "t": "t"},
-                    beam_model.output_sensors[1].name: {"x": "x2", "t": "t"},
                 },
             )
 

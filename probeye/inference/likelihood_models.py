@@ -1091,16 +1091,22 @@ class AdditiveCorrelatedModelError1DS23D(CorrelatedModelError1DS23D):
         l_corr_1D = prms[self.l_corr_1D]
         l_corr_23D = prms[self.l_corr_23D]
 
-        # assemble the covariance matrix
+        # in the current tripy-version this parameter cannot be None for the function
+        # chol_loglike_2D which is used below
+        if std_meas is None:
+            std_meas = 1e-9
+
+        # assemble the covariance matrix and invert it using a small jitter value
         spatial_cov_matrix = assemble_covariance_matrix(
             self.corr_vector_23D, std_model, std_meas, l_corr_23D
         )
+        inv_spatial_cov_matrix = np.linalg.inv(spatial_cov_matrix + 1e-6)
 
         # get the main diagonal and off-diagonal of the time covariance matrix inverse
         d0_t, d1_t = inv_cov_vec_1D(self.corr_vector_1D, l_corr_1D, 1.0)
 
         # efficient log-likelihood evaluation via tripy
-        ll = chol_loglike_2D(res_array, spatial_cov_matrix, [d0_t, d1_t], std_meas)
+        ll = chol_loglike_2D(res_array, inv_spatial_cov_matrix, [d0_t, d1_t], std_meas)
 
         return ll
 
@@ -1429,7 +1435,6 @@ class MultiplicativeCorrelatedModelError1D1D(CorrelatedModelError1D1D):
         response_vector: np.ndarray,
         residual_vector: np.ndarray,
         prms: dict,
-        worst_value: float = -np.infty,
     ) -> float:
         """
         Computes the log-likelihood of this model. For more information, check out the
@@ -1559,19 +1564,25 @@ class MultiplicativeCorrelatedModelError1DS23D(CorrelatedModelError1DS23D):
         l_corr_1D = prms[self.l_corr_1D]
         l_corr_23D = prms[self.l_corr_23D]
 
-        # assemble the covariance matrix
+        # this is to prevent an error that occurs when y_model has a zero element and
+        # the measurement error is not present
+        if std_meas is None:
+            std_meas = 1e-9
+
+        # assemble the covariance matrix and invert it using a small jitter value
         spatial_cov_matrix = assemble_covariance_matrix(
             self.corr_vector_23D, std_model, std_meas, l_corr_23D
         )
+        inv_spatial_cov_matrix = np.linalg.inv(spatial_cov_matrix + 1e-6)
 
         # get the main diagonal and off-diagonal of the time covariance matrix inverse
-        d0_t, d1_t = inv_cov_vec_1D(self.corr_vector_1D, l_corr_1D, 1.0)
+        d0_2, d1_2 = inv_cov_vec_1D(self.corr_vector_1D, l_corr_1D, 1.0)
 
         # efficient log-likelihood evaluation via tripy
         ll = chol_loglike_2D(
             residual_array,
-            spatial_cov_matrix,
-            [d0_t, d1_t],
+            inv_spatial_cov_matrix,
+            [d0_2, d1_2],
             std_meas,
             y_model=response_array,
         )
