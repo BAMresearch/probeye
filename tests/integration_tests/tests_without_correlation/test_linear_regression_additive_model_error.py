@@ -200,7 +200,11 @@ class TestProblem(unittest.TestCase):
 
         # add the likelihood model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
+            GaussianLikelihoodModel(
+                prms_def="sigma",
+                experiment_name="TestSeries_1",
+                name="SimpleLikelihoodModel",
+            )
         )
 
         # give problem overview

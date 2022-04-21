@@ -22,6 +22,16 @@ class TestProblem(unittest.TestCase):
                 ["bias", "sigma"], "Exp1", correlation_model="INVALID"
             ).process_correlation_definition()
 
+    def test_wrong_model_error_flag(self):
+        # check for the error when using an invalid model error string
+        with self.assertRaises(ValueError):
+            GaussianLikelihoodModel(
+                prms_def=["bias", "sigma"],
+                experiment_name="Exp1",
+                model_error="INVALID",
+                name="L1",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

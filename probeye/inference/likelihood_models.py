@@ -1455,6 +1455,11 @@ class MultiplicativeCorrelatedModelError1D1D(CorrelatedModelError1D1D):
         l_corr_1 = prms[self.l_corr_1]
         l_corr_2 = prms[self.l_corr_2]
 
+        # this is to prevent an error that occurs when y_model has a zero element and
+        # the measurement error is not present
+        if std_meas is None:
+            std_meas = 1e-9
+
         # independent of the std-values being scalar- or vector-valued, we have to use
         # the tripy chol_loglike_2D method for the likelihood evaluation
         d0_1, d1_1 = inv_cov_vec_1D(self.corr_vector_1, l_corr_1, std_model)
