@@ -1133,7 +1133,7 @@ def assemble_covariance_matrix(
     cov_matrix = std1 * std2 * correlation_matrix(coords_array, f_corr)
 
     # adjust the covariance matrix for multiplicative model error
-    if y_model:
+    if y_model is not None:
         y1, y2 = np.meshgrid(y_model, y_model)
         cov_matrix = y1 * y2 * cov_matrix
 
