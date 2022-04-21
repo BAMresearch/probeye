@@ -1,6 +1,8 @@
 """
 Simple linear regression example with two model parameters and one likelihood parameter
 ----------------------------------------------------------------------------------------
+                    ---> The model prediction error is additive <---
+----------------------------------------------------------------------------------------
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
 likelihood model is based on a normal zero-mean additive model error distribution with
 the standard deviation to infer. The problem is solved via max likelihood estimation and
@@ -193,10 +195,10 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise model to the problem
+        # add the likelihood model to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
         )
