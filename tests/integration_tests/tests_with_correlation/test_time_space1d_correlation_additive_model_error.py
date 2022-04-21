@@ -40,8 +40,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,
+        run_dynesty: bool = False,
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -112,9 +112,14 @@ class TestProblem(unittest.TestCase):
         std_EI = 0.25 * mean_EI
 
         # 'true' value of noise sd, and its uniform prior parameters
-        sigma = 1e-3
-        low_sigma = 1e-4
-        high_sigma = 1e-2
+        sigma_1 = 1e-3
+        low_sigma_1 = 1e-4
+        high_sigma_1 = 1e-2
+
+        # 'true' value of noise sd, and its uniform prior parameters
+        sigma_2 = 1e-3
+        low_sigma_2 = 1e-4
+        high_sigma_2 = 1e-2
 
         # 'true' value of spatial correlation length, and its uniform prior parameters
         l_corr_x = 10.0  # [m]
@@ -143,13 +148,13 @@ class TestProblem(unittest.TestCase):
                     Sensor(
                         name="y1",
                         x=x_sensor_1,
-                        std_model="sigma",
+                        std_model="sigma_1",
                         correlated_in={"x": "l_corr_x", "t": "l_corr_t"},
                     ),
                     Sensor(
                         name="y2",
                         x=x_sensor_2,
-                        std_model="sigma",
+                        std_model="sigma_2",
                         correlated_in={"x": "l_corr_x", "t": "l_corr_t"},
                     ),
                 ]
@@ -218,12 +223,20 @@ class TestProblem(unittest.TestCase):
             "L", "model", tex="$L$", info="Length of the beam [m]", const=L
         )
         problem.add_parameter(
-            "sigma",
+            "sigma_1",
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
             info="Std. dev, of 0-mean noise model",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            prior=("uniform", {"low": low_sigma_1, "high": high_sigma_1}),
+        )
+        problem.add_parameter(
+            "sigma_2",
+            "likelihood",
+            domain="(0, +oo)",
+            tex=r"$\sigma$",
+            info="Std. dev, of 0-mean noise model",
+            prior=("uniform", {"low": low_sigma_2, "high": high_sigma_2}),
         )
         problem.add_parameter(
             "l_corr_x",
@@ -277,7 +290,7 @@ class TestProblem(unittest.TestCase):
                     beam_model.output_sensors[0].x,
                     beam_model.output_sensors[1].x,
                 ],
-                standard_deviation=sigma,
+                standard_deviation=sigma_1,  # np.array([sigma_1, sigma_2]),
                 group="space",
             )
             cov_compiler.add_measurement_time_points(coord_vec=t, group="time")
@@ -306,12 +319,6 @@ class TestProblem(unittest.TestCase):
                     beam_model.input_sensors[2].name: F,
                     beam_model.output_sensors[0].name: y1,
                     beam_model.output_sensors[1].name: y2,
-                    "x1": float(beam_model.output_sensors[0].x),  # type: ignore
-                    "x2": float(beam_model.output_sensors[1].x),  # type: ignore
-                },
-                correlation_info={
-                    beam_model.output_sensors[0].name: {"x": "x1", "t": "t"},
-                    beam_model.output_sensors[1].name: {"x": "x2", "t": "t"},
                 },
             )
 
@@ -343,7 +350,7 @@ class TestProblem(unittest.TestCase):
         # of each other)
         for exp_name in problem.experiments.keys():
             loglike = GaussianLikelihoodModel(
-                ["sigma", "l_corr_x", "l_corr_t"],
+                ["sigma_1", "sigma_2", "l_corr_x", "l_corr_t"],
                 experiment_name=exp_name,
                 model_error="additive",
                 correlation_variables=["x", "t"],
@@ -362,7 +369,8 @@ class TestProblem(unittest.TestCase):
         # integration tests in the same way
         true_values = {
             "EI": EI_true,
-            "sigma": sigma,
+            "sigma_1": sigma_1,
+            "sigma_2": sigma_2,
             "l_corr_x": l_corr_x,
             "l_corr_t": l_corr_t,
         }

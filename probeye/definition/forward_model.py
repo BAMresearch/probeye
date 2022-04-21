@@ -538,15 +538,17 @@ class ForwardModelBase:
             # values for std_model or std_measurement
             idx_start = 0
             std_model = np.zeros(self.output_lengths[exp_name][corr_var]["total"])
-            std_measurement = np.zeros(self.output_lengths[exp_name][corr_var]["total"])
+            if measurement_error:
+                std_measurement = np.zeros(
+                    self.output_lengths[exp_name][corr_var]["total"]
+                )
             increments = self.output_lengths[exp_name][corr_var]["increments"]
             for output_sensor, n_i in zip(self.output_sensors, increments):
                 idx_end = idx_start + n_i
                 std_model[idx_start:idx_end] = prms[output_sensor.std_model]
                 if measurement_error:
-                    std_measurement[idx_start:idx_end] = prms[
-                        output_sensor.std_measurement
-                    ]
+                    std_meas = prms[output_sensor.std_measurement]
+                    std_measurement[idx_start:idx_end] = std_meas  # type: ignore
                 idx_start = idx_end
             stds_are_scalar = False
         return std_model, std_measurement, stds_are_scalar

@@ -131,7 +131,7 @@ class TestProblem(unittest.TestCase):
         high_l_corr_t = 5.0  # [s]
 
         # settings for the data generation
-        plot_data = True
+        plot_data = False
         ns = 2  # two sensors in this example
         seed = 1
 
@@ -149,14 +149,14 @@ class TestProblem(unittest.TestCase):
                         x=x_sensor_1,
                         y=y_sensor_1,
                         std_model="sigma",
-                        correlated_in={("x", "y"): "l_corr_x", "t": "l_corr_t"},
+                        correlated_in={"t": "l_corr_t", ("x", "y"): "l_corr_x"},
                     ),
                     Sensor(
                         name="y2",
                         x=x_sensor_2,
                         y=y_sensor_2,
                         std_model="sigma",
-                        correlated_in={("x", "y"): "l_corr_x", "t": "l_corr_t"},
+                        correlated_in={"t": "l_corr_t", ("x", "y"): "l_corr_x"},
                     ),
                 ]
 
@@ -345,7 +345,7 @@ class TestProblem(unittest.TestCase):
                 ["sigma", "l_corr_x", "l_corr_t"],
                 experiment_name=exp_name,
                 model_error="multiplicative",
-                correlation_variables=[("x", "y"), "t"],
+                correlation_variables=["t", ("x", "y")],
                 correlation_model="exp",
             )
             problem.add_likelihood_model(loglike)

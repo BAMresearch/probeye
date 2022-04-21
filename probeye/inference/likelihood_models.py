@@ -988,6 +988,11 @@ class AdditiveCorrelatedModelError1D1D(CorrelatedModelError1D1D):
         l_corr_1 = prms[self.l_corr_1]
         l_corr_2 = prms[self.l_corr_2]
 
+        # in the current tripy-version this parameter cannot be None for the function
+        # chol_loglike_2D which is used below
+        if std_meas is None:
+            std_meas = 1e-9
+
         if stds_are_scalar:
             # if both std_model and std_meas are scalars or None, we can use the
             # following fast tripy-method to evaluate the likelihood
@@ -1007,7 +1012,15 @@ class AdditiveCorrelatedModelError1D1D(CorrelatedModelError1D1D):
             # refrain to a slower tripy-method
             d0_1, d1_1 = inv_cov_vec_1D(self.corr_vector_1, l_corr_1, std_model)
             d0_2, d1_2 = inv_cov_vec_1D(self.corr_vector_2, l_corr_2, 1.0)
-            ll = chol_loglike_2D(res_array, [d0_1, d1_1], [d0_2, d1_2], std_meas)
+
+            # this is a workaround for a bug in tripy 0.8 (21.04.2022)
+            Nx = len(d0_1)
+            Nt = len(d0_2)
+            y_model = np.ones((Nx, Nt))
+
+            ll = chol_loglike_2D(
+                res_array, [d0_1, d1_1], [d0_2, d1_2], std_meas, y_model=y_model
+            )
 
         return ll
 
