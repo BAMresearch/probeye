@@ -1,5 +1,7 @@
 """
-Linear regression example with 1D spatial correlation model
+              Linear regression example with 1D spatial correlation model
+----------------------------------------------------------------------------------------
+                 ---> The model prediction error is multiplicative <---
 ----------------------------------------------------------------------------------------
 The n data points (y1, y2, ..., yn) generated for this example are sampled from an
 n-variate normal distribution with mean values given by yi = a * xi + b with a, b being
@@ -40,8 +42,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -86,10 +88,10 @@ class TestProblem(unittest.TestCase):
         mean_b = 1.0
         std_b = 1.0
 
-        # 'true' value of additive error sd, and its uniform prior parameters
-        sigma = 0.5
-        low_sigma = 0.1
-        high_sigma = 0.8
+        # 'true' value of multiplicative error sd, and its uniform prior parameters
+        sigma = 0.05
+        low_sigma = 0
+        high_sigma = 0.3
 
         # 'true' value of correlation length, and its uniform prior parameters
         l_corr = 0.05
@@ -179,7 +181,9 @@ class TestProblem(unittest.TestCase):
         # assemble the spatial covariance matrix
         x_test_as_column_matrix = x_test.reshape((n_points, -1))
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        cov = sigma**2 * correlation_matrix(x_test_as_column_matrix, f_corr)
+        y_row, y_col = np.meshgrid(y_true, y_true)
+        cov_additive = sigma**2 * correlation_matrix(x_test_as_column_matrix, f_corr)
+        cov = y_row * y_col * cov_additive
 
         # now generate the noisy test data including correlations; we assume here that
         # there are n_experiments test series
@@ -189,7 +193,6 @@ class TestProblem(unittest.TestCase):
             problem.add_experiment(
                 exp_name,
                 fwd_model_name="LinearModel",
-                correlation_info="y:x",
                 sensor_values={
                     linear_model.input_sensor.name: x_test,
                     linear_model.output_sensor.name: y_test,
@@ -221,7 +224,7 @@ class TestProblem(unittest.TestCase):
                 experiment_name=f"Test_{i}",
                 correlation_variables="x",
                 correlation_model="exp",
-                model_error="additive",
+                model_error="multiplicative",
             )
             problem.add_likelihood_model(likelihood_model)
 
