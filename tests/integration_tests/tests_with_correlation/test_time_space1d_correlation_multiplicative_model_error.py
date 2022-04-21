@@ -129,7 +129,7 @@ class TestProblem(unittest.TestCase):
         high_l_corr_t = 5.0  # [s]
 
         # settings for the data generation
-        plot_data = True
+        plot_data = False
         ns = 2  # two sensors in this example
         seed = 1
 
