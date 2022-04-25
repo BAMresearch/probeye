@@ -1,12 +1,12 @@
 """
-Simple linear regression example with two model parameters and one likelihood parameter
+                                   Linear regression
 ----------------------------------------------------------------------------------------
-                 ---> The model prediction error is multiplicative <---
+                    ---> Multiplicative model prediction error <---
 ----------------------------------------------------------------------------------------
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
-likelihood model is based on a normal zero-mean multiplicative model error distribution
-with the standard deviation to infer. The problem is approached via max likelihood
-estimation and via sampling using emcee and dynesty.
+likelihood model is based on a normal unit-mean multiplicative model error distribution
+with the standard deviation to infer and an additive measurement error distribution with
+known standard deviation. The problem is approached via max likelihood estimation.
 """
 
 # standard library imports
@@ -27,7 +27,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_linear_regression(
+    def test_linear_regression_multiplicative_model_error(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -35,8 +35,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -83,7 +83,7 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of multiplicative error sd, and its uniform prior parameters
         sigma = 0.1
-        low_sigma = 0
+        low_sigma = 0.0
         high_sigma = 0.5
 
         # assuming a known measurement error
@@ -116,7 +116,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear regression with normal multiplicative error")
+        problem = InverseProblem("Linear regression (MME)")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -186,7 +186,7 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                             Add likelihood model                             #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
         # add the likelihood model to the problem

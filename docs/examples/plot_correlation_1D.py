@@ -155,7 +155,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Standard deviation, of zero-mean Gaussian noise model",
-    prior=("uniform", {"low": 0.1, "high": 0.8}),
+    prior=("uniform", {"low": 0.0, "high": 0.8}),
 )
 problem.add_parameter(
     "l_corr",
@@ -163,7 +163,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr}$",
     info="Correlation length of correlation model",
-    prior=("uniform", {"low": 0.001, "high": 0.2}),
+    prior=("uniform", {"low": 0.0, "high": 0.2}),
 )
 
 # %%

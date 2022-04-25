@@ -1,13 +1,15 @@
 """
-Linear model in time and space with three different additive error models
+              Linear model in time and space with three different sensors
 ----------------------------------------------------------------------------------------
-The model equation is y(x,t) = A * x + B * t + c with A, B, c being the model parameters
+                       ---> Additive model prediction error <---
+----------------------------------------------------------------------------------------
+The model equation is y(x,t) = a * x + b * t + c with a, b, c being the model parameters
 while x and t represent position and time respectively. From the three model parameters
-A and B are latent ones while c is a constant. Measurements are made at three different
+a and b are latent ones while c is a constant. Measurements are made at three different
 positions (x-values) each of which is associated with an own zero-mean, uncorrelated
-normal error model with the standard deviations to infer. This results in five latent
-parameters (parameters to be inferred). The problem is solved via max likelihood
-estimation and via sampling using emcee and dynesty.
+normal model error with the standard deviations to infer. This results in five latent
+parameters (parameters to be inferred). The problem is approached with a maximum
+likelihood estimation.
 """
 
 # standard library imports
@@ -33,10 +35,10 @@ class TestProblem(unittest.TestCase):
         n_initial_steps: int = 100,
         n_walkers: int = 20,
         plot: bool = False,
-        show_progress: bool = True,
+        show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = False,
-        run_dynesty: bool = False,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -72,29 +74,29 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # 'true' value of A, and its normal prior parameters
-        A_true = 1.3
-        mean_A = 1.0
-        std_A = 1.0
+        a_true = 1.3
+        mean_a = 1.0
+        std_a = 1.0
 
         # 'true' value of B, and its normal prior parameters
-        B_true = -1.0
-        mean_B = -2.0
-        std_B = 1.5
+        b_true = -1.0
+        mean_b = -2.0
+        std_b = 1.5
 
         # 'true' value of sd_S1, and its uniform prior parameters
-        sd_S1_true = 0.2
-        low_S1 = 0.1
-        high_S1 = 0.7
+        sd_s1_true = 0.2
+        low_s1 = 0.0
+        high_s1 = 0.7
 
         # 'true' value of sd_S2, and its uniform prior parameters
-        sd_S2_true = 0.4
-        low_S2 = 0.1
-        high_S2 = 0.7
+        sd_s2_true = 0.4
+        low_s2 = 0.0
+        high_s2 = 0.7
 
         # 'true' value of sd_S3, and its uniform prior parameters
-        sd_S3_true = 0.6
-        low_S3 = 0.1
-        high_S3 = 0.7
+        sd_s3_true = 0.6
+        low_s3 = 0.0
+        high_s3 = 0.7
 
         # define sensor positions
         pos_s1 = 0.2
@@ -111,7 +113,7 @@ class TestProblem(unittest.TestCase):
 
         class LinearModel(ForwardModelBase):
             def interface(self):
-                self.parameters = ["A", "B", {"c": "const"}]
+                self.parameters = ["a", "b", {"c": "const"}]
                 self.input_sensors = Sensor("time")
                 self.output_sensors = [
                     Sensor(
@@ -127,12 +129,12 @@ class TestProblem(unittest.TestCase):
 
             def response(self, inp: dict) -> dict:
                 t = inp["time"]
-                A = inp["A"]
-                B = inp["B"]
+                a = inp["a"]
+                b = inp["b"]
                 const = inp["const"]
                 response = dict()
                 for os in self.output_sensors:
-                    response[os.name] = A * os.x + B * t + const
+                    response[os.name] = a * os.x + b * t + const
                 return response
 
         # ============================================================================ #
@@ -140,28 +142,28 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear model with three likelihood models")
+        problem = InverseProblem("Linear model with three sensors")
 
         # add all parameters to the problem
         problem.add_parameter(
-            "A",
+            "a",
             "model",
-            prior=("normal", {"mean": mean_A, "std": std_A}),
-            info="Slope of the graph",
+            prior=("normal", {"mean": mean_a, "std": std_a}),
+            info="Slope of the graph in x",
             tex="$A$",
         )
         problem.add_parameter(
-            "B",
+            "b",
             "model",
-            prior=("normal", {"mean": mean_B, "std": std_B}),
-            info="Intersection of graph with y-axis",
+            prior=("normal", {"mean": mean_b, "std": std_b}),
+            info="Slope of the graph in t",
             tex="$B$",
         )
         problem.add_parameter(
             "sigma_1",
             "likelihood",
             domain="(0, +oo)",
-            prior=("uniform", {"low": low_S1, "high": high_S1}),
+            prior=("uniform", {"low": low_s1, "high": high_s1}),
             info="Standard deviation, of zero-mean additive model error for S1",
             tex=r"$\sigma_1$",
         )
@@ -169,7 +171,7 @@ class TestProblem(unittest.TestCase):
             "sigma_2",
             "likelihood",
             domain="(0, +oo)",
-            prior=("uniform", {"low": low_S2, "high": high_S2}),
+            prior=("uniform", {"low": low_s2, "high": high_s2}),
             info="Standard deviation, of zero-mean additive model error for S2",
             tex=r"$\sigma_2$",
         )
@@ -177,7 +179,7 @@ class TestProblem(unittest.TestCase):
             "sigma_3",
             "likelihood",
             domain="(0, +oo)",
-            prior=("uniform", {"low": low_S3, "high": high_S3}),
+            prior=("uniform", {"low": low_s3, "high": high_s3}),
             info="Standard deviation, of zero-mean additive model error S3",
             tex=r"$\sigma_3$",
         )
@@ -205,14 +207,14 @@ class TestProblem(unittest.TestCase):
         # add the experimental data
         np.random.seed(1)
         sd_dict = {
-            linear_model.output_sensors[0].name: sd_S1_true,
-            linear_model.output_sensors[1].name: sd_S2_true,
-            linear_model.output_sensors[2].name: sd_S3_true,
+            linear_model.output_sensors[0].name: sd_s1_true,
+            linear_model.output_sensors[1].name: sd_s2_true,
+            linear_model.output_sensors[2].name: sd_s3_true,
         }
 
         def generate_data(n_time_steps, idx=None):
             time_steps = np.linspace(0, 1, n_time_steps)
-            inp = {"A": A_true, "B": B_true, "const": c, "time": time_steps}
+            inp = {"a": a_true, "b": b_true, "const": c, "time": time_steps}
             sensors = linear_model(inp)
             for key, val in sensors.items():
                 sensors[key] = val + np.random.normal(
@@ -256,11 +258,11 @@ class TestProblem(unittest.TestCase):
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
         true_values = {
-            "A": A_true,
-            "B": B_true,
-            "sigma_1": sd_S1_true,
-            "sigma_2": sd_S2_true,
-            "sigma_3": sd_S3_true,
+            "a": a_true,
+            "b": b_true,
+            "sigma_1": sd_s1_true,
+            "sigma_2": sd_s2_true,
+            "sigma_3": sd_s3_true,
         }
         run_inference_engines(
             problem,

@@ -1,9 +1,13 @@
 """
-Simple linear regression example with two model and one noise parameter
+                     Linear regression (using a multivariate prior)
 ----------------------------------------------------------------------------------------
-The model equation is y = a * x + b with a, b being the model parameters and the noise
-model is a normal zero-mean distribution with the std. deviation to infer. The problem
-is solved via max likelihood estimation and via sampling using emcee and dynesty.
+                       ---> Additive model prediction error <---
+----------------------------------------------------------------------------------------
+The model equation is y(x) = a * x + b with a, b being the model parameters, while the
+likelihood model is based on a normal zero-mean additive model error distribution with
+the standard deviation to infer. The problem is approached via max likelihood estimation
+and via sampling using emcee and dynesty. The main focus of this example/test is that
+the normal priors for a and b are combined to a common 2D-prior.
 """
 
 # standard library imports
@@ -80,7 +84,7 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of model error sd, and its uniform prior parameters
         sigma = 0.5
-        low_sigma = 0.1
+        low_sigma = 0.0
         high_sigma = 0.8
 
         # the number of generated experiment_names and seed for random numbers
@@ -98,45 +102,19 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["mb"][0]
                 b = inp["mb"][1]
                 return {"y": m * x + b}
 
-            def jacobian(self, inp: dict) -> dict:
-                # this method *can* be provided by the user; if not provided the
-                # jacobian will be approximated by finite differences
-                x = inp["x"]  # vector
-                one = np.ones(len(x))
-                # partial derivatives must only be stated for the model parameters;
-                # all other input must be flagged by None; note: partial derivatives
-                # must be given as column vectors
-                return {
-                    "y": {
-                        "x": None,  # x is not a model param.
-                        "mb": np.array([x, one]).transpose(),
-                    }
-                }
-
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inverse problem with a useful name; note that the name will
-        # only be stored as an attribute of the InverseProblem and is not important
-        # for the problem itself; can be useful when dealing with multiple problems
-        problem = InverseProblem("Linear regression with normal additive error")
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression (AME)")
 
-        # add all parameters to the problem; the first argument states the parameter's
-        # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
-        # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'likelihood' for parameters of the likelihood
-        # model); the 'info'-argument is a short description string used for logging,
-        # and the tex-argument gives a tex-string of the parameter used for plotting;
-        # finally, the prior-argument specifies the parameter's prior; note that this
-        # definition of a prior will result in the initialization of constant parameters
-        # of type 'prior' in the background
+        # add all parameters to the problem
         problem.add_parameter(
             "mb",
             "model",
@@ -161,19 +139,7 @@ class TestProblem(unittest.TestCase):
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
 
-        # add the forward model to the problem; note that the first positional argument
-        # [{'a': 'm'}, 'b'] passed to LinearModel defines the forward model's parameters
-        # by name via a list with elements structured like {<global parameter name>:
-        # <local parameter name>}; a global name is a name introduced by problem.
-        # add_parameter, while a local name is a name used in the response-method of the
-        # forward model class (see the class LinearModel above); note that the use of
-        # the local parameter name 'm' for the global parameter 'a' is added here only
-        # to highlight the possibility of this feature; it is not necessary at all here;
-        # whenever forward model's parameter has a similar local and global name (which
-        # should be the case most of the times), one doesn't have to use the verbose
-        # notation  {<global parameter name>: <local parameter name>} but can instead
-        # just write the parameter's (global=local) name, like it is done with the
-        # forward model's parameter 'b' below
+        # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
         problem.add_forward_model(linear_model)
 
@@ -210,12 +176,16 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise model to the problem
+        # add the likelihood model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
+            GaussianLikelihoodModel(
+                prms_def="sigma",
+                experiment_name="TestSeries_1",
+                model_error="additive",
+            )
         )
 
         # give problem overview

@@ -1,7 +1,7 @@
 """
-              Linear regression example with 1D spatial correlation model
+                         Linear regression with 1D correlation
 ----------------------------------------------------------------------------------------
-                 ---> The model prediction error is multiplicative <---
+                    ---> Multiplicative model prediction error <---
 ----------------------------------------------------------------------------------------
 The n data points (y1, y2, ..., yn) generated for this example are sampled from an
 n-variate normal distribution with mean values given by yi = a * xi + b with a, b being
@@ -12,8 +12,7 @@ correlated in x. This means, the closer yi and yj are in terms of x (i.e., the s
 matrix is defined based on an exponential correlation function parameterized by the
 constant standard deviation sigma of the n-variate normal distribution and a correlation
 length l_corr. Hence, the full model has four parameters a, b, sigma, l_corr, all of
-which are inferred in this example using maximum likelihood estimation as well as
-sampling via emcee and dynesty.
+which are inferred in this example using a maximum likelihood estimation.
 """
 
 # standard library
@@ -36,7 +35,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_spatial_correlation_1D(
+    def test_space_1D_correlation_multiplicative_model_error(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -92,16 +91,15 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of multiplicative error sd, and its uniform prior parameters
         sigma = 0.05
-        low_sigma = 0
+        low_sigma = 0.0
         high_sigma = 0.3
 
         # 'true' value of correlation length, and its uniform prior parameters
         l_corr = 0.05
-        low_l_corr = 0.001
+        low_l_corr = 0.0
         high_l_corr = 0.2
 
         # settings for the data generation
-        plot_data = False
         n_experiments = 3
         n_points = 25
         seed = 1
@@ -200,12 +198,12 @@ class TestProblem(unittest.TestCase):
                     linear_model.output_sensor.name: y_test,
                 },
             )
-            if plot_data:
+            if plot:
                 plt.scatter(
                     x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
                 )
         # finish the plot
-        if plot_data:
+        if plot:
             plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
             plt.xlabel("x")
             plt.ylabel(linear_model.output_sensor.name)
@@ -214,10 +212,10 @@ class TestProblem(unittest.TestCase):
             plt.show()
 
         # ============================================================================ #
-        #                            Add likelihood models                             #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # each likelihood model gets exactly one experiment
+        # each likelihood model is assigned exactly one experiment
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
                 prms_def=["sigma", "l_corr"],

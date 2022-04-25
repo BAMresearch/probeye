@@ -1,12 +1,14 @@
 """
-Inference problem with two forward models that share a common parameter
+         Inverse problem with two forward models that share a common parameter
+----------------------------------------------------------------------------------------
+                       ---> Additive model prediction error <---
 ----------------------------------------------------------------------------------------
 The first model equation is y(x) = a * x + b with a, b being the model parameters and
 the second model equation is y(x) = alpha * x**2 + b where alpha is an additional model
 parameter, and b is the same model parameter as in the first model equation. Both
 forward models have the same additive error model with a normal zero-mean distribution
-where the standard deviation is to be inferred. The problem is solved via max likelihood
-estimation and via sampling using emcee and dynesty.
+where the standard deviation is to be inferred. The problem is approach with a maximum
+likelihood estimation.
 """
 
 # standard library imports
@@ -35,8 +37,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -88,7 +90,7 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of sigma, and its normal prior parameters
         sigma_true = 0.15
-        low_sigma = 0.1
+        low_sigma = 0.0
         high_sigma = 2.0
 
         # the number of generated experiment_names and seed for random numbers
@@ -103,40 +105,32 @@ class TestProblem(unittest.TestCase):
             def interface(self):
                 self.parameters = ["a", "b"]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor(
-                    "y_linear",
-                    std_model="sigma",
-                )
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
-                return {"y_linear": a * x + b}
+                return {"y": a * x + b}
 
         class QuadraticModel(ForwardModelBase):
             def interface(self):
                 self.parameters = ["alpha", {"b": "beta"}]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor(
-                    "y_quadratic",
-                    std_model="sigma",
-                )
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 alpha = inp["alpha"]
                 beta = inp["beta"]
-                return {"y_quadratic": alpha * x**2 + beta}
+                return {"y": alpha * x**2 + beta}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem(
-            "Two models with shared parameter and normal additive error"
-        )
+        problem = InverseProblem("Two forward models with a shared parameter (AME)")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -243,20 +237,21 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise models to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
                 prms_def="sigma",
                 experiment_name="TestSeries_linear",
+                model_error="additive",
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
                 prms_def="sigma",
                 experiment_name="TestSeries_quadratic",
+                model_error="additive",
             )
         )
 

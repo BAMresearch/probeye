@@ -1,11 +1,13 @@
 """
-Linear regression example where a prior parameter is a latent parameter
+                  Linear regression (with prior-parameter estimation)
+----------------------------------------------------------------------------------------
+                       ---> Additive model prediction error <---
 ----------------------------------------------------------------------------------------
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
 likelihood model is based on a normal zero-mean additive model error distribution with
-the standard deviation to infer. Additionally, the location parameter of a's prior is
-considered a latent parameter. The problem is solved via max likelihood estimation and
-via sampling using emcee and dynesty.
+the standard deviation to infer. The problem is approached with a maximum likelihood
+estimation. The main focus of this example/test is that one of the prior-parameters (the
+mean of a's normal prior) is considered a latent parameter and therefore estimated too.
 """
 
 # standard library imports
@@ -34,8 +36,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -85,7 +87,7 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of additive error sd, and its uniform prior parameters
         sigma = 0.5
-        low_sigma = 0.1
+        low_sigma = 0.0
         high_sigma = 0.6
 
         # the number of generated experiment_names and seed for random numbers
@@ -113,9 +115,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem(
-            "Linear model with normal additive error and a latent prior-parameter"
-        )
+        problem = InverseProblem("Linear regression (AME)")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -185,12 +185,16 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise model to the problem
+        # add the likelihood model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
+            GaussianLikelihoodModel(
+                prms_def="sigma",
+                experiment_name="TestSeries_1",
+                model_error="additive",
+            )
         )
 
         # give problem overview

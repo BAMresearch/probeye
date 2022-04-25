@@ -136,7 +136,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Standard deviation, of zero-mean Gaussian noise model",
-    prior=("uniform", {"low": 0.1, "high": 0.8}),
+    prior=("uniform", {"low": 0.0, "high": 0.8}),
 )
 
 # %%

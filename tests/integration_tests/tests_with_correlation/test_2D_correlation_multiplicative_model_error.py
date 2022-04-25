@@ -1,18 +1,19 @@
 """
-Linear regression example with 2D spatial correlation model
+                         Linear regression with 2D correlation
 ----------------------------------------------------------------------------------------
-                 ---> The model prediction error is multiplicative <---
+                    ---> Multiplicative model prediction error <---
 ----------------------------------------------------------------------------------------
 The n data points (z1, z2, ..., zn) generated for this example are sampled from an
 n-variate normal distribution with mean values given by zi = ax * xi + ay * yi + b with
-a, b being the model parameters and x1, ..., xn and y1, ..., yn being predefined spatial
-x- and y-coordinates ranging from 0 to 1. The data points (z1, z2, ..., zn) are not
-independent but correlated in their spatial distance. The corresponding covariance
-matrix is defined based on an exponential correlation function parameterized by the
-constant standard deviation sigma of the n-variate normal distribution and a correlation
-length l_corr. Hence, the full model has five parameters ax, ay, b, sigma, l_corr, all
-of which are inferred in this example using maximum likelihood estimation as well as
-sampling via emcee and dynesty.
+ax, ay, b being the model parameters and x1, ..., xn and y1, ..., yn being predefined
+spatial x- and y-coordinates ranging from 0 to 1. The data points (z1, z2, ..., zn) are
+not independent but correlated in their distance. This means, the closer zi and zj are
+in terms of their coordinates (i.e., the smaller [(xi - xj)**2 + (yi - yj)**2]**0.5 the
+greater the correlation between zi and zj. The corresponding covariance matrix is
+defined based on an exponential correlation function parameterized by the constant
+standard deviation sigma of the n-variate normal distribution and a correlation length
+l_corr. Hence, the full model has five parameters ax, ay, b, sigma, l_corr, all of which
+are inferred in this example using a maximum likelihood estimation.
 """
 
 # standard library
@@ -35,7 +36,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_spatial_correlation_2D(
+    def test_2D_correlation_multiplicative_model_error(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -96,17 +97,16 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of multiplicative error sd, and its uniform prior parameters
         sigma = 0.05
-        low_sigma = 0
+        low_sigma = 0.0
         high_sigma = 0.3
 
         # 'true' value of correlation length (x), and its uniform prior parameters
         l_corr = 0.1
-        low_l_corr = 0.001
+        low_l_corr = 0.0
         high_l_corr = 0.2
 
         # settings for the data generation
-        plot_data = True
-        n_experiments = 1
+        n_experiments = 2
         n_points = 10
         seed = 1
 
@@ -135,7 +135,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear regression with normal additive error")
+        problem = InverseProblem("Linear regression with 2D correlation (MME)")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -164,7 +164,7 @@ class TestProblem(unittest.TestCase):
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of zero-mean additive model error",
+            info="Standard deviation, of unit-mean multiplicative model error",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
         problem.add_parameter(
@@ -220,7 +220,7 @@ class TestProblem(unittest.TestCase):
         cov = z_row * z_col * cov_additive
 
         # initialize a 3D-plot with the true mean-value-plane
-        if plot_data:
+        if plot:
             x_plot, y_plot = np.meshgrid(x_test_grid, y_test_grid)
             z_true_plot = z_true.reshape((n_points, -1))
             fig, axs = plt.subplots(subplot_kw={"projection": "3d"})
@@ -240,13 +240,13 @@ class TestProblem(unittest.TestCase):
                     linear_model.output_sensor.name: z_test,
                 },
             )
-            if plot_data:
+            if plot:
                 z_plot = z_test.reshape((n_points, -1))
                 # noinspection PyUnboundLocalVariable
                 axs.scatter(x_plot, y_plot, z_plot, label=f"measured data (test {i+1})")
 
         # show the plot
-        if plot_data:
+        if plot:
             axs.set_title("True model plus generated test data")
             axs.set_xlabel("x")
             axs.set_ylabel("y")
@@ -254,12 +254,10 @@ class TestProblem(unittest.TestCase):
             plt.show()
 
         # ============================================================================ #
-        #                            Add likelihood models                             #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # since the different experiments are independent of each other they are put in
-        # individual likelihood models (the problem's likelihood models are independent
-        # of each other)
+        # each likelihood model is assigned exactly one experiment
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
                 prms_def=["sigma", "l_corr"],

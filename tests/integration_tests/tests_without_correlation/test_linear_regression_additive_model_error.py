@@ -1,12 +1,12 @@
 """
-Simple linear regression example with two model parameters and one likelihood parameter
+                                   Linear regression
 ----------------------------------------------------------------------------------------
-                    ---> The model prediction error is additive <---
+                       ---> Additive model prediction error <---
 ----------------------------------------------------------------------------------------
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
 likelihood model is based on a normal zero-mean additive model error distribution with
-the standard deviation to infer. The problem is solved via max likelihood estimation and
-via sampling using emcee and dynesty.
+the standard deviation to infer. The problem is approached via max likelihood estimation
+and via sampling using emcee and dynesty.
 """
 
 # standard library imports
@@ -27,7 +27,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_linear_regression(
+    def test_linear_regression_additive_model_error(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -83,7 +83,7 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of additive error sd, and its uniform prior parameters
         sigma = 0.5
-        low_sigma = 0.1
+        low_sigma = 0.0
         high_sigma = 0.8
 
         # the number of generated experiment_names and seed for random numbers
@@ -108,8 +108,10 @@ class TestProblem(unittest.TestCase):
                 return {"y": m * x + b}
 
             def jacobian(self, inp: dict) -> dict:
-                # this method *can* be provided by the user; if not provided the
-                # jacobian will be approximated by finite differences
+                # this method *can* be provided by the user (if a solver is used that
+                # requires gradients); if not provided (but required by a solver) the
+                # jacobian will be approximated by finite differences; note that
+                # currently no solver is implemented that requires gradients (April 22)
                 x = inp["x"]  # vector
                 one = np.ones((len(x), 1))
                 # partial derivatives must only be stated for the model parameters;
@@ -124,7 +126,7 @@ class TestProblem(unittest.TestCase):
         # initialize the inverse problem with a useful name; note that the name will
         # only be stored as an attribute of the InverseProblem and is not important
         # for the problem itself; can be useful when dealing with multiple problems
-        problem = InverseProblem("Linear regression with normal additive error")
+        problem = InverseProblem("Linear regression (AME)")
 
         # add all parameters to the problem; the first argument states the parameter's
         # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
@@ -203,6 +205,7 @@ class TestProblem(unittest.TestCase):
             GaussianLikelihoodModel(
                 prms_def="sigma",
                 experiment_name="TestSeries_1",
+                model_error="additive",
                 name="SimpleLikelihoodModel",
             )
         )

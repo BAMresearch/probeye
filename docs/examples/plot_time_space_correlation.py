@@ -97,7 +97,7 @@ high_l_corr_x = 25.0  # [m]
 
 # 'true' value of temporal correlation length, and its uniform prior parameters
 l_corr_t = 1.0  # [s]
-low_l_corr_t = 0.1  # [s]
+low_l_corr_t = 0.0  # [s]
 high_l_corr_t = 5.0  # [s]
 
 # settings for the data generation
@@ -311,13 +311,10 @@ for exp_name, data in data_dict.items():
     sensor_values_y = {f"y{k + 1}": data[f"y{k + 1}"] for k in range(ns)}
     sensor_values = {**sensor_values_vtF, **sensor_values_x, **sensor_values_y}
 
-    correlation_info = {f"y{i + 1}": {"x": f"x{i + 1}", "t": "t"} for i in range(ns)}
-
     problem.add_experiment(
         exp_name,
         fwd_model_name="BridgeModel",
         sensor_values=sensor_values,
-        correlation_info=correlation_info,
     )
 
 # likelihood models
