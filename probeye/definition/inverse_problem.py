@@ -223,7 +223,7 @@ class InverseProblem:
     def add_parameter(
         self,
         prm_name: str,
-        prm_type: str,
+        prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
@@ -617,6 +617,16 @@ class InverseProblem:
         # the corresponding parameters have been defined
         for prm_name in forward_model.prms_def:
             self._parameters.confirm_that_parameter_exists(prm_name)
+            # check, if the type was set correctly; if it was not set yet, it will be
+            # set automatically here
+            if self._parameters[prm_name].type == "not defined":
+                self.change_parameter_type(prm_name, "model")
+            elif self._parameters[prm_name].type in ["prior", "likelihood"]:
+                raise ValueError(
+                    f"The parameter '{prm_name}' defined in forward model "
+                    f"'{forward_model.name}' was assigned the type "
+                    f"'{self._parameters[prm_name].type}' (it should be 'model')."
+                )
 
         # check if the given name for the forward model has already been used
         if forward_model.name in self._forward_models:
@@ -899,6 +909,15 @@ class InverseProblem:
             that will later be used to 'solve' the inverse problem.
         """
 
+        # the likelihood models are added to the problem after all parameters have been
+        # added; this is why this method includes a silent automatic parameter type
+        # detection, to avoid an extra command in the problem definition
+        for prm_name in self._parameters:
+            if self._parameters[prm_name].type == "not defined":
+                for prior in self.priors.values():
+                    if prm_name in prior.hyperparameters:
+                        self.change_parameter_type(prm_name, "prior")
+
         # check if the likelihood model has been assigned a name; if not, assign one
         if likelihood_model.name == "":
             name = f"likelihood_model_{len(self.likelihood_models)}"
@@ -909,23 +928,27 @@ class InverseProblem:
             name = likelihood_model.name
             logger.debug(f"Adding likelihood model '{name}'")
 
-        # ensure that experiments have already been added to the problem
-        if not self._experiments:
+        # ensure the likelihood model's experiment has been added to the problem
+        if likelihood_model.experiment_name not in self._experiments:
             raise RuntimeError(
-                f"You are trying to add a likelihood model to your problem without "
-                f"having added any experiments yet!\nPlease add the experiments "
-                f"before adding the likelihood models."
+                f"The likelihood model's experiment {likelihood_model.experiment_name} "
+                f"was not found in the problem's experiments."
             )
 
-        # check if all given likelihood model parameters have already been added to
-        # the inverse problem
+        # check if all given model parameters have already been added to the inverse
+        # problem; note that the likelihood model can only be added to the problem after
+        # the corresponding parameters have been defined
         for prm_name in likelihood_model.prms_def:
-            if prm_name not in self._parameters.keys():
-                raise RuntimeError(
-                    f"The likelihood model parameter '{prm_name}' has not been defined "
-                    f"yet.\nYou have to add all likelihood model parameters to the "
-                    f"problem before adding the likelihood model.\nYou can use the"
-                    f"'add_parameter' method for this purpose."
+            self._parameters.confirm_that_parameter_exists(prm_name)
+            # check, if the type was set correctly; if it was not set yet, it will be
+            # set automatically here
+            if self._parameters[prm_name].type == "not defined":
+                self.change_parameter_type(prm_name, "likelihood")
+            elif self._parameters[prm_name].type in ["prior", "model"]:
+                raise ValueError(
+                    f"The parameter '{prm_name}' defined in likelihood model "
+                    f"'{likelihood_model.name}' was assigned the type "
+                    f"'{self._parameters[prm_name].type}' (it should be 'likelihood')."
                 )
 
         # set the likelihood's forward model based on the likelihood's experiment; only

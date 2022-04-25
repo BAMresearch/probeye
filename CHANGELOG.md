@@ -2,12 +2,14 @@
 
 ## 2.2.0 (2022-Apr-XX)
 ### Changed
-- The user-definition of the forward model's 'definition'-method is now mandatory.
 - The forward model's 'definition'-method was renamed to 'interface'.
+- The user-definition of the forward model's 'interface'-method is now mandatory.
 - The prior-parameters of the normal and lognormal distribution have been renamed from 'loc', 'scale' to 'mean', 'std'.
 - The pyro-solver has (and its dependencies have) been removed from the package. All solvers are now based on numpy-arrays.
 - Fixed a bug resulting from an update of numpy causing an error when using dynesty with a given seed.
 - Removed method InverseProblem.transform_experimental_data since it is no longer necessary without the pyro/torch-solver.
+- The specification of a parameter's type (model, prior or likelihood) is no longer necessary (it can be detected automatically).
+- The multivariate normal prior is now an own prior type and not anymore included in the normal prior class.
 
 ## 2.1.5 (2022-Mar-31)
 ### Changed

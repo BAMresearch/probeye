@@ -123,7 +123,7 @@ class TestProblem(unittest.TestCase):
             tex="$mb$",
             info="Slope and intercept of the graph",
             prior=(
-                "normal",
+                "multivariate-normal",
                 {
                     "mean": np.array([mean_a, mean_b]),
                     "cov": np.array([[std_a**2, 0], [0, std_b**2]]),

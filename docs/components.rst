@@ -1,20 +1,20 @@
 Components
 **********
 
-In order to provide a valid definition of an inverse problem four fundamental components are required:
+In order to provide a valid definition of an inverse problem (i.e., a parameter estimation problem) using probeye, four main ingredients (or components, as they are called here) are required.
 
 1. Parameters
 2. Forward models
 3. Experiments
 4. Likelihood models
 
-These four components have to be defined by the user by `adding` them to the problem. Consequently, the corresponding code looks like
+These four components have to be defined by the user in a way of `adding` them to a problem instance. Consequently, the base structure of the corresponding probeye-code looks like this:
 
 .. code-block:: python
 
     from probeye.definition import InverseProblem
 
-    # initialize the problem
+    # initialize a problem instance
     problem = InverseProblem("MyProblem")
 
     # add the four components
@@ -23,15 +23,15 @@ These four components have to be defined by the user by `adding` them to the pro
     problem.add_experiment(...)
     problem.add_likelihood_model(...)
 
-Of course the dots in parenthesis :code:`(...)` still need to be further specified (according to the problem at hand), but the fundamental structure of how to define an inverse problem is given by the code block above. It should be pointed out that of each component multiple instances can be added - for example five parameters, two forward models, one hundred experiments and ten likelihood models - but at least one instance of each is required to obtain a valid problem definition. Each of these components are explained in more detail in the following sections.
+Of course the dots in parenthesis :code:`(...)` still need to be further specified (according to the problem at hand), but the fundamental structure of how to define an inverse problem is given by the code block above. It should be pointed out that of each component multiple instances can be added - for example five parameters, two forward models, one hundred experiments and ten likelihood models - but at least one instance of each is required to obtain a valid problem definition. Also the order of adding those components should look like above. So, at first the parameters are added, then the forward models followed by the experiments and the likelihood models are added at last. Each of these components is explained in more detail in the following sections.
 
 Parameters
 ##########
-In probeye, an inverse problem is understood as a parameter estimation problem. Hence, it comes at no surprise that you need to define at least one parameter that should be inferred. After initializing an inverse problem, adding the parameters to the problem is the natural next step. In principle, you could also add the experiments first, but we recommend to begin with the parameters, because problem definitions are more readable like that.
+In probeye, an inverse problem is understood as a parameter estimation problem. Hence, it comes at no surprise that one needs to define at least one parameter that should be inferred. After initializing an inverse problem, adding the parameters to the problem is the natural next step. In principle, you could also add the experiments first, but it is recommended to begin with the parameters, because problem definitions are more readable like that.
 
 Latent and constant parameters
 ------------------------------
-Generally, two kinds of parameters are distinguished in probeye: latent and constant parameters. This property is also referred to as the parameter's role. Latent parameters are parameters that should be inferred, while constant parameters have a pre-defined value, and will hence not be inferred in the inference step. Earlier, we pointed out that the definition of at least one parameter is required for a valid problem definition. Now we should state more precisely: the definition of at least one latent parameter is required for a valid problem definition.
+Generally, two kinds of parameters are distinguished in probeye: latent and constant parameters. This property is also referred to as the parameter's `role`. Latent parameters are parameters that should be inferred, while constant parameters have a pre-defined value, and will hence not be inferred in the inference step. Earlier, it was pointed out that the definition of at least one parameter is required for a valid problem definition. Now we should state more precisely: the definition of at least one latent parameter is required for a valid problem definition.
 
 A typical definition of a latent parameter looks like this:
 
@@ -59,13 +59,28 @@ And a typical definition of a constant parameter looks like this:
         info="Standard deviation of measurement error",
     )
 
-As you can see, the definition of either a latent or a constant parameter is triggered by using the :code:`prior` or the :code:`const` keyword argument in the :code:`add_parameter`-method. The :code:`const` keyword argument can be a scalar like in the example above or a numpy-based vector, for example :code:`const=np.array([0.9, -0.3])`. The :code:`prior` keyword argument on the other hand has to be given as a pair, where the first element states the kind of distribution (possible options are currently :code:`"normal"` and :code:`"uniform"`), and the second argument is a dictionary stating the prior's parameters.
+As one can see, the definition of either a latent or a constant parameter is triggered by using the :code:`prior` or the :code:`const` keyword argument in the :code:`add_parameter`-method. The :code:`const` keyword argument can be a scalar like in the example above or a numpy-based vector, for example :code:`const=np.array([0.9, -0.3])`. The :code:`prior` keyword argument on the other hand has to be given as a pair, where the first element states the kind of distribution (possible options are currently :code:`"normal"`, :code:`"uniform"`, :code:`"lognormal"`, :code:`"truncnormal"`, :code:`"weibull"`), and the second argument is a dictionary stating the prior's parameters. More information on the priors is given in this :ref:`section<Prior definition of latent parameters>` below.
+
+Finally, it should be pointed out that it is possible to give a very short definition of a latent parameter by neither specifying the :code:`prior` nor the :code:`const` keyword argument. Examples could look like this:
+
+.. code-block:: python
+
+    problem.add_parameter("a")
+    problem.add_parameter("b", domain="(0, 1]")
+
+In both of these cases an `uninformative` prior is assumed, meaning a prior that is constant over its domain. Note however, that internally, the `uninformative` prior is not a proper prior like the conventional prior classes, but just a flag stating that the corresponding parameter is a latent parameter without a prior. These types of latent parameters can only be used for maximum likelihood estimations. When using a sampling-based solver, it is required to specify a proper prior.
+
+A parameter's name and type
+---------------------------
+Each parameter (latent and constant) must have a name and a type. The parameter's name, which is given by the first argument in the :code:`add_parameter`-method,  must be unique in the scope of the problem, i.e., no other parameter can have the same name. This name is also referred to as the parameter's `global name`.
+
+The parameter's type (given as the second argument), on the other hand, states where the parameter appears in the problem definition. There are three possible types :code:`model`, :code:`prior` and :code:`likelihood`. A parameter of type :code:`model` appears in one the problem's forward models, while a parameter of type :code:`prior` will be used in the definition of some latent parameter's prior. Finally, a parameter of type :code:`likelihood` will appear in one of the problem's likelihood models. The specification of the prior type is optional. If it is not given, it will be determined automatically.
 
 Prior definition of latent parameters
 -------------------------------------
 As described above, when defining a latent parameter, one has to provide a 2-tuple which first contains a string describing the parameter type followed by a dictionary stating the prior's parameters and their values. The following table provides the currently implemented options.
 
-.. list-table:: Different priors and their parameterization
+.. list-table::
     :widths: 25 25 50
     :header-rows: 1
 
@@ -74,60 +89,77 @@ As described above, when defining a latent parameter, one has to provide a 2-tup
       - Comments
     * - "normal"
       - :code:`mean`, :code:`std`
-      - :code:`mean` refers to the mean and :code:`std` is the standard deviation.
+      - Gaussian or normal distribution where :code:`mean` refers to the mean and :code:`std` to the standard deviation.
+    * - "multivariate-normal"
+      - :code:`mean`, :code:`cov`
+      - Multivariate normal distribution where :code:`mean` refers to the mean and :code:`cov` to the covariance matrix.
     * - "lognormal"
       - :code:`mean`, :code:`std`
-      - :code:`mean` refers to the mean and :code:`std` is the standard deviation on the log-scale. Currently not available for pyro-solver.
+      - Log-normal distribution where :code:`mean` refers to the mean and :code:`std` is the standard deviation on the log-scale.
     * - "truncnormal"
       - :code:`mean`, :code:`std`, :code:`a`, :code:`b`
-      - Same as for "normal", while :code:`a` and :code:`b` refer to the lower and upper bound respectively. Currently not available for pyro-solver.
+      - Truncated normal distribution. Same as for "normal", while :code:`a` and :code:`b` refer to the lower and upper bound respectively.
     * - "uniform"
       - :code:`low`, :code:`high`
-      - :code:`low` is the lower and :code:`high` is the upper bound. These bounds are inclusive.
+      - Uniform distribution where :code:`low` is the lower and :code:`high` is the upper bound. Note that these bounds are inclusive.
     * - "weibull"
       - :code:`loc`, :code:`scale`, :code:`shape`
-      - :code:`loc` is the lower bound. Currently not available for pyro-solver.
+      - Weibull distribution. Check out the `scipy-documentation <https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.weibull_min.html>`_ for more information on the parameters.
 
-It should be pointed out, that it is also possible to use a latent parameter as a prior parameter. The following example may illustrate that.
+It should be pointed out that it is also possible to use a latent parameter as a prior parameter. The following example may illustrate that.
 
 .. code-block:: python
 
     problem.add_parameter(
-        "loc_a",
+        "mean_a",
         "prior",
-        prior=("uniform", {"loc": -1.0, "scale": 1.0}),
+        prior=("uniform", {"mean": -1.0, "std": 1.0}),
         tex="r$\mu_a$",
-        info="Location parameter of a's prior",
+        info="Mean parameter of a's prior",
     )
     problem.add_parameter(
         "a",
         "model",
-        prior=("uniform", {"loc": "loc_a", "scale": 2.0}),
+        prior=("uniform", {"mean": "mean_a", "std": 2.0}),
         tex="$a$",
         info="Slope of the fitted function",
     )
 
-You will notice, that instead of providing a numeric value for :code:`a`'s location parameter, the name (hence a string) of the previously defined latent parameter :code:`loc_a` is provided. Note that it is important in this example that :code:`loc_a` is defined before :code:`a`, which refers to :code:`loc_a` is defined.
+Note that instead of providing a numeric value for :code:`a`'s :code:`mean` parameter, the name (hence a string) of the previously defined latent parameter :code:`mean_a` is provided. It is important in this example that :code:`mean_a` is defined before :code:`a`, which refers to :code:`mean_a` is defined.
 
-Parameter's name and type
--------------------------
-Each parameter (latent and constant) must have a name and a type. The parameter's name, which is given by the first argument in the :code:`add_parameter`-method,  must be unique in the scope of the problem, i.e., no other parameter can have the same name. The parameter's type, on the other hand, states where the parameter appears in the problem definition. There are three possible types :code:`model`, :code:`prior` and :code:`likelihood`. A parameter of type :code:`model` appears in one the problem's forward models, while a parameter of type :code:`prior` will be used in the definition of some latent parameter's prior. Finally, a parameter of type :code:`likelihood` will appear in one of the problem's likelihood models.
-
-The name assigned to a parameter in the :code:`add_parameter`-method is also referred to as the parameter's `global` name. However, sometimes it is convenient or even required to refer to a parameter in one of the submodules (e.g. forward model or likelihood model) by a different name. For example, the standard deviation of the model error in a likelihood model is internally, i.e., in the source code of the likelihood model, referred to as :code:`std_model`. However, it is not required to use this name globally. You could for example use the name :code:`sigma` as the global name instead. The name of a parameter used internally by one of the submodules is referred to as a parameter's `local` name. The definition of a local name is applied, when the submodule in initialized. Here, we will give an example with two likelihood models:
+A latent parameter's domain
+---------------------------
+Sometimes, the value of a latent parameter should stay in certain bounds. For example, if a parameter appears in the denominator of a fraction, it cannot assume the value zero. One measure to address such situations is to define the parameter's prior in a way that its domain does not contain problematic values. However, during sampling-procedures it is still possible that values outside of a prior's domain are proposed, and hence evaluated. To prevent that one can define a latent parameter's domain via the :code:`domain` argument when adding it to the problem. This would look like this:
 
 .. code-block:: python
 
-    problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def=[{"sigma_1": "std_model"}, "l_corr"])
-        )
-    problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def=[{"sigma_2": "std_model"}, "l_corr"])
-        )
+    problem.add_parameter(
+        "gamma",
+        domain="(0, 1)",
+        prior=("uniform", {"low": 0.0, "high": 1.0}),
+    )
 
-In this example, two likelihood models are added to the problem, where each one has two parameters given by the argument :code:`prms_def`. They both use the same parameter :code:`l_corr` (a correlation length), but they use different standard deviations with the _global_ names :code:`sigma_1` and :code:`sigma_2`. However, both of these standard deviations are mapped to the same internal name :code:`std_model`, which is in both cases the _local_ name of the parameter. If a local-global name mapping is intended, it always has to be given as a one-element dictionary like in the example above. If no mapping is required, the parameter name can simply be given as a string like it is done for the :code:`l_corr` parameter in the example above.
+Here, the domain of :code:`gamma` is specified to an open interval from zero to one. Other valid strings for the domain argument are for example :code:`"[0, 1]"` for a closed interval, :code:`"(0, 1]"` or :code:`"[0, 1)"` for half-closed intervals, or :code:`"(-oo, oo)"` for a domain from minus to plus infinity. Other variations are of course possible. For a multivariate parameter, the definition looks very similar as shown by the following example.
 
-Tex and info
-------------
+.. code-block:: python
+
+    problem.add_parameter(
+        "mb",
+        dim=2,
+        domain="(-oo, +oo) (-oo, +oo)",
+        prior=(
+            "multivariate-normal",
+            {
+                "mean": np.array([0.0, 0.0]),
+                "cov": np.array([[1.0, 0.0], [0.0, 1.0]]),
+            },
+        ),
+    )
+
+So in this case, the :code:`domain`-string is simply a concatenation of :code:`domain`-strings for a 1D-interval. Note that for multidimensional parameter, also a :code:`dim`-argument is required, that specifies the parameter's dimensionality. If a latent parameter is added to a problem without specifying its domain, it is assumed that there are no restrictions. So, in the code block above, the domain-specification would actually be unnecessary since this domain would also have been assumed if no domain was specified.
+
+The tex and info arguments
+--------------------------
 Each parameter can (but does not have to) have a tex and an info attribute. While the tex attribute is used for plotting, the info string is used when calling a problems info-method :code:`problem.info()` printing some information on the defined problem. Even if not required, it is recommended to define both of these attributes for each parameter added to the problem.
 
 Forward models

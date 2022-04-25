@@ -7,6 +7,7 @@ import numpy as np
 
 # local imports
 from probeye.inference.priors import PriorNormal
+from probeye.inference.priors import PriorMultivariateNormal
 from probeye.inference.priors import PriorTruncnormal
 from probeye.inference.priors import PriorLognormal
 from probeye.inference.priors import PriorUniform
@@ -32,7 +33,7 @@ class TestProblem(unittest.TestCase):
         for s1, s2 in zip(prior_samples, sp_samples):
             self.assertEqual(s1, s2)
         # test multivariate version
-        prior_normal = PriorNormal("a", ["mean_a", "std_a"], "a_normal")
+        prior_normal = PriorMultivariateNormal("a", ["mean_a", "std_a"], "a_normal")
         prms = {"mean_a": [0.0, 0.0], "cov_a": [1.0, 1.0]}
         sample = prior_normal(prms, method="rvs", use_ref_prm=False, size=10)
         self.assertEqual(len(sample), 10)

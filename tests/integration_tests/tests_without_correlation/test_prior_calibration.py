@@ -121,28 +121,24 @@ class TestProblem(unittest.TestCase):
         # add all parameters to the problem
         problem.add_parameter(
             "mean_a",
-            "prior",
             info="Location parameter of normal prior for 'a'",
             tex=r"$\mu_a^\mathrm{prior}$",
             prior=("uniform", {"low": low_loc_a, "high": high_loc_a}),
         )
         problem.add_parameter(
             "a",
-            "model",
             info="Slope of the graph",
             tex="$a$",
             prior=("normal", {"mean": "mean_a", "std": std_a}),
         )
         problem.add_parameter(
             "b",
-            "model",
             info="Intersection of graph with y-axis",
             tex="$b$",
             prior=("normal", {"mean": mean_b, "std": std_b}),
         )
         problem.add_parameter(
             "sigma",
-            "likelihood",
             domain="(0, +oo)",
             info="Standard deviation, of zero-mean additive model error",
             tex=r"$\sigma$",
