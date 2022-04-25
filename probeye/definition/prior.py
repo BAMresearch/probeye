@@ -135,7 +135,7 @@ class PriorBase:
             b = prms[self.prms_def[f"high_{self.ref_prm}"]].value
             # proceed, only if both values are constants and not latent
             # parameters themselves
-            if a and b:
+            if (a is not None) and (b is not None):
                 y = np.zeros(n_points)
                 y[1:-1] = np.ones(n_points - 2) / (b - a)
                 if x is None:

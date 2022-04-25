@@ -5,9 +5,10 @@
 ----------------------------------------------------------------------------------------
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
 likelihood model is based on a normal zero-mean additive model error distribution with
-the standard deviation to infer. The problem is approached with a maximum likelihood
-estimation. The main focus of this example/test is that one of the prior-parameters (the
-mean of a's normal prior) is considered a latent parameter and therefore estimated too.
+the standard deviation to infer. The problem is approached via a maximum likelihood
+estimation and via sampling using emcee. The main focus of this example/test is that one
+of the prior-parameters (the mean of a's normal prior) is considered a latent parameter
+and therefore estimated too.
 """
 
 # standard library imports
@@ -36,7 +37,7 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_emcee: bool = True,
         run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
