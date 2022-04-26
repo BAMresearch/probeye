@@ -21,6 +21,7 @@ installation
 auto_examples/index
 motivation
 components
+correlation
 api
 ```
 
