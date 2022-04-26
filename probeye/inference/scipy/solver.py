@@ -1,5 +1,5 @@
 # standard library imports
-from typing import Union, List, Tuple, Optional, TYPE_CHECKING
+from typing import Tuple, Optional, TYPE_CHECKING
 import copy as cp
 
 # third party imports
@@ -10,13 +10,14 @@ from scipy.optimize import minimize
 from loguru import logger
 
 # local imports
-from probeye.inference.scipy.priors import translate_prior
-from probeye.inference.scipy.likelihood_models import translate_likelihood_model
-from probeye.subroutines import print_dict_in_rows, make_list
+from probeye.inference.priors import translate_prior
+from probeye.inference.likelihood_models import translate_likelihood_model
+from probeye.subroutines import print_dict_in_rows, vectorize_numpy_dict
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inverse_problem import InverseProblem
+    from probeye.definition.forward_model import ForwardModelBase
 
 
 class ScipySolver:
@@ -51,6 +52,11 @@ class ScipySolver:
         self.raw_results = None
         self.summary = {}  # type: dict
 
+        # this prepares the inputs and outputs based on experimental data for all of
+        # the problem's forward models
+        for forward_model in self.problem.forward_models.values():
+            forward_model.prepare_experimental_inputs_and_outputs()
+
         # translate the prior definitions to objects with computing capabilities
         logger.debug("Translate problem's priors")
         self.priors = copy.deepcopy(self.problem.priors)
@@ -66,8 +72,8 @@ class ScipySolver:
             )
 
     def evaluate_model_response(
-        self, theta: np.ndarray, experiment_names: Union[str, List[str], None] = None
-    ) -> dict:
+        self, theta: np.ndarray, forward_model: "ForwardModelBase", experiment_name: str
+    ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Evaluates the model response for each forward model for the given parameter
         vector theta and the given experiments.
@@ -78,52 +84,34 @@ class ScipySolver:
             A numeric vector for which the model responses should be evaluated. Which
             parameters these numbers refer to can be checked by calling
             self.theta_explanation() once the problem is set up.
-        experiment_names
-            Contains the names of all or some of the experiments added to the inference
-            problem. If this argument is None (which is a common use case) then all
-            experiments defined in the problem (self.experiments) are used. The names
-            provided here define the experiments that the fwd. model is evaluated for.
+        forward_model
+            The forward model that should be evaluated.
+        experiment_name
+            The experiment, the forward model should be evaluated for.
 
         Returns
         -------
-        model_response_dict
-            The first key is the name of the experiment. The values are dicts which
-            contain the forward model's output sensor's names as keys have the
-            corresponding model responses as values.
+        model_response_vector
+            Vector of the model responses (concatenated over output sensors).
+        residuals_vector
+            Vector of the model residuals (concatenated over output sensors).
         """
 
-        # if experiments is not further specified all experiments added to the problem
-        # will be accounted for when computing the model error
-        if experiment_names is None:
-            experiment_names = [*self.problem.experiments.keys()]
-        else:
-            # make sure that a given string is converted into a list
-            experiment_names = make_list(experiment_names)
+        # prepare the input dictionary for the forward model call
+        prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
+        exp_inp = forward_model.input_from_experiments[experiment_name]
+        inp = {**exp_inp, **prms_model}  # adds the two dictionaries
 
-        # first, loop over all forward models, and then, over all experiments that are
-        # associated with the corresponding model
-        model_response_dict = {}
-        for fwd_name, forward_model in self.problem.forward_models.items():
-            # get the model parameters for the considered forward model
-            prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
-            # get all experiments referring to the considered forward model
-            relevant_experiment_names = self.problem.get_experiment_names(
-                forward_model_names=fwd_name, experiment_names=experiment_names
-            )
-            # evaluate the forward model for each relevant experiment
-            for exp_name in relevant_experiment_names:
-                exp_dict = self.problem.experiments[exp_name]
-                # prepare the model input values from the experimental data
-                sensor_values = exp_dict["sensor_values"]
-                exp_inp = {
-                    input_sensor.name: sensor_values[input_sensor.name]
-                    for input_sensor in forward_model.input_sensors
-                }
-                inp = {**exp_inp, **prms_model}  # adds the two dictionaries
-                # finally, evaluate the forward model for this experiment
-                model_response_dict[exp_name] = forward_model(inp)
+        # evaluate the forward model and translate the result to a single vector
+        model_response_dict = forward_model(inp)
+        model_response_vector = vectorize_numpy_dict(model_response_dict)
 
-        return model_response_dict
+        # compute the residuals by comparing to the experimental response
+        exp_response_dict = forward_model.output_from_experiments[experiment_name]
+        exp_response_vector = vectorize_numpy_dict(exp_response_dict)
+        residuals_vector = exp_response_vector - model_response_vector
+
+        return model_response_vector, residuals_vector
 
     def logprior(self, theta: np.ndarray) -> float:
         """
@@ -207,16 +195,16 @@ class ScipySolver:
         # model and sum it all up
         ll = 0.0
         for likelihood_model in self.likelihood_models:
-            # compute the model response for the likelihood model's experiment_names
-            model_response = self.evaluate_model_response(
-                theta, likelihood_model.experiment_names
+            # compute the model response/residuals for the likelihood model's experiment
+            response, residuals = self.evaluate_model_response(
+                theta, likelihood_model.forward_model, likelihood_model.experiment_name
             )
             # get the parameter values for the likelihood model's parameters
             prms_likelihood = self.problem.get_parameters(
                 theta, likelihood_model.prms_def
             )
             # evaluate the loglike-contribution for the likelihood model
-            ll += likelihood_model.loglike(model_response, prms_likelihood)
+            ll += likelihood_model.loglike(response, residuals, prms_likelihood)
         return ll
 
     def get_start_values(

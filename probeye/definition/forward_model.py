@@ -1,5 +1,5 @@
 # standard library
-from typing import Union, List, Dict
+from typing import Union, List, Tuple, Dict, Callable
 import copy as cp
 import numpy as np
 
@@ -19,69 +19,62 @@ class ForwardModelBase:
 
     Parameters
     ----------
-    prms_def_
-        Contains the model's latent parameter names. The list may only contain strings
-        or one-element dictionaries. It could look, for example, like [{'a': 'm'}, 'b'].
-        The one-element dictionaries account for the possibility to define a local name
-        for a latent parameter that is different from the global name. In the example
-        above, the latent parameter with the global name 'a' will be referred to as 'm'
-        within the model. So, the one-element dicts have the meaning {<global name>:
-        <local name>}. String-elements are interpreted as having similar local and
-        global names. Note that the local-name option will not be required most of the
-        times. The input from global to local name can also be provided as a dict. In
-        the example above it would look like {'a': 'm', 'b': 'b'}.
-    input_sensors
-        Contains sensor-objects structuring the model input.
-    output_sensors
-        Contains sensor-objects structuring the model output.
+    name
+        The name of the forward model. Must be unique among all forward model's names
+        within a considered InverseProblem.
     """
 
     def __init__(
         self,
-        prms_def_: Union[str, List[Union[str, dict]], dict] = "dummy",
-        input_sensors: Union[Sensor, List[Sensor]] = Sensor("dummy"),
-        output_sensors: Union[Sensor, List[Sensor]] = Sensor("dummy"),
+        name: str,
+        _skip_interface_=False,
     ):
 
-        # this is just for consistency; values will be overwritten
+        # set the forward model's name
+        self.name = name
+
+        # this is just for consistency; values will be overwritten with the next command
         self.parameters = ["_self.parameters_not_set"]
         self.input_sensors = [Sensor("_self.input_sensors_not_set")]
         self.output_sensors = [Sensor("_self.output_sensors_not_set")]
 
-        if self.definition() is None:
+        # set the three attributes above by running the user-defined method
+        # self.interface; the exception triggered by naming the forward model '_dummy_'
+        # is intended mostly for testing
+        if name != "_dummy_":
 
-            # in this case, the user has explicitly specified self.definition(), which
-            # means that self.prms_def, self.input_sensors and self.output sensors are
-            # already set at this point; before continuing though, let's check if
-            # everything required was already set
+            # now, run the user-defined 'interface'-method which will set the attributes
+            # self.parameters, self.input_sensors and self.output_sensors
+            self.interface()
+
+            # check if self.parameters, self.input_sensors and self.output_sensors have
+            # been set by the user in the required self.interface-method
             if self.parameters == ["_self.parameters_not_set"]:
                 raise RuntimeError(
                     f"You did not set the required attribute 'self.parameters' in the "
-                    f"forward model's 'definition'-method!"
+                    f"forward model's 'interface'-method!"
                 )
             if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.input_sensors' in "
-                    "the forward model's 'definition'-method!"
+                    "the forward model's 'interface'-method!"
                 )
             if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.output_sensors' in "
-                    "the forward model's 'definition'-method!"
+                    "the forward model's 'interface'-method!"
                 )
-            self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
-            self.input_sensors = make_list(self.input_sensors)
-            self.output_sensors = make_list(self.output_sensors)
+        self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
+        self.input_sensors = make_list(self.input_sensors)
+        self.output_sensors = make_list(self.output_sensors)
+        self.correlation_variables = self.check_sensor_correlation()
 
-        else:
-
-            # convert the given parameter names to a dictionary with global names as
-            # keys and local names as values
-            self.prms_def, self.prms_dim = translate_prms_def(prms_def_)
-
-            # other attributes
-            self.input_sensors = make_list(input_sensors)
-            self.output_sensors = make_list(output_sensors)
+        # here, it is checked if the output sensors of the forward model share the same
+        # error standard deviation parameters; this allows faster likelihood evaluations
+        self.sensors_share_std_model = False
+        self.sensors_share_std_measurement = False
+        self.sensors_share_std_prms = False
+        self.check_std_definitions()
 
         # set the attribute self.input_sensor for forward models with 1 input sensor
         self.input_sensor = Sensor("not_set_because_more_than_one_input_sensor")
@@ -92,6 +85,10 @@ class ForwardModelBase:
         self.output_sensor = Sensor("not_set_because_more_than_one_output_sensor")
         if len(self.output_sensors) == 1:
             self.output_sensor = self.output_sensors[0]
+
+        # ================================== #
+        #   Attributes used/set by solvers   #
+        # ================================== #
 
         # this attribute might be used to write the forward model's input structure to;
         # it has the same structure like the 'inp' argument of the response method, but
@@ -109,15 +106,25 @@ class ForwardModelBase:
         # by all inference engines
         self.response_structure = {os.name: 0 for os in self.output_sensors}
 
+        # the following attribute is set by self.connect_experimental_data_to_sensors();
+        # this method is called by the solver before solving the problem
+        self.experiment_names = []  # type: list
+
+        # the following attributes are set by the solver before solving the problem by
+        # calling self.prepare_experimental_inputs_and_outputs()
+        self.input_from_experiments = {}  # type: dict
+        self.output_from_experiments = {}  # type: dict
+        self.output_lengths = {}  # type: dict
+
     @property
     def input_sensor_names(self) -> List[str]:
         """Provides input_sensor_names attribute."""
         return [sensor.name for sensor in self.input_sensors]
 
     @property
-    def n_input_sensors(self) -> int:
-        """Provides number of input_sensors as an attribute."""
-        return len(self.input_sensor_names)
+    def input_sensor_dict(self) -> dict:
+        """Returns dict with input sensor names as keys and sensor objects as values."""
+        return {sensor.name: sensor for sensor in self.input_sensors}
 
     @property
     def input_channel_names(self) -> List[str]:
@@ -130,18 +137,76 @@ class ForwardModelBase:
         return [sensor.name for sensor in self.output_sensors]
 
     @property
+    def n_output_sensors(self) -> int:
+        """Provides number of output_sensors as an attribute."""
+        return len(self.output_sensor_names)
+
+    @property
     def sensor_names(self) -> List[str]:
         """Provides a list of all sensor names as an attribute."""
         return self.input_sensor_names + self.output_sensor_names
 
-    def definition(self) -> Union[bool, None]:
+    def check_sensor_correlation(self) -> list:
         """
-        This method can be overwritten by the user. It should be used to explicitly
-        define the forward model's parameters, input and output sensors. Check out the
-        integration tests to see examples.
+        Checks if all output sensors share the same correlation variables, which is
+        a requirement for a valid forward model definition. If this is the case, the
+        common correlation variables are returned. Otherwise, an error is raised.
+
+        Returns
+        -------
+        correlation_variables
+            A list of strings (something like 't') or tuples (something like ('x', 'y'))
+            stating the common correlation variables defined in the forward model's
+            output sensors.
         """
-        self.parameters = ["_self.parameters_not_set"]
-        return True
+        correlation_variables = self.output_sensors[0].correlation_variables
+        for output_sensor in self.output_sensors:
+            if output_sensor.correlation_variables != correlation_variables:
+                raise RuntimeError(
+                    f"The output sensors in forward model '{self.name}' do not share "
+                    f"the same correlation variables!"
+                )
+        return correlation_variables
+
+    def check_std_definitions(self):
+        """
+        Checks if the forward model's output sensors share a common model error and
+        measurement error standard deviation parameter. The result is written to three
+        of the forward model's attributes.
+        """
+
+        # first, check the model error standard deviation; the variable 'std_model_set'
+        # will contain a set of all global parameter names for model error standard
+        # deviations for the forward model's output sensors
+        std_model_set = set()
+        for output_sensor in self.output_sensors:
+            std_model_set.add(output_sensor.std_model)
+        if len(std_model_set) == 1:
+            self.sensors_share_std_model = True
+
+        # now, consider the measurement error standard deviation; the variable
+        # 'std_measurement_set' will contain a set of all global parameter names for
+        # measurement error standard deviations for the forward model's output sensors
+        std_measurement_set = set()
+        for output_sensor in self.output_sensors:
+            std_measurement_set.add(output_sensor.std_measurement)
+        if len(std_measurement_set) == 1:
+            self.sensors_share_std_measurement = True
+
+        # combine the information to a single flag
+        self.sensors_share_std_prms = (
+            self.sensors_share_std_model and self.sensors_share_std_measurement
+        )
+
+    def interface(self):
+        """
+        This method must be overwritten by the user. It is used to explicitly define the
+        forward model's parameters, input and output sensors. Check out the integration
+        tests to see examples.
+        """
+        raise NotImplementedError(
+            f"No 'interface'-method defined for forward model '{self.name}'!"
+        )
 
     def response(self, inp: dict) -> dict:
         """
@@ -310,3 +375,180 @@ class ForwardModelBase:
                 jac[idx_start:idx_end, j : (j + ncomp)] = derivative
                 j += ncomp
         return jac
+
+    def connect_experimental_data_to_sensors(self, exp_name: str, sensor_values: dict):
+        """
+        Connects the experimental data from an experiments to the corresponding sensors
+        of the forward model. Note that sensor-objects are essentially dictionaries, so
+        the connection is established by adding the 'exp_name' as key to the respective
+        sensor-(dict)-object with the measurements as the dict-values. There are no
+        checks in this method because it is only used by InverseProblem.add_experiment
+        which already does the consistency checks before calling this method.
+
+        Parameters
+        ----------
+        exp_name
+            The name of the experiment the 'sensor_values' are coming from.
+        sensor_values
+            Keys are the sensor names (like "x" or "y") and values are either floats,
+            integers or numpy-ndarrays representing the measured values.
+        """
+
+        # connect the forward model's input sensors to the experiments
+        for sensor in self.input_sensors:
+            sensor[exp_name] = sensor_values[sensor.name]
+
+        # connect the forward model's output sensors to the experiments
+        for sensor in self.output_sensors:
+            sensor[exp_name] = sensor_values[sensor.name]
+
+        # collect all connected experiments to a separate list for convenience
+        self.experiment_names.append(exp_name)
+
+    def prepare_experimental_inputs_and_outputs(self):
+        """
+        This method prepares the experimental-data-collection over the forward model's
+        input and output sensors. This is done in an own method here for efficiency
+        reasons. Without this method, the loops over the input and output sensors would
+        be repeated in each evaluation of the forward model. This method is called in
+        the solvers before starting an inference routine. It sets the two general
+        attributes 'self.input_from_experiments' and 'self.output_from_experiment' as
+        well as the correlation-related attribute 'self.output_lengths'.
+        """
+
+        # set 'self.input_from_experiments' and 'self.output_from_experiments'; both
+        # attributes are dictionaries with the same structure; a simple example could
+        # look like: {'Exp1': {'deflection_1': np.array([1.9, 2.3]), 'F': 1200.0}}
+        for exp_name in self.experiment_names:
+            exp_inp = {}
+            for input_sensor in self.input_sensors:
+                exp_inp[input_sensor.name] = input_sensor[exp_name]
+            self.input_from_experiments[exp_name] = exp_inp
+            exp_out = {}
+            for output_sensor in self.output_sensors:
+                exp_out[output_sensor.name] = output_sensor[exp_name]
+            self.output_from_experiments[exp_name] = exp_out
+
+        # set the self.output_lengths dictionary; this dict is required for the methods
+        # self.std_model and self.std_measurement; it contains information on the length
+        # of the returned values of the forward model in the different experiments; a
+        # simple example for an uncorrelated case could look like this:
+        # {'Ex1': {'': {'total': 202, 'increments': [101, 101], 'names': ['y1', 'y2']}},
+        #  'Ex2': {'': {'total': 102, 'increments': [51, 51], 'names': ['y1', 'y2']}}}
+        # this is interpreted as follows: for experiment 1 (named 'Ex1') the forward
+        # model's output dictionary will eventually be translated into a vector holding
+        # 202 values, where the first 101 belong to output sensor 'y1' and the following
+        # 101 values belong to output sensor 'y2'; an analogous interpretation holds for
+        # the second experiment (named 'Ex2'); in a correlated case, the created dict
+        # will additionally contain the lengths of the correlation variables, e.g.:
+        # {'Ex1': {'':  {'total': 12, 'increments': [6, 6], 'names': ['y1', 'y2']},
+        #          't': {'total': 2,  'increments': [1, 1], 'names': ['y1', 'y2']},
+        #          'x': {'total': 12, 'increments': [6, 6], 'names': ['y1', 'y2']}}
+        # the 't' and 'x' entries are interpreted as the 't'-correlation vector having
+        # length 2 and the 'x'-correlation vector having length 12, while the remaining
+        # information is interpreted analogously as described before
+        output_lengths = {}  # type: dict
+        for exp_name in self.experiment_names:
+            output_lengths[exp_name] = {}  # type: dict
+            # add the information for the model response
+            output_lengths[exp_name][""] = {
+                "total": 0,
+                "increments": [],
+                "names": [],
+            }
+            for output_sensor in self.output_sensors:
+                n_i = len_or_one(output_sensor[exp_name])
+                name = output_sensor.name
+                output_lengths[exp_name][""]["increments"].append(n_i)
+                output_lengths[exp_name][""]["names"].append(name)
+            output_lengths[exp_name][""]["total"] = sum(
+                output_lengths[exp_name][""]["increments"]
+            )
+            # add the information for the correlation vectors
+            for corr_var_ in self.correlation_variables:
+                corr_var_tuple = corr_var_
+                if isinstance(corr_var_, str):
+                    corr_var_tuple = (corr_var_,)
+                for corr_var in corr_var_tuple:
+                    output_lengths[exp_name][corr_var] = {
+                        "total": 0,
+                        "increments": [],
+                        "names": [],
+                    }
+                    for output_sensor in self.output_sensors:
+                        n_i = output_sensor.corr_var_lengths[exp_name][corr_var]
+                        name = output_sensor.name
+                        output_lengths[exp_name][corr_var]["increments"].append(n_i)
+                        output_lengths[exp_name][corr_var]["names"].append(name)
+                    output_lengths[exp_name][corr_var]["total"] = sum(
+                        output_lengths[exp_name][corr_var]["increments"]
+                    )
+        self.output_lengths = output_lengths
+
+    def std_values(
+        self,
+        prms: dict,
+        exp_name: str,
+        corr_var: str = "",
+        measurement_error=False,
+    ) -> Tuple[
+        Union[int, float, np.ndarray], Union[int, float, np.ndarray, None], bool
+    ]:
+        """
+        Returns the model/measurement error standard deviations either as scalar (if all
+        sensors share the same model/measurement error standard deviation) or as vectors
+        expanded to the length of the requested correlation variable vector.
+
+        Parameters
+        ----------
+        prms
+            The input parameter dictionary.
+        exp_name
+            The name of the considered experiment.
+        corr_var
+            The correlation variable the vector should be expanded to. If no correlation
+            is defined, this variable must be an empty string. In this case, a returned
+            vector would be expanded to the full vectorized forward model's response.
+        measurement_error
+            True, if also a measurement error should be considered. Otherwise, False.
+
+        Returns
+        -------
+        std_model
+            Either a scalar, or a vector with the forward model's model error standard
+            deviation expanded to the required length defined by the  given experiment.
+        std_measurement
+            Either a scalar, or a vector with the forward model's measurement error std.
+            deviation expanded to the required length defined by the given experiment.
+        stds_are_scalar
+            True, if the returned standard deviations are scalars, otherwise False.
+        """
+        std_measurement = None
+        if self.sensors_share_std_prms:
+            # in this case, all sensors have the same parameter that describes their
+            # model/measurement error; hence, we just need a scalar value
+            std_model = prms[self.output_sensors[0].std_model]
+            if measurement_error:
+                std_measurement = prms[self.output_sensors[0].std_measurement]
+            stds_are_scalar = True
+        else:
+            # in this case, the forward model has more than one sensor, and not all of
+            # those sensors share the same 'std_model' and/or 'std_measurement'
+            # attribute; so, we have to assemble non-constant vector(s) with different
+            # values for std_model or std_measurement
+            idx_start = 0
+            std_model = np.zeros(self.output_lengths[exp_name][corr_var]["total"])
+            if measurement_error:
+                std_measurement = np.zeros(
+                    self.output_lengths[exp_name][corr_var]["total"]
+                )
+            increments = self.output_lengths[exp_name][corr_var]["increments"]
+            for output_sensor, n_i in zip(self.output_sensors, increments):
+                idx_end = idx_start + n_i
+                std_model[idx_start:idx_end] = prms[output_sensor.std_model]
+                if measurement_error:
+                    std_meas = prms[output_sensor.std_measurement]
+                    std_measurement[idx_start:idx_end] = std_meas  # type: ignore
+                idx_start = idx_end
+            stds_are_scalar = False
+        return std_model, std_measurement, stds_are_scalar

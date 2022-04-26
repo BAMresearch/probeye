@@ -46,6 +46,7 @@ extensions = [
     "sphinxcontrib.bibtex",
     "myst_parser",
     "sphinx.ext.imgmath",
+    "sphinx.ext.autosectionlabel",
 ]
 
 autodoc_typehints = "description"
@@ -58,13 +59,11 @@ autodoc_mock_imports = [
     "matplotlib",
     "emcee",
     "tabulate",
-    "torch",
-    "pyro",
     "arviz",
     "loguru",
     "dynesty",
     "tri-py",
-    "numba<1",
+    "numba",
 ]
 
 # If true, the current module name will be prepended to all description

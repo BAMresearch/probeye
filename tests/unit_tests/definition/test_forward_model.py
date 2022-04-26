@@ -12,7 +12,13 @@ from probeye.definition.sensor import Sensor
 class TestProblem(unittest.TestCase):
     def test_undefined_forward_model(self):
         # check for the not-implemented-error when no response method is defined
-        forward_model = ForwardModelBase(["a"], Sensor("x"), Sensor("y"))
+        class ForwardModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
+        forward_model = ForwardModel("CoolName")
         with self.assertRaises(NotImplementedError):
             forward_model.response({})
         with self.assertRaises(NotImplementedError):
@@ -22,6 +28,11 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ForwardModelBase
         class ForwardModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y")
+
             def response(self, inp):
                 x = inp["x"]
                 a = inp["a"]
@@ -29,7 +40,7 @@ class TestProblem(unittest.TestCase):
                 return {"y": a * x**2 + b}
 
         # check the __call__-method
-        forward_model = ForwardModel(["a", "b"], [Sensor("x")], [Sensor("y")])
+        forward_model = ForwardModel("FunkyName")
         self.assertEqual(forward_model.sensor_names, ["x", "y"])
         prms = {"a": 1, "b": 2}
         computed_result = forward_model({**{"x": 1.0}, **prms})
@@ -71,6 +82,14 @@ class TestProblem(unittest.TestCase):
 
         # define a simple model using ForwardModelBase
         class ForwardModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = [Sensor("x1"), Sensor("x2")]
+                self.output_sensors = [
+                    OutputSensorOffset("y1", 0.1),
+                    OutputSensorOffset("y2", -0.2),
+                ]
+
             def response(self, inp):
                 x1 = inp["x1"]
                 x2 = inp["x2"]
@@ -82,9 +101,7 @@ class TestProblem(unittest.TestCase):
                 return response_dict
 
         # check the __call__-method
-        is1, is2 = Sensor("x1"), Sensor("x2")
-        os1, os2 = OutputSensorOffset("y1", 0.1), OutputSensorOffset("y2", -0.2)
-        forward_model = ForwardModel(["a", "b"], [is1, is2], [os1, os2])
+        forward_model = ForwardModel("SchwiftyName")
         prms = {"a": 1, "b": 2}
         computed_result = forward_model({**{"x1": 2.0, "x2": 3.0}, **prms})
         expected_result = {"y1": 10.1, "y2": 9.8}
@@ -128,52 +145,77 @@ class TestProblem(unittest.TestCase):
 
     def test_invalid_forward_model_definitions(self):
         class ParametersNotSet(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 # self.parameters = [{"a": "m"}, "b"]
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["m"]
                 b = inp["b"]
                 return {"y": m * x + b}
 
         with self.assertRaises(RuntimeError):
-            ParametersNotSet()
+            ParametersNotSet("Horst")
 
         class InputSensorsNotSet(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = [{"a": "m"}, "b"]
                 # self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["m"]
                 b = inp["b"]
                 return {"y": m * x + b}
 
         with self.assertRaises(RuntimeError):
-            InputSensorsNotSet()
+            InputSensorsNotSet("Fritz")
 
         class OutputSensorsNotSet(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = [{"a": "m"}, "b"]
                 self.input_sensors = Sensor("x")
                 # self.output_sensors = Sensor("y")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["m"]
                 b = inp["b"]
                 return {"y": m * x + b}
 
         with self.assertRaises(RuntimeError):
-            OutputSensorsNotSet()
+            OutputSensorsNotSet("Gerd")
+
+        class InterfaceMethodNotSet(ForwardModelBase):
+            def response(self, inp: dict) -> dict:
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
+
+        with self.assertRaises(RuntimeError):
+            InterfaceMethodNotSet("Bert")
+
+        class InvalidCorrelationStructure(ForwardModelBase):
+            def interface(self):
+                self.parameters = [{"a": "m"}, "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = [
+                    Sensor("y1", correlated_in={"x": "l_corr"}),
+                    Sensor("y2", correlated_in={"WRONG": "l_corr"}),
+                ]
+
+            def response(self, inp: dict) -> dict:
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
+
+        with self.assertRaises(RuntimeError):
+            InvalidCorrelationStructure("Sigfried")
 
 
 if __name__ == "__main__":

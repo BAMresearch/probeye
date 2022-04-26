@@ -1,13 +1,11 @@
 # standard library
-import copy
-from typing import Union, List, Optional, Callable, Tuple
+from typing import Union, List, Optional, Tuple
 import copy as cp
 
 # third party imports
 from tabulate import tabulate
 from loguru import logger
 import numpy as np
-import torch as th
 
 # local imports
 from probeye.definition.parameter import Parameters
@@ -143,11 +141,6 @@ class InverseProblem:
         return self._parameters.latent_prms_dims
 
     @property
-    def n_latent_model_prms_dim(self) -> int:
-        """Access the combined dimensions of the latent model parameters."""
-        return self._parameters.n_latent_model_prms_dim
-
-    @property
     def n_constant_prms(self) -> int:
         """Provides n_constant_prms attribute."""
         return self._parameters.n_constant_prms
@@ -230,7 +223,7 @@ class InverseProblem:
     def add_parameter(
         self,
         prm_name: str,
-        prm_type: str,
+        prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
@@ -433,9 +426,7 @@ class InverseProblem:
             value=new_value
         )
 
-    def get_parameters(
-        self, theta: Union[np.ndarray, th.Tensor], prm_def: dict
-    ) -> dict:
+    def get_parameters(self, theta: np.ndarray, prm_def: dict) -> dict:
         """
         Extracts the numeric values for given parameters that have been defined within
         the inverse problem. The numeric values are extracted either from the latent
@@ -458,8 +449,7 @@ class InverseProblem:
         prms
             Contains <local parameter name> : <(global) parameter value> pairs. If a
             parameter is scalar, its value will be returned as a float. In case of a
-            vector-valued parameter, its value will be returned either as a np.ndarray
-            or a th.Tensor, depending on the format theta was provided in.
+            vector-valued parameter, its value will be returned as a np.ndarray.
         """
         prms = {}
         for global_name, local_name in prm_def.items():
@@ -479,7 +469,7 @@ class InverseProblem:
                     prms[local_name] = theta[idx:idx_end]
         return prms
 
-    def check_parameter_domains(self, theta: Union[np.ndarray, th.Tensor]) -> bool:
+    def check_parameter_domains(self, theta: np.ndarray) -> bool:
         """
         Checks whether the given values of the latent parameters are within their
         specified domains.
@@ -605,15 +595,13 @@ class InverseProblem:
     #                  Forward model related methods                  #
     # =============================================================== #
 
-    def add_forward_model(self, name: str, forward_model: ForwardModelBase):
+    def add_forward_model(self, forward_model: ForwardModelBase):
         """
         Adds a forward model to the inverse problem. Note that multiple forward models
         can be added to one problem.
 
         Parameters
         ----------
-        name
-            The name of the forward model to be added.
         forward_model
             Defines the forward model. Check out forward_model.py to see a template for
             the forward model definition. The user will then have to derive his own
@@ -622,37 +610,35 @@ class InverseProblem:
         """
 
         # log at beginning so that errors can be quickly associated
-        logger.debug(f"Adding forward model '{name}'")
+        logger.debug(f"Adding forward model '{forward_model.name}'")
 
         # check if all given model parameters have already been added to the inverse
         # problem; note that the forward model can only be added to the problem after
         # the corresponding parameters have been defined
         for prm_name in forward_model.prms_def:
             self._parameters.confirm_that_parameter_exists(prm_name)
+            # check, if the type was set correctly; if it was not set yet, it will be
+            # set automatically here
+            if self._parameters[prm_name].type == "not defined":
+                self.change_parameter_type(prm_name, "model")
+            elif self._parameters[prm_name].type in ["prior", "likelihood"]:
+                raise ValueError(
+                    f"The parameter '{prm_name}' defined in forward model "
+                    f"'{forward_model.name}' was assigned the type "
+                    f"'{self._parameters[prm_name].type}' (it should be 'model')."
+                )
 
         # check if the given name for the forward model has already been used
-        if name in self._forward_models:
+        if forward_model.name in self._forward_models:
             raise RuntimeError(
-                f"The given name '{name}' for the forward model has already been used "
-                f"for another forward model. Please choose another name."
+                f"The name '{forward_model.name}' of the forward model you are trying "
+                f"to add to the problem has already been used for another forward "
+                f"model within the problem scope. Please choose another name."
             )
-
-        # check if the given forward model has an output sensor with a name that is
-        # already used for an output sensor of another forward model
-        for existing_name, existing_fwd_model in self._forward_models.items():
-            for output_sensor in existing_fwd_model.output_sensor_names:
-                if output_sensor in forward_model.output_sensor_names:
-                    raise RuntimeError(
-                        f"The given forward model '{name}' has an output sensor "
-                        f"'{output_sensor}', \nwhich is also defined as an output "
-                        f"sensor in the already defined forward model "
-                        f"'{existing_name}'.\nPlease choose a different name for "
-                        f"output sensor '{output_sensor}' in forward model '{name}'."
-                    )
 
         # add the given forward model to the internal forward model dictionary under
         # the given forward model name
-        self._forward_models[name] = forward_model
+        self._forward_models[forward_model.name] = forward_model
 
     # =============================================================== #
     #                   Experiments related methods                   #
@@ -702,16 +688,6 @@ class InverseProblem:
 
         # log at beginning so that errors can be associated
         logger.debug(f"Adding experiment '{exp_name}'")
-
-        # make sure that no likelihood model has been defined yet
-        if self._likelihood_models:
-            raise RuntimeError(
-                f"You are trying to add an experiment after already having defined "
-                f"likelihood models.\nSince version 1.0.17 this is not allowed "
-                f"anymore. Please add all experiments before\n defining any likelihood "
-                f"model. After you have defined a likelihood model, you cannot add\n"
-                f"experiments anymore."
-            )
 
         # check types of input arguments
         if type(sensor_values) is not dict:
@@ -833,6 +809,9 @@ class InverseProblem:
                             f" does not appear in the given sensor_values!"
                         )
 
+        # make the experimental data accessible in the corresponding sensors
+        fwd_model.connect_experimental_data_to_sensors(exp_name, sensor_values_numpy)
+
         # add the experiment to the central dictionary
         self._experiments[exp_name] = {
             "sensor_values": sensor_values_numpy,
@@ -905,71 +884,13 @@ class InverseProblem:
 
         return relevant_experiment_names
 
-    def transform_experimental_data(
-        self, func: Callable, args: tuple = (), **kwargs
-    ) -> "InverseProblem":
-        """
-        Returns a copy of the problem the experimental data of which is transformed in
-        some way. This might be a necessary pre-processing step for an inverse engine
-        in order to be able to solve the problem. Note that the problem is not fully
-        deep-copied. The forward models are excluded from deep-copying, as this might
-        result in problems. The rest of the problem is deep-copied however.
-
-        Parameters
-        ----------
-        func
-            The function that is applied on each of the experiment's sensor values.
-        args
-            Additional positional arguments to be passed to func.
-        kwargs
-            Keyword arguments to be passed to func.
-
-        Returns
-        -------
-        self_copy
-            A copy of self where the experimental data has been transformed in the
-            specified fashion.
-        """
-
-        # for easier error tracing
-        logger.debug(f"Transforming experimental data using f = '{func.__name__}'")
-
-        # the original problem shall not be touched, so we create a copy here to which
-        # the transformation will be applied
-        self_copy = InverseProblem(
-            self.name,
-            use_default_logger=self.use_default_logger,
-            log_level=self.log_level,
-            log_file=self.log_file,
-            print_header=False,
-        )
-        self_copy._parameters = cp.deepcopy(self._parameters)
-        self_copy._experiments = cp.deepcopy(self._experiments)
-        self_copy._forward_models = cp.copy(self._forward_models)  # no deep-copy here!
-        self_copy._likelihood_models = cp.deepcopy(self._likelihood_models)
-        # the following step is necessary since the attribute 'problem_experiments' of
-        # the deep-copied likelihood models in self_copy still refer to the experiments
-        # of self; hence, we need to set this pointer to the experiments of self_copy
-        for likelihood_model in self_copy._likelihood_models.values():
-            likelihood_model.problem_experiments = self_copy._experiments
-
-        # transform the sensor values from the experiments by applying the specified
-        # function with the given arguments to them
-        for exp_name in self_copy._experiments.keys():
-            sensor_values = self_copy._experiments[exp_name]["sensor_values"]
-            for sensor_name in sensor_values.keys():
-                sensor_values[sensor_name] = func(
-                    sensor_values[sensor_name], *args, **kwargs
-                )
-
-        return self_copy
-
     # ================================================================ #
     #                 Likelihood model related methods                 #
     # ================================================================ #
 
     def add_likelihood_model(
-        self, likelihood_model: GaussianLikelihoodModel, name: Optional[str] = None
+        self,
+        likelihood_model: GaussianLikelihoodModel,
     ):
         """
         Adds a likelihood model to the inverse problem. Note that a single problem
@@ -986,98 +907,57 @@ class InverseProblem:
             providing any computational means. The general likelihood model will be
             translated into a likelihood model with computational means in the solver
             that will later be used to 'solve' the inverse problem.
-        name
-            A descriptive name for the likelihood model. If None is given, a default
-            name will be derived automatically (something like 'likelihood_model_1').
         """
 
+        # the likelihood models are added to the problem after all parameters have been
+        # added; this is why this method includes a silent automatic parameter type
+        # detection, to avoid an extra command in the problem definition
+        for prm_name in self._parameters:
+            if self._parameters[prm_name].type == "not defined":
+                for prior in self.priors.values():
+                    if prm_name in prior.hyperparameters:
+                        self.change_parameter_type(prm_name, "prior")
+
         # check if the likelihood model has been assigned a name; if not, assign one
-        if name is None:
+        if likelihood_model.name == "":
             name = f"likelihood_model_{len(self.likelihood_models)}"
             logger.debug(
                 f"Adding likelihood model '{name}' (name assigned automatically)"
             )
         else:
+            name = likelihood_model.name
             logger.debug(f"Adding likelihood model '{name}'")
-        likelihood_model.name = name  # this is important e.g. for the torch-solver!
 
-        # ensure that experiments have already been added to the problem
-        if not self._experiments:
+        # ensure the likelihood model's experiment has been added to the problem
+        if likelihood_model.experiment_name not in self._experiments:
             raise RuntimeError(
-                f"You are trying to add a likelihood model to your problem without "
-                f"having added any experiments yet!\nPlease add the experiments "
-                f"before adding the likelihood models."
+                f"The likelihood model's experiment {likelihood_model.experiment_name} "
+                f"was not found in the problem's experiments."
             )
 
-        # check if all given likelihood model parameters have already been added to
-        # the inverse problem
+        # check if all given model parameters have already been added to the inverse
+        # problem; note that the likelihood model can only be added to the problem after
+        # the corresponding parameters have been defined
         for prm_name in likelihood_model.prms_def:
-            if prm_name not in self._parameters.keys():
-                raise RuntimeError(
-                    f"The likelihood model parameter '{prm_name}' has not been defined "
-                    f"yet.\nYou have to add all likelihood model parameters to the "
-                    f"problem before adding the likelihood model.\nYou can use the"
-                    f"'add_parameter' method for this purpose."
+            self._parameters.confirm_that_parameter_exists(prm_name)
+            # check, if the type was set correctly; if it was not set yet, it will be
+            # set automatically here
+            if self._parameters[prm_name].type == "not defined":
+                self.change_parameter_type(prm_name, "likelihood")
+            elif self._parameters[prm_name].type in ["prior", "model"]:
+                raise ValueError(
+                    f"The parameter '{prm_name}' defined in likelihood model "
+                    f"'{likelihood_model.name}' was assigned the type "
+                    f"'{self._parameters[prm_name].type}' (it should be 'likelihood')."
                 )
 
-        # add the problem's experiments to the likelihood model (note that this is just
-        # a pointer!) for likelihood_model-internal checks
-        likelihood_model.problem_experiments = self._experiments
-
-        # check/assign the likelihood model's experiments
-        if len(likelihood_model.experiment_names) == 0:
-            # in this case, the likelihood model will be assigned its experiments
-            # automatically; this assignment works via the likelihood model's sensors
-            # (at least when the sensors have been specified by the user); it is simply
-            # checked which experiments contain all of the likelihood model's sensors as
-            # sensor values; those experiments will be assigned then
-            logger.debug(
-                f"No experiments were explicitly defined for likelihood model "
-                f"'{likelihood_model.name}'."
-            )
-            logger.debug(
-                f"The following experiments were added were added automatically "
-                f"to {name}':"
-            )
-            if len(likelihood_model.sensors) > 0:
-                added_experiment_names = self.get_experiment_names(
-                    sensor_names=likelihood_model.sensor_names
-                )
-                likelihood_model.add_experiments(added_experiment_names)
-                for exp_name in added_experiment_names:
-                    logger.debug(f"{likelihood_model.name} <--- {exp_name}")
-            else:
-                # in this case, the user did not specify the likelihood model's sensors
-                # and also did not specify the assigned experiments; this minimal
-                # specification is interpreted as all of the problem's experiments being
-                # assigned to the likelihood model
-                for exp_name in self._experiments:
-                    likelihood_model.add_experiments(exp_name)
-                    logger.debug(f"{likelihood_model.name} <--- {exp_name}")
-
-        # set the likelihood's forward model
-        likelihood_model.determine_forward_model()
-
-        # the following case is relevant when the user did not specify the likelihood
-        # model's sensors when initializing a GaussianLikelihoodModel instance; this
-        # case is mostly for convenience
-        if len(likelihood_model.sensors) == 0:
-            logger.debug(
-                f"No sensors were assigned to likelihood model "
-                f"'{likelihood_model.name}'."
-            )
-            logger.debug(f"Assigning sensors automatically based on its forward model.")
-            likelihood_model.sensors = self.forward_models[
-                likelihood_model.forward_model
-            ].output_sensors
-            logger.debug(f"Assigned sensors: {likelihood_model.sensor_names}")
-
-        # this step is necessary here again, since the likelihood model's
-        # add_experiments-method does a few things more, when the likelihood model's
-        # sensors are defined; this is given for sure not before this point
-        experiment_names_user = copy.copy(likelihood_model.experiment_names)
-        likelihood_model.experiment_names = []
-        likelihood_model.add_experiments(experiment_names_user)
+        # set the likelihood's forward model based on the likelihood's experiment; only
+        # after the forward model has been set, the correlation definitions can be
+        # checked on consistency which is done via process_correlation_definition()
+        exp_name = likelihood_model.experiment_name
+        fwd_model_name = self._experiments[exp_name]["forward_model"]
+        likelihood_model.forward_model = self.forward_models[fwd_model_name]
+        likelihood_model.process_correlation_definition()
 
         # finally, add the likelihood_model to the internal dict
         self._likelihood_models[name] = likelihood_model
@@ -1194,15 +1074,12 @@ class InverseProblem:
         rows_like = []
         for l_name, l_model in self._likelihood_models.items():
             prms_glob = simplified_list_string([*l_model.prms_def.keys()])
-            prms_loc = simplified_list_string([*l_model.prms_def.values()])
-            l_sensors = simplified_list_string(l_model.sensor_names)
-            exp_name_1 = l_model.experiment_names[0]
-            rows_like.append((l_name, prms_glob, prms_loc, l_sensors, exp_name_1))
-            for exp_name in l_model.experiment_names:
-                if exp_name == exp_name_1:
-                    continue
-                rows_like.append(("", "", "", "", exp_name))
-        headers = ["Name", "Glob. prms", "Loc. prms", "Target sensors", "Experiments"]
+            l_sensors = simplified_list_string(
+                l_model.forward_model.output_sensor_names
+            )
+            exp_name_1 = l_model.experiment_name
+            rows_like.append((l_name, prms_glob, l_sensors, exp_name_1))
+        headers = ["Name", "Parameters", "Target sensors", "Experiment"]
         like_table = tabulate(rows_like, headers=headers, tablefmt=tablefmt)
         like_str = titled_table("Added likelihood models", like_table)
 
@@ -1310,15 +1187,10 @@ class InverseProblem:
         for parameter in self._parameters.values():
             parameter.check_consistency()
 
-        # check the consistency of each likelihood model
-        for likelihood_model in self._likelihood_models.values():
-            likelihood_model.check_experiment_consistency()
-
         # check that each defined experiment appears in one of the likelihood models
         exp_names_in_likelihood_models = set()
         for likelihood_model in self._likelihood_models.values():
-            for exp_name_likelihood in likelihood_model.experiment_names:
-                exp_names_in_likelihood_models.add(exp_name_likelihood)
+            exp_names_in_likelihood_models.add(likelihood_model.experiment_name)
         for exp_name in self._experiments.keys():
             if exp_name not in exp_names_in_likelihood_models:
                 logger.warning(

@@ -5,9 +5,9 @@ This page documents the modules, classes, and functions provided by the `probeye
 package.
 
 ## `probeye.definition`
-### `inference_problem`
+### `inverse_problem`
 ```{eval-rst}
-.. automodule:: probeye.definition.inference_problem
+.. automodule:: probeye.definition.inverse_problem
     :members:
     :undoc-members:
     :private-members:
@@ -55,8 +55,24 @@ package.
 ```
 
 ## `probeye.inference`
-### `scipy`
-#### `solver`
+### `priors`
+```{eval-rst}
+.. automodule:: probeye.inference.priors
+    :members:
+    :undoc-members:
+    :private-members:
+    :show-inheritance:
+```
+### `likelihood_models`
+```{eval-rst}
+.. automodule:: probeye.inference.likelihood_models
+    :members:
+    :undoc-members:
+    :private-members:
+    :show-inheritance:
+```
+
+### `scipy-solver`
 ```{eval-rst}
 .. automodule:: probeye.inference.scipy.solver
     :members:
@@ -64,24 +80,8 @@ package.
     :private-members:
     :show-inheritance:
 ```
-#### `priors`
-```{eval-rst}
-.. automodule:: probeye.inference.scipy.priors
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
-```
-#### `likelihood_models`
-```{eval-rst}
-.. automodule:: probeye.inference.scipy.likelihood_models
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
-```
-### `emcee`
-#### `solver`
+
+### `emcee-solver`
 ```{eval-rst}
 .. automodule:: probeye.inference.emcee.solver
     :members:
@@ -89,35 +89,10 @@ package.
     :private-members:
     :show-inheritance:
 ```
-### `dynesty`
-#### `solver`
+
+### `dynesty-solver`
 ```{eval-rst}
 .. automodule:: probeye.inference.dynesty.solver
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
-```
-### `torch`
-#### `solver`
-```{eval-rst}
-.. automodule:: probeye.inference.torch.solver
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
-```
-#### `priors`
-```{eval-rst}
-.. automodule:: probeye.inference.torch.priors
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
-```
-#### `likelihood_models`
-```{eval-rst}
-.. automodule:: probeye.inference.torch.likelihood_models
     :members:
     :undoc-members:
     :private-members:

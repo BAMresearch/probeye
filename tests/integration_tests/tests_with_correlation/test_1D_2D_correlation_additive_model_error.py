@@ -1,14 +1,17 @@
 """
-Bending stiffness of simply supported beam assuming time-space correlation
+   Bending stiffness of simply supported beam assuming time-space (1D-1D) correlation
+----------------------------------------------------------------------------------------
+      ---> Additive model prediction error (common std. dev. across sensors) <---
 ----------------------------------------------------------------------------------------
 A bridge (modeled as a simply supported beam) is equipped at two positions with a
 deflection sensor. Both sensors record a time series of deflection while cars with
-different weights and velocities cross the bridge. Correlation is assumed in both space
-and time. The goal of the inference is to estimate the bridge's bending stiffness 'EI'.
-Next to 'EI' there are three other parameters to infer: the additive model error std.
-deviation 'sigma', the temporal correlation length 'l_corr_t' and the spatial corr.
-length l_corr_x. Hence, four parameters in total, all of which are inferred in this
-example using maximum likelihood estimation as well as sampling via emcee and dynesty.
+different weights and velocities cross the bridge (these are the different experiments).
+Correlation is assumed in both space and time (separable). The goal of the inference is
+to estimate the bridge's bending stiffness 'EI'. Next to 'EI' there are three other
+parameters to infer: the additive model error standard deviation 'sigma', the temporal
+correlation length 'l_corr_t' and the spatial correlation length l_corr_x. Hence, four
+parameters in total, all of which are inferred in this example using a maximum
+likelihood estimation.
 """
 
 # standard library
@@ -32,7 +35,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_time_space_correlation(
+    def test_1D_2D_correlation_additive_model_error(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -40,9 +43,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_torch: bool = False,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -68,19 +70,10 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
         """
-
-        if run_torch:
-            raise RuntimeError(
-                "The pyro-solver is not available for inverse problems including "
-                "correlations yet."
-            )
 
         # ============================================================================ #
         #                              Set numeric values                              #
@@ -115,29 +108,30 @@ class TestProblem(unittest.TestCase):
         # positions of the sensors
         x_sensor_1 = 30.0  # [m]
         x_sensor_2 = 35.0  # [m]
+        y_sensor_1 = -2.0  # [m]
+        y_sensor_2 = 2.0  # [m]
 
         # 'true' value of EI, and its normal prior parameters
-        EI_true = 2.1e11 * 0.25  # [Nm^2]
-        loc_EI = 0.9 * EI_true
-        scale_EI = 0.25 * loc_EI
+        EI_true = 2.1 * 0.25  # [Nm^2 / 1e11]
+        mean_EI = 0.9 * EI_true
+        std_EI = 0.25 * mean_EI
 
-        # 'true' value of noise sd, and its uniform prior parameters
-        sigma = 1e-3
-        low_sigma = 1e-4
+        # 'true' value of add. model error sd, and its uniform prior parameters
+        sigma = 2e-3
+        low_sigma = 0.0
         high_sigma = 1e-2
 
         # 'true' value of spatial correlation length, and its uniform prior parameters
         l_corr_x = 10.0  # [m]
-        low_l_corr_x = 1.0  # [m]
+        low_l_corr_x = 0.0  # [m]
         high_l_corr_x = 25.0  # [m]
 
         # 'true' value of temporal correlation length, and its uniform prior parameters
         l_corr_t = 1.0  # [s]
-        low_l_corr_t = 0.1  # [s]
+        low_l_corr_t = 0.0  # [s]
         high_l_corr_t = 5.0  # [s]
 
         # settings for the data generation
-        plot_data = False
         ns = 2  # two sensors in this example
         seed = 1
 
@@ -146,12 +140,24 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class BeamModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["L", "EI"]
                 self.input_sensors = [Sensor("v"), Sensor("t"), Sensor("F")]
                 self.output_sensors = [
-                    Sensor("y1", x=x_sensor_1),
-                    Sensor("y2", x=x_sensor_2),
+                    Sensor(
+                        name="y1",
+                        x=x_sensor_1,
+                        y=y_sensor_1,
+                        std_model="sigma",
+                        correlated_in={("x", "y"): "l_corr_x", "t": "l_corr_t"},
+                    ),
+                    Sensor(
+                        name="y2",
+                        x=x_sensor_2,
+                        y=y_sensor_2,
+                        std_model="sigma",
+                        correlated_in={("x", "y"): "l_corr_x", "t": "l_corr_t"},
+                    ),
                 ]
 
             @staticmethod
@@ -177,7 +183,7 @@ class TestProblem(unittest.TestCase):
                 t_in = inp["t"]
                 L_in = inp["L"]
                 F_in = inp["F"]
-                EI_in = inp["EI"]
+                EI_in = inp["EI"] * 1e11  # de-normalization
                 response = {}
                 x_load = v_in * t_in
                 for os in self.output_sensors:
@@ -202,7 +208,8 @@ class TestProblem(unittest.TestCase):
 
         # initialize the inverse problem with a useful name
         problem = InverseProblem(
-            "Simply supported beam with time-space correlation", log_level="DEBUG"
+            "Simply supported beam with time-space correlation (1D-2D, AME)",
+            log_level="DEBUG",
         )
 
         # add all parameters to the problem
@@ -212,7 +219,7 @@ class TestProblem(unittest.TestCase):
             domain="(0, +oo)",
             tex="$EI$",
             info="Bending stiffness of the beam [Nm^2]",
-            prior=("normal", {"loc": loc_EI, "scale": scale_EI}),
+            prior=("normal", {"mean": mean_EI, "std": std_EI}),
         )
         problem.add_parameter(
             "L", "model", tex="$L$", info="Length of the beam [m]", const=L
@@ -222,7 +229,7 @@ class TestProblem(unittest.TestCase):
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Std. dev, of 0-mean noise model",
+            info="Standard deviation of zero-mean model error for both sensors",
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
         problem.add_parameter(
@@ -243,8 +250,8 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        beam_model = BeamModel()
-        problem.add_forward_model("BeamModel", beam_model)
+        beam_model = BeamModel("BeamModel")
+        problem.add_forward_model(beam_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -273,11 +280,8 @@ class TestProblem(unittest.TestCase):
             # compute the covariance matrix using tripy
             cov_compiler = MeasurementSpaceTimePoints()
             cov_compiler.add_measurement_space_points(
-                coord_mx=[
-                    beam_model.output_sensors[0].x,
-                    beam_model.output_sensors[1].x,
-                ],
-                standard_deviation=sigma,
+                coord_mx=np.array([[x_sensor_1, y_sensor_1], [x_sensor_2, y_sensor_2]]),
+                standard_deviation=np.array([sigma, sigma]),
                 group="space",
             )
             cov_compiler.add_measurement_time_points(coord_vec=t, group="time")
@@ -306,17 +310,11 @@ class TestProblem(unittest.TestCase):
                     beam_model.input_sensors[2].name: F,
                     beam_model.output_sensors[0].name: y1,
                     beam_model.output_sensors[1].name: y2,
-                    "x1": float(beam_model.output_sensors[0].x),  # type: ignore
-                    "x2": float(beam_model.output_sensors[1].x),  # type: ignore
-                },
-                correlation_info={
-                    beam_model.output_sensors[0].name: {"x": "x1", "t": "t"},
-                    beam_model.output_sensors[1].name: {"x": "x2", "t": "t"},
                 },
             )
 
             # plot the data if requested
-            if plot_data:
+            if plot:
 
                 # first sensor
                 plt.plot(t, mean[0::ns], "-", label=f"y1 (true, {exp_name})", color=c)
@@ -327,7 +325,7 @@ class TestProblem(unittest.TestCase):
                 plt.scatter(t, y2, marker="x", label=f"y2 (sampled, {exp_name})", c=c)
 
         # finish and show the plot
-        if plot_data:
+        if plot:
             plt.xlabel("t [s]")
             plt.ylabel("deflection [m]")
             plt.legend(fontsize=8)
@@ -335,25 +333,16 @@ class TestProblem(unittest.TestCase):
             plt.show()
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # since the different experiments are independent of each other they are put in
-        # individual likelihood models (the problem's likelihood models are independent
-        # of each other)
+        # each likelihood model is assigned exactly one experiment
         for exp_name in problem.experiments.keys():
             loglike = GaussianLikelihoodModel(
-                [
-                    {"sigma": "std_model"},
-                    {"l_corr_x": "l_corr_space"},
-                    {"l_corr_t": "l_corr_time"},
-                ],
-                [beam_model.output_sensors[0], beam_model.output_sensors[1]],
-                additive_model_error=True,
-                multiplicative_model_error=False,
-                additive_measurement_error=False,
-                experiment_names=exp_name,
-                correlation_variables="xt",
+                ["sigma", "l_corr_x", "l_corr_t"],
+                experiment_name=exp_name,
+                model_error="additive",
+                correlation_variables=[("x", "y"), "t"],
                 correlation_model="exp",
             )
             problem.add_likelihood_model(loglike)
@@ -383,7 +372,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

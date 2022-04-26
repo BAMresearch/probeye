@@ -26,7 +26,7 @@ class Parameters(dict):
     def add_parameter(
         self,
         prm_name: str,
-        prm_type: str,
+        prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
@@ -339,17 +339,6 @@ class Parameters(dict):
         return len(self.model_prms)
 
     @property
-    def n_latent_model_prms_dim(self) -> int:
-        """Access the combined dimensions of the latent model parameters."""
-        return sum(
-            [
-                self[prm_name].dim
-                for prm_name in self.model_prms
-                if self[prm_name].is_latent
-            ]
-        )
-
-    @property
     def prior_prms(self) -> List[str]:
         """Access the names of all 'prior'-parameters as an attribute."""
         return [name for name, prm in self.items() if prm.type == "prior"]
@@ -623,10 +612,11 @@ class ParameterProperties:
                 f"int or None, but found {type(self._dim)}."
             )
 
-        if self._type not in ["model", "prior", "likelihood"]:
+        if self._type not in ["model", "prior", "likelihood", "not defined"]:
             raise RuntimeError(
                 f"Found invalid ParameterProperties._type attribute! It can only "
-                f"assume the three values 'model', 'prior' or 'likelihood' but found "
+                f"assume the three values 'model', 'prior', 'likelihood' (or "
+                f"'not defined' when automatic type-assignment is used) but found "
                 f"'{self._type}'."
             )
 

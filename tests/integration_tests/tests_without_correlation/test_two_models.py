@@ -1,12 +1,14 @@
 """
-Inference problem with two forward models that share a common parameter
+         Inverse problem with two forward models that share a common parameter
+----------------------------------------------------------------------------------------
+                       ---> Additive model prediction error <---
 ----------------------------------------------------------------------------------------
 The first model equation is y(x) = a * x + b with a, b being the model parameters and
 the second model equation is y(x) = alpha * x**2 + b where alpha is an additional model
 parameter, and b is the same model parameter as in the first model equation. Both
 forward models have the same additive error model with a normal zero-mean distribution
-where the standard deviation is to be inferred. The problem is solved via max likelihood
-estimation and via sampling using emcee, pyro and dynesty.
+where the standard deviation is to be inferred. The problem is approach with a maximum
+likelihood estimation.
 """
 
 # standard library imports
@@ -35,9 +37,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_torch: bool = True,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -63,9 +64,6 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
@@ -77,22 +75,22 @@ class TestProblem(unittest.TestCase):
 
         # 'true' value of a, and its normal prior parameters
         a_true = 2.5
-        loc_a = 2.0
-        scale_a = 1.0
+        mean_a = 2.0
+        std_a = 1.0
 
         # 'true' value of b, and its normal prior parameters
         b_true = 1.7
-        loc_b = 1.0
-        scale_b = 1.0
+        mean_b = 1.0
+        std_b = 1.0
 
         # 'true' value of alpha, and its normal prior parameters
         alpha_true = 0.7
-        loc_alpha = 2.0
-        scale_alpha = 1.0
+        mean_alpha = 2.0
+        std_alpha = 1.0
 
         # 'true' value of sigma, and its normal prior parameters
         sigma_true = 0.15
-        low_sigma = 0.1
+        low_sigma = 0.0
         high_sigma = 2.0
 
         # the number of generated experiment_names and seed for random numbers
@@ -104,37 +102,35 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["a", "b"]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y_linear")
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 a = inp["a"]
                 b = inp["b"]
-                return {"y_linear": a * x + b}
+                return {"y": a * x + b}
 
         class QuadraticModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["alpha", {"b": "beta"}]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y_quadratic")
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
                 alpha = inp["alpha"]
                 beta = inp["beta"]
-                return {"y_quadratic": alpha * x**2 + beta}
+                return {"y": alpha * x**2 + beta}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem(
-            "Two models with shared parameter and normal additive error"
-        )
+        problem = InverseProblem("Two forward models with a shared parameter (AME)")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -142,21 +138,21 @@ class TestProblem(unittest.TestCase):
             "model",
             info="Slope of the graph in linear model",
             tex="$a$ (linear)",
-            prior=("normal", {"loc": loc_a, "scale": scale_a}),
+            prior=("normal", {"mean": mean_a, "std": std_a}),
         )
         problem.add_parameter(
             "alpha",
             "model",
             info="Factor of quadratic term",
             tex=r"$\alpha$ (quad.)",
-            prior=("normal", {"loc": loc_alpha, "scale": scale_alpha}),
+            prior=("normal", {"mean": mean_alpha, "std": std_alpha}),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
             tex="$b$ (shared)",
-            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+            prior=("normal", {"mean": mean_b, "std": std_b}),
         )
         problem.add_parameter(
             "sigma",
@@ -168,10 +164,10 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
-        quadratic_model = QuadraticModel()
-        problem.add_forward_model("QuadraticModel", quadratic_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
+        quadratic_model = QuadraticModel("QuadraticModel")
+        problem.add_forward_model(quadratic_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -241,18 +237,21 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise models to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=linear_model.output_sensor
+                prms_def="sigma",
+                experiment_name="TestSeries_linear",
+                model_error="additive",
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def={"sigma": "std_model"}, sensors=quadratic_model.output_sensor
+                prms_def="sigma",
+                experiment_name="TestSeries_quadratic",
+                model_error="additive",
             )
         )
 
@@ -281,7 +280,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

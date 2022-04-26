@@ -1,16 +1,18 @@
 """
-Linear regression example with 2D spatial correlation model
+                         Linear regression with 1D correlation
 ----------------------------------------------------------------------------------------
-The n data points (z1, z2, ..., zn) generated for this example are sampled from an
-n-variate normal distribution with mean values given by zi = ax * xi + ay * yi + b with
-a, b being the model parameters and x1, ..., xn and y1, ..., yn being predefined spatial
-x- and y-coordinates ranging from 0 to 1. The data points (z1, z2, ..., zn) are not
-independent but correlated in their spatial distance. The corresponding covariance
+                       ---> Additive model prediction error <---
+----------------------------------------------------------------------------------------
+The n data points (y1, y2, ..., yn) generated for this example are sampled from an
+n-variate normal distribution with mean values given by yi = a * xi + b with a, b being
+the model parameters and x1, x2, ..., xi, ..., xn being predefined spatial x-coordinates
+ranging from 0 to 1. The data points (y1, y2, ..., yn) are not independent but
+correlated in x. This means, the closer yi and yj are in terms of x (i.e., the smaller
+|xi - xj|) the greater the correlation between yi and yj. The corresponding covariance
 matrix is defined based on an exponential correlation function parameterized by the
 constant standard deviation sigma of the n-variate normal distribution and a correlation
-length l_corr. Hence, the full model has five parameters ax, ay, b, sigma, l_corr, all
-of which are inferred in this example using maximum likelihood estimation as well as
-sampling via emcee and dynesty.
+length l_corr. Hence, the full model has four parameters a, b, sigma, l_corr, all of
+which are inferred in this example using a maximum likelihood estimation.
 """
 
 # standard library
@@ -33,7 +35,7 @@ from tests.integration_tests.subroutines import run_inference_engines
 
 
 class TestProblem(unittest.TestCase):
-    def test_spatial_correlation_2D(
+    def test_space_1D_correlation_additive_model_error(
         self,
         n_steps: int = 200,
         n_initial_steps: int = 100,
@@ -41,9 +43,8 @@ class TestProblem(unittest.TestCase):
         plot: bool = False,
         show_progress: bool = False,
         run_scipy: bool = True,
-        run_emcee: bool = True,
-        run_torch: bool = False,
-        run_dynesty: bool = True,
+        run_emcee: bool = False,  # intentionally False for faster test-runs
+        run_dynesty: bool = False,  # intentionally False for faster test-runs
     ):
         """
         Integration test for the problem described at the top of this file.
@@ -69,53 +70,38 @@ class TestProblem(unittest.TestCase):
         run_emcee
             If True, the problem is solved with the emcee solver. Otherwise, the emcee
             solver will not be used.
-        run_torch
-            If True, the problem is solved with the pyro/torch solver. Otherwise, the
-            pyro/torch solver will not be used.
         run_dynesty
             If True, the problem is solved with the dynesty solver. Otherwise, the
             dynesty solver will not be used.
         """
 
-        if run_torch:
-            raise RuntimeError(
-                "The pyro-solver is not available for inverse problems including "
-                "correlations yet."
-            )
-
         # ============================================================================ #
         #                              Set numeric values                              #
         # ============================================================================ #
 
-        # 'true' value of ax, and its normal prior parameters
-        ax_true = 1.5
-        loc_ax = 2.0
-        scale_ax = 1.0
-
-        # 'true' value of ay, and its normal prior parameters
-        ay_true = -1.0
-        loc_ay = -0.5
-        scale_ay = 1.0
+        # 'true' value of a, and its normal prior parameters
+        a_true = 2.5
+        mean_a = 2.0
+        std_a = 1.0
 
         # 'true' value of b, and its normal prior parameters
         b_true = 1.7
-        loc_b = 1.0
-        scale_b = 1.0
+        mean_b = 1.0
+        std_b = 1.0
 
         # 'true' value of additive error sd, and its uniform prior parameters
-        sigma = 0.2
-        low_sigma = 0.01
+        sigma = 0.1
+        low_sigma = 0.0
         high_sigma = 0.5
 
-        # 'true' value of correlation length (x), and its uniform prior parameters
-        l_corr = 0.1
-        low_l_corr = 0.001
+        # 'true' value of correlation length, and its uniform prior parameters
+        l_corr = 0.05
+        low_l_corr = 0.0
         high_l_corr = 0.2
 
         # settings for the data generation
-        plot_data = False
-        n_experiments = 1
-        n_points = 10
+        n_experiments = 3
+        n_points = 25
         seed = 1
 
         # ============================================================================ #
@@ -123,47 +109,40 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
-                self.parameters = ["ax", "ay", "b"]
-                self.input_sensors = [Sensor("x"), Sensor("y")]
-                self.output_sensors = Sensor("z")
+            def interface(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor(
+                    "y", std_model="sigma", correlated_in={"x": "l_corr"}
+                )
 
             def response(self, inp: dict) -> dict:
-                ax = inp["ax"]
-                ay = inp["ay"]
+                a = inp["a"]
                 b = inp["b"]
                 x = inp["x"]
-                y = inp["y"]
-                return {"z": ax * x + ay * y + b}
+                return {"y": a * x + b}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear regression with normal additive error")
+        problem = InverseProblem("Linear regression with 1D correlation (AME)")
 
         # add all parameters to the problem
         problem.add_parameter(
-            "ax",
+            "a",
             "model",
-            tex="$a_x$",
-            info="Slope of the graph-intersection with y=0 in x-direction",
-            prior=("normal", {"loc": loc_ax, "scale": scale_ax}),
-        )
-        problem.add_parameter(
-            "ay",
-            "model",
-            tex="$a_y$",
-            info="Slope of the graph-intersection with x=0 in y-direction",
-            prior=("normal", {"loc": loc_ay, "scale": scale_ay}),
+            tex="$a$",
+            info="Slope of the graph",
+            prior=("normal", {"mean": mean_a, "std": std_a}),
         )
         problem.add_parameter(
             "b",
             "model",
-            info="Intersection of plane with z-axis",
+            info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"loc": loc_b, "scale": scale_b}),
+            prior=("normal", {"mean": mean_b, "std": std_b}),
         )
         problem.add_parameter(
             "sigma",
@@ -183,97 +162,65 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the forward model to the problem
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
-        # set the seed for the noise generation
+        # data-generation; first create the true values without an error model; these
+        # 'true' values will be the mean values for sampling from a multivariate normal
+        # distribution that accounts for the intended correlation
         np.random.seed(seed)
-
-        # first, create the true values without an error model; these 'true' values will
-        # be the mean values for sampling from a multivariate normal distribution that
-        # accounts for the intended correlation; the 'true' values are defined on an
-        # xy-grid with the following discretization
-        x_test_grid = np.linspace(0.0, 1.0, n_points)
-        y_test_grid = np.linspace(0.0, 1.0, n_points)
-
-        # now, we need to provide each point on the grid as an xy-pair; the x-values of
-        # these pairs are stored in x_test, and the y-values in y_test
-        x_test = np.zeros(n_points**2)
-        y_test = np.zeros(n_points**2)
-        i = 0
-        for x_i in x_test_grid:
-            for y_j in y_test_grid:
-                x_test[i] = x_i
-                y_test[i] = y_j
-                i += 1
-
-        # finally, compute the 'true' values on the grid using the forward model
-        z_true = linear_model(
-            {"ax": ax_true, "ay": ay_true, "b": b_true, "x": x_test, "y": y_test}
-        )[linear_model.output_sensor.name]
+        x_test = np.linspace(0.0, 1.0, n_points)
+        y_true = linear_model({"a": a_true, "b": b_true, "x": x_test})[
+            linear_model.output_sensor.name
+        ]
 
         # assemble the spatial covariance matrix
-        coords = np.zeros((n_points**2, 2))
-        coords[:, 0] = x_test
-        coords[:, 1] = y_test
+        x_test_as_column_matrix = x_test.reshape((n_points, -1))
         f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
-        cov = sigma**2 * correlation_matrix(coords, f_corr)
-
-        # initialize a 3D-plot with the true mean-value-plane
-        if plot_data:
-            x_plot, y_plot = np.meshgrid(x_test_grid, y_test_grid)
-            z_true_plot = z_true.reshape((n_points, -1))
-            fig, axs = plt.subplots(subplot_kw={"projection": "3d"})
-            axs.plot_wireframe(x_plot, y_plot, z_true_plot, label="true model")
+        cov = sigma**2 * correlation_matrix(x_test_as_column_matrix, f_corr)
 
         # now generate the noisy test data including correlations; we assume here that
         # there are n_experiments test series
         for i in range(n_experiments):
             exp_name = f"Test_{i}"
-            z_test = np.random.multivariate_normal(mean=z_true, cov=cov)
+            y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
             problem.add_experiment(
                 exp_name,
                 fwd_model_name="LinearModel",
                 sensor_values={
-                    linear_model.input_sensors[0].name: x_test,
-                    linear_model.input_sensors[1].name: y_test,
-                    linear_model.output_sensor.name: z_test,
+                    linear_model.input_sensor.name: x_test,
+                    linear_model.output_sensor.name: y_test,
                 },
             )
-            if plot_data:
-                z_plot = z_test.reshape((n_points, -1))
-                # noinspection PyUnboundLocalVariable
-                axs.scatter(x_plot, y_plot, z_plot, label=f"measured data (test {i+1})")
-
-        # show the plot
-        if plot_data:
-            axs.set_title("True model plus generated test data")
-            axs.set_xlabel("x")
-            axs.set_ylabel("y")
-            axs.set_zlabel("z")
+            if plot:
+                plt.scatter(
+                    x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
+                )
+        # finish the plot
+        if plot:
+            plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
+            plt.xlabel("x")
+            plt.ylabel(linear_model.output_sensor.name)
+            plt.legend()
+            plt.tight_layout()
             plt.show()
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # since the different experiments are independent of each other they are put in
-        # individual likelihood models (the problem's likelihood models are independent
-        # of each other)
+        # each likelihood model is assigned exactly one experiment
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
-                prms_def=[{"sigma": "std_model"}, "l_corr"],
-                sensors=linear_model.output_sensor,
-                correlation_variables="xy",
+                prms_def=["sigma", "l_corr"],
+                experiment_name=f"Test_{i}",
+                correlation_variables="x",
                 correlation_model="exp",
-                experiment_names=f"Test_{i}",
-                additive_model_error=True,
-                multiplicative_model_error=False,
-                additive_measurement_error=False,
+                model_error="additive",
             )
             problem.add_likelihood_model(likelihood_model)
 
@@ -286,13 +233,7 @@ class TestProblem(unittest.TestCase):
 
         # this routine is imported from another script because it it used by all
         # integration tests in the same way
-        true_values = {
-            "ax": ax_true,
-            "ay": ay_true,
-            "b": b_true,
-            "sigma": sigma,
-            "l_corr": l_corr,
-        }
+        true_values = {"a": a_true, "b": b_true, "sigma": sigma, "l_corr": l_corr}
         run_inference_engines(
             problem,
             true_values=true_values,
@@ -303,7 +244,6 @@ class TestProblem(unittest.TestCase):
             show_progress=show_progress,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
-            run_torch=run_torch,
             run_dynesty=run_dynesty,
         )
 

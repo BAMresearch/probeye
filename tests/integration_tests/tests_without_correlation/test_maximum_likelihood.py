@@ -1,10 +1,13 @@
 """
-Linear regression example solved with maximum likelihood (without needing priors)
+                        Linear regression (max. likelihood only)
+----------------------------------------------------------------------------------------
+                       ---> Additive model prediction error <---
 ----------------------------------------------------------------------------------------
 The model equation is y(x) = a * x + b with a, b being the model parameters, while the
 likelihood model is based on a normal zero-mean additive model error distribution with
-the standard deviation to infer. The problem is solved via maximum likelihood estimation
-based on scipy.
+the standard deviation to infer. The problem is approached via max likelihood. This
+example is intended to show the minimal problem setup if only a maximum likelihood fit
+is intended (in this case, no priors are needed to define latent parameters).
 """
 
 # standard library imports
@@ -58,40 +61,29 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         class LinearModel(ForwardModelBase):
-            def definition(self):
+            def interface(self):
                 self.parameters = ["m", "b"]
                 self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y")
+                self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
-                x = inp["x"]
-                m = inp["m"]
-                b = inp["b"]
-                return {"y": m * x + b}
+                return {"y": inp["m"] * inp["x"] + inp["b"]}
 
         # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
-        # initialize the inverse problem with a useful name; note that the name will
-        # only be stored as an attribute of the InverseProblem and is not important
-        # for the problem itself; can be useful when dealing with multiple problems
-        problem = InverseProblem("Max likelihood for linear regression")
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression (AME)")
 
-        # add all parameters to the problem; the first argument states the parameter's
-        # global name (here: 'm', 'b' and 'sigma'); the second argument defines the
-        # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'likelihood' for parameters of the likelihood
-        # model); the tex argument is states a tex-string for the parameter which is
-        # only used for plotting
-        problem.add_parameter("m", "model", tex="$m$")
-        problem.add_parameter("b", "model", tex="$b$")
-        problem.add_parameter("sigma", "likelihood", domain="(0, +oo)", tex=r"$\sigma$")
+        # add all parameters to the problem
+        problem.add_parameter("m", "model")
+        problem.add_parameter("b", "model")
+        problem.add_parameter("sigma", "likelihood", domain="(0, +oo)")
 
         # add the forward model to the problem
-        linear_model = LinearModel()
-        problem.add_forward_model("LinearModel", linear_model)
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -126,12 +118,16 @@ class TestProblem(unittest.TestCase):
             plt.draw()  # does not stop execution
 
         # ============================================================================ #
-        #                              Add noise model(s)                              #
+        #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
-        # add the noise model to the problem
+        # add the likelihood model to the problem
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def={"sigma": "std_model"})
+            GaussianLikelihoodModel(
+                prms_def="sigma",
+                experiment_name="TestSeries_1",
+                model_error="additive",
+            )
         )
 
         # give problem overview

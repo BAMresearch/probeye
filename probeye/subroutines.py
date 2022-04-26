@@ -7,6 +7,8 @@ import sys
 
 # third party imports
 import numpy as np
+from tripy.utils import correlation_function
+from tripy.utils import correlation_matrix
 from loguru import logger
 
 # local imports
@@ -1061,6 +1063,86 @@ def count_intervals(domain_string: str) -> int:
     if n_lower != n_upper:
         raise RuntimeError(f"The given domain string '{domain_string}' is invalid!")
     return n_lower
+
+
+def vectorize_numpy_dict(numpy_dict: dict) -> np.ndarray:
+    """
+    Concatenates all vectors from a dict to a single vector and returns it. For example
+    when given the dict {'y1': np.array([1, 2, 3]), 'y2': np.array([4, 5, 6])} it will
+    be returned np.array([1, 2, 3, 4, 5, 6]).
+
+    Parameters
+    ----------
+    numpy_dict
+        The keys are usually strings stating some sensor name, while the values are 1D
+        numpy-arrays, either from a forward model response or experimental data.
+
+    Returns
+    -------
+    vector
+        Contains the numeric data contained in numpy-dict in a single vector.
+    """
+    n_list = []
+    for numpy_vector in numpy_dict.values():
+        n_list.append(np.size(numpy_vector))
+    n = sum(n_list)
+    vector = np.zeros(n)
+    idx_start = 0
+    for numpy_vector, n_i in zip(numpy_dict.values(), n_list):
+        idx_end = idx_start + n_i
+        vector[idx_start:idx_end] = numpy_vector
+        idx_start = idx_end
+    return vector
+
+
+def assemble_covariance_matrix(
+    coords_array: np.ndarray,
+    std_model: Union[int, float, np.ndarray],
+    std_meas: Union[int, float, np.ndarray, None],
+    l_corr: Union[int, float],
+    y_model: Optional[np.ndarray] = None,
+) -> np.ndarray:
+    """
+    Assembles and returns the full covariance matrix.
+
+    Parameters
+    ----------
+    coords_array
+        Has shape (n, d) where n is the number of points and d is the number of
+        spatial variables. Each row is a coordinate vector of a single point.
+    std_model
+        The vector of model error standard deviations.
+    std_meas
+        The vector of measurement error standard deviations, if this type of error
+        is being considered. Otherwise None.
+    l_corr
+        The spatial correlation length.
+    y_model
+        The model response. Needed only for multiplicative models. Otherwise None.
+        If this value is not None, a multiplicative model is assumed.
+
+    Returns
+    -------
+    cov_matrix
+         The full covariance matrix in form of an (n, n)-array.
+    """
+
+    # assemble the covariance matrix for additive model error only
+    f_corr = lambda a: correlation_function(d=a, correlation_length=l_corr)
+    std1, std2 = np.meshgrid(std_model, std_model)
+    cov_matrix = std1 * std2 * correlation_matrix(coords_array, f_corr)
+
+    # adjust the covariance matrix for multiplicative model error
+    if y_model is not None:
+        y1, y2 = np.meshgrid(y_model, y_model)
+        cov_matrix = y1 * y2 * cov_matrix
+
+    # adjust the covariance matrix if an additive measurement error is considered
+    if std_meas is not None:
+        n = len_or_one(coords_array)
+        cov_matrix += std_meas**2 * np.eye(n)
+
+    return cov_matrix
 
 
 class HiddenPrints:

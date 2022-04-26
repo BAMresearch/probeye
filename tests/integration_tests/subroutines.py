@@ -7,7 +7,6 @@ import matplotlib.pyplot as plt
 # local imports (inference engines)
 from probeye.inference.scipy.solver import ScipySolver
 from probeye.inference.emcee.solver import EmceeSolver
-from probeye.inference.torch.solver import PyroSolver
 from probeye.inference.dynesty.solver import DynestySolver
 
 # local imports (post-processing)
@@ -30,7 +29,6 @@ def run_inference_engines(
     show_progress: bool = True,
     run_scipy: bool = True,
     run_emcee: bool = True,
-    run_torch: bool = True,
     run_dynesty: bool = True,
 ):
     """
@@ -61,9 +59,6 @@ def run_inference_engines(
     run_emcee
         If True, the problem is solved with the emcee solver. Otherwise, the
         emcee solver will not be used.
-    run_torch
-        If True, the problem is solved with the pyro/torch solver. Otherwise, the
-        pyro/torch solver will not be used.
     run_dynesty
         If True, the problem is solved with the dynesty solver. Otherwise, the
         dynesty solver will not be used.
@@ -135,16 +130,6 @@ def run_inference_engines(
             true_values=true_values,
         )
         create_plots(inference_data_emcee, problem, true_values)
-
-    if run_torch:
-        n_walkers_used = 1  # getting errors when trying to use more
-        pyro_solver = PyroSolver(problem, show_progress=show_progress)
-        inference_data_torch = pyro_solver.run_mcmc(
-            n_walkers=n_walkers_used,
-            n_steps=n_steps,
-            n_initial_steps=n_initial_steps,
-        )
-        create_plots(inference_data_torch, problem, true_values)
 
     if run_dynesty:
         dynesty_solver = DynestySolver(problem, show_progress=show_progress)

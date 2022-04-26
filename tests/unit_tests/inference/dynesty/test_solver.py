@@ -20,6 +20,11 @@ class TestProblem(unittest.TestCase):
 
         # define the forward model
         class LinRe(ForwardModelBase):
+            def interface(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma")
+
             def __call__(self, inp):
                 x = inp["x"]
                 a = inp["a"]
@@ -28,14 +33,12 @@ class TestProblem(unittest.TestCase):
 
         # set up the problem
         problem = InverseProblem("Linear regression")
-        problem.add_parameter("a", "model", prior=("normal", {"loc": 0, "scale": 1}))
-        problem.add_parameter("b", "model", prior=("normal", {"loc": 0, "scale": 1}))
+        problem.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        problem.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
         problem.add_parameter(
             "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 1})
         )
-        problem.add_forward_model(
-            "LinRe", LinRe(["a", "b"], [Sensor("x")], [Sensor("y")])
-        )
+        problem.add_forward_model(LinRe("LinRe"))
 
         # generate and add some simple test data
         n_tests = 5000
@@ -48,9 +51,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # add the likelihood model
-        problem.add_likelihood_model(
-            GaussianLikelihoodModel({"sigma": "std_model"}, sensors=Sensor("y"))
-        )
+        problem.add_likelihood_model(GaussianLikelihoodModel("sigma", "Tests"))
 
         # run the dynesty solver with deactivated output
         logging.root.disabled = True
