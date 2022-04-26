@@ -755,6 +755,20 @@ class TestProblem(unittest.TestCase):
             # add a forward model with the same name
             p.add_forward_model(test_model)
 
+        # check using parameter with wrong type
+        p = InverseProblem("TestProblem")
+        p.add_parameter("a", "prior", prior=("normal", {"mean": 0, "std": 1}))
+
+        class FwdModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = "a"
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma_model")
+
+        test_model = FwdModel("TestModel")
+        with self.assertRaises(ValueError):
+            p.add_forward_model(test_model)
+
     def test_add_likelihood_model(self):
         # check correct use
         p = InverseProblem("TestProblem")
@@ -776,6 +790,9 @@ class TestProblem(unittest.TestCase):
         p.add_experiment(
             "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
         )
+        # try to add a likelihood model with parameter of wrong type
+        with self.assertRaises(ValueError):
+            p.add_likelihood_model(GaussianLikelihoodModel("a", "Exp"))
         p.add_likelihood_model(GaussianLikelihoodModel("s1", experiment_name="Exp"))
         # check invalid input arguments
         with self.assertRaises(RuntimeError):

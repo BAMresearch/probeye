@@ -20,6 +20,7 @@ hidden:
 installation
 auto_examples/index
 motivation
+mathematics
 components
 correlation
 api
