@@ -231,6 +231,14 @@
     
 
 
+    <!-- http://www.parameter_estimation_ontology.org#has_samples -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_samples">
+        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
+    </owl:ObjectProperty>
+    
+
+
     <!-- http://www.parameter_estimation_ontology.org#has_sensor -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_sensor"/>
@@ -635,17 +643,6 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#histogram_probability_distribution_function -->
-
-    <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#histogram_probability_distribution_function">
-        <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
-        <obo:IAO_0000115 xml:lang="en">A probability density function that is based on a numerically defined histogram distribution.</obo:IAO_0000115>
-        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
-        <rdfs:label xml:lang="en">histogram probability distribution function</rdfs:label>
-    </owl:Class>
-    
-
-
     <!-- http://www.parameter_estimation_ontology.org#input_sensor -->
 
     <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#input_sensor">
@@ -676,6 +673,14 @@
         <obo:IAO_0000115 xml:lang="en">A probability density function the input arguments of which are defined by experimental data and a forward model.</obo:IAO_0000115>
         <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
         <rdfs:label xml:lang="en">likelihood model</rdfs:label>
+    </owl:Class>
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#lognormal_density_function -->
+
+    <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#lognormal_density_function">
+        <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
     </owl:Class>
     
 
@@ -886,6 +891,17 @@
     
 
 
+    <!-- http://www.parameter_estimation_ontology.org#sample_based_density_function -->
+
+    <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#sample_based_density_function">
+        <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
+        <obo:IAO_0000115 xml:lang="en">A probability density function that is based on a numerically defined histogram distribution.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">sample-based density function</rdfs:label>
+    </owl:Class>
+    
+
+
     <!-- http://www.parameter_estimation_ontology.org#scalar_constant -->
 
     <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#scalar_constant">
@@ -1014,6 +1030,14 @@
     
 
 
+    <!-- http://www.parameter_estimation_ontology.org#truncated_normal_density_function -->
+
+    <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#truncated_normal_density_function">
+        <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.parameter_estimation_ontology.org#uncorrelated_Gaussian_likelihood_model -->
 
     <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#uncorrelated_Gaussian_likelihood_model">
@@ -1031,7 +1055,7 @@
         <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
         <obo:IAO_0000115 xml:lang="en">A probability density function that is based on a uniform distribution.</obo:IAO_0000115>
         <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
-        <rdfs:label xml:lang="en">uniform probability density function</rdfs:label>
+        <rdfs:label xml:lang="en">uniform density function</rdfs:label>
     </owl:Class>
     
 
@@ -1040,17 +1064,9 @@
 
     <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#uninformative_density_function">
         <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
-    </owl:Class>
-    
-
-
-    <!-- http://www.parameter_estimation_ontology.org#uninformative_probability_density_function -->
-
-    <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#uninformative_probability_density_function">
-        <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
         <obo:IAO_0000115 xml:lang="en">A probability density function that is constant over the entire domain of the primary variable.</obo:IAO_0000115>
         <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
-        <rdfs:label xml:lang="en">uninformative probability density function</rdfs:label>
+        <rdfs:label xml:lang="en">uninformative density function</rdfs:label>
     </owl:Class>
     
 
