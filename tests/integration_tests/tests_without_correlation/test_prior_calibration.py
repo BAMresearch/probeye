@@ -13,6 +13,7 @@ and therefore estimated too.
 
 # standard library imports
 import unittest
+import os
 
 # third party imports
 import numpy as np
@@ -23,6 +24,9 @@ from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+
+# local imports (knowledge graph)
+from probeye.interface.knowledge_graph_export import export_knowledge_graph
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -196,6 +200,16 @@ class TestProblem(unittest.TestCase):
 
         # give problem overview
         problem.info()
+
+        # ============================================================================ #
+        #                            Export knowledge graph                            #
+        # ============================================================================ #
+
+        # create the knowledge graph and print it to file
+        dir_path = os.path.dirname(__file__)
+        basename = os.path.basename(__file__).split(".")[0] + ".owl"
+        knowledge_graph_file = os.path.join(dir_path, basename)
+        export_knowledge_graph(problem, knowledge_graph_file, data_dir=dir_path)
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #

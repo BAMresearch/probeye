@@ -16,6 +16,7 @@ likelihood estimation.
 
 # standard library
 import unittest
+import os
 
 # third party imports
 import numpy as np
@@ -29,6 +30,9 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
+
+# local imports (knowledge graph)
+from probeye.interface.knowledge_graph_export import export_knowledge_graph
 
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
@@ -182,9 +186,9 @@ class TestProblem(unittest.TestCase):
                 EI_in = inp["EI"] * 1e11  # de-normalization
                 response = {}
                 x_load = v_in * t_in
-                for os in self.output_sensors:
-                    response[os.name] = self.beam_deflect(
-                        os.x, x_load, L_in, F_in, EI_in
+                for osensor in self.output_sensors:
+                    response[osensor.name] = self.beam_deflect(
+                        osensor.x, x_load, L_in, F_in, EI_in
                     )
                 return response
 
@@ -348,6 +352,16 @@ class TestProblem(unittest.TestCase):
 
         # give problem overview
         problem.info()
+
+        # ============================================================================ #
+        #                            Export knowledge graph                            #
+        # ============================================================================ #
+
+        # create the knowledge graph and print it to file
+        dir_path = os.path.dirname(__file__)
+        basename = os.path.basename(__file__).split(".")[0] + ".owl"
+        knowledge_graph_file = os.path.join(dir_path, basename)
+        export_knowledge_graph(problem, knowledge_graph_file, data_dir=dir_path)
 
         # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
