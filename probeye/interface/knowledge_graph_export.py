@@ -49,6 +49,15 @@ def export_knowledge_graph(
         else:
             setattr(subject, property_, make_list(peo.parameter(const_or_latent)))
 
+    def append_latent_or_const_parameter(list_, const_or_latent_name):
+        """
+        Adds either a constant or a latent parameter to a given collecting list.
+        """
+        if problem.parameters[const_or_latent_name].is_const:
+            list_.append(peo.constant(const_or_latent_name))
+        else:
+            list_.append(peo.parameter(const_or_latent_name))
+
     def add(subject, property_, object_):
         """
         Adds a triple to the graph after checking if the given property exists.
@@ -159,10 +168,7 @@ def export_knowledge_graph(
         # fact that a forward model's parameters can be either latent or constant
         const_and_latent = []
         for prm_name in fwd_model.prms_def:
-            if problem.parameters[prm_name].is_const:
-                const_and_latent.append(peo.constant(prm_name))
-            else:
-                const_and_latent.append(peo.parameter(prm_name))
+            append_latent_or_const_parameter(const_and_latent, prm_name)
         add(forward_model, "has_parameter", const_and_latent)
 
         # add the forward model's input sensors
@@ -298,10 +304,7 @@ def export_knowledge_graph(
                 std_model = []
                 for output_sensor in like_obj.forward_model.output_sensors:
                     std_model_name = output_sensor.std_model
-                    if problem.parameters[std_model_name].is_const:
-                        std_model.append(peo.constant(std_model_name))
-                    else:
-                        std_model.append(peo.parameter(std_model_name))
+                    append_latent_or_const_parameter(std_model, std_model_name)
                 add(cov_assembler, "has_standard_deviation", std_model)
 
                 # associate the covariance assembler with a correlation function
@@ -314,10 +317,7 @@ def export_knowledge_graph(
                     corr_lengths = []
                     for output_sensor in fwd_model.output_sensors:
                         for corr_length in output_sensor.correlated_in.values():
-                            if problem.parameters[corr_length].is_const:
-                                corr_lengths.append(peo.constant(corr_length))
-                            else:
-                                corr_lengths.append(peo.parameter(corr_length))
+                            append_latent_or_const_parameter(corr_lengths, corr_length)
                     add(corr_function, "has_correlation_length", corr_lengths)
 
             else:
@@ -329,10 +329,7 @@ def export_knowledge_graph(
                 std_model = []
                 for output_sensor in like_obj.forward_model.output_sensors:
                     std_model_name = output_sensor.std_model
-                    if problem.parameters[std_model_name].is_const:
-                        std_model.append(peo.constant(std_model_name))
-                    else:
-                        std_model.append(peo.parameter(std_model_name))
+                    append_latent_or_const_parameter(std_model, std_model_name)
                 add(nrv, "has_standard_deviation", std_model)
                 list_of_summands.append(nrv)
 
@@ -405,10 +402,7 @@ def export_knowledge_graph(
                 std_model = []
                 for output_sensor in like_obj.forward_model.output_sensors:
                     std_model_name = output_sensor.std_model
-                    if problem.parameters[std_model_name].is_const:
-                        std_model.append(peo.constant(std_model_name))
-                    else:
-                        std_model.append(peo.parameter(std_model_name))
+                    append_latent_or_const_parameter(std_model, std_model_name)
                 add(cov_assembler, "has_standard_deviation", std_model)
 
                 # associate the covariance assembler with a correlation function
@@ -421,10 +415,7 @@ def export_knowledge_graph(
                     corr_lengths = []
                     for output_sensor in fwd_model.output_sensors:
                         for corr_length in output_sensor.correlated_in.values():
-                            if problem.parameters[corr_length].is_const:
-                                corr_lengths.append(peo.constant(corr_length))
-                            else:
-                                corr_lengths.append(peo.parameter(corr_length))
+                            append_latent_or_const_parameter(corr_lengths, corr_length)
                     add(corr_function, "has_correlation_length", corr_lengths)
 
             else:
@@ -436,10 +427,7 @@ def export_knowledge_graph(
                 std_model = []
                 for output_sensor in like_obj.forward_model.output_sensors:
                     std_model_name = output_sensor.std_model
-                    if problem.parameters[std_model_name].is_const:
-                        std_model.append(peo.constant(std_model_name))
-                    else:
-                        std_model.append(peo.parameter(std_model_name))
+                    append_latent_or_const_parameter(std_model, std_model_name)
                 add(nrv, "has_standard_deviation", std_model)
                 list_of_factors.append(nrv)
             add(mult, "has_factor", list_of_factors)
@@ -458,10 +446,7 @@ def export_knowledge_graph(
             std_meas = []
             for output_sensor in like_obj.forward_model.output_sensors:
                 std_meas_name = output_sensor.std_measurement
-                if problem.parameters[std_meas_name].is_const:
-                    std_meas.append(peo.constant(std_meas_name))
-                else:
-                    std_meas.append(peo.parameter(std_meas_name))
+                append_latent_or_const_parameter(std_meas, std_meas_name)
             add(nrv, "has_standard_deviation", std_meas)
             list_of_summands.append(nrv)
 
