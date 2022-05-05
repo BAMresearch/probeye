@@ -166,7 +166,7 @@ def export_knowledge_graph(
 
         # add the forward model's parameters; the following structure accounts for the
         # fact that a forward model's parameters can be either latent or constant
-        const_and_latent = []
+        const_and_latent = []  # type: list
         for prm_name in fwd_model.prms_def:
             append_latent_or_const_parameter(const_and_latent, prm_name)
         add(forward_model, "has_parameter", const_and_latent)
@@ -301,7 +301,7 @@ def export_knowledge_graph(
 
                 # associate the covariance assembler with the respective model error
                 # standard deviations which are defined in the forward model
-                std_model = []
+                std_model = []  # type: list
                 for output_sensor in like_obj.forward_model.output_sensors:
                     std_model_name = output_sensor.std_model
                     append_latent_or_const_parameter(std_model, std_model_name)
@@ -314,7 +314,7 @@ def export_knowledge_graph(
                     )
                     add(cov_assembler, "uses_function", corr_function)
                     # associate the correlation lengths with this correlation function
-                    corr_lengths = []
+                    corr_lengths = []  # type: list
                     for output_sensor in fwd_model.output_sensors:
                         for corr_length in output_sensor.correlated_in.values():
                             append_latent_or_const_parameter(corr_lengths, corr_length)
@@ -443,7 +443,7 @@ def export_knowledge_graph(
             add(nrv, "has_mean", peo.zero)
 
             # add all of the contributing measurement error standard deviations
-            std_meas = []
+            std_meas = []  # type: list
             for output_sensor in like_obj.forward_model.output_sensors:
                 std_meas_name = output_sensor.std_measurement
                 append_latent_or_const_parameter(std_meas, std_meas_name)
