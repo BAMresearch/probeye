@@ -14,6 +14,9 @@ from probeye.postprocessing.sampling import create_pair_plot
 from probeye.postprocessing.sampling import create_posterior_plot
 from probeye.postprocessing.sampling import create_trace_plot
 
+# local imports (knowledge-graph related)
+from probeye.interface.knowledge_graph_export import export_results_to_knowledge_graph
+
 # imports only needed for type hints
 if TYPE_CHECKING:
     from probeye.definition.inverse_problem import InverseProblem
@@ -27,6 +30,9 @@ def run_inference_engines(
     n_walkers: int = 20,
     plot: bool = True,
     show_progress: bool = True,
+    write_to_graph: bool = False,
+    knowledge_graph_file: str = "",
+    data_dir: str = "",
     run_scipy: bool = True,
     run_emcee: bool = True,
     run_dynesty: bool = True,
@@ -53,6 +59,14 @@ def run_inference_engines(
         If True, the data and the post-processing plots are plotted.
     show_progress
         If True, progress-bars will be shown, if available.
+    write_to_graph
+        Triggers the export of the solver results to a given knowledge graph.
+    knowledge_graph_file
+        The owl-file of the knowledge graph that should be written to in case
+        'write_to_graph' is set to True.
+    data_dir
+        The directory used by the knowledge graph export routine to write the data to
+        (for example the samples of sampling routines).
     run_scipy
         If True, the problem is solved with scipy (maximum likelihood estimate).
         Otherwise, no maximum likelihood estimate is derived.
@@ -118,8 +132,14 @@ def run_inference_engines(
 
     if run_scipy:
         scipy_solver = ScipySolver(problem, show_progress=show_progress)
-        _ = scipy_solver.run_max_likelihood(true_values=true_values)
-        # no post processing for scipy solver as that is no sampler
+        inference_data_scipy = scipy_solver.run_max_likelihood(true_values=true_values)
+        if write_to_graph:
+            export_results_to_knowledge_graph(
+                problem,
+                inference_data_scipy,
+                knowledge_graph_file,
+                data_dir=data_dir,
+            )
 
     if run_emcee:
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)
@@ -129,6 +149,13 @@ def run_inference_engines(
             n_initial_steps=n_initial_steps,
             true_values=true_values,
         )
+        if write_to_graph:
+            export_results_to_knowledge_graph(
+                problem,
+                inference_data_emcee,
+                knowledge_graph_file,
+                data_dir=data_dir,
+            )
         create_plots(inference_data_emcee, problem, true_values)
 
     if run_dynesty:
@@ -136,4 +163,11 @@ def run_inference_engines(
         inference_data_dynesty = dynesty_solver.run_dynesty(
             "static", nlive=250, true_values=true_values
         )
+        if write_to_graph:
+            export_results_to_knowledge_graph(
+                problem,
+                inference_data_dynesty,
+                knowledge_graph_file,
+                data_dir=data_dir,
+            )
         create_plots(inference_data_dynesty, problem, true_values)

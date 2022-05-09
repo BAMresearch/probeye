@@ -3,11 +3,37 @@ import os
 
 # third party imports
 import numpy as np
-from owlready2 import get_ontology
+import arviz as az
+from owlready2 import World
 
 # local imports
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.subroutines import make_list, len_or_one
+from probeye.subroutines import add_index_to_tex_prm_name
+
+
+def load_owl_file(owl_basename):
+    # get the path of the owl-file (it is stored in the probeye directory) and load it
+    dir_path = os.path.dirname(__file__)
+    owl_dir = os.path.join(dir_path, "..")
+    owl_file = os.path.join(owl_dir, owl_basename)
+    assert os.path.isfile(owl_file), f"Could not find the owl-file at '{owl_file}'"
+    peo = World().get_ontology(owl_file).load()
+    return peo
+
+
+def add(subject, property_, object_):
+    """
+    Adds a triple to the graph after checking if the given property exists.
+    """
+    assert hasattr(subject, property_)
+    # the last element of the triple is always a list; if this list is empty (this
+    # is checked by the first 'if') it is added as a single-element-list; if this
+    # list already has elements, the given object is merely appended to that list
+    if not getattr(subject, property_):
+        setattr(subject, property_, make_list(object_))
+    else:
+        getattr(subject, property_).append(object_)
 
 
 def export_knowledge_graph(
@@ -19,6 +45,7 @@ def export_knowledge_graph(
     """
     Exports a given InferenceProblem to an rdf-file according to the referenced
     parameter estimation ontology.
+
     Parameter
     ---------
     problem
@@ -31,12 +58,8 @@ def export_knowledge_graph(
         level above the directory of this file.
     """
 
-    # get the path of the owl-file (it is stored in the probeye directory) and load it
-    dir_path = os.path.dirname(__file__)
-    owl_dir = os.path.join(dir_path, "..")
-    owl_file = os.path.join(owl_dir, owl_basename)
-    assert os.path.isfile(owl_file), f"Could not find the owl-file at '{owl_file}'"
-    peo = get_ontology(owl_file).load()
+    # load the given ontology
+    peo = load_owl_file(owl_basename)
 
     def set_latent_or_const_parameter(subject, property_, const_or_latent):
         """
@@ -58,12 +81,13 @@ def export_knowledge_graph(
         else:
             list_.append(peo.parameter(const_or_latent_name))
 
-    def add(subject, property_, object_):
-        """
-        Adds a triple to the graph after checking if the given property exists.
-        """
-        assert hasattr(subject, property_)
-        setattr(subject, property_, make_list(object_))
+    # -------------------------------------------------------------------------------- #
+    #                  Add the INVERSE PROBLEM to the knowledge graph                  #
+    # -------------------------------------------------------------------------------- #
+
+    # this instance is created to have a common graph root for the instances to come;
+    # note that white-space is not allowed in the name, so it is replaced
+    inverse_problem = peo.inverse_problem(problem.name.replace(" ", "_"))
 
     # -------------------------------------------------------------------------------- #
     #                Add the problem's CONSTANTS to the knowledge graph                #
@@ -85,6 +109,7 @@ def export_knowledge_graph(
             add(constant, "has_explanation", problem.parameters[const_name].info)
         if problem.parameters[const_name].tex is not None:
             add(constant, "has_tex_symbol", problem.parameters[const_name].tex)
+        add(inverse_problem, "has_constant", constant)
 
     # -------------------------------------------------------------------------------- #
     #               Add the problem's PARAMETERS to the knowledge graph                #
@@ -179,6 +204,7 @@ def export_knowledge_graph(
                 f"for this prior's knowledge graph export are implemented."
             )
         add(parameter, "has_prior_distribution", prior)
+        add(inverse_problem, "has_latent_parameter", parameter)
 
     # -------------------------------------------------------------------------------- #
     #             Add the problem's FORWARD MODELS to the knowledge graph              #
@@ -194,6 +220,7 @@ def export_knowledge_graph(
         const_and_latent = []  # type: list
         for prm_name in fwd_model.prms_def:
             append_latent_or_const_parameter(const_and_latent, prm_name)
+        print(const_and_latent)
         add(forward_model, "has_parameter", const_and_latent)
 
         # add the forward model's input sensors
@@ -214,6 +241,7 @@ def export_knowledge_graph(
             )
             output_sensors.append(sensor)
         add(forward_model, "has_output_sensor", output_sensors)
+        add(inverse_problem, "has_forward_model", forward_model)
 
     # -------------------------------------------------------------------------------- #
     #               Add the problem's EXPERIMENTS to the knowledge graph               #
@@ -250,6 +278,7 @@ def export_knowledge_graph(
                 add(constant, "has_file", filename)
             measurements.append(constant)
         add(experiment, "has_measured_values", measurements)
+        add(inverse_problem, "has_experiment", experiment)
 
     # -------------------------------------------------------------------------------- #
     #            Add the problem's LIKELIHOOD MODELS to the knowledge graph            #
@@ -372,9 +401,6 @@ def export_knowledge_graph(
             #         Forward model (multiplicative)         #
             # ---------------------------------------------- #
 
-            # this is just for shorter code
-            fwd_model = like_obj.forward_model
-
             # the first factor is the forward model prediction; since the forward
             # model's output can be returned via multiple output sensors (hence multiple
             # vectors) it might be necessary to concatenate those to a single vector
@@ -478,4 +504,101 @@ def export_knowledge_graph(
         # add all of the summands
         add(data_generation_model, "has_summand", list_of_summands)
 
+        # add the data generation model to the inverse problem
+        add(inverse_problem, "has_data_generation_model", data_generation_model)
+
+    # write the graph to the specified output file
+    peo.save(file=output_file)
+
+
+def export_results_to_knowledge_graph(
+    problem: InverseProblem,
+    inference_data: az.data.inference_data.InferenceData,
+    output_file: str,
+    data_dir: str,
+    owl_basename: str = "parameter_estimation_ontology.owl",
+):
+    """
+    Adds the results of a solver to the graph of an inverse problem.
+
+    Parameter
+    ---------
+    problem
+        The InverseProblem that should be exported to an rdf-file.
+    inference_data
+        The data object returned by one of the solvers.
+    output_file
+        Path to the file the knowledge graph should be written to.
+    owl_basename
+        The basename plus extension of the owl-file that contains the parameter
+        estimation ontology. This file must be contained in the probeye directory one
+        level above the directory of this file.
+    """
+
+    # load the given ontology
+    peo = load_owl_file(output_file)
+
+    if "posterior" in inference_data:
+
+        for prm_name in problem.latent_prms:
+
+            # assign the posterior to the parameter
+            parameter = peo.parameter(prm_name)
+            posterior = peo.sample_based_density_function(f"posterior_{prm_name}")
+            add(posterior, "has_primary_variable", parameter)
+            add(parameter, "has_posterior_distribution", posterior)
+
+            # prepare the constant that contains the sample-data
+            samples_name = f"samples_{prm_name}"
+            samples = peo.constant(samples_name)
+            if problem.parameters[prm_name].dim == 1:
+                tex_name = problem.parameters[prm_name].tex
+                data = inference_data["posterior"][tex_name].values
+                filename = os.path.join(data_dir, f"{samples_name}.dat")
+                np.savetxt(filename, data)
+                add(samples, "has_file", filename)
+            else:
+                for i in range(1, problem.parameters[prm_name].dim + 1):
+                    tex_name = problem.parameters[prm_name].tex
+                    tex_name = add_index_to_tex_prm_name(tex_name, i)
+                    data = inference_data["posterior"][tex_name].values
+                    filename = os.path.join(data_dir, f"{samples_name}_{i}.dat")
+                    np.savetxt(filename, data)
+                    add(samples, "has_file", filename)
+
+            # assign the samples to the posterior distribution
+            add(posterior, "has_samples", samples)
+
+    else:
+
+        for prm_name in problem.latent_prms:
+
+            # assign the posterior to the parameter
+            parameter = peo.parameter(prm_name)
+
+            # prepare the constant that contains the maximum likelihood estimate
+            ml_estimate_name = f"max_likelihood_estimate_{prm_name}"
+            ml_estimate = peo.constant(ml_estimate_name)
+
+            # this is the np.ndarray with the maximum likelihood estimate for all
+            # latent parameters as a vector
+            theta_ml = getattr(inference_data, "x")
+
+            # write the estimate either directly to the constant (in case it's a scalar)
+            # or to a file (in case of a multi-dimensional parameter)
+            if problem.parameters[prm_name].dim == 1:
+                idx = problem.parameters[prm_name].index
+                add(ml_estimate, "has_scalar_value", float(theta_ml[idx]))
+            else:
+                idx_start = problem.parameters[prm_name].index
+                idx_end = problem.parameters[prm_name].index_end
+                data = theta_ml[idx_start:idx_end]
+                filename = os.path.join(data_dir, f"{ml_estimate_name}.dat")
+                np.savetxt(filename, data)
+                add(ml_estimate, "has_file", filename)
+
+            # make the association to the parameter
+            add(parameter, "has_maximum_likelihood_estimate", ml_estimate)
+
+    # write the graph to the specified output file
     peo.save(file=output_file)

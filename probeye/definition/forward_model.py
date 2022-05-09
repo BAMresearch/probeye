@@ -1,5 +1,5 @@
 # standard library
-from typing import Union, List, Tuple, Dict, Callable
+from typing import Union, List, Tuple, Dict
 import copy as cp
 import numpy as np
 

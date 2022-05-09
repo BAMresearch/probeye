@@ -26,13 +26,14 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (knowledge graph)
 from probeye.interface.knowledge_graph_export import export_knowledge_graph
+from probeye.interface.knowledge_graph_export import export_results_to_knowledge_graph
 
 # local imports (inference related)
 from probeye.inference.scipy.solver import ScipySolver
 
 
 class TestProblem(unittest.TestCase):
-    def test_maximum_likelihood(self, plot: bool = False):
+    def test_maximum_likelihood(self, plot: bool = False, write_to_graph: bool = True):
         """
         Integration test for the problem described at the top of this file.
 
@@ -41,6 +42,8 @@ class TestProblem(unittest.TestCase):
         plot
             If True, the problem's data is plotted. This is deactivated by default, so
             that the test does not stop until the generated plots are closed.
+        write_to_graph
+            Triggers the export of the solver results to a given knowledge graph.
         """
 
         # ============================================================================ #
@@ -143,8 +146,8 @@ class TestProblem(unittest.TestCase):
 
         # create the knowledge graph and print it to file
         dir_path = os.path.dirname(__file__)
-        basename = os.path.basename(__file__).split(".")[0] + ".owl"
-        knowledge_graph_file = os.path.join(dir_path, basename)
+        basename_owl = os.path.basename(__file__).split(".")[0] + ".owl"
+        knowledge_graph_file = os.path.join(dir_path, basename_owl)
         export_knowledge_graph(problem, knowledge_graph_file, data_dir=dir_path)
 
         # ============================================================================ #
@@ -155,7 +158,14 @@ class TestProblem(unittest.TestCase):
         # integration tests in the same way; ref_values are used for plotting
         true_values = {"m": m_true, "b": b_true, "sigma": sigma}
         scipy_solver = ScipySolver(problem)
-        scipy_solver.run_max_likelihood(true_values=true_values)
+        inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+        if write_to_graph:
+            export_results_to_knowledge_graph(
+                problem,
+                inference_data,
+                knowledge_graph_file,
+                data_dir=dir_path,
+            )
 
 
 if __name__ == "__main__":
