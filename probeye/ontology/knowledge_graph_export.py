@@ -311,7 +311,7 @@ def export_knowledge_graph(
 
                 # in this case, the values returned via the multiple output sensors
                 # need to be vectorized before they can be used as a summand
-                vec = peo.vectorization("vectorization", namespace=namespace)
+                vec = peo.concatenation("concatenation", namespace=namespace)
                 model_vector = peo.variable("model_vector", namespace=namespace)
                 add(vec, "returns", model_vector)
                 for output_sensor in fwd_model.output_sensors:
@@ -324,7 +324,7 @@ def export_knowledge_graph(
 
             else:
 
-                # in this case, no vectorization is necessary
+                # in this case, no concatenation is necessary
                 list_of_summands.append(
                     peo.output_sensor(
                         fwd_model.output_sensor.name,
@@ -406,7 +406,7 @@ def export_knowledge_graph(
 
                 # in this case, the values returned via the multiple output sensors
                 # need to be vectorized before they can be used as a summand
-                vec = peo.vectorization("vectorization", namespace=namespace)
+                vec = peo.concatenation("concatenation", namespace=namespace)
                 model_vector = peo.variable("model_vector", namespace=namespace)
                 add(vec, "returns", model_vector)
                 for output_sensor in fwd_model.output_sensors:
@@ -419,7 +419,7 @@ def export_knowledge_graph(
 
             else:
 
-                # in this case, no vectorization is necessary
+                # in this case, no concatenation is necessary
                 list_of_factors.append(
                     peo.output_sensor(
                         fwd_model.output_sensor.name,
