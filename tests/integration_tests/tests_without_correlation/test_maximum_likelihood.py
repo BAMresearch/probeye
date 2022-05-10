@@ -25,8 +25,8 @@ from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (knowledge graph)
-from probeye.interface.knowledge_graph_export import export_knowledge_graph
-from probeye.interface.knowledge_graph_export import export_results_to_knowledge_graph
+from probeye.ontology.knowledge_graph_export import export_knowledge_graph
+from probeye.ontology.knowledge_graph_export import export_results_to_knowledge_graph
 
 # local imports (inference related)
 from probeye.inference.scipy.solver import ScipySolver

@@ -92,16 +92,16 @@ class LinearModel(ForwardModelBase):
 # %%
 # First, note that this model class is based on the probeye class 'ForwardModelBase'.
 # While this is a requirement, the name of the class can be chosen freely. As you can
-# see, this class has a 'interface' and a 'response' method. In the 'interface' method
+# see, this class has a 'ontology' and a 'response' method. In the 'ontology' method
 # we define that our model has two parameters, 'a' and 'b', next to one input and one
-# output sensors, called 'x' and 'y' respectively. Keeping this interface in mind,
+# output sensors, called 'x' and 'y' respectively. Keeping this ontology in mind,
 # let's now take a look at the 'response' method. This method describes the actual
 # forward model evaluation. The method takes one dictionary as an input and returns one
 # dictionary as its output. The input dictionary 'inp' will have the keys 'a', 'b' and
-# 'x' because of the definitions given in self.interface. Analogously, the returned
+# 'x' because of the definitions given in self.ontology. Analogously, the returned
 # dictionary must have the key 'y', because we defined an output sensor with the name
-# 'y'. Note that the entire interface of the 'response' method is described by the
-# 'interface' method. Parameters and input sensors will be contained in the 'inp'
+# 'y'. Note that the entire ontology of the 'response' method is described by the
+# 'ontology' method. Parameters and input sensors will be contained in the 'inp'
 # dictionary, while the output sensors must be contained in the returned dictionary.
 
 # %%

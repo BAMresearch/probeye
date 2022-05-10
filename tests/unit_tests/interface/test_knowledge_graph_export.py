@@ -8,7 +8,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.inverse_problem import InverseProblem
-from probeye.interface.knowledge_graph_export import export_knowledge_graph
+from probeye.ontology.knowledge_graph_export import export_knowledge_graph
 
 
 class TestProblem(unittest.TestCase):

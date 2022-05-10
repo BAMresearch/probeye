@@ -14,8 +14,7 @@ from probeye.subroutines import add_index_to_tex_prm_name
 
 def load_owl_file(owl_basename):
     # get the path of the owl-file (it is stored in the probeye directory) and load it
-    dir_path = os.path.dirname(__file__)
-    owl_dir = os.path.join(dir_path, "..")
+    owl_dir = os.path.dirname(__file__)
     owl_file = os.path.join(owl_dir, owl_basename)
     assert os.path.isfile(owl_file), f"Could not find the owl-file at '{owl_file}'"
     peo = World().get_ontology(owl_file).load()
@@ -220,7 +219,6 @@ def export_knowledge_graph(
         const_and_latent = []  # type: list
         for prm_name in fwd_model.prms_def:
             append_latent_or_const_parameter(const_and_latent, prm_name)
-        print(const_and_latent)
         add(forward_model, "has_parameter", const_and_latent)
 
         # add the forward model's input sensors
@@ -516,7 +514,6 @@ def export_results_to_knowledge_graph(
     inference_data: az.data.inference_data.InferenceData,
     output_file: str,
     data_dir: str,
-    owl_basename: str = "parameter_estimation_ontology.owl",
 ):
     """
     Adds the results of a solver to the graph of an inverse problem.
@@ -555,6 +552,7 @@ def export_results_to_knowledge_graph(
                 tex_name = problem.parameters[prm_name].tex
                 data = inference_data["posterior"][tex_name].values
                 filename = os.path.join(data_dir, f"{samples_name}.dat")
+                # noinspection PyTypeChecker
                 np.savetxt(filename, data)
                 add(samples, "has_file", filename)
             else:
@@ -563,6 +561,7 @@ def export_results_to_knowledge_graph(
                     tex_name = add_index_to_tex_prm_name(tex_name, i)
                     data = inference_data["posterior"][tex_name].values
                     filename = os.path.join(data_dir, f"{samples_name}_{i}.dat")
+                    # noinspection PyTypeChecker
                     np.savetxt(filename, data)
                     add(samples, "has_file", filename)
 

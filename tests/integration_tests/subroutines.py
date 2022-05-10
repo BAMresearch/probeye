@@ -15,7 +15,7 @@ from probeye.postprocessing.sampling import create_posterior_plot
 from probeye.postprocessing.sampling import create_trace_plot
 
 # local imports (knowledge-graph related)
-from probeye.interface.knowledge_graph_export import export_results_to_knowledge_graph
+from probeye.ontology.knowledge_graph_export import export_results_to_knowledge_graph
 
 # imports only needed for type hints
 if TYPE_CHECKING:
