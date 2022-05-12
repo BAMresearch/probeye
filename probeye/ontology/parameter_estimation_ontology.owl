@@ -30,23 +30,29 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#assesses_model_prediction_in_sensor -->
+    <!-- http://www.parameter_estimation_ontology.org#describes_model_error_scatter_of -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#assesses_model_prediction_in_sensor"/>
-    
-
-
-    <!-- http://www.parameter_estimation_ontology.org#describes_error_with_respect_to_experiment -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#describes_error_with_respect_to_experiment">
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#describes_model_error_scatter_of">
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#model_error_scatter_described_by"/>
+        <rdfs:domain rdf:resource="http://purl.obolibrary.org/obo/IAO_0000029"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#output_sensor"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a numeral and an output sensor where the former describes the scatter (for example the standard deviation) of the difference between the model prediction returned by the output sensor and the corresponding experimental data.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">describes model error scatter of</rdfs:label>
     </owl:ObjectProperty>
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#describes_experiment -->
+    <!-- http://www.parameter_estimation_ontology.org#deterministically_models_experiment -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#describes_experiment"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#deterministically_models_experiment">
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#is_deterministically_modeled_by"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#forward_model"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a forward model and a single experiment data set where the former describes some part of the data of the later in deterministic terms (i.e., without considering uncertainty).</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">deterministically models experiment</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -59,18 +65,10 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#has_base_distribution -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_base_distribution">
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#probability_distribution_function"/>
-    </owl:ObjectProperty>
-    
-
-
     <!-- http://www.parameter_estimation_ontology.org#has_constant -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_constant">
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#constant"/>
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/RO_0000057"/>
     </owl:ObjectProperty>
     
 
@@ -79,14 +77,6 @@
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_correlation_length">
         <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://www.parameter_estimation_ontology.org#has_correlation_model -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_correlation_model">
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#correlation_function"/>
     </owl:ObjectProperty>
     
 
@@ -103,14 +93,22 @@
 
     <!-- http://www.parameter_estimation_ontology.org#has_data_generation_model -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_data_generation_model"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_data_generation_model">
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/RO_0000057"/>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.parameter_estimation_ontology.org#has_domain -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_domain">
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#is_domain_of"/>
         <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#variable"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#numeric_domain"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a variable and a numeric domain where the latter describes the possible values the former can assume.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">has domain</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -118,31 +116,23 @@
     <!-- http://www.parameter_estimation_ontology.org#has_experiment -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_experiment">
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/RO_0000057"/>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.parameter_estimation_ontology.org#has_factor -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_factor"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_factor">
+        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
+    </owl:ObjectProperty>
     
 
 
     <!-- http://www.parameter_estimation_ontology.org#has_forward_model -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_forward_model">
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#forward_model"/>
-    </owl:ObjectProperty>
-    
-
-
-    <!-- http://www.parameter_estimation_ontology.org#has_forward_model_error_standard_deviation -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_forward_model_error_standard_deviation">
-        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/RO_0000057"/>
     </owl:ObjectProperty>
     
 
@@ -153,12 +143,6 @@
         <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
         <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#forward_model"/>
     </owl:ObjectProperty>
-    
-
-
-    <!-- http://www.parameter_estimation_ontology.org#has_latent_parameter -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_latent_parameter"/>
     
 
 
@@ -192,14 +176,6 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#has_measurement_standard_deviation -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_measurement_standard_deviation">
-        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
-    </owl:ObjectProperty>
-    
-
-
     <!-- http://www.parameter_estimation_ontology.org#has_measurements -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_measurements"/>
@@ -217,15 +193,22 @@
     <!-- http://www.parameter_estimation_ontology.org#has_parameter -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_parameter">
-        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/RO_0000057"/>
     </owl:ObjectProperty>
     
 
 
     <!-- http://www.parameter_estimation_ontology.org#has_posterior_distribution -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_posterior_distribution"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_posterior_distribution">
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#is_posterior_distribution_of"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#parameter"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#probability_distribution_function"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a parameter and a probability distribution function where the latter describes the belief of the parameter&apos;s value after inference.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">has posterior distribution</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -242,8 +225,13 @@
     <!-- http://www.parameter_estimation_ontology.org#has_prior_distribution -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_prior_distribution">
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#variable"/>
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000051"/>
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#is_prior_distribution_of"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#parameter"/>
         <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#probability_distribution_function"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a parameter and a probability distribution function where the latter describes the belief of the parameter&apos;s value before inference.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">has prior distribution</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -262,15 +250,6 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#has_sensor_value -->
-
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_sensor_value">
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#constant"/>
-    </owl:ObjectProperty>
-    
-
-
     <!-- http://www.parameter_estimation_ontology.org#has_standard_deviation -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_standard_deviation">
@@ -283,7 +262,9 @@
 
     <!-- http://www.parameter_estimation_ontology.org#has_summand -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_summand"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_summand">
+        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
+    </owl:ObjectProperty>
     
 
 
@@ -295,27 +276,92 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#is_modeled_by -->
+    <!-- http://www.parameter_estimation_ontology.org#is_deterministically_modeled_by -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_modeled_by">
-        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#models_experiment"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_deterministically_modeled_by">
         <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
         <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#forward_model"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a single experiment data set and a forward model where the latter describes some part of the data of the former in deterministic terms (i.e., without considering uncertainty).</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">is deterministically modeled by</rdfs:label>
     </owl:ObjectProperty>
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#model_prediction_error_described_by -->
+    <!-- http://www.parameter_estimation_ontology.org#is_domain_of -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#model_prediction_error_described_by"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_domain_of">
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#numeric_domain"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#variable"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a numeric domain and a variable where the former describes the possible values the latter can assume.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">is domain of</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#models_experiment -->
+    <!-- http://www.parameter_estimation_ontology.org#is_posterior_distribution_of -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#models_experiment">
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#forward_model"/>
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_posterior_distribution_of">
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#probability_distribution_function"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#parameter"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a probability distribution function and a parameter where the former describes the belief of the parameter&apos;s value after inference.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">is posterior distribution of</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#is_prior_distribution_of -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_prior_distribution_of">
+        <rdfs:subPropertyOf rdf:resource="http://purl.obolibrary.org/obo/BFO_0000050"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#probability_distribution_function"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#parameter"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a probability distribution function and a parameter where the former describes the belief of the parameter&apos;s value before inference.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">is prior distribution of</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#is_stochastically_modeled_by -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_stochastically_modeled_by">
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#stochastically_models_experiment"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
+        <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/IAO_0000029"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a single experiment data set and a data generation model where the latter describes some part of the data of the former in stochastic terms.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">is stochastically modeled by</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#is_used_by_mathematical_function -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#is_used_by_mathematical_function">
+        <owl:inverseOf rdf:resource="http://www.parameter_estimation_ontology.org#uses_mathematical_function"/>
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AsymmetricProperty"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a mathematical function and another mathematical function that indicates that the former is used by the latter in its computations.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">is used by mathematical function</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#model_error_scatter_described_by -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#model_error_scatter_described_by">
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#output_sensor"/>
+        <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/IAO_0000029"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between an output sensor and a numeral where the latter describes the scatter (for example the standard deviation) of the difference between the model prediction returned by the output sensor and the corresponding experimental data.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">model error scatter described by</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -329,26 +375,28 @@
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#specifies_variable -->
+    <!-- http://www.parameter_estimation_ontology.org#stochastically_models_experiment -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#specifies_variable">
-        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
-        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#variable"/>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#stochastically_models_experiment">
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#data_generation_model"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#single_experiment_data_set"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a data generation model and a single experiment data set where the former describes some part of the data of the latter in stochastic terms.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">stochastically models experiment</rdfs:label>
     </owl:ObjectProperty>
     
 
 
-    <!-- http://www.parameter_estimation_ontology.org#uses_function -->
+    <!-- http://www.parameter_estimation_ontology.org#uses_mathematical_function -->
 
-    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#uses_function"/>
-    
-
-
-    <!-- http://www.w3.org/2002/07/owl#topObjectProperty -->
-
-    <rdf:Description rdf:about="http://www.w3.org/2002/07/owl#topObjectProperty">
-        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#describes_error_with_respect_to_experiment"/>
-    </rdf:Description>
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#uses_mathematical_function">
+        <rdf:type rdf:resource="http://www.w3.org/2002/07/owl#AsymmetricProperty"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <rdfs:range rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a mathematical function and another mathematical function that indicates that the former is using the latter in its computations.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">uses mathematical function</rdfs:label>
+    </owl:ObjectProperty>
     
 
 
@@ -708,17 +756,6 @@
     <!-- http://www.parameter_estimation_ontology.org#parameter -->
 
     <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#parameter">
-        <owl:equivalentClass>
-            <owl:Class>
-                <owl:intersectionOf rdf:parseType="Collection">
-                    <rdf:Description rdf:about="http://www.parameter_estimation_ontology.org#parameter"/>
-                    <owl:Restriction>
-                        <owl:onProperty rdf:resource="http://www.parameter_estimation_ontology.org#has_prior_distribution"/>
-                        <owl:someValuesFrom rdf:resource="http://www.parameter_estimation_ontology.org#probability_distribution_function"/>
-                    </owl:Restriction>
-                </owl:intersectionOf>
-            </owl:Class>
-        </owl:equivalentClass>
         <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#random_variable"/>
         <obo:IAO_0000115 xml:lang="en">A random variable that has a probability distribution defined on its domain which is interpreted as prior knowledge.</obo:IAO_0000115>
         <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>

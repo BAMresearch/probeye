@@ -203,7 +203,7 @@ def export_knowledge_graph(
                 f"for this prior's knowledge graph export are implemented."
             )
         add(parameter, "has_prior_distribution", prior)
-        add(inverse_problem, "has_latent_parameter", parameter)
+        add(inverse_problem, "has_parameter", parameter)
 
     # -------------------------------------------------------------------------------- #
     #             Add the problem's FORWARD MODELS to the knowledge graph              #
@@ -219,7 +219,7 @@ def export_knowledge_graph(
         const_and_latent = []  # type: list
         for prm_name in fwd_model.prms_def:
             append_latent_or_const_parameter(const_and_latent, prm_name)
-        add(forward_model, "has_parameter", const_and_latent)
+        add(forward_model, "has_argument", const_and_latent)
 
         # add the forward model's input sensors
         input_sensors = []
@@ -235,7 +235,7 @@ def export_knowledge_graph(
                 c = peo.constant(sensor_obj.name, namespace=peo.get_namespace(exp_name))
                 add(sensor, "has_measured_values", c)
             set_latent_or_const_parameter(
-                sensor, "model_prediction_error_described_by", sensor_obj.std_model
+                sensor, "model_error_scatter_described_by", sensor_obj.std_model
             )
             output_sensors.append(sensor)
         add(forward_model, "has_output_sensor", output_sensors)
@@ -252,7 +252,11 @@ def export_knowledge_graph(
         namespace = peo.get_namespace(exp_name)
 
         # associate the experiment's forward model and its sensors
-        add(experiment, "is_modeled_by", peo.forward_model(exp_dict["forward_model"]))
+        add(
+            experiment,
+            "is_deterministically_modeled_by",
+            peo.forward_model(exp_dict["forward_model"]),
+        )
         fwd_namespace = peo.get_namespace(exp_dict["forward_model"])
         sensors = []
         for isensor in problem.forward_models[exp_dict["forward_model"]].input_sensors:
@@ -288,7 +292,8 @@ def export_knowledge_graph(
         name = f"data_generation_model_{i + 1}"
         data_generation_model = peo.addition(name)
         experiment = peo.single_experiment_data_set(like_obj.experiment_name)
-        add(data_generation_model, "describes_experiment", experiment)
+        add(data_generation_model, "stochastically_models_experiment", experiment)
+
         namespace = peo.get_namespace(name)
 
         # this is just for shorter code
@@ -361,16 +366,16 @@ def export_knowledge_graph(
 
                 # associate the covariance assembler with a correlation function
                 if like_obj.correlation_model == "exp":
-                    corr_function = peo.correlation_function(
+                    corr_func = peo.correlation_function(
                         "exp_corr_function", namespace=namespace
                     )
-                    add(cov_assembler, "uses_function", corr_function)
+                    add(cov_assembler, "uses_mathematical_function", corr_func)
                     # associate the correlation lengths with this correlation function
                     corr_lengths = []  # type: list
                     for output_sensor in fwd_model.output_sensors:
                         for corr_length in output_sensor.correlated_in.values():
                             append_latent_or_const_parameter(corr_lengths, corr_length)
-                    add(corr_function, "has_correlation_length", corr_lengths)
+                    add(corr_func, "has_correlation_length", corr_lengths)
 
             else:
 
@@ -526,10 +531,6 @@ def export_results_to_knowledge_graph(
         The data object returned by one of the solvers.
     output_file
         Path to the file the knowledge graph should be written to.
-    owl_basename
-        The basename plus extension of the owl-file that contains the parameter
-        estimation ontology. This file must be contained in the probeye directory one
-        level above the directory of this file.
     """
 
     # load the given ontology
@@ -601,3 +602,31 @@ def export_results_to_knowledge_graph(
 
     # write the graph to the specified output file
     peo.save(file=output_file)
+
+def export_knowledge_graph_including_results(
+    problem: InverseProblem,
+    inference_data: az.data.inference_data.InferenceData,
+    output_file: str,
+    data_dir: str,
+    owl_basename: str = "parameter_estimation_ontology.owl",
+):
+    """
+    Exports a given InferenceProblem and the computed results to an rdf-file according
+    to the referenced parameter estimation ontology.
+
+    Parameter
+    ---------
+    problem
+        The InverseProblem that should be exported to an rdf-file.
+    inference_data
+        The data object returned by one of the solvers.
+    output_file
+        Path to the file the knowledge graph should be written to.
+    owl_basename
+        The basename plus extension of the owl-file that contains the parameter
+        estimation ontology. This file must be contained in the probeye directory one
+        level above the directory of this file.
+    """
+    # we just have to call the two main functions above sequentially
+    export_knowledge_graph(problem, output_file, data_dir, owl_basename=owl_basename)
+    export_results_to_knowledge_graph(problem, inference_data, output_file, data_dir)
