@@ -464,7 +464,7 @@ def export_knowledge_graph(
                     corr_function = peo.correlation_function(
                         "exp_corr_function", namespace=namespace
                     )
-                    add(cov_assembler, "uses_function", corr_function)
+                    add(cov_assembler, "uses_mathematical_function", corr_function)
                     # associate the correlation lengths with this correlation function
                     corr_lengths = []
                     for output_sensor in fwd_model.output_sensors:
