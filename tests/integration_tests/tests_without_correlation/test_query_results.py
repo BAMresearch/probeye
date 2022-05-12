@@ -220,7 +220,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
         #                          Query the knowledge graph                           #
         # ============================================================================ #
-        
+
         # load the owl-file that was just written
         get_ontology(knowledge_graph_file).load()
 

@@ -603,6 +603,7 @@ def export_results_to_knowledge_graph(
     # write the graph to the specified output file
     peo.save(file=output_file)
 
+
 def export_knowledge_graph_including_results(
     problem: InverseProblem,
     inference_data: az.data.inference_data.InferenceData,
