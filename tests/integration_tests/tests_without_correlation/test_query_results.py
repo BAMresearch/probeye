@@ -244,6 +244,13 @@ class TestProblem(unittest.TestCase):
             prm_name = str(pair[0]).split(".")[-1]
             filename = pair[1]
             query_dict[prm_name] = filename
+            self.assertTrue(os.path.exists(filename))
+
+        # check if the parameters returned from the query are the same as the ones
+        # defined within the problem scope
+        prm_names_from_query = set(query_dict.keys())
+        prm_names_in_problem = set(problem.latent_prms)
+        self.assertTrue(prm_names_from_query == prm_names_in_problem)
 
 
 if __name__ == "__main__":
