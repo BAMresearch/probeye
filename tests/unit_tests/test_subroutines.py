@@ -37,6 +37,8 @@ from probeye.subroutines import count_intervals
 from probeye.subroutines import vectorize_numpy_dict
 from probeye.subroutines import HiddenPrints
 from probeye.subroutines import assemble_covariance_matrix
+from probeye.subroutines import get_shape_2d
+from probeye.subroutines import safe_string
 
 
 class TestProblem(unittest.TestCase):
@@ -669,6 +671,41 @@ class TestProblem(unittest.TestCase):
             )
         )
         self.assertTrue(np.allclose(computed_result, expected_result))
+
+    def test_get_shape_2d(self):
+
+        # test with a 1D-array
+        array_1d = np.array([1, 2, 3])
+        nr_expected, nc_expected = 3, 1
+        nr_computed, nc_computed = get_shape_2d(array_1d)
+        self.assertEqual(nr_expected, nr_computed)
+        self.assertEqual(nc_expected, nc_computed)
+
+        # test with a 2D-array
+        array_2d = np.array([[1, 2, 3], [4, 5, 6]])
+        nr_expected, nc_expected = 2, 3
+        nr_computed, nc_computed = get_shape_2d(array_2d)
+        self.assertEqual(nr_expected, nr_computed)
+        self.assertEqual(nc_expected, nc_computed)
+
+        # test error with array with more than two dimensions
+        array_3d = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+        with self.assertRaises(ValueError):
+            _ = get_shape_2d(array_3d)
+
+    def test_safe_string(self):
+
+        in_out_dict = {
+            "NothingToBeDone": "NothingToBeDone",
+            "Replace the spaces": "Replace_the_spaces",
+            "Replace special characters !?": "Replace_special_characters",
+            "1Begins_with_number": "_1Begins_with_number",
+            300 * "q": 255 * "q",
+        }
+
+        for string, expected_result in in_out_dict.items():
+            computed_result = safe_string(string)
+            self.assertEqual(expected_result, computed_result)
 
 
 if __name__ == "__main__":

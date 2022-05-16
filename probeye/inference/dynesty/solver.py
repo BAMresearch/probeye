@@ -47,7 +47,7 @@ class DynestySolver(ScipySolver):
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
-        logger.debug("Initializing EmceeSolver")
+        logger.debug("Initializing DynestySolver")
         # check that the problem does not contain a uninformative prior
         check_for_uninformative_priors(problem)
         # initialize the scipy-based solver (ScipySolver)

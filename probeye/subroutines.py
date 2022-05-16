@@ -1145,6 +1145,81 @@ def assemble_covariance_matrix(
     return cov_matrix
 
 
+def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
+    """
+    Returns the number of rows and columns from a one or two dimensional numpy array.
+
+    Parameters
+    ----------
+    array
+        The given array of one or two dimensions.
+
+    Returns
+    -------
+        number_of_rows
+            The number of rows found in the array.
+        number_of_cols
+            The number of columns found in the array.
+    """
+
+    nd = len(array.shape)
+    if nd == 1:
+        number_of_rows = array.shape[0]
+        number_of_cols = 1
+    elif nd == 2:
+        number_of_rows = array.shape[0]
+        number_of_cols = array.shape[1]
+    else:
+        raise ValueError(
+            f"The function get_shape_2D is not intended for arrays with more than 2 "
+            f"dimensions. However, the given array has {nd} dimensions."
+        )
+    return number_of_rows, number_of_cols
+
+
+def safe_string(string: str, n_max: int = 255) -> str:
+    """
+    Converts a given string to a string that can be used to name a file by removing
+    non-alphanumeric characters and some other checks and operations.
+
+    Parameter
+    ---------
+    string
+        The given string.
+    n_max
+        The maximum number of characters the returned string is allowed to have.
+
+    Returns
+    -------
+    safe
+        The cleaned string that can be safely used for file-naming.
+    """
+
+    # clean the string
+    safe = ""
+    for char in string:
+        if char.isalnum():
+            safe += char
+        elif char == "_":
+            safe += char
+        elif char.isspace():
+            safe += "_"
+
+    # the last character should not be an underscore
+    if safe.endswith("_"):
+        safe = safe[:-1]
+
+    # a filename cannot start with a digit
+    if safe[0].isdigit():
+        safe = "_" + safe
+
+    # crop name if it is too long
+    if len(safe) > n_max:
+        safe = safe[:n_max]
+
+    return safe
+
+
 class HiddenPrints:
     """
     Allows to create a context manager that suppresses prints to stdout. Taken from

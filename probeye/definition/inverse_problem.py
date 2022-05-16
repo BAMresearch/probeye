@@ -18,6 +18,7 @@ from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import add_index_to_tex_prm_name
 from probeye.subroutines import translate_simple_correlation
+from probeye.subroutines import safe_string
 
 
 class InverseProblem:
@@ -56,8 +57,11 @@ class InverseProblem:
         print_header: bool = True,
     ):
 
-        # the name of the problem
+        # the name and safe name of the problem; the latter is intended for file naming
         self.name = name
+        self.safe_name = safe_string(name)
+
+        # logging related preparations
         self.use_default_logger = use_default_logger
         self.log_level = log_level
         self.log_file = log_file

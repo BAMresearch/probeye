@@ -16,6 +16,7 @@ likelihood estimation.
 
 # standard library
 import unittest
+import os
 
 # third party imports
 import numpy as np
@@ -30,6 +31,9 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
 
+# local imports (knowledge graph)
+from probeye.ontology.knowledge_graph_export import export_knowledge_graph
+
 # local imports (testing related)
 from tests.integration_tests.subroutines import run_inference_engines
 
@@ -42,6 +46,7 @@ class TestProblem(unittest.TestCase):
         n_walkers: int = 20,
         plot: bool = False,
         show_progress: bool = False,
+        write_to_graph: bool = True,
         run_scipy: bool = True,
         run_emcee: bool = False,  # intentionally False for faster test-runs
         run_dynesty: bool = False,  # intentionally False for faster test-runs
@@ -64,6 +69,8 @@ class TestProblem(unittest.TestCase):
             plots are closed.
         show_progress
             If True, progress-bars will be shown, if available.
+        write_to_graph
+            Triggers the export of the solver results to a given knowledge graph.
         run_scipy
             If True, the problem is solved with scipy (maximum likelihood est).
             Otherwise, no maximum likelihood estimate is derived.
@@ -186,9 +193,9 @@ class TestProblem(unittest.TestCase):
                 EI_in = inp["EI"] * 1e11  # de-normalization
                 response = {}
                 x_load = v_in * t_in
-                for os in self.output_sensors:
-                    response[os.name] = self.beam_deflect(
-                        os.x, x_load, L_in, F_in, EI_in
+                for osensor in self.output_sensors:
+                    response[osensor.name] = self.beam_deflect(
+                        osensor.x, x_load, L_in, F_in, EI_in
                     )
                 return response
 
@@ -351,6 +358,16 @@ class TestProblem(unittest.TestCase):
         problem.info()
 
         # ============================================================================ #
+        #                            Export knowledge graph                            #
+        # ============================================================================ #
+
+        # create the knowledge graph and print it to file
+        dir_path = os.path.dirname(__file__)
+        basename_owl = os.path.basename(__file__).split(".")[0] + ".owl"
+        knowledge_graph_file = os.path.join(dir_path, basename_owl)
+        export_knowledge_graph(problem, knowledge_graph_file, data_dir=dir_path)
+
+        # ============================================================================ #
         #                    Solve problem with inference engine(s)                    #
         # ============================================================================ #
 
@@ -370,6 +387,9 @@ class TestProblem(unittest.TestCase):
             n_walkers=n_walkers,
             plot=plot,
             show_progress=show_progress,
+            write_to_graph=write_to_graph,
+            knowledge_graph_file=knowledge_graph_file,
+            data_dir=dir_path,
             run_scipy=run_scipy,
             run_emcee=run_emcee,
             run_dynesty=run_dynesty,
