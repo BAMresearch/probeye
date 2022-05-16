@@ -10,6 +10,7 @@ from owlready2 import World
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.subroutines import make_list, len_or_one
 from probeye.subroutines import add_index_to_tex_prm_name
+from probeye.subroutines import get_shape_2d
 
 
 def load_owl_file(owl_basename):
@@ -84,9 +85,8 @@ def export_knowledge_graph(
     #                  Add the INVERSE PROBLEM to the knowledge graph                  #
     # -------------------------------------------------------------------------------- #
 
-    # this instance is created to have a common graph root for the instances to come;
-    # note that white-space is not allowed in the name, so it is replaced
-    inverse_problem = peo.inverse_problem(problem.name.replace(" ", "_"))
+    # this instance is created to have a common graph root for the instances to come
+    inverse_problem = peo.inverse_problem(problem.safe_name)
 
     # -------------------------------------------------------------------------------- #
     #                Add the problem's CONSTANTS to the knowledge graph                #
@@ -104,6 +104,9 @@ def export_knowledge_graph(
             filename = os.path.join(data_dir, f"{const_name}.dat")
             np.savetxt(filename, data)
             add(constant, "has_file", filename)
+            nr, nc = get_shape_2d(data)
+            add(constant, "has_number_of_rows", nc)
+            add(constant, "has_number_of_columns", nr)
         if problem.parameters[const_name].info is not None:
             add(constant, "has_explanation", problem.parameters[const_name].info)
         if problem.parameters[const_name].tex is not None:
@@ -278,6 +281,10 @@ def export_knowledge_graph(
                 filename = os.path.abspath(filename)
                 np.savetxt(filename, sensor_data)
                 add(constant, "has_file", filename)
+                add(constant, "has_dimension", sensor_data.size)
+                nr, nc = get_shape_2d(sensor_data)
+                add(constant, "has_number_of_rows", nc)
+                add(constant, "has_number_of_columns", nr)
             measurements.append(constant)
         add(experiment, "has_measured_values", measurements)
         add(inverse_problem, "has_experiment", experiment)
@@ -538,6 +545,12 @@ def export_results_to_knowledge_graph(
 
     if "posterior" in inference_data:
 
+        # prepare the array for the parameter samples; the samples of each parameter
+        # will be written in a single row of this array
+        n_samples = np.prod([*inference_data["posterior"].dims.values()])
+        join_samples_array = np.zeros((problem.n_latent_prms_dim, n_samples))
+        row_idx = 0
+
         for prm_name in problem.latent_prms:
 
             # assign the posterior to the parameter
@@ -547,27 +560,43 @@ def export_results_to_knowledge_graph(
             add(parameter, "has_posterior_distribution", posterior)
 
             # prepare the constant that contains the sample-data
-            samples_name = f"samples_{prm_name}"
-            samples = peo.constant(samples_name)
             if problem.parameters[prm_name].dim == 1:
+                add(parameter, "has_posterior_index", row_idx)
                 tex_name = problem.parameters[prm_name].tex
-                data = inference_data["posterior"][tex_name].values
-                filename = os.path.join(data_dir, f"{samples_name}.dat")
-                # noinspection PyTypeChecker
-                np.savetxt(filename, data)
-                add(samples, "has_file", filename)
+                # the 'flatten()' concatenates the samples of all walkers
+                sample_vec = inference_data["posterior"][tex_name].values.flatten()
+                join_samples_array[row_idx, :] = sample_vec
+                row_idx += 1
             else:
                 for i in range(1, problem.parameters[prm_name].dim + 1):
+                    add(parameter, "has_posterior_index", row_idx)
                     tex_name = problem.parameters[prm_name].tex
                     tex_name = add_index_to_tex_prm_name(tex_name, i)
-                    data = inference_data["posterior"][tex_name].values
-                    filename = os.path.join(data_dir, f"{samples_name}_{i}.dat")
-                    # noinspection PyTypeChecker
-                    np.savetxt(filename, data)
-                    add(samples, "has_file", filename)
+                    # the 'flatten()' concatenates the samples of all walkers
+                    sample_vec = inference_data["posterior"][tex_name].values.flatten()
+                    join_samples_array[row_idx, :] = sample_vec
+                    row_idx += 1
 
-            # assign the samples to the posterior distribution
-            add(posterior, "has_samples", samples)
+        # write the joint array to a file
+        filename = os.path.join(data_dir, f"joint_samples_{problem.safe_name}.dat")
+        # noinspection PyTypeChecker
+        np.savetxt(filename, join_samples_array)
+
+        # add the constant that represents the joint samples to the graph
+        joint_samples = peo.constant("joint_samples")
+        add(joint_samples, "has_file", filename)
+        add(joint_samples, "has_dimension", join_samples_array.size)
+        nr, nc = get_shape_2d(join_samples_array)
+        add(joint_samples, "has_number_of_rows", nc)
+        add(joint_samples, "has_number_of_columns", nr)
+
+        # associate the joint samples with the posterior
+        posterior = peo.sample_based_density_function(f"joint_posterior")
+        add(posterior, "has_samples", joint_samples)
+
+        # associate the joint posterior with the inverse problem
+        inverse_problem = peo.inverse_problem(problem.safe_name)
+        add(inverse_problem, "has_joint_posterior_distribution", posterior)
 
     else:
 
@@ -596,6 +625,10 @@ def export_results_to_knowledge_graph(
                 filename = os.path.join(data_dir, f"{ml_estimate_name}.dat")
                 np.savetxt(filename, data)
                 add(ml_estimate, "has_file", filename)
+                add(ml_estimate, "has_dimension", problem.parameters[prm_name].dim)
+                nr, nc = get_shape_2d(data)
+                add(ml_estimate, "has_number_of_rows", nc)
+                add(ml_estimate, "has_number_of_columns", nr)
 
             # make the association to the parameter
             add(parameter, "has_maximum_likelihood_estimate", ml_estimate)

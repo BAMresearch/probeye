@@ -17,7 +17,6 @@ import os
 # third party imports
 import numpy as np
 import matplotlib.pyplot as plt
-from owlready2 import default_world, get_ontology
 
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
@@ -27,6 +26,7 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (knowledge graph)
 from probeye.ontology.knowledge_graph_export import export_knowledge_graph
+from probeye.ontology.knowledge_graph_import import import_parameter_samples
 from probeye.ontology.knowledge_graph_export import export_results_to_knowledge_graph
 
 # local imports (testing related)
@@ -106,7 +106,7 @@ class TestProblem(unittest.TestCase):
         # ============================================================================ #
 
         # initialize the inverse problem with a useful name
-        problem = InverseProblem("abc")
+        problem = InverseProblem("Linear regression (AME)")
 
         # add all parameters to the problem
         problem.add_parameter(
@@ -221,34 +221,12 @@ class TestProblem(unittest.TestCase):
         #                          Query the knowledge graph                           #
         # ============================================================================ #
 
-        # load the owl-file that was just written
-        get_ontology(knowledge_graph_file).load()
-
-        # query the data to get the parameter names and the files with their samples
-        query_result_raw = list(
-            default_world.sparql(
-                """
-                PREFIX peo: <http://www.parameter_estimation_ontology.org#>
-                SELECT ?x ?f
-                WHERE { ?x a peo:parameter .
-                        ?x peo:has_posterior_distribution ?y .
-                        ?y peo:has_samples ?z .
-                        ?z peo:has_file ?f }
-                """
-            )
-        )
-        # post-process the raw query results into a dictionary with the parameter names
-        # as keys and the file-paths to the sample data as values
-        query_dict = {}
-        for pair in query_result_raw:
-            prm_name = str(pair[0]).split(".")[-1]
-            filename = pair[1]
-            query_dict[prm_name] = filename
-            self.assertTrue(os.path.exists(filename))
+        # get the samples from the knowledge graph
+        sample_dict = import_parameter_samples(knowledge_graph_file)
 
         # check if the parameters returned from the query are the same as the ones
         # defined within the problem scope
-        prm_names_from_query = set(query_dict.keys())
+        prm_names_from_query = set(sample_dict.keys())
         prm_names_in_problem = set(problem.latent_prms)
         self.assertTrue(prm_names_from_query == prm_names_in_problem)
 
