@@ -7,7 +7,6 @@ from scipy import stats
 
 # local imports
 from probeye.definition.prior import PriorBase
-from probeye.subroutines import len_or_one
 
 
 class PriorNormal(PriorBase):
@@ -34,7 +33,7 @@ class PriorNormal(PriorBase):
         super().__init__(ref_prm, prms_def, name, "normal distribution")
 
     def __call__(
-        self, prms: dict, method: str, use_ref_prm: bool = True, **kwargs
+        self, prms: dict, method: str, *args, use_ref_prm: bool = True, **kwargs
     ) -> Union[float, np.ndarray]:
         """
         Evaluates stats.norm.<method>(x, loc, scale) or, if use_ref_prm=False
@@ -47,6 +46,8 @@ class PriorNormal(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method
             The method of stats.norm to be evaluated (e.g. 'pdf' or 'logpdf').
+        args
+            Additional positional arguments.
         use_ref_prm
             If True stats.norm.<method>(x, loc, scale) is evaluated, hence 'x' must be
             provided in the prms dictionary. Otherwise, the evaluated method is
@@ -64,9 +65,9 @@ class PriorNormal(PriorBase):
         fun = getattr(stats.norm, method)
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, loc=mean, scale=std, **kwargs)
+            return fun(x, *args, loc=mean, scale=std, **kwargs)
         else:
-            return fun(loc=mean, scale=std, **kwargs)
+            return fun(*args, loc=mean, scale=std, **kwargs)
 
     def generate_samples(
         self, prms: dict, size: int, seed: Optional[int] = None
@@ -118,7 +119,7 @@ class PriorMultivariateNormal(PriorBase):
         super().__init__(ref_prm, prms_def, name, "multivariate normal distribution")
 
     def __call__(
-        self, prms: dict, method: str, use_ref_prm: bool = True, **kwargs
+        self, prms: dict, method: str, *args, use_ref_prm: bool = True, **kwargs
     ) -> Union[float, np.ndarray]:
         """
         Evaluates stats.multivariate_norm.<method>(x, loc, scale) or, if use_ref_prm=
@@ -158,9 +159,9 @@ class PriorMultivariateNormal(PriorBase):
                 )
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, mean=mean, cov=cov, **kwargs)
+            return fun(x, *args, mean=mean, cov=cov, **kwargs)
         else:
-            return fun(mean=mean, cov=cov, **kwargs)
+            return fun(*args, mean=mean, cov=cov, **kwargs)
 
     def generate_samples(
         self, prms: dict, size: int, seed: Optional[int] = None
@@ -217,6 +218,7 @@ class PriorLognormal(PriorBase):
         self,
         prms: dict,
         method: str,
+        *args,
         use_ref_prm: bool = True,
         **kwargs,
     ) -> float:
@@ -231,6 +233,8 @@ class PriorLognormal(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method
             The method of stats.lognorm to be evaluated (e.g. 'pdf', 'logpdf').
+        args
+            Additional positional arguments.
         use_ref_prm
             If True stats.lognorm.<method>(x, loc, scale) is evaluated, hence 'x' must
             be provided in the prms dictionary. Otherwise, the evaluated method is
@@ -252,9 +256,9 @@ class PriorLognormal(PriorBase):
         shape = sigma
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, shape, scale=scale, **kwargs)
+            return fun(x, shape, *args, scale=scale, **kwargs)
         else:
-            return fun(shape, scale=scale, **kwargs)
+            return fun(shape, *args, scale=scale, **kwargs)
 
     def generate_samples(
         self,
@@ -317,6 +321,7 @@ class PriorTruncnormal(PriorBase):
         self,
         prms: dict,
         method: str,
+        *args,
         use_ref_prm: bool = True,
         **kwargs,
     ) -> float:
@@ -331,6 +336,8 @@ class PriorTruncnormal(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method
             The method of stats.truncnorm to be evaluated (e.g. 'pdf', 'logpdf').
+        args
+            Additional positional arguments.
         use_ref_prm
             If True stats.truncnorm.<method>(x, loc, scale) is evaluated, hence 'x' must
             be provided in the prms dictionary. Otherwise, the evaluated method is
@@ -411,7 +418,7 @@ class PriorUniform(PriorBase):
         super().__init__(ref_prm, prms_def, name, "uniform distribution")
 
     def __call__(
-        self, prms: dict, method: str, use_ref_prm: bool = True, **kwargs
+        self, prms: dict, method: str, *args, use_ref_prm: bool = True, **kwargs
     ) -> float:
         """
         Evaluates stats.uniform.<method>(x, loc, scale) or, if use_ref_prm=False stats.
@@ -424,6 +431,8 @@ class PriorUniform(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method
             The method of stats.uniform to be evaluated (e.g. 'pdf', 'logpdf').
+        args
+            Additional positional arguments.
         use_ref_prm
             If True stats.uniform.<method>(x, loc, scale) is evaluated, hence 'x' must
             be provided in the prms dictionary. Otherwise, the evaluated method is
@@ -441,9 +450,9 @@ class PriorUniform(PriorBase):
         high = prms[f"high_{self.ref_prm}"]
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, loc=low, scale=high - low, **kwargs)
+            return fun(x, *args, loc=low, scale=high - low, **kwargs)
         else:
-            return fun(loc=low, scale=high - low, **kwargs)
+            return fun(*args, loc=low, scale=high - low, **kwargs)
 
     def generate_samples(
         self, prms: dict, size: int, seed: Optional[int] = None
@@ -497,7 +506,7 @@ class PriorWeibull(PriorBase):
         super().__init__(ref_prm, prms_def, name, "Weibull distribution")
 
     def __call__(
-        self, prms: dict, method: str, use_ref_prm: bool = True, **kwargs
+        self, prms: dict, method: str, *args, use_ref_prm: bool = True, **kwargs
     ) -> float:
         """
         Evaluates stats.weibull_min.<method>(x, loc, scale) or, if use_ref_prm=False,
@@ -510,6 +519,8 @@ class PriorWeibull(PriorBase):
             Contains the prior's parameters as keys and their values as values.
         method
             The method of stats.weibull_min to be evaluated ('pdf', 'logpdf', etc.).
+        args
+            Additional positional arguments.
         use_ref_prm
             If True stats.weibull_min.<method>(x, loc, scale) is evaluated, hence 'x'
             must be provided in the prms dictionary. Otherwise, the evaluated method is
@@ -528,9 +539,9 @@ class PriorWeibull(PriorBase):
         scale = prms[f"scale_{self.ref_prm}"]
         if use_ref_prm:
             x = prms[self.ref_prm]
-            return fun(x, shape, loc=loc, scale=scale, **kwargs)
+            return fun(x, shape, *args, loc=loc, scale=scale, **kwargs)
         else:
-            return fun(shape, loc=loc, scale=scale, **kwargs)
+            return fun(shape, *args, loc=loc, scale=scale, **kwargs)
 
     def generate_samples(
         self, prms: dict, size: int, seed: Optional[int] = None

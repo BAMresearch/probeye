@@ -439,6 +439,15 @@ class InverseProblem:
             value=new_value
         )
 
+    def get_latent_prior_hyperparameters(self, prm_name):
+        latent_hyperparameters = []
+        if self.parameters[prm_name].is_latent:
+            hyperparameters = self.parameters[prm_name].prior.hyperparameters
+            for hyperparameter in hyperparameters:
+                if self.parameters[hyperparameter].is_latent:
+                    latent_hyperparameters.append(hyperparameter)
+        return latent_hyperparameters
+
     def get_parameters(self, theta: np.ndarray, prm_def: dict) -> dict:
         """
         Extracts the numeric values for given parameters that have been defined within
@@ -480,6 +489,14 @@ class InverseProblem:
                     prms[local_name] = theta[idx]
                 else:
                     prms[local_name] = theta[idx:idx_end]
+        return prms
+
+    def get_constants(self, prm_def: dict) -> dict:
+        prms = {}
+        for global_name, local_name in prm_def.items():
+            idx = self._parameters[global_name].index
+            if idx is None:
+                prms[local_name] = self._parameters[global_name].value
         return prms
 
     def check_parameter_domains(self, theta: np.ndarray) -> bool:
