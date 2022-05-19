@@ -13,6 +13,7 @@ likelihood estimation.
 
 # standard library imports
 import unittest
+import os
 
 # third party imports
 import numpy as np
@@ -24,7 +25,13 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
+# local imports (knowledge graph)
+from probeye.ontology.knowledge_graph_export import (
+    export_knowledge_graph_including_results,
+)
+
 # local imports (testing related)
+from probeye.inference.scipy.solver import ScipySolver
 from tests.integration_tests.subroutines import run_inference_engines
 
 
@@ -36,6 +43,7 @@ class TestProblem(unittest.TestCase):
         n_walkers: int = 20,
         plot: bool = False,
         show_progress: bool = False,
+        write_to_graph: bool = True,
         run_scipy: bool = True,
         run_emcee: bool = False,  # intentionally False for faster test-runs
         run_dynesty: bool = False,  # intentionally False for faster test-runs
@@ -58,6 +66,8 @@ class TestProblem(unittest.TestCase):
             plots are closed.
         show_progress
             If True, progress-bars will be shown, if available.
+        write_to_graph
+            Triggers the export of the solver results to a given knowledge graph.
         run_scipy
             If True, the problem is solved with scipy (maximum likelihood est).
             Otherwise, no maximum likelihood estimate is derived.
@@ -278,10 +288,26 @@ class TestProblem(unittest.TestCase):
             n_walkers=n_walkers,
             plot=plot,
             show_progress=show_progress,
-            run_scipy=run_scipy,
+            run_scipy=False,  # is called below separately
             run_emcee=run_emcee,
             run_dynesty=run_dynesty,
         )
+
+        # the ScipySolver is called separately here to test the knowledge graph export
+        # routine that directly includes the results in the graph
+        if run_scipy:
+            scipy_solver = ScipySolver(problem, show_progress=show_progress)
+            inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+            if write_to_graph:
+                dir_path = os.path.dirname(__file__)
+                basename_owl = os.path.basename(__file__).split(".")[0] + ".owl"
+                knowledge_graph_file = os.path.join(dir_path, basename_owl)
+                export_knowledge_graph_including_results(
+                    problem,
+                    inference_data,
+                    knowledge_graph_file,
+                    data_dir=dir_path,
+                )
 
 
 if __name__ == "__main__":

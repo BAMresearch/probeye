@@ -1,5 +1,5 @@
 # standard library
-from typing import Union, List, Tuple, Dict, Callable
+from typing import Union, List, Tuple, Dict
 import copy as cp
 import numpy as np
 
@@ -39,30 +39,30 @@ class ForwardModelBase:
         self.output_sensors = [Sensor("_self.output_sensors_not_set")]
 
         # set the three attributes above by running the user-defined method
-        # self.interface; the exception triggered by naming the forward model '_dummy_'
+        # self.ontology; the exception triggered by naming the forward model '_dummy_'
         # is intended mostly for testing
         if name != "_dummy_":
 
-            # now, run the user-defined 'interface'-method which will set the attributes
+            # now, run the user-defined 'ontology'-method which will set the attributes
             # self.parameters, self.input_sensors and self.output_sensors
             self.interface()
 
             # check if self.parameters, self.input_sensors and self.output_sensors have
-            # been set by the user in the required self.interface-method
+            # been set by the user in the required self.ontology-method
             if self.parameters == ["_self.parameters_not_set"]:
                 raise RuntimeError(
                     f"You did not set the required attribute 'self.parameters' in the "
-                    f"forward model's 'interface'-method!"
+                    f"forward model's 'ontology'-method!"
                 )
             if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.input_sensors' in "
-                    "the forward model's 'interface'-method!"
+                    "the forward model's 'ontology'-method!"
                 )
             if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.output_sensors' in "
-                    "the forward model's 'interface'-method!"
+                    "the forward model's 'ontology'-method!"
                 )
         self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
         self.input_sensors = make_list(self.input_sensors)
@@ -205,7 +205,7 @@ class ForwardModelBase:
         tests to see examples.
         """
         raise NotImplementedError(
-            f"No 'interface'-method defined for forward model '{self.name}'!"
+            f"No 'ontology'-method defined for forward model '{self.name}'!"
         )
 
     def response(self, inp: dict) -> dict:

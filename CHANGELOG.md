@@ -1,5 +1,10 @@
 # probeye changelog
 
+## 2.3.0 (2022-May-16)
+### Added
+- Added new submodule 'ontology' for an import/export of the problem's knowledge graph
+- Added an ontology file 'parameter_estimation_ontology.owl'
+
 ## 2.2.0 (2022-Apr-26)
 ### Changed
 - The forward model's 'definition'-method was renamed to 'interface'.
