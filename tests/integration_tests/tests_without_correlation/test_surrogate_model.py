@@ -136,7 +136,7 @@ class TestProblem(unittest.TestCase):
         # add the experimental data
         problem.add_experiment(
             f"TestSeries_1",
-            fwd_model_name="ExpensiveModel",
+            fwd_model_name="FastModel",
             sensor_values={
                 forward_model.input_sensor.name: x_test,
                 forward_model.output_sensor.name: y_test,
