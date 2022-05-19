@@ -10,15 +10,18 @@ import numpy as np
 # local imports
 from probeye.definition.parameter import Parameters
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.surrogate_model import SurrogateModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.subroutines import underlined_string, titled_table
-from probeye.subroutines import simplified_list_string
-from probeye.subroutines import make_list, len_or_one
-from probeye.subroutines import print_probeye_header
-from probeye.subroutines import logging_setup
-from probeye.subroutines import add_index_to_tex_prm_name
-from probeye.subroutines import translate_simple_correlation
+from probeye.subroutines import (
+    underlined_string,
+    titled_table,
+    simplified_list_string,
+    make_list,
+    len_or_one,
+    print_probeye_header,
+    logging_setup,
+    add_index_to_tex_prm_name,
+    translate_simple_correlation,
+)
 
 
 class InverseProblem:
@@ -96,13 +99,6 @@ class InverseProblem:
         # the script forward_model.py); this dictionary is managed internally and should
         # not be modified directly
         self._forward_models = {}  # type: dict
-
-        # the following dict contains the problem's surrogate models (note that
-        # surrogate models are optional, not every problem has surrogate models);
-        # the keys in this dict are the surrogate model names, while the values are the
-        # surrogate model objects (check out the script surrogate_model.py); this
-        # dictionary is managed internally and should not be modified directly
-        self._surrogate_models = {}  # type: dict
 
         # this dictionary contains the problem's likelihood models; as the other private
         # attributes above, it is managed internally and should not be modified directly
@@ -218,11 +214,6 @@ class InverseProblem:
     def forward_models(self) -> dict:
         """Access self._forward_models from outside via self.forward_models."""
         return self._forward_models
-
-    @property
-    def surrogate_models(self) -> dict:
-        """Access self._surrogate_models from outside via self.forward_models."""
-        return self._surrogate_models
 
     @property
     def experiments(self) -> dict:
@@ -439,13 +430,35 @@ class InverseProblem:
             value=new_value
         )
 
-    def get_latent_prior_hyperparameters(self, prm_name):
+    def get_latent_prior_hyperparameters(self, prm_name: str) -> list:
+        """
+        Returns a list of the latent hyperparameters of a parameter's prior. In most
+        cases there will be none, so an empty list will be returned.
+
+        Parameters
+        ----------
+        prm_name
+            The name of the parameter the prior of which should be checked for latent
+            hyperparameters.
+
+        Returns
+        -------
+        latent_hyperparameters
+            Contains the global names of latent hyperparameters in the prior of the
+            parameter 'prm_name'.
+        """
+
+        # first, make sure that the given parameter exists
+        self._parameters.confirm_that_parameter_exists(prm_name)
+
+        # now look for possible latent hyperparameters
         latent_hyperparameters = []
         if self.parameters[prm_name].is_latent:
             hyperparameters = self.parameters[prm_name].prior.hyperparameters
             for hyperparameter in hyperparameters:
                 if self.parameters[hyperparameter].is_latent:
                     latent_hyperparameters.append(hyperparameter)
+
         return latent_hyperparameters
 
     def get_parameters(self, theta: np.ndarray, prm_def: dict) -> dict:
@@ -492,6 +505,27 @@ class InverseProblem:
         return prms
 
     def get_constants(self, prm_def: dict) -> dict:
+        """
+        Similar to 'get_parameters' with the difference that this method only extracts
+        the numeric values of constants that have been defined within the problem scope.
+        For that reason it does not need the 'theta' argument as in 'get_parameters'. If
+        'prm_def' also contains latent parameters, they will simply be ignored.
+
+        Parameters
+        ----------
+        prm_def
+            Defines which constants to extract. The keys of this dictionary are the
+            global parameter names, while the values are the local parameter names. In
+            most cases global and local names will be identical, but sometimes it is
+            convenient to define a local parameter name, e.g. in the forward model.
+
+        Returns
+        -------
+        prms
+            Contains <local parameter name> : <(global) parameter value> pairs. If a
+            parameter is scalar, its value will be returned as a float. In case of a
+            vector-valued parameter, its value will be returned as a np.ndarray.
+        """
         prms = {}
         for global_name, local_name in prm_def.items():
             idx = self._parameters[global_name].index
@@ -669,60 +703,6 @@ class InverseProblem:
         # add the given forward model to the internal forward model dictionary under
         # the given forward model name
         self._forward_models[forward_model.name] = forward_model
-
-    def add_surrogate_model(self, surrogate_model: SurrogateModelBase):
-        """
-        Adds a surrogate model to the inverse problem. Note that multiple forward models
-        can be added to one problem.
-
-        Parameters
-        ----------
-        surrogate_model
-            Defines the surrogate model. Check out surrogate_model.py to see a template
-            for the surrogate model definition. The user will then have to derive her
-            own surrogate model from that base class. Examples can be found in the
-            package directory tests/integration_tests.
-        """
-
-        # log at beginning so that errors can be quickly associated
-        logger.debug(f"Adding surrogate model '{surrogate_model.name}'")
-
-        # check if all given model parameters have already been added to the inverse
-        # problem; note that the surrogate model can only be added to the problem after
-        # the corresponding parameters and the forward model have been defined
-        for prm_name in surrogate_model.prms_def:
-            self._parameters.confirm_that_parameter_exists(prm_name)
-            # check, if the type was set correctly; if it was not set yet, it will be
-            # set automatically here
-            if self._parameters[prm_name].type == "not defined":
-                self.change_parameter_type(prm_name, "model")
-            elif self._parameters[prm_name].type in ["prior", "likelihood"]:
-                raise ValueError(
-                    f"The parameter '{prm_name}' defined in forward model "
-                    f"'{surrogate_model.name}' was assigned the type "
-                    f"'{self._parameters[prm_name].type}' (it should be 'model')."
-                )
-
-        # check if the given name for the forward model has already been used
-        if surrogate_model.name in self._surrogate_models:
-            raise RuntimeError(
-                f"The name '{surrogate_model.name}' of the surrogate model you are "
-                f"trying to add to the problem has already been used for another"
-                f"surrogate model within the problem scope. Please choose another name."
-            )
-
-        # check if the surrogate model's forward model has already been added to the
-        # inverse problem
-        if surrogate_model.forward_model.name not in self._forward_models:
-            raise RuntimeError(
-                f"The surrogate model's forward model "
-                f"'{surrogate_model.forward_model.name}' has not been added to the "
-                f"problem yet!"
-            )
-
-        # add the given surrogate model to the internal surrogate model dictionary under
-        # the given surrogate model name
-        self._surrogate_models[surrogate_model.name] = surrogate_model
 
     # =============================================================== #
     #                   Experiments related methods                   #

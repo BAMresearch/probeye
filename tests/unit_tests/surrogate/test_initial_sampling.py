@@ -71,7 +71,8 @@ class TestProblem(unittest.TestCase):
         problem = InverseProblem("Test")
         problem.add_parameter("a", prior=("normal", {"mean": 2.0, "std": 1.0}))
         problem.add_parameter("b", prior=("normal", {"mean": 1.0, "std": 0.5}))
-        problem.add_forward_model(LinearModel("LinearModel"))
+        forward_model = LinearModel("LinearModel")
+        problem.add_forward_model(forward_model)
         problem.add_experiment(
             exp_name="Exp1",
             fwd_model_name="LinearModel",
@@ -84,7 +85,7 @@ class TestProblem(unittest.TestCase):
         # create the training data
         lhs = LatinHypercubeSampler(problem)
         prm_samples_pd, responses_over_experiments = lhs.generate_training_data(
-            "LinearModel", 10, seed=1
+            forward_model, 10, seed=1
         )
 
         # check if everything is as expected (with prm_samples_pd)

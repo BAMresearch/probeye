@@ -9,6 +9,7 @@ from scipy.stats import qmc
 
 # local imports
 from probeye.definition.inverse_problem import InverseProblem
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.inference.priors import translate_prior
 from probeye.subroutines import len_or_one
 
@@ -93,7 +94,7 @@ class LatinHypercubeSampler:
 
     def generate_training_data(
         self,
-        forward_model_name: str,
+        forward_model: ForwardModelBase,
         n_samples: int,
         seed: int = 1,
     ) -> Tuple[pd.DataFrame, dict]:
@@ -104,8 +105,8 @@ class LatinHypercubeSampler:
 
         Parameters
         ----------
-        forward_model_name
-            The name of the forward model that should be evaluated.
+        forward_model
+            The forward model that should be evaluated.
         n_samples
             The number of parameter vectors the forward model should be evaluated for.
         seed
@@ -124,7 +125,6 @@ class LatinHypercubeSampler:
 
         # get the forward model object with the given name and prepare the corresponding
         # experimental in- and output dictionaries
-        forward_model = self.problem.forward_models[forward_model_name]
         forward_model.prepare_experimental_inputs_and_outputs()
 
         # generate the latent parameter samples and convert it to a data frame to have

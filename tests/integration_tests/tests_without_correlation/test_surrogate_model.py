@@ -114,13 +114,12 @@ class TestProblem(unittest.TestCase):
             prior=("uniform", {"low": low_sigma, "high": high_sigma}),
         )
 
-        # add the forward model to the problem
+        # add the surrogate model (which is essentially a forward model) to the problem;
+        # whether or not the surrogate model gets the original forward model is not
+        # finally decided on, but it might not be necessary
         forward_model = ExpensiveModel("ExpensiveModel")
-        problem.add_forward_model(forward_model)
-
-        # add the forward model to the problem
         surrogate_model = SurrogateModel("FastModel", forward_model=forward_model)
-        problem.add_surrogate_model(surrogate_model)
+        problem.add_forward_model(surrogate_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
