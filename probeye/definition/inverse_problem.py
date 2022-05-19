@@ -21,6 +21,7 @@ from probeye.subroutines import (
     logging_setup,
     add_index_to_tex_prm_name,
     translate_simple_correlation,
+    safe_string,
 )
 
 
