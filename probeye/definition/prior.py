@@ -60,12 +60,10 @@ class PriorBase:
 
     def __str__(self) -> str:
         """
-        Allows printing an object of this class.
+        Allows to use the print-function on an object of this class.
 
         Returns
         -------
-        s
             A string containing details on the respective prior.
         """
-        s = f"{self.prior_type} for '{self.ref_prm}', prms={self.prms_def}"
-        return s
+        return f"{self.prior_type} for '{self.ref_prm}', prms={self.prms_def}"
