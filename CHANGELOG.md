@@ -4,9 +4,12 @@
 ### Changed
 - The definition of the latent parameter's priors was revised (from tuples to objects).
 - The forward model's response method is stripped from the problem definition so that the pure definition of an inverse problem indeed does not contain any computing methods.
-
 ### Added
 - Distribution classes have been added to make the prior-definition more clear.
+
+## 2.3.1 (2022-May-30)
+### Removed
+- The 'knowledge_graph_import.py' script was removed. The functionality was moved to the integration test 'test_query_results.py'.
 
 ## 2.3.0 (2022-May-16)
 ### Added
