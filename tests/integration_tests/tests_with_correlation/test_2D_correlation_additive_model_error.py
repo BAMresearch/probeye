@@ -29,6 +29,7 @@ from tripy.utils import correlation_matrix
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -150,29 +151,29 @@ class TestProblem(unittest.TestCase):
             "model",
             tex="$a_x$",
             info="Slope of the graph-intersection with y=0 in x-direction",
-            prior=("normal", {"mean": mean_ax, "std": std_ax}),
+            prior=Normal(mean=mean_ax, std=std_ax),
         )
         problem.add_parameter(
             "ay",
             "model",
             tex="$a_y$",
             info="Slope of the graph-intersection with x=0 in y-direction",
-            prior=("normal", {"mean": mean_ay, "std": std_ay}),
+            prior=Normal(mean=mean_ay, std=std_ay),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of plane with z-axis",
             tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
         )
         problem.add_parameter(
             "sigma",
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            info="Standard deviation of zero-mean additive model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
         problem.add_parameter(
             "l_corr",
@@ -180,7 +181,7 @@ class TestProblem(unittest.TestCase):
             domain="(0, +oo)",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
-            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
+            prior=Uniform(low=low_l_corr, high=high_l_corr),
         )
 
         # add the forward model to the problem

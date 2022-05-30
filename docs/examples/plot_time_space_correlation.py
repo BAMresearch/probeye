@@ -23,6 +23,7 @@ from tripy.utils import correlation_function
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
@@ -266,7 +267,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex="$EI$",
     info="Bending stiffness of the beam [Nm^2]",
-    prior=("normal", {"mean": 0.9 * EI_true, "std": 0.25 * EI_true}),
+    prior=Normal(mean=0.9 * EI_true, std=0.25 * EI_true),
 )
 problem.add_parameter(
     "L", "model", tex="$L$", info="Length of the beam [m]", const=L_bridge
@@ -277,7 +278,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Std. dev, of 0-mean noise model",
-    prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+    prior=Uniform(low=low_sigma, high=high_sigma),
 )
 problem.add_parameter(
     "l_corr_x",
@@ -285,7 +286,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,x}$",
     info="Spatial correlation length of correlation model",
-    prior=("uniform", {"low": low_l_corr_x, "high": high_l_corr_x}),
+    prior=Uniform(low=low_l_corr_x, high=high_l_corr_x),
 )
 problem.add_parameter(
     "l_corr_t",
@@ -293,7 +294,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,t}$",
     info="Temporal correlation length of correlation model",
-    prior=("uniform", {"low": low_l_corr_t, "high": high_l_corr_t}),
+    prior=Uniform(low=low_l_corr_t, high=high_l_corr_t),
 )
 
 # %%

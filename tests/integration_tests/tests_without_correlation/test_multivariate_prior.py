@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import MultivariateNormal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -129,12 +130,9 @@ class TestProblem(unittest.TestCase):
             domain="(-oo, +oo) (-oo, +oo)",
             tex="$mb$",
             info="Slope and intercept of the graph",
-            prior=(
-                "multivariate-normal",
-                {
-                    "mean": np.array([mean_a, mean_b]),
-                    "cov": np.array([[std_a**2, 0], [0, std_b**2]]),
-                },
+            prior=MultivariateNormal(
+                mean=np.array([mean_a, mean_b]),
+                cov=np.array([[std_a**2, 0], [0, std_b**2]]),
             ),
         )
         problem.add_parameter(
@@ -142,8 +140,8 @@ class TestProblem(unittest.TestCase):
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            info="Standard deviation of zero-mean additive model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
 
         # add the forward model to the problem

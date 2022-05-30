@@ -156,7 +156,7 @@ def run_inference_engines(
                 knowledge_graph_file,
                 data_dir=data_dir,
             )
-        create_plots(inference_data_emcee, problem, true_values)
+        create_plots(inference_data_emcee, emcee_solver.problem, true_values)
 
     if run_dynesty:
         dynesty_solver = DynestySolver(problem, show_progress=show_progress)
@@ -170,4 +170,4 @@ def run_inference_engines(
                 knowledge_graph_file,
                 data_dir=data_dir,
             )
-        create_plots(inference_data_dynesty, problem, true_values)
+        create_plots(inference_data_dynesty, dynesty_solver.problem, true_values)

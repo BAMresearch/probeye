@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -149,14 +150,14 @@ class TestProblem(unittest.TestCase):
             "model",
             tex="$a$",
             info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
+            prior=Normal(mean=mean_a, std=std_a),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
         )
         problem.add_parameter(
             "sigma",
@@ -164,7 +165,7 @@ class TestProblem(unittest.TestCase):
             domain="(0, +oo)",
             tex=r"$\sigma$",
             info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
 
         # add the forward model to the problem
@@ -273,7 +274,7 @@ class TestProblem(unittest.TestCase):
         # again, only two parameters; this case is done to have a uniform prior plotted
         # on the vertical axis in a 2-parameter pairplot
         problem.change_parameter_role(
-            "sigma", prior=("uniform", {"low": low_sigma, "high": high_sigma})
+            "sigma", prior=Uniform(low=low_sigma, high=high_sigma)
         )
         problem.change_parameter_role("b", const=b_true)
         true_values = {"a": a_true, "sigma": sigma}

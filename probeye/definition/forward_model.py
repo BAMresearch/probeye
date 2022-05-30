@@ -27,7 +27,6 @@ class ForwardModelBase:
     def __init__(
         self,
         name: str,
-        _skip_interface_=False,
     ):
 
         # set the forward model's name
@@ -52,17 +51,17 @@ class ForwardModelBase:
             if self.parameters == ["_self.parameters_not_set"]:
                 raise RuntimeError(
                     f"You did not set the required attribute 'self.parameters' in the "
-                    f"forward model's 'ontology'-method!"
+                    f"forward model's 'interface'-method!"
                 )
             if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.input_sensors' in "
-                    "the forward model's 'ontology'-method!"
+                    "the forward model's 'interface'-method!"
                 )
             if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.output_sensors' in "
-                    "the forward model's 'ontology'-method!"
+                    "the forward model's 'interface'-method!"
                 )
         self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
         self.input_sensors = make_list(self.input_sensors)
@@ -89,22 +88,6 @@ class ForwardModelBase:
         # ================================== #
         #   Attributes used/set by solvers   #
         # ================================== #
-
-        # this attribute might be used to write the forward model's input structure to;
-        # it has the same structure like the 'inp' argument of the response method, but
-        # instead of the input channel's values it states the input channels number of
-        # elements
-        self.input_structure = {ic: 0 for ic in self.input_channel_names}
-
-        # this attributes might be used by inference engines that need a forward model
-        # wrapper, which only returns numeric vectors; for reconstructing the response
-        # dictionary from the numeric vector, one needs to know the response
-        # dictionary's structure; this dictionaries will then contain the same keys as
-        # the response method's return dictionary, while the values will be the number
-        # of elements contained in the values; e.g., {'x': np.array([0, 0.1, 0.2]),
-        # 'a': 3.7} will have a structure  of {'x': 3, 'a': 1}; this attr. is not used
-        # by all inference engines
-        self.response_structure = {os.name: 0 for os in self.output_sensors}
 
         # the following attribute is set by self.connect_experimental_data_to_sensors();
         # this method is called by the solver before solving the problem
@@ -205,7 +188,7 @@ class ForwardModelBase:
         tests to see examples.
         """
         raise NotImplementedError(
-            f"No 'ontology'-method defined for forward model '{self.name}'!"
+            f"No 'interface'-method defined for forward model '{self.name}'!"
         )
 
     def response(self, inp: dict) -> dict:

@@ -28,6 +28,7 @@ from tripy.utils import correlation_matrix
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -142,22 +143,22 @@ class TestProblem(unittest.TestCase):
             "model",
             tex="$a$",
             info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
+            prior=Normal(mean=mean_a, std=std_a),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
         )
         problem.add_parameter(
             "sigma",
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of unit-mean multiplicative model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            info="Standard deviation of unit-mean multiplicative model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
         problem.add_parameter(
             "l_corr",
@@ -165,7 +166,7 @@ class TestProblem(unittest.TestCase):
             domain="(0, +oo)",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
-            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
+            prior=Uniform(low=low_l_corr, high=high_l_corr),
         )
 
         # add the forward model to the problem

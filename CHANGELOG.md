@@ -1,5 +1,13 @@
 # probeye changelog
 
+## 2.4.0 (2022-May-30)
+### Changed
+- The definition of the latent parameter's priors was revised (from tuples to objects).
+- The forward model's response method is stripped from the problem definition so that the pure definition of an inverse problem indeed does not contain any computing methods.
+
+### Added
+- Distribution classes have been added to make the prior-definition more clear.
+
 ## 2.3.0 (2022-May-16)
 ### Added
 - Added new submodule 'ontology' for an import/export of the problem's knowledge graph

@@ -6,6 +6,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -28,9 +29,11 @@ class TestProblem(unittest.TestCase):
         # define parameters with with an uninformative prior
         problem = InverseProblem("Problem with uninformative prior")
         problem.add_parameter("m", "model")  # uninformative prior
-        problem.add_parameter("b", "model", prior=("normal", {"mean": 1.0, "std": 1.0}))
+        problem.add_parameter("b", "model", prior=Normal(mean=1, std=1))
         problem.add_parameter(
-            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
+            "sigma",
+            "likelihood",
+            prior=Uniform(low=0.1, high=0.8),
         )
 
         # add forward model and likelihood model
@@ -84,11 +87,9 @@ class TestProblem(unittest.TestCase):
     def test_evaluate_model_response(self):
         # prepare for checks
         p = InverseProblem("TestProblem")
-        p.add_parameter("a0", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter("a1", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter(
-            "a2", "model", prior=("normal", {"mean": 0, "std": 1}), domain="[0, 1]"
-        )
+        p.add_parameter("a0", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("a1", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("a2", "model", prior=Normal(mean=0, std=1), domain="[0, 1]")
         p.add_parameter("sigma", "likelihood", const=1.0)
 
         class FwdModel(ForwardModelBase):

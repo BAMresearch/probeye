@@ -4,6 +4,7 @@ import unittest
 # third party imports
 
 # local imports
+from probeye.definition.distribution import Normal
 from probeye.definition.parameter import Parameters
 from probeye.definition.parameter import ParameterProperties
 from probeye.definition.parameter import ScalarInterval
@@ -36,7 +37,7 @@ class TestProblem(unittest.TestCase):
                 "tex": r"$b$",
             }
         )
-        c_prior = PriorBase("c", ["s"], "c_dummy", "normal")
+        c_prior = PriorBase("c", ["s"], "c_dummy", Normal(mean=0, std=1))
         parameters["c"] = ParameterProperties(
             {
                 "index": 2,
@@ -72,7 +73,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(parameters.n_prms, 3)
         # you cannot add the parameter's properties as a dictionary
         with self.assertRaises(ValueError):
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             # noinspection PyTypeChecker
             parameters["d"] = {
                 "index": 3,
@@ -133,7 +134,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(TypeError):
             # dim is has wrong type
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
@@ -148,7 +149,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             # dim is an integer smaller than 1
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
@@ -163,7 +164,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             # dim has invalid value
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
@@ -217,7 +218,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             # index and dim are not consistent
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
@@ -246,7 +247,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             # index and value are inconsistently combined
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             parameters["d"] = ParameterProperties(
                 {
                     "index": 3,
@@ -261,7 +262,7 @@ class TestProblem(unittest.TestCase):
             )
         with self.assertRaises(RuntimeError):
             # index and prior are inconsistently combined
-            d_prior = PriorBase("d", ["s"], "d_dummy", "normal")
+            d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))
             parameters["d"] = ParameterProperties(
                 {
                     "index": None,

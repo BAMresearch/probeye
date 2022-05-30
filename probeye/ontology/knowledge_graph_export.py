@@ -163,19 +163,19 @@ def export_knowledge_graph(
             cov_name = f"cov_{prm_name}"
             set_latent_or_const_parameter(prior, "has_covariance_matrix", cov_name)
 
-        elif prior_type == "truncnormal":
+        elif prior_type == "trunc-normal":
             prior = peo.truncated_normal_density_function(prior_name)
             add(prior, "has_primary_variable", parameter)
             mean_name = f"mean_{prm_name}"
             set_latent_or_const_parameter(prior, "has_mean", mean_name)
             std_name = f"std_{prm_name}"
             set_latent_or_const_parameter(prior, "has_standard_deviation", std_name)
-            a_name = f"a_{prm_name}"
+            a_name = f"low_{prm_name}"
             set_latent_or_const_parameter(prior, "has_lower_bound", a_name)
-            b_name = f"b_{prm_name}"
+            b_name = f"high_{prm_name}"
             set_latent_or_const_parameter(prior, "has_upper_bound", b_name)
 
-        elif prior_type == "lognormal":
+        elif prior_type == "log-normal":
             prior = peo.lognormal_density_function(prior_name)
             add(prior, "has_primary_variable", parameter)
             mean_name = f"mean_{prm_name}"
@@ -190,6 +190,14 @@ def export_knowledge_graph(
             set_latent_or_const_parameter(prior, "has_lower_bound", low_name)
             high_name = f"high_{prm_name}"
             set_latent_or_const_parameter(prior, "has_upper_bound", high_name)
+
+        elif prior_type == "weibull":
+            prior = peo.Weibull_density_function(prior_name)
+            add(prior, "has_primary_variable", parameter)
+            scale_name = f"scale_{prm_name}"
+            set_latent_or_const_parameter(prior, "has_scale", scale_name)
+            shape_name = f"shape_{prm_name}"
+            set_latent_or_const_parameter(prior, "has_shape", shape_name)
 
         elif prior_type == "sample-based":
             prior = peo.sample_based_density_function(prior_name)

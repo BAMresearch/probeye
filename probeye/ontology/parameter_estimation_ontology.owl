@@ -329,6 +329,19 @@
     
 
 
+    <!-- http://www.parameter_estimation_ontology.org#has_scale -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_scale">
+        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/IAO_0000029"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a mathematical function and a numeral that represents a scale parameter where the latter serves as an input to the former.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">has scale</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
     <!-- http://www.parameter_estimation_ontology.org#has_sensor -->
 
     <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_sensor">
@@ -337,6 +350,19 @@
         <obo:IAO_0000115 xml:lang="en">A relation between a single experiment data set and a sensor where the latter is part of the former.</obo:IAO_0000115>
         <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
         <rdfs:label xml:lang="en">has sensor</rdfs:label>
+    </owl:ObjectProperty>
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#has_shape -->
+
+    <owl:ObjectProperty rdf:about="http://www.parameter_estimation_ontology.org#has_shape">
+        <rdfs:subPropertyOf rdf:resource="http://www.parameter_estimation_ontology.org#has_argument"/>
+        <rdfs:domain rdf:resource="http://www.parameter_estimation_ontology.org#mathematical_function"/>
+        <rdfs:range rdf:resource="http://purl.obolibrary.org/obo/IAO_0000029"/>
+        <obo:IAO_0000115 xml:lang="en">A relation between a mathematical function and a numeral that represents a shape parameter where the latter serves as an input to the former.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">has shape</rdfs:label>
     </owl:ObjectProperty>
     
 
@@ -669,6 +695,17 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
+    
+
+
+    <!-- http://www.parameter_estimation_ontology.org#Weibull_density_function -->
+
+    <owl:Class rdf:about="http://www.parameter_estimation_ontology.org#Weibull_density_function">
+        <rdfs:subClassOf rdf:resource="http://www.parameter_estimation_ontology.org#probability_density_function"/>
+        <obo:IAO_0000115 xml:lang="en">A probability density function that is based on the 2-parameter Weibull distribution distribution.</obo:IAO_0000115>
+        <obo:IAO_0000117 xml:lang="en">PERSON: Alexander Klawonn</obo:IAO_0000117>
+        <rdfs:label xml:lang="en">Weibull density function</rdfs:label>
+    </owl:Class>
     
 
 

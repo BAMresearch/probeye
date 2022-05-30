@@ -3,7 +3,6 @@ from typing import Tuple, Optional, TYPE_CHECKING
 import copy as cp
 
 # third party imports
-import copy
 import numpy as np
 import scipy as sp
 from scipy.optimize import minimize
@@ -44,7 +43,7 @@ class ScipySolver:
         logger.debug("Initializing ScipySolver")
 
         # attributes from arguments
-        self.problem = problem
+        self.problem = cp.deepcopy(problem)
         self.show_progress = show_progress
         self.seed = seed
 
@@ -52,24 +51,46 @@ class ScipySolver:
         self.raw_results = None
         self.summary = {}  # type: dict
 
-        # this prepares the inputs and outputs based on experimental data for all of
-        # the problem's forward models
-        for forward_model in self.problem.forward_models.values():
+        # here, the forward model hull is completed with its 'response'-method;
+        # additionally, the inputs and outputs based on experimental data for all of
+        # the problem's forward models are prepared
+        logger.debug("Translate the problem's forward models")
+        for fwd_name in self.problem.forward_models:
+            forward_model_hull = self.problem.forward_models[fwd_name]
+            forward_model = forward_model_hull.__class__.__bases__[0](fwd_name)
+            for attr in [
+                "experiment_names",
+                "input_sensor",
+                "input_sensors",
+                "output_sensor",
+                "output_sensors",
+            ]:
+                setattr(forward_model, attr, getattr(forward_model_hull, attr))
             forward_model.prepare_experimental_inputs_and_outputs()
+            self.problem.forward_models[fwd_name] = forward_model
 
         # translate the prior definitions to objects with computing capabilities
-        logger.debug("Translate problem's priors")
-        self.priors = copy.deepcopy(self.problem.priors)
-        for prior_name, prior_template in self.problem.priors.items():
-            self.priors[prior_name] = translate_prior(prior_template)
+        logger.debug("Translate the problem's priors")
+        for prior_template in self.problem.priors.values():
+            prm_name = prior_template.ref_prm
+            self.problem._parameters[prm_name] = self.problem.parameters[
+                prm_name
+            ].changed_copy(
+                prior=translate_prior(
+                    self.problem.parameters[prior_template.ref_prm].prior
+                )
+            )
 
         # translate the general likelihood model objects into solver specific ones
-        logger.debug("Translate problem's likelihood models")
-        self.likelihood_models = []
-        for likelihood_model_definition in self.problem.likelihood_models.values():
-            self.likelihood_models.append(
-                translate_likelihood_model(likelihood_model_definition)
+        logger.debug("Translate the problem's likelihood models")
+        for like_name in self.problem.likelihood_models:
+            self.problem.likelihood_models[like_name] = translate_likelihood_model(
+                self.problem.likelihood_models[like_name]
             )
+            fwd_name = self.problem.likelihood_models[like_name].forward_model.name
+            self.problem.likelihood_models[
+                like_name
+            ].forward_model = self.problem.forward_models[fwd_name]
 
     def evaluate_model_response(
         self, theta: np.ndarray, forward_model: "ForwardModelBase", experiment_name: str
@@ -130,7 +151,7 @@ class ScipySolver:
             The evaluated log-prior function for the given theta-vector.
         """
         lp = 0.0
-        for prior in self.priors.values():
+        for prior in self.problem.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
             lp += prior(prms, "logpdf")
         return lp
@@ -151,7 +172,8 @@ class ScipySolver:
         -------
             The generated samples.
         """
-        prior = self.priors[self.problem.parameters[prm_name].prior.name]
+        prior_name = self.problem.parameters[prm_name].prior.name
+        prior = self.problem.priors[prior_name]
         # check for prior-priors; if a prior parameter is a latent parameter and not a
         # constant, one first samples from the prior parameter's prior distribution, and
         # then takes the mean of those samples to sample from the first prior
@@ -194,7 +216,7 @@ class ScipySolver:
         # compute the contribution to the log-likelihood function for each likelihood
         # model and sum it all up
         ll = 0.0
-        for likelihood_model in self.likelihood_models:
+        for likelihood_model in self.problem.likelihood_models.values():
             # compute the model response/residuals for the likelihood model's experiment
             response, residuals = self.evaluate_model_response(
                 theta, likelihood_model.forward_model, likelihood_model.experiment_name
@@ -248,7 +270,7 @@ class ScipySolver:
                 idx_end = self.problem.parameters[prm_name].index_end
                 dim = self.problem.parameters[prm_name].dim
                 if prior_type != "uninformative":
-                    prm_value = self.priors[prior_name](
+                    prm_value = self.problem.priors[prior_name](
                         prms, x0_prior, use_ref_prm=False
                     )
                     prms[prm_name] = prm_value

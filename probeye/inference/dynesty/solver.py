@@ -1,7 +1,6 @@
 # standard library imports
 from typing import TYPE_CHECKING, Optional
 import time
-import random
 import contextlib
 
 # third party imports
@@ -70,11 +69,11 @@ class DynestySolver(ScipySolver):
             The vector of quantiles for each prior distribution at theta.
         """
         qs = []
-        for prior in self.priors.values():
+        for prior in self.problem.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
             try:
                 qs.append(prior(prms, "ppf"))
-            except AttributeError as e:
+            except AttributeError:
                 # This branch is active when there is no `ppf` method in
                 # the prior distribution. For the case of a multivariate
                 # normal distribution, we implement a workaround.

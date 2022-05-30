@@ -9,6 +9,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.parameter import Parameters
+from probeye.definition.distribution import ProbabilityDistribution
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.subroutines import underlined_string, titled_table
@@ -231,7 +232,7 @@ class InverseProblem:
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
         const: Union[int, float, np.ndarray, None] = None,
-        prior: Union[tuple, list, None] = None,
+        prior: Optional[ProbabilityDistribution] = None,
         info: str = "No explanation provided",
         tex: Optional[str] = None,
     ):
@@ -270,7 +271,7 @@ class InverseProblem:
         self,
         prm_name: str,
         const: Union[int, float, None] = None,
-        prior: Union[tuple, None] = None,
+        prior: Optional[ProbabilityDistribution] = None,
         domain: str = "(-oo, +oo)",
     ):
         """
@@ -640,9 +641,19 @@ class InverseProblem:
                 f"model within the problem scope. Please choose another name."
             )
 
-        # add the given forward model to the internal forward model dictionary under
-        # the given forward model name
-        self._forward_models[forward_model.name] = forward_model
+        # at this point, the forward model is stripped of its response method, since
+        # the problem merely contains descriptive information about the inverse problem
+        class ForwardModelHull(forward_model.__class__):  # type: ignore
+            def response(self, inp):
+                raise NotImplementedError(
+                    "You requested a response from the forward model's hull, which "
+                    "does not contain a 'response'-method! The forward model has to be "
+                    "translated first in order to be equipped with a computing method."
+                )
+
+        # add an instance of the forward model's hull (which contains its 'interface'-
+        # method but not its 'response'-method) to the problem
+        self._forward_models[forward_model.name] = ForwardModelHull(forward_model.name)
 
     # =============================================================== #
     #                   Experiments related methods                   #

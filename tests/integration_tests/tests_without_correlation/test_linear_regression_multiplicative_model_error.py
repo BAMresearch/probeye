@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -131,28 +132,28 @@ class TestProblem(unittest.TestCase):
             "model",
             tex="$a$",
             info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
+            prior=Normal(mean=mean_a, std=std_a),
         )
         problem.add_parameter(
             "b",
             "model",
             info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
         )
         problem.add_parameter(
             "sigma",
             "likelihood",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of unit-mean multiplicative model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            info="Standard deviation of unit-mean multiplicative model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
         problem.add_parameter(
             "sigma_m",
             "likelihood",
             tex=r"$\sigma_m$",
-            info="Standard deviation, of zero-mean additive measurement error",
+            info="Standard deviation of zero-mean additive measurement error",
             const=sigma_m,
         )
 

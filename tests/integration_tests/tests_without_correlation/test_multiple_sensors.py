@@ -22,6 +22,7 @@ import numpy as np
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -155,14 +156,14 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter(
             "a",
             "model",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
+            prior=Normal(mean=mean_a, std=std_a),
             info="Slope of the graph in x",
             tex="$A$",
         )
         problem.add_parameter(
             "b",
             "model",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
             info="Slope of the graph in t",
             tex="$B$",
         )
@@ -170,7 +171,7 @@ class TestProblem(unittest.TestCase):
             "sigma_1",
             "likelihood",
             domain="(0, +oo)",
-            prior=("uniform", {"low": low_s1, "high": high_s1}),
+            prior=Uniform(low=low_s1, high=high_s1),
             info="Standard deviation, of zero-mean additive model error for S1",
             tex=r"$\sigma_1$",
         )
@@ -178,23 +179,23 @@ class TestProblem(unittest.TestCase):
             "sigma_2",
             "likelihood",
             domain="(0, +oo)",
-            prior=("uniform", {"low": low_s2, "high": high_s2}),
-            info="Standard deviation, of zero-mean additive model error for S2",
+            prior=Uniform(low=low_s2, high=high_s2),
+            info="Standard deviation of zero-mean additive model error for S2",
             tex=r"$\sigma_2$",
         )
         problem.add_parameter(
             "sigma_3",
             "likelihood",
             domain="(0, +oo)",
-            prior=("uniform", {"low": low_s3, "high": high_s3}),
-            info="Standard deviation, of zero-mean additive model error S3",
+            prior=Uniform(low=low_s3, high=high_s3),
+            info="Standard deviation of zero-mean additive model error S3",
             tex=r"$\sigma_3$",
         )
         problem.add_parameter(
             "sigma_m",
             "likelihood",
             const=sigma_m,
-            info="Standard deviation, of zero-mean additive measurement error",
+            info="Standard deviation of zero-mean additive measurement error",
         )
         problem.add_parameter(
             "c",

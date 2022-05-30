@@ -25,6 +25,7 @@ from tripy.utils import correlation_matrix
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -140,14 +141,14 @@ problem.add_parameter(
     "model",
     tex="$a$",
     info="Slope of the graph",
-    prior=("normal", {"mean": 2.0, "std": 1.0}),
+    prior=Normal(mean=2.0, std=1.0),
 )
 problem.add_parameter(
     "b",
     "model",
     info="Intersection of graph with y-axis",
     tex="$b$",
-    prior=("normal", {"mean": 1.0, "std": 1.0}),
+    prior=Normal(mean=1.0, std=1.0),
 )
 problem.add_parameter(
     "std_noise",
@@ -155,7 +156,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Standard deviation, of zero-mean Gaussian noise model",
-    prior=("uniform", {"low": 0.0, "high": 0.8}),
+    prior=Uniform(low=0.0, high=0.8),
 )
 problem.add_parameter(
     "l_corr",
@@ -163,7 +164,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr}$",
     info="Correlation length of correlation model",
-    prior=("uniform", {"low": 0.0, "high": 0.2}),
+    prior=Uniform(low=0.0, high=0.2),
 )
 
 # %%
