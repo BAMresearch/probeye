@@ -140,6 +140,12 @@ def run_inference_engines(
                 knowledge_graph_file,
                 data_dir=data_dir,
             )
+        map_possible = True
+        for prior_name, prior_template in problem.priors.items():
+            if prior_template.prior_type == "uninformative":
+                map_possible = False
+        if map_possible:
+            _ = scipy_solver.run_max_a_posteriori(true_values=true_values)
 
     if run_emcee:
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)

@@ -265,11 +265,12 @@ class ScipySolver:
 
         return x0, x0_dict
 
-    def summarize_ml_results(
+    def summarize_point_estimate_results(
         self,
         minimize_results: sp.optimize.OptimizeResult,
         true_values: Optional[dict],
         x0_dict: dict,
+        estimate_type: str = "maximum likelihood estimation",
     ):
         """
         Prints a summary of the results of the maximum likelihood estimation. For an
@@ -280,7 +281,7 @@ class ScipySolver:
         # the first part of the summary contains process information
         n_char_message = len(minimize_results.message)
         msg = (
-            f"Results of maximum likelihood estimation\n"
+            f"Results of {estimate_type}\n"
             f"{'=' * n_char_message}\n"
             f"{minimize_results.message}\n"
             f"{'-' * n_char_message}\n"
@@ -329,9 +330,56 @@ class ScipySolver:
         solver_options: Optional[dict] = None,
     ) -> sp.optimize.OptimizeResult:
         """
+        Triggers a maximum likelihood estimation. For more information on the arguments
+        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
+        """
+        return self._run_ml_or_map(
+            x0_dict,
+            x0_prior,
+            x0_default,
+            true_values,
+            method,
+            solver_options,
+            use_priors=False,
+        )
+
+    def run_max_a_posteriori(
+        self,
+        x0_dict: Optional[dict] = None,
+        x0_prior: str = "mean",
+        x0_default: float = 1.0,
+        true_values: Optional[dict] = None,
+        method: str = "Nelder-Mead",
+        solver_options: Optional[dict] = None,
+    ) -> sp.optimize.OptimizeResult:
+        """
+        Triggers a maximum a-posteriori estimation. For more information on the args
+        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
+        """
+        return self._run_ml_or_map(
+            x0_dict,
+            x0_prior,
+            x0_default,
+            true_values,
+            method,
+            solver_options,
+            use_priors=True,
+        )
+
+    def _run_ml_or_map(
+        self,
+        x0_dict: Optional[dict] = None,
+        x0_prior: str = "mean",
+        x0_default: float = 1.0,
+        true_values: Optional[dict] = None,
+        method: str = "Nelder-Mead",
+        solver_options: Optional[dict] = None,
+        use_priors: bool = True,
+    ) -> sp.optimize.OptimizeResult:
+        """
         Finds values for an InverseProblem's latent parameters that maximize the
-        problem's likelihood function. The used method is scipy's minimize function from
-        the optimize submodule.
+        problem's likelihood or likelihood * prior function. The used method is scipy's
+        minimize function from the optimize submodule.
 
         Parameters
         ----------
@@ -356,6 +404,10 @@ class ScipySolver:
         solver_options
             Options passed to scipy.optimize.minimize under the 'options' keyword arg.
             See the documentation of this scipy method to see available options.
+        use_priors
+            When True, the priors are included in the objective function (MAP).
+            Otherwise, the priors are not included (ML).
+
 
         Returns
         -------
@@ -365,14 +417,23 @@ class ScipySolver:
             requested via 'minimize_results.x'.
         """
 
-        # log at beginning so that errors can be associated
-        logger.info("Solving problem via maximum likelihood estimation")
-
         # since scipy's minimize function is used, we need a function that returns the
         # negative log-likelihood function (minimizing the negative log-likelihood is
         # equivalent to maximizing the (log-)likelihood)
-        def fun(x):
-            return -self.loglike(x)
+        if use_priors:
+            estimate_type = "maximum a-posteriori estimation"
+
+            def fun(x):
+                return -(self.loglike(x) + self.logprior(x))
+
+        else:
+            estimate_type = "maximum likelihood estimation"
+
+            def fun(x):
+                return -self.loglike(x)
+
+        # log at beginning so that errors can be associated
+        logger.info(f"Solving problem via {estimate_type}")
 
         # prepare the start value either from the given x0_dict or from the mean values
         # of the latent parameter's priors
@@ -402,6 +463,8 @@ class ScipySolver:
         }
 
         # some convenient printout with respect to the solver's results
-        self.summarize_ml_results(minimize_results, true_values, x0_dict)
+        self.summarize_point_estimate_results(
+            minimize_results, true_values, x0_dict, estimate_type
+        )
 
         return minimize_results

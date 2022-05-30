@@ -74,10 +74,10 @@ class TestProblem(unittest.TestCase):
         # works
         scipy_solver.run_max_likelihood(solver_options={"maxiter": 1000})
 
-        # check the 'summarize_ml_results' methods when ML is not successful
+        # check the 'summarize_point_estimate_results' methods when ML is not successful
         no_success_results = scipy_solver.raw_results
         no_success_results.status = 1
-        scipy_solver.summarize_ml_results(
+        scipy_solver.summarize_point_estimate_results(
             no_success_results, true_values=None, x0_dict=x0_dict
         )
 

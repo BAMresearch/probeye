@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.3.2 (2022-May-30)
+### Added
+- The Scipy-solver was equipped with a maximum a-posteriori estimation method.
+
 ## 2.3.1 (2022-May-30)
 ### Removed
 - The 'knowledge_graph_import.py' script was removed. The functionality was moved to the integration test 'test_query_results.py'.
