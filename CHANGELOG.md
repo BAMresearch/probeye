@@ -1,11 +1,15 @@
 # probeye changelog
 
-## 2.4.0 (2022-May-30)
+## 2.4.0 (2022-Jun-02)
 ### Changed
 - The definition of the latent parameter's priors was revised (from tuples to objects).
 - The forward model's response method is stripped from the problem definition so that the pure definition of an inverse problem indeed does not contain any computing methods.
 ### Added
 - Distribution classes have been added to make the prior-definition more clear.
+
+## 2.3.2 (2022-May-30)
+### Added
+- The Scipy-solver was equipped with a maximum a-posteriori estimation method.
 
 ## 2.3.1 (2022-May-30)
 ### Removed
