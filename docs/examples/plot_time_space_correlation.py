@@ -318,7 +318,7 @@ for exp_name in problem.experiments.keys():
     loglike = GaussianLikelihoodModel(
         experiment_name=exp_name,
         model_error="additive",
-        correlation=ExpModel(x="l_corr_x", t="l_corr_t")
+        correlation=ExpModel(x="l_corr_x", t="l_corr_t"),
     )
     problem.add_likelihood_model(loglike)
 

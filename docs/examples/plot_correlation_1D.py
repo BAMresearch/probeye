@@ -185,7 +185,7 @@ for exp_name in data_dict:
     likelihood_model = GaussianLikelihoodModel(
         experiment_name=exp_name,
         model_error="additive",
-        correlation=ExpModel(x="l_corr")
+        correlation=ExpModel(x="l_corr"),
     )
     problem.add_likelihood_model(likelihood_model)
 
