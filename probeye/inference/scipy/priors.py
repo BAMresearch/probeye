@@ -1,5 +1,5 @@
 # standard library
-from typing import Union, List, Optional, TYPE_CHECKING
+from typing import Union, Optional, TYPE_CHECKING
 
 # third party imports
 import numpy as np
@@ -7,7 +7,7 @@ import numpy as np
 # local imports
 from probeye.definition.distribution import ProbabilityDistribution
 from probeye.definition.prior import PriorBase
-from probeye.inference.distributions import translate_probability_distribution
+from probeye.inference.scipy.distributions import translate_probability_distribution
 
 # this is required to prevent a circular import-structure
 if TYPE_CHECKING:  # pragma: no cover

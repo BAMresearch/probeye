@@ -37,7 +37,6 @@ class TestProblem(unittest.TestCase):
         problem.add_parameter("a", "model", prior=Normal(mean=0, std=1))
         problem.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         problem.add_parameter("sigma", "likelihood", prior=Uniform(low=0.1, high=1))
-        problem.add_forward_model(LinRe("LinRe"))
 
         # generate and add some simple test data
         n_tests = 5000
@@ -45,12 +44,14 @@ class TestProblem(unittest.TestCase):
         x_test = np.linspace(0.0, 1.0, n_tests)
         y_true = true["a"] * x_test + true["b"]
         y_test = np.random.normal(loc=y_true, scale=true["sigma"])
-        problem.add_experiment(
-            f"Tests", fwd_model_name="LinRe", sensor_values={"x": x_test, "y": y_test}
-        )
+        problem.add_experiment("Tests", sensor_data={"x": x_test, "y": y_test})
+
+        problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
 
         # add the likelihood model
-        problem.add_likelihood_model(GaussianLikelihoodModel("sigma", "Tests"))
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(experiment_name="Tests", model_error="additive")
+        )
 
         # run the dynesty solver with deactivated output
         logging.root.disabled = True

@@ -28,6 +28,7 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.definition.correlation_model import ExpModel
 
 # local imports (problem solving)
 from probeye.inference.scipy.solver import ScipySolver
@@ -98,9 +99,7 @@ class LinearModel(ForwardModelBase):
     def interface(self):
         self.parameters = ["a", "b"]
         self.input_sensors = Sensor("x")
-        self.output_sensors = Sensor(
-            "y", std_model="std_noise", correlated_in={"x": "l_corr"}
-        )
+        self.output_sensors = Sensor("y", std_model="std_noise")
 
     def response(self, inp: dict) -> dict:
         x = inp["x"]
@@ -171,26 +170,22 @@ problem.add_parameter(
 # As the next step, we need to add our forward model, the experimental data and the
 # likelihood model. Note that the order is important and cannot be changed.
 
-# add the forward model to the problem
-problem.add_forward_model(LinearModel("LinearModel"))
-
 # experimental data
 for exp_name, y_test_i in data_dict.items():
     problem.add_experiment(
-        exp_name,
-        fwd_model_name="LinearModel",
-        sensor_values={"x": x_test, "y": y_test_i},
+        name=exp_name,
+        sensor_data={"x": x_test, "y": y_test_i},
     )
+
+# add the forward model to the problem
+problem.add_forward_model(LinearModel("LinearModel"), experiments=[*data_dict.keys()])
 
 # likelihood model
 for exp_name in data_dict:
     likelihood_model = GaussianLikelihoodModel(
-        prms_def=["std_noise", "l_corr"],
         experiment_name=exp_name,
-        correlation_variables="x",
-        correlation_model="exp",
         model_error="additive",
-        additive_measurement_error=False,
+        correlation=ExpModel(x="l_corr")
     )
     problem.add_likelihood_model(likelihood_model)
 
@@ -216,7 +211,7 @@ max_like_data = scipy_solver.run_max_likelihood()
 # object (except for the scipy-solver). Let's now take a look at the emcee-solver.
 
 emcee_solver = EmceeSolver(problem, show_progress=False)
-inference_data = emcee_solver.run_mcmc(n_steps=2000, n_initial_steps=200)
+inference_data = emcee_solver.run_emcee(n_steps=2000, n_initial_steps=200)
 
 # %%
 # Finally, we want to plot the results we obtained. To that end, probeye provides some

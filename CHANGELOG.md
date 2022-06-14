@@ -1,11 +1,16 @@
 # probeye changelog
 
-## 2.4.0 (2022-Jun-02)
+## 3.0.0 (2022-Jun-14)
 ### Changed
 - The definition of the latent parameter's priors was revised (from tuples to objects).
 - The forward model's response method is stripped from the problem definition so that the pure definition of an inverse problem indeed does not contain any computing methods.
+- After parameters one must now define experiments and then the forward models.
+- The four main attributes of InverseProblem are not private anymore to allow for manipulations in the solver.
+- The solver routines were revised.
 ### Added
 - Distribution classes have been added to make the prior-definition more clear.
+- A new experiment class was added.
+- A new correlation_model class was added.
 
 ## 2.3.2 (2022-May-30)
 ### Added

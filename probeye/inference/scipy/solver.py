@@ -9,9 +9,11 @@ from scipy.optimize import minimize
 from loguru import logger
 
 # local imports
-from probeye.inference.priors import translate_prior
-from probeye.inference.likelihood_models import translate_likelihood_model
+from probeye.inference.solver import Solver
+from probeye.inference.scipy.priors import translate_prior
+from probeye.inference.scipy.likelihood_models import translate_likelihood_model
 from probeye.subroutines import print_dict_in_rows, vectorize_numpy_dict
+from probeye.subroutines import synchronize_objects
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -19,61 +21,28 @@ if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.forward_model import ForwardModelBase
 
 
-class ScipySolver:
+class ScipySolver(Solver):
     """
-    Solver routines based on scipy and numpy for an InverseProblem.
-
-    Parameters
-    ----------
-    problem
-        Describes the inverse problem including e.g. parameters and data.
-    seed
-        Random state used for random number generation.
-    show_progress
-        When True, the progress of a solver routine will be shown (for example as a
-        progress-bar) if such a feature is available. Otherwise, the progress will
-        not shown.
+    Solver based on scipy and numpy for an InverseProblem. The ScipySolver is able to
+    perform maximum likelihood and maximum a-posteriori estimations. For information on
+    the arguments see :class:`~probeye.inference.solver.Solver`.
     """
 
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
+        logger.debug(f"Initializing {self.__class__.__name__}")
+        super().__init__(problem, seed=seed, show_progress=show_progress)
 
-        # log at beginning so that errors can be associated
-        logger.debug("Initializing ScipySolver")
-
-        # attributes from arguments
-        self.problem = cp.deepcopy(problem)
-        self.show_progress = show_progress
-        self.seed = seed
-
-        # the following attributes will be set after the solver was run
-        self.raw_results = None
-        self.summary = {}  # type: dict
-
-        # here, the forward model hull is completed with its 'response'-method;
-        # additionally, the inputs and outputs based on experimental data for all of
-        # the problem's forward models are prepared
-        logger.debug("Translate the problem's forward models")
-        for fwd_name in self.problem.forward_models:
-            forward_model_hull = self.problem.forward_models[fwd_name]
-            forward_model = forward_model_hull.__class__.__bases__[0](fwd_name)
-            for attr in [
-                "experiment_names",
-                "input_sensor",
-                "input_sensors",
-                "output_sensor",
-                "output_sensors",
-            ]:
-                setattr(forward_model, attr, getattr(forward_model_hull, attr))
-            forward_model.prepare_experimental_inputs_and_outputs()
-            self.problem.forward_models[fwd_name] = forward_model
-
+    def _translate_parameters(self):
+        """
+        Translate the inverse problem's parameters as needed for this solver.
+        """
         # translate the prior definitions to objects with computing capabilities
-        logger.debug("Translate the problem's priors")
+        logger.debug("Translate the problem's parameters")
         for prior_template in self.problem.priors.values():
             prm_name = prior_template.ref_prm
-            self.problem._parameters[prm_name] = self.problem.parameters[
+            self.problem.parameters[prm_name] = self.problem.parameters[
                 prm_name
             ].changed_copy(
                 prior=translate_prior(
@@ -81,16 +50,69 @@ class ScipySolver:
                 )
             )
 
-        # translate the general likelihood model objects into solver specific ones
+    def _translate_experiments(self):
+        """
+        Translate the inverse problem's experiments as needed for this solver.
+        """
+        # each tuple in the sensor_data must be converted to a numpy.ndarray
+        logger.debug("Translate the problem's experiments")
+        for exp_name in self.problem.experiments:
+            for sensor_name in self.problem.experiments[exp_name].sensor_data:
+                v = self.problem.experiments[exp_name].sensor_data[sensor_name]
+                if isinstance(v, tuple):
+                    a = np.array(v)
+                    self.problem.experiments[exp_name].sensor_data[sensor_name] = a
+
+    def _translate_forward_models(self):
+        """
+        Translate the inverse problem's forward models as needed for this solver.
+        """
+        logger.debug("Translate the problem's forward models")
+        for fwd_name in self.problem.forward_models:
+
+            # create a full forward model from its hull where the sensors are not yet
+            # connected to the experimental data
+            forward_model_hull = self.problem.forward_models[fwd_name]
+            forward_model = forward_model_hull.__class__.__bases__[0](fwd_name)
+            synchronize_objects(
+                forward_model,
+                forward_model_hull,
+                exclude_startswith=("__", "_", "experiment_names"),
+            )
+
+            # add the experiments to the created forward model object by connecting
+            # them with the respective sensors
+            for exp_name in forward_model_hull.experiment_names:
+                sensor_data = self.problem.experiments[exp_name].sensor_data
+                forward_model.connect_experimental_data_to_sensors(
+                    exp_name, sensor_data
+                )
+
+            # this is a default preparation for increased efficiency
+            forward_model.prepare_experimental_inputs_and_outputs()
+
+            # finally, add the forward model to the problem
+            self.problem.forward_models[fwd_name] = forward_model
+
+    def _translate_likelihood_models(self):
+        """
+        Translate the inverse problem's likelihood models as needed for this solver.
+        """
+
         logger.debug("Translate the problem's likelihood models")
         for like_name in self.problem.likelihood_models:
+
+            # the likelihood model's forward model is still referencing the old (i.e.,
+            # not-translated) forward model and needs to be reset to the updated one
+            fwd_name = self.problem.likelihood_models[like_name].forward_model.name
+            fwd_model = self.problem.forward_models[fwd_name]
+            self.problem.likelihood_models[like_name].forward_model = fwd_model
+            self.problem.likelihood_models[like_name].determine_output_lengths()
+
+            # translate the likelihood model
             self.problem.likelihood_models[like_name] = translate_likelihood_model(
                 self.problem.likelihood_models[like_name]
             )
-            fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            self.problem.likelihood_models[
-                like_name
-            ].forward_model = self.problem.forward_models[fwd_name]
 
     def evaluate_model_response(
         self, theta: np.ndarray, forward_model: "ForwardModelBase", experiment_name: str

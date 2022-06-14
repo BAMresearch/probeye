@@ -36,24 +36,25 @@ class TestProblem(unittest.TestCase):
             prior=Uniform(low=0.1, high=0.8),
         )
 
-        # add forward model and likelihood model
-        linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
-
         # add experimental data
         np.random.seed(1)
         x_test = np.linspace(0.0, 1.0, 10)
-        y_true = linear_model({"x": x_test, "m": 2.5, "b": 1.7})["y"]
+        y_true = 2.5 * x_test + 1.7
         y_test = np.random.normal(loc=y_true, scale=0.5)
         problem.add_experiment(
-            f"TestSeries_1",
-            fwd_model_name="LinearModel",
-            sensor_values={"x": x_test, "y": y_test},
+            name="TestSeries_1",
+            sensor_data={"x": x_test, "y": y_test},
         )
+
+        # add forward model and likelihood model
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model, experiments="TestSeries_1")
 
         # add the likelihood model
         problem.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def="sigma", experiment_name="TestSeries_1")
+            GaussianLikelihoodModel(
+                experiment_name="TestSeries_1", model_error="additive"
+            )
         )
 
         # test the get_start_values method for given x0_dict
@@ -92,6 +93,11 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("a2", "model", prior=Normal(mean=0, std=1), domain="[0, 1]")
         p.add_parameter("sigma", "likelihood", const=1.0)
 
+        # add experiment_names
+        p.add_experiment("Exp1", sensor_data={"x": 1, "y": 2})
+        p.add_experiment("Exp2", sensor_data={"x": 2, "y": 3})
+        p.add_experiment("Exp3", sensor_data={"x": [1, 2], "y": [1, 2]})
+
         class FwdModel(ForwardModelBase):
             def interface(self):
                 self.parameters = ["a0", "a1", "a2"]
@@ -107,22 +113,11 @@ class TestProblem(unittest.TestCase):
 
         # add forward and likelihood model
         fwd_model = FwdModel("FwdModel")
-        p.add_forward_model(fwd_model)
-
-        # add experiment_names
-        p.add_experiment(
-            "Exp1", sensor_values={"x": 1, "y": 2}, fwd_model_name="FwdModel"
-        )
-        p.add_experiment(
-            "Exp2", sensor_values={"x": 2, "y": 3}, fwd_model_name="FwdModel"
-        )
-        p.add_experiment(
-            "Exp3", sensor_values={"x": [1, 2], "y": [1, 2]}, fwd_model_name="FwdModel"
-        )
+        p.add_forward_model(fwd_model, experiments=["Exp1", "Exp2", "Exp3"])
 
         # add the likelihood model
         p.add_likelihood_model(
-            GaussianLikelihoodModel(prms_def="sigma", experiment_name="Exp1")
+            GaussianLikelihoodModel(experiment_name="Exp1", model_error="additive")
         )
 
         # initialize the solver object

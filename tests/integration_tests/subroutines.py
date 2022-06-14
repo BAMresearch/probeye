@@ -149,7 +149,7 @@ def run_inference_engines(
 
     if run_emcee:
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)
-        inference_data_emcee = emcee_solver.run_mcmc(
+        inference_data_emcee = emcee_solver.run_emcee(
             n_walkers=n_walkers,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,

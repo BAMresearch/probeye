@@ -256,7 +256,7 @@ def export_knowledge_graph(
     #               Add the problem's EXPERIMENTS to the knowledge graph               #
     # -------------------------------------------------------------------------------- #
 
-    for exp_name, exp_dict in problem.experiments.items():
+    for exp_name, exp_obj in problem.experiments.items():
 
         # this is where the experiment instance is added to the graph
         experiment = peo.single_experiment_data_set(exp_name)
@@ -266,31 +266,32 @@ def export_knowledge_graph(
         add(
             experiment,
             "is_deterministically_modeled_by",
-            peo.forward_model(exp_dict["forward_model"]),
+            peo.forward_model(exp_obj.forward_model),
         )
-        fwd_namespace = peo.get_namespace(exp_dict["forward_model"])
+        fwd_namespace = peo.get_namespace(exp_obj.forward_model)
         sensors = []
-        for isensor in problem.forward_models[exp_dict["forward_model"]].input_sensors:
+        for isensor in problem.forward_models[exp_obj.forward_model].input_sensors:
             input_sensor = peo.input_sensor(isensor.name, namespace=fwd_namespace)
             sensors.append(input_sensor)
-        for osensor in problem.forward_models[exp_dict["forward_model"]].output_sensors:
+        for osensor in problem.forward_models[exp_obj.forward_model].output_sensors:
             output_sensor = peo.input_sensor(osensor.name, namespace=fwd_namespace)
             sensors.append(output_sensor)
         add(experiment, "has_sensor", sensors)
 
         # associate the sensor values with the experiment
         measurements = []
-        for sensor_name, sensor_data in exp_dict["sensor_values"].items():
+        for sensor_name, sensor_values in exp_obj.sensor_data.items():
             constant = peo.constant(sensor_name, namespace=namespace)
-            if len_or_one(sensor_data) == 1:
-                add(constant, "has_scalar_value", sensor_data)
+            if len_or_one(sensor_values) == 1:
+                add(constant, "has_scalar_value", sensor_values)
             else:
+                sv_numpy = np.array(sensor_values)
                 filename = os.path.join(data_dir, f"{sensor_name}_{exp_name}.dat")
                 filename = os.path.abspath(filename)
-                np.savetxt(filename, sensor_data)
+                np.savetxt(filename, sv_numpy)
                 add(constant, "has_file", filename)
-                add(constant, "has_dimension", sensor_data.size)
-                nr, nc = get_shape_2d(sensor_data)
+                add(constant, "has_dimension", sv_numpy.size)
+                nr, nc = get_shape_2d(sv_numpy)
                 add(constant, "has_number_of_rows", nc)
                 add(constant, "has_number_of_columns", nr)
             measurements.append(constant)
@@ -505,7 +506,7 @@ def export_knowledge_graph(
         #           Measurement error           #
         # ------------------------------------- #
 
-        if like_obj.additive_measurement_error:
+        if like_obj.measurement_error is not None:
 
             # add the zero-mean normal random variable
             nrv = peo.normal_random_variable("measurement_error", namespace=namespace)

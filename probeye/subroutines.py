@@ -1,5 +1,6 @@
 # standard library imports
-from copy import copy
+import types
+from copy import copy, deepcopy
 from typing import Union, List, Tuple, Any, Optional, Generator, Callable
 from typing import TYPE_CHECKING
 import os
@@ -1218,6 +1219,45 @@ def safe_string(string: str, n_max: int = 255) -> str:
         safe = safe[:n_max]
 
     return safe
+
+
+def synchronize_objects(
+    new_obj: object, ref_obj: object, exclude_startswith: tuple = ("_", "__")
+):
+    """
+    Copies all attributes from a reference object (ref_obj) to a given object (new_obj)
+    if those attributes exist in both objects. For example, if new_obj.a = None and
+    ref_obj.a = 3 then this function will result in new_obj.a = 3. Excluded from this
+    synchronization are properties and functions.
+
+    Parameters
+    ----------
+    new_obj
+        The new object that should get the attribute-values of ref_obj.
+    ref_obj
+        The reference object that should 'give' its attributes to new_obj.
+    exclude_startswith
+        All attributes that start with one of the strings given in this tuple will not
+        be copied.
+    """
+    for attribute in dir(ref_obj):
+        attr_is_valid = True
+        for s in exclude_startswith:
+            if attribute.startswith(s):
+                attr_is_valid = False
+                break
+        # make sure that the attribute is not a property
+        if isinstance(getattr(type(ref_obj), attribute, None), property):
+            attr_is_valid = False
+        # make sure that the attribute is not a function
+        if isinstance(getattr(type(ref_obj), attribute, None), types.FunctionType):
+            attr_is_valid = False
+        if attr_is_valid:
+            if hasattr(new_obj, attribute):
+                try:
+                    setattr(new_obj, attribute, deepcopy(getattr(ref_obj, attribute)))
+                except AttributeError:
+                    raise AttributeError(f"can't set attribute '{attribute}'")
 
 
 class HiddenPrints:

@@ -29,6 +29,7 @@ from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.definition.correlation_model import ExpModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
 
@@ -144,73 +145,6 @@ class TestProblem(unittest.TestCase):
         seed = 1
 
         # ============================================================================ #
-        #                           Define the Forward Model                           #
-        # ============================================================================ #
-
-        class BeamModel(ForwardModelBase):
-            def interface(self):
-                self.parameters = ["L", "EI"]
-                self.input_sensors = [Sensor("v"), Sensor("t"), Sensor("F")]
-                self.output_sensors = [
-                    Sensor(
-                        name="y1",
-                        x=x_sensor_1,
-                        y=y_sensor_1,
-                        std_model="sigma",
-                        correlated_in={"t": "l_corr_t", ("x", "y"): "l_corr_x"},
-                    ),
-                    Sensor(
-                        name="y2",
-                        x=x_sensor_2,
-                        y=y_sensor_2,
-                        std_model="sigma",
-                        correlated_in={"t": "l_corr_t", ("x", "y"): "l_corr_x"},
-                    ),
-                ]
-
-            @staticmethod
-            def beam_deflect(x_sensor, x_load, L_in, F_in, EI_in):
-                """Convenience method used by self.response during a for-loop."""
-                y = np.zeros(len_or_one(x_load))
-                for ii, x_load_i in enumerate(x_load):
-                    if x_sensor <= x_load_i:
-                        b = L - x_load_i
-                        x = x_sensor
-                    else:
-                        b = x_load_i
-                        x = L_in - x_sensor
-                    y[ii] = (
-                        -(F_in * b * x)
-                        / (6 * L * EI_in)
-                        * (L_in**2 - b**2 - x**2)
-                    )
-                return y
-
-            def response(self, inp: dict) -> dict:
-                v_in = inp["v"]
-                t_in = inp["t"]
-                L_in = inp["L"]
-                F_in = inp["F"]
-                EI_in = inp["EI"] * 1e11  # de-normalization
-                response = {}
-                x_load = v_in * t_in
-                for osensor in self.output_sensors:
-                    response[osensor.name] = self.beam_deflect(
-                        osensor.x, x_load, L_in, F_in, EI_in
-                    )
-                return response
-
-        # ============================================================================ #
-        #                             Additional functions                             #
-        # ============================================================================ #
-
-        def correlation_func_space(d):
-            return correlation_function(d, correlation_length=l_corr_x)
-
-        def correlation_func_time(d):
-            return correlation_function(d, correlation_length=l_corr_t)
-
-        # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
@@ -257,16 +191,23 @@ class TestProblem(unittest.TestCase):
             prior=Uniform(low=low_l_corr_t, high=high_l_corr_t),
         )
 
-        # add the forward model to the problem
-        beam_model = BeamModel("BeamModel")
-        problem.add_forward_model(beam_model)
-
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
         # ============================================================================ #
 
+        def correlation_func_space(d):
+            return correlation_function(d, correlation_length=l_corr_x)
+
+        def correlation_func_time(d):
+            return correlation_function(d, correlation_length=l_corr_t)
+
         # for reproducible results
         np.random.seed(seed)
+
+        # the forward model is initialized here just because it is needed to create the
+        # artificial experimental data; in a real application case this would not be
+        # necessary and it should be initialized after the experiments have been added
+        beam_model = BeamModel("BeamModel")
 
         # add an experiment to the problem for for each item in experiments_def
         for exp_name, exp_dict in experiments_def.items():
@@ -312,14 +253,13 @@ class TestProblem(unittest.TestCase):
 
             # finally, add the experiment to the problem
             problem.add_experiment(
-                exp_name,
-                fwd_model_name="BeamModel",
-                sensor_values={
-                    beam_model.input_sensors[0].name: v,
-                    beam_model.input_sensors[1].name: t,
-                    beam_model.input_sensors[2].name: F,
-                    beam_model.output_sensors[0].name: y1,
-                    beam_model.output_sensors[1].name: y2,
+                name=exp_name,
+                sensor_data={
+                    "v": v,
+                    "t": t,
+                    "F": F,
+                    "y1": y1,
+                    "y2": y2,
                 },
             )
 
@@ -343,17 +283,22 @@ class TestProblem(unittest.TestCase):
             plt.show()
 
         # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
+
+        # add the forward model to the problem
+        problem.add_forward_model(beam_model, experiments=[*experiments_def.keys()])
+
+        # ============================================================================ #
         #                           Add likelihood model(s)                            #
         # ============================================================================ #
 
         # each likelihood model is assigned exactly one experiment
         for exp_name in problem.experiments.keys():
             loglike = GaussianLikelihoodModel(
-                ["sigma", "l_corr_x", "l_corr_t"],
                 experiment_name=exp_name,
                 model_error="multiplicative",
-                correlation_variables=["t", ("x", "y")],
-                correlation_model="exp",
+                correlation=ExpModel(x__y="l_corr_x", t="l_corr_t"),
             )
             problem.add_likelihood_model(loglike)
 
@@ -397,6 +342,44 @@ class TestProblem(unittest.TestCase):
             run_emcee=run_emcee,
             run_dynesty=run_dynesty,
         )
+
+
+class BeamModel(ForwardModelBase):
+    def interface(self):
+        self.parameters = ["L", "EI"]
+        self.input_sensors = [Sensor("v"), Sensor("t"), Sensor("F")]
+        self.output_sensors = [
+            Sensor(name="y1", x=30.0, y=-2.0, std_model="sigma"),
+            Sensor(name="y2", x=35.0, y=+2.0, std_model="sigma"),
+        ]
+
+    @staticmethod
+    def beam_deflect(x_sensor, x_load, L_in, F_in, EI_in):
+        """Convenience method used by self.response during a for-loop."""
+        y = np.zeros(len_or_one(x_load))
+        for ii, x_load_i in enumerate(x_load):
+            if x_sensor <= x_load_i:
+                b = L_in - x_load_i
+                x = x_sensor
+            else:
+                b = x_load_i
+                x = L_in - x_sensor
+            y[ii] = -(F_in * b * x) / (6 * L_in * EI_in) * (L_in**2 - b**2 - x**2)
+        return y
+
+    def response(self, inp: dict) -> dict:
+        v_in = inp["v"]
+        t_in = inp["t"]
+        L_in = inp["L"]
+        F_in = inp["F"]
+        EI_in = inp["EI"] * 1e11  # de-normalization
+        response = {}
+        x_load = v_in * t_in
+        for osensor in self.output_sensors:
+            response[osensor.name] = self.beam_deflect(
+                osensor.x, x_load, L_in, F_in, EI_in
+            )
+        return response
 
 
 if __name__ == "__main__":

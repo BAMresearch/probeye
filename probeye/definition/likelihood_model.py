@@ -1,9 +1,10 @@
 # standard library
-from typing import Union, List, Optional
+from typing import Optional
 
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.subroutines import translate_prms_def, make_list
+from probeye.definition.correlation_model import CorrelationModel
+from probeye.subroutines import len_or_one
 
 
 class GaussianLikelihoodModel:
@@ -15,46 +16,29 @@ class GaussianLikelihoodModel:
 
     Parameters
     ----------
-    prms_def
-        Global parameter names defining which parameters are used by the likelihood
-        model. For example prms_def = ['sigma', 'l_corr'] or prms_def='sigma_1'.
     experiment_name
         The name of the experiment the likelihood model refers to. Note that each
         likelihood model refers to exactly one experiment.
     model_error
         Either 'additive' or 'multiplicative'. This argument defines whether an additive
         or a multiplicative model prediction error should be assumed.
-    additive_measurement_error
+    measurement_error
         If True, next to the model error, a normal, zero-mean i.i.d. measurement error
         is assumed to be present.
-    correlation_variables
-        Defines the correlation variables, i.e. variables, the forward model prediction
-        error is assumed to be correlated with.
-    correlation_model
-        Defines the correlation function to be used in case correlation is considered
-        (which is the case, when correlation_variables is a non-empty string).
-        Currently, there is only one option 'exp' which represents an exponential model.
-        In the future, more options should be added.
-    name
-        Unique name of the likelihood model. This name is None, if the user does not
-        specify it when adding the likelihood model to the problem. It is then named
-        automatically before starting the inference engine.
     """
 
     def __init__(
         self,
-        prms_def: Union[str, List[str], dict],
         experiment_name: str,
-        model_error: str = "additive",
-        additive_measurement_error: bool = False,
-        correlation_variables: Optional[Union[str, list]] = None,
-        correlation_model: str = "exp",
-        name: str = "",
+        model_error: str,
+        measurement_error: Optional[str] = None,
+        correlation: Optional[CorrelationModel] = None,
     ):
 
-        # general attributes
-        self.name = name
-        self.prms_def, self.prms_dim = translate_prms_def(prms_def)
+        self.prms_def = {}  # type: dict
+        self.prms_dim = 0
+
+        # a likelihood model refers to exactly one experiment
         self.experiment_name = experiment_name
 
         # the likelihood model's forward model will be derived and set by the method
@@ -70,47 +54,101 @@ class GaussianLikelihoodModel:
             self.multiplicative_model_error = True
         else:
             raise ValueError(
-                f"Found invalid value for model_error '{model_error}' in likelihood "
-                f"model '{self.name}'. Valid options are: 'additive', 'multiplicative'"
+                f"Found an invalid value for argument 'model_error' ('{model_error}') "
+                f"in the likelihood model for experiment '{self.experiment_name}'. "
+                f"Valid options are: 'additive', 'multiplicative'"
             )
-        self.additive_measurement_error = additive_measurement_error
+        self.measurement_error = measurement_error
 
         # correlation-related attributes from the given input
-        self.correlation_variables = []
-        if correlation_variables is not None:
-            self.correlation_variables = make_list(correlation_variables)
-        self.correlation_model = correlation_model
-        self.valid_correlation_models = ("exp",)
-
-        # the following attributes are set in self.process_correlation_definition
-        self.considers_correlation = False
-        self.n_correlation_variables = 0
-        self.has_S23D_correlation_variable = False
-
-    def process_correlation_definition(self):
-        """
-        Processes and checks the correlation information for the likelihood model, which
-        is given by the attributes of the likelihood model itself and by the information
-        given in the sensors of the likelihood model's forward model.
-        """
-
-        # check if a valid correlation model was specified
-        if self.correlation_model not in self.valid_correlation_models:
-            raise ValueError(
-                f"Found invalid correlation model '{self.correlation_model}' in the "
-                f"correlation definition. Currently, valid correlation models "
-                f"are: {self.valid_correlation_models}."
-            )
+        self.correlation_model = correlation
 
         # note that a correlation variable can have multiple dimensions; for example,
         # a likelihood model with the spatial correlation variables 'x' and 'y' has one
         # and not two correlation variables
-        self.considers_correlation = True if self.correlation_variables else False
-        self.n_correlation_variables = len(self.correlation_variables)
+        self.considers_correlation = True if (correlation is not None) else False
+        self.n_correlation_variables = 0
+        if correlation is not None:
+            self.n_correlation_variables = len(correlation.correlation_variables)
 
         # check if there is a multidimensional correlation variable; currently, such
         # correlation variables are understood as spatial coordinates
-        for corr_var in self.correlation_variables:
-            if type(corr_var) in [list, tuple]:
-                if len(corr_var) > 1:
-                    self.has_S23D_correlation_variable = True
+        self.has_S23D_correlation_variable = False
+        if correlation is not None:
+            for corr_var in correlation.correlation_variables:
+                if type(corr_var) in [list, tuple]:
+                    if len(corr_var) > 1:
+                        self.has_S23D_correlation_variable = True
+
+        # this attribute will be set when calling self._determine_output_lengths, which
+        # is possible as soon as the forward model was assigned to the likelihood model
+        self.output_lengths = {}  # type: dict
+
+    @property
+    def correlation_variables(self) -> list:
+        """Shortens the access of the correlation model's correlation variables."""
+        if self.correlation_model is not None:
+            return self.correlation_model.correlation_variables
+        else:
+            return []
+
+    def determine_output_lengths(self):
+        """
+        Sets the self.output_lengths dictionary. This dict contains information on the
+        length of the returned values of the likelihood model's forward model in the
+        likelihood model's experiment. A simple example for an uncorrelated case could
+        look like this (note that the ':'-character is the key for the full response):
+        {':': {'total': 202, 'increments': [101, 101], 'names': ['y1', 'y2']}}
+        This is interpreted as follows: for the likelihood's experiment, the forward
+        model's output dictionary will eventually be translated into a vector holding
+        202 values, where the first 101 belong to output sensor 'y1' and the following
+        101 values belong to output sensor. In a correlated case, the created dict will
+        additionally contain the lengths of the correlation variables, e.g.:
+        {':': {'total': 12, 'increments': [6, 6], 'names': ['y1', 'y2']},
+         't': {'total': 2,  'increments': [1, 1], 'names': ['y1', 'y2']},
+         'x': {'total': 12, 'increments': [6, 6], 'names': ['y1', 'y2']}}
+        The 't' and 'x' entries are interpreted as the 't'-correlation vector having
+        length 2 and the 'x'-correlation vector having length 12, while the remaining
+        information is interpreted analogously as described before.
+        """
+
+        # add the information for the full model response; the key of this full response
+        # is ':' which was chosen because it is an unlikely name for a correlation var.
+        output_lengths = {
+            ":": {
+                "total": 0,
+                "increments": [],
+                "names": [],
+            }
+        }
+        for output_sensor in self.forward_model.output_sensors:
+            n_i = len_or_one(output_sensor[self.experiment_name])
+            output_lengths[":"]["increments"].append(n_i)
+            output_lengths[":"]["names"].append(output_sensor.name)
+        output_lengths[":"]["total"] = sum(output_lengths[":"]["increments"])
+
+        # add the information for the correlation vectors
+        if self.considers_correlation:
+            for corr_var_ in self.correlation_variables:
+                corr_var_tuple = corr_var_
+                if isinstance(corr_var_, str):
+                    corr_var_tuple = (corr_var_,)
+                for corr_var in corr_var_tuple:
+                    output_lengths[corr_var] = {
+                        "total": 0,
+                        "increments": [],
+                        "names": [],
+                    }
+                    for os in self.forward_model.output_sensors:
+                        if hasattr(os, corr_var) and getattr(os, corr_var) is not None:
+                            n_i = len_or_one(getattr(os, corr_var))
+                        else:
+                            n_i = len_or_one(os[self.experiment_name])
+                        output_lengths[corr_var]["increments"].append(n_i)
+                        output_lengths[corr_var]["names"].append(os.name)
+                    output_lengths[corr_var]["total"] = sum(
+                        output_lengths[corr_var]["increments"]
+                    )
+
+        # write the information to its attribute
+        self.output_lengths = output_lengths

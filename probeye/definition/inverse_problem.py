@@ -1,6 +1,5 @@
 # standard library
 from typing import Union, List, Optional, Tuple
-import copy as cp
 
 # third party imports
 from tabulate import tabulate
@@ -9,6 +8,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.parameter import Parameters
+from probeye.definition.experiment import Experiment
 from probeye.definition.distribution import ProbabilityDistribution
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
@@ -18,8 +18,8 @@ from probeye.subroutines import make_list, len_or_one
 from probeye.subroutines import print_probeye_header
 from probeye.subroutines import logging_setup
 from probeye.subroutines import add_index_to_tex_prm_name
-from probeye.subroutines import translate_simple_correlation
 from probeye.subroutines import safe_string
+from probeye.subroutines import translate_prms_def
 
 
 class InverseProblem:
@@ -87,23 +87,20 @@ class InverseProblem:
         # .info   string (a short explanation of the parameter)
         # .tex:   string or None (the TeX version of the parameter's name, for example
         #         r'$\alpha$' for a parameter named 'alpha'; only used for plotting)
-        # this attribute is managed internally and should not be modified directly
-        self._parameters = Parameters()
+        self.parameters = Parameters()
 
-        # this dictionary is intended for storing the problem's experimentally measured
-        # data; this dict is managed internally and should not be modified directly
-        self._experiments = {}  # type: dict
+        # this dict is intended for storing the problem's experimentally measured data
+        self.experiments = {}  # type: dict
 
         # the following dict contains the problem's forward models; note that a single
         # problem can have multiple forward models; the keys in this dict are the
         # forward model names, while the values are the forward model objects (check out
-        # the script forward_model.py); this dictionary is managed internally and should
-        # not be modified directly
-        self._forward_models = {}  # type: dict
+        # the script forward_model.py)
+        self.forward_models = {}  # type: dict
 
         # this dictionary contains the problem's likelihood models; as the other private
         # attributes above, it is managed internally and should not be modified directly
-        self._likelihood_models = {}  # type: dict
+        self.likelihood_models = {}  # type: dict
 
         # setup the logger with the given specifications
         if use_default_logger:
@@ -118,82 +115,77 @@ class InverseProblem:
     @property
     def n_prms(self) -> int:
         """Provides n_prms attribute."""
-        return self._parameters.n_prms
+        return self.parameters.n_prms
 
     @property
     def prms(self) -> List[str]:
         """Provides prms attribute."""
-        return self._parameters.prms
+        return self.parameters.prms
 
     @property
     def n_latent_prms(self) -> int:
         """Provides n_latent_prms attribute."""
-        return self._parameters.n_latent_prms
+        return self.parameters.n_latent_prms
 
     @property
     def n_latent_prms_dim(self) -> int:
         """Provides n_latent_prms_dim attribute."""
-        return self._parameters.n_latent_prms_dim
+        return self.parameters.n_latent_prms_dim
 
     @property
     def latent_prms(self) -> List[str]:
         """Provides latent_prms attribute."""
-        return self._parameters.latent_prms
+        return self.parameters.latent_prms
 
     @property
     def latent_prms_dims(self) -> List[int]:
         """Provides latent_prms_dims attribute."""
-        return self._parameters.latent_prms_dims
+        return self.parameters.latent_prms_dims
 
     @property
     def n_constant_prms(self) -> int:
         """Provides n_constant_prms attribute."""
-        return self._parameters.n_constant_prms
+        return self.parameters.n_constant_prms
 
     @property
     def constant_prms(self) -> List[str]:
         """Provides constant_prms attribute."""
-        return self._parameters.constant_prms
+        return self.parameters.constant_prms
 
     @property
     def constant_prms_dict(self) -> dict:
         """Provides constant_prms_dict attribute."""
-        return self._parameters.constant_prms_dict
+        return self.parameters.constant_prms_dict
 
     @property
     def n_model_prms(self) -> int:
         """Provides n_model_prms attribute."""
-        return self._parameters.n_model_prms
+        return self.parameters.n_model_prms
 
     @property
     def model_prms(self) -> List[str]:
         """Provides model_prms attribute."""
-        return self._parameters.model_prms
+        return self.parameters.model_prms
 
     @property
     def n_prior_prms(self) -> int:
         """Provides n_prior_prms attribute."""
-        return self._parameters.n_prior_prms
+        return self.parameters.n_prior_prms
 
     @property
     def prior_prms(self) -> List[str]:
         """Provides prior_prms attribute."""
-        return self._parameters.prior_prms
+        return self.parameters.prior_prms
 
     @property
     def n_likelihood_prms(self) -> int:
         """Provides n_likelihood_prms attribute."""
-        return self._parameters.n_likelihood_prms
+        return self.parameters.n_likelihood_prms
 
     @property
     def likelihood_prms(self) -> List[str]:
         """Provides likelihood_prms attribute."""
-        return self._parameters.likelihood_prms
-
-    @property
-    def parameters(self) -> Parameters:
-        """Access self._parameters from outside via self.parameters."""
-        return self._parameters
+        return self.parameters.likelihood_prms
 
     @property
     def priors(self) -> dict:
@@ -206,28 +198,13 @@ class InverseProblem:
             if parameter_properties.is_latent
         }
 
-    @property
-    def likelihood_models(self) -> dict:
-        """Access self._likelihood_models from outside via self.likelihood_models."""
-        return self._likelihood_models
-
-    @property
-    def forward_models(self) -> dict:
-        """Access self._forward_models from outside via self.forward_models."""
-        return self._forward_models
-
-    @property
-    def experiments(self) -> dict:
-        """Access self._experiments from outside via self.experiments."""
-        return self._experiments
-
     # =============================================================== #
     #                    Parameter related methods                    #
     # =============================================================== #
 
     def add_parameter(
         self,
-        prm_name: str,
+        name: str,
         prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
@@ -243,8 +220,8 @@ class InverseProblem:
 
         # add the parameter to the central parameter dictionary; checks and translations
         # are conducted by the Parameters.add_parameter method
-        self._parameters.add_parameter(
-            prm_name,
+        self.parameters.add_parameter(
+            name,
             prm_type,
             dim=dim,
             domain=domain,
@@ -265,7 +242,7 @@ class InverseProblem:
         """
 
         # checks/additional actions are conducted by Parameters' __delitem__ method
-        del self._parameters[prm_name]
+        del self.parameters[prm_name]
 
     def change_parameter_role(
         self,
@@ -296,7 +273,7 @@ class InverseProblem:
             is only considered for latent parameter, but not for a constant.
         """
         # first, make sure that the given parameter exists
-        self._parameters.confirm_that_parameter_exists(prm_name)
+        self.parameters.confirm_that_parameter_exists(prm_name)
 
         # exactly one of the const and prior key word arguments must be given
         if const is not None and prior is not None:
@@ -310,11 +287,11 @@ class InverseProblem:
                 f"have specified none."
             )
         # raise an error if the role change would not change the role
-        if self._parameters[prm_name].is_const and (prior is None):
+        if self.parameters[prm_name].is_const and (prior is None):
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as constant."
             )
-        if self._parameters[prm_name].is_latent and (const is None):
+        if self.parameters[prm_name].is_latent and (const is None):
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as a "
                 f"latent parameter."
@@ -322,7 +299,7 @@ class InverseProblem:
         # the parameter's role is changed by first removing it from the problem, and
         # then adding it again in its new role; the role-change does not impact the type
         # ('model', 'prior' or 'likelihood')
-        prm = self._parameters[prm_name]
+        prm = self.parameters[prm_name]
         if prm.is_const:
             # if a constant parameter should be made latent, its dimension will be taken
             # from its current value
@@ -357,7 +334,7 @@ class InverseProblem:
             The new type, either 'model', 'prior' or 'likelihood'.
         """
         # first, make sure that the given parameter exists
-        self._parameters.confirm_that_parameter_exists(prm_name)
+        self.parameters.confirm_that_parameter_exists(prm_name)
 
         # make sure, the requested type is valid
         if new_type not in ["model", "prior", "likelihood"]:
@@ -367,7 +344,7 @@ class InverseProblem:
             )
 
         # change the type as requested
-        self._parameters[prm_name] = self._parameters[prm_name].changed_copy(
+        self.parameters[prm_name] = self.parameters[prm_name].changed_copy(
             type=new_type
         )
 
@@ -395,16 +372,16 @@ class InverseProblem:
             The new string for the parameter's tex-representation.
         """
         # first, make sure that the given parameter exists
-        self._parameters.confirm_that_parameter_exists(prm_name)
+        self.parameters.confirm_that_parameter_exists(prm_name)
 
         # if None is given for the new info/tex, the old value will be kept
         if new_info is None:
-            new_info = self._parameters[prm_name].info
+            new_info = self.parameters[prm_name].info
         if new_tex is None:
-            new_tex = self._parameters[prm_name].tex
+            new_tex = self.parameters[prm_name].tex
 
         # change the info/tex-string
-        self._parameters[prm_name] = self._parameters[prm_name].changed_copy(
+        self.parameters[prm_name] = self.parameters[prm_name].changed_copy(
             info=new_info, tex=new_tex
         )
 
@@ -421,13 +398,13 @@ class InverseProblem:
             The new value that prm_name should assume.
         """
         # first, make sure that the given parameter exists
-        self._parameters.confirm_that_parameter_exists(prm_name)
+        self.parameters.confirm_that_parameter_exists(prm_name)
 
         # check if the given parameter is a constant
-        if self._parameters[prm_name].is_latent:
+        if self.parameters[prm_name].is_latent:
             raise RuntimeError(f"The parameter '{prm_name}' is not a constant!")
         # change the parameter's value
-        self._parameters[prm_name] = self._parameters[prm_name].changed_copy(
+        self.parameters[prm_name] = self.parameters[prm_name].changed_copy(
             value=new_value
         )
 
@@ -458,15 +435,15 @@ class InverseProblem:
         """
         prms = {}
         for global_name, local_name in prm_def.items():
-            idx = self._parameters[global_name].index
+            idx = self.parameters[global_name].index
             if idx is None:
                 # in this case, the parameter is a constant and hence not read from
                 # theta, but from the internal library
-                prms[local_name] = self._parameters[global_name].value
+                prms[local_name] = self.parameters[global_name].value
             else:
                 # in this case, the parameter is a latent parameter, and its value is
                 # read from theta
-                idx_end = self._parameters[global_name].index_end
+                idx_end = self.parameters[global_name].index_end
                 if idx == (idx_end - 1):
                     # scalars should not be returned as one-element-lists
                     prms[local_name] = theta[idx]
@@ -491,10 +468,10 @@ class InverseProblem:
             Otherwise, False is returned.
         """
         for theta_name in self.get_theta_names():
-            theta_dim = self._parameters[theta_name].dim
-            theta_idx = self._parameters[theta_name].index
+            theta_dim = self.parameters[theta_name].dim
+            theta_idx = self.parameters[theta_name].index
             for i in range(theta_dim):
-                domain = self._parameters[theta_name].domain[i]
+                domain = self.parameters[theta_name].domain[i]
                 if not domain.check_bounds(float(theta[theta_idx + i])):
                     return False
         return True
@@ -522,7 +499,7 @@ class InverseProblem:
         # assemble the parameter's names in the order as they appear in theta
         theta_names = []
         indices = []
-        for prm_name, parameter in self._parameters.items():
+        for prm_name, parameter in self.parameters.items():
             if parameter.is_latent:
                 # add the parameter indices for checking later
                 idx = parameter.index
@@ -600,7 +577,9 @@ class InverseProblem:
     #                  Forward model related methods                  #
     # =============================================================== #
 
-    def add_forward_model(self, forward_model: ForwardModelBase):
+    def add_forward_model(
+        self, forward_model: ForwardModelBase, experiments: Union[str, list]
+    ):
         """
         Adds a forward model to the inverse problem. Note that multiple forward models
         can be added to one problem.
@@ -612,6 +591,9 @@ class InverseProblem:
             the forward model definition. The user will then have to derive his own
             forward model from that base class. Examples can be found in the package
             directory tests/integration_tests.
+        experiments
+            A single string or a list of strings that represents the names of the
+            problem's experiments that are described by forward_model.
         """
 
         # log at beginning so that errors can be quickly associated
@@ -621,25 +603,41 @@ class InverseProblem:
         # problem; note that the forward model can only be added to the problem after
         # the corresponding parameters have been defined
         for prm_name in forward_model.prms_def:
-            self._parameters.confirm_that_parameter_exists(prm_name)
+            self.parameters.confirm_that_parameter_exists(prm_name)
             # check, if the type was set correctly; if it was not set yet, it will be
             # set automatically here
-            if self._parameters[prm_name].type == "not defined":
+            if self.parameters[prm_name].type == "not defined":
                 self.change_parameter_type(prm_name, "model")
-            elif self._parameters[prm_name].type in ["prior", "likelihood"]:
+            elif self.parameters[prm_name].type in ["prior", "likelihood"]:
                 raise ValueError(
                     f"The parameter '{prm_name}' defined in forward model "
                     f"'{forward_model.name}' was assigned the type "
-                    f"'{self._parameters[prm_name].type}' (it should be 'model')."
+                    f"'{self.parameters[prm_name].type}' (it should be 'model')."
                 )
 
         # check if the given name for the forward model has already been used
-        if forward_model.name in self._forward_models:
+        if forward_model.name in self.forward_models:
             raise RuntimeError(
                 f"The name '{forward_model.name}' of the forward model you are trying "
                 f"to add to the problem has already been used for another forward "
                 f"model within the problem scope. Please choose another name."
             )
+
+        # assign the given experiments to the forward model
+        experiment_list = make_list(experiments)
+        for exp_name in experiment_list:
+            if exp_name not in self.experiments:
+                raise RuntimeError(
+                    f"The experiment '{exp_name}' that is supposed to be modeled by "
+                    f"forward model '{forward_model.name}' has not been defined yet!"
+                )
+            for sensor_name in forward_model.sensor_names:
+                if sensor_name not in self.experiments[exp_name].sensor_data:
+                    raise RuntimeError(
+                        f"The forward model's sensor '{sensor_name}' was not found in "
+                        f"experiment '{exp_name}' that was assigned to it."
+                    )
+            self.experiments[exp_name].forward_model = forward_model.name
 
         # at this point, the forward model is stripped of its response method, since
         # the problem merely contains descriptive information about the inverse problem
@@ -653,7 +651,9 @@ class InverseProblem:
 
         # add an instance of the forward model's hull (which contains its 'interface'-
         # method but not its 'response'-method) to the problem
-        self._forward_models[forward_model.name] = ForwardModelHull(forward_model.name)
+        fwd_model_hull = ForwardModelHull(forward_model.name)
+        fwd_model_hull.experiment_names = experiment_list
+        self.forward_models[forward_model.name] = fwd_model_hull
 
     # =============================================================== #
     #                   Experiments related methods                   #
@@ -661,178 +661,41 @@ class InverseProblem:
 
     def add_experiment(
         self,
-        exp_name: str,
-        sensor_values: dict,
-        fwd_model_name: str,
-        correlation_info: Union[str, dict, None] = None,
+        name: str,
+        sensor_data: dict,
     ):
         """
         Adds a single experiment to the inverse problem. An experiment is simply a
         collection of measured data which was produced by one event. The measured data
-        is given in form of a dictionary (sensor_values). Additionally, an experiment
-        must contain a reference to one and only one forward model (fwd_model_name).
-        This should be understood as follows: The experiment contains data that is (at
-        least in part) modeled by the stated forward model.
+        is given in form of a dictionary (sensor_data).
 
         Parameters
         ----------
-        exp_name
+        name
             The name of the experiment, e.g. "Exp_20May.12". If an experiment with a
             similar name has already been added, it will be overwritten and a warning
             will be thrown.
-        sensor_values
+        sensor_data
             The keys are the sensor's names (for example 'strain_gauge_1') and the
             values are the measured values.
-        fwd_model_name
-            Name of the forward model this experiment refers to.
-        correlation_info
-            If no correlation should be considered between the data of the experiment,
-            this argument must be None. However, if there is correlated data this
-            argument must be a dictionary where the keys are sensor names of the
-            experiment and the value are dictionaries. These dictionaries have as keys
-            strings that describe correlation variables and as values again sensor names
-            of the experiment. To given an example: {"y1": {"x": "x1", "t": "t"},
-            "y2": {"x": "x2", "t": "t"}}. Here, y1, x1, y2, x2, and t must appear as
-            sensor names in the experiment, and it means that y1 and y2 are correlated
-            in x and t where the corresponding x data of y1/y2 is x1/x2 and the
-            corresponding t data of y1/y2 is simply t (no alias). In simple cases with
-            only one correlation variable that has a standard name, for example
-            {"y1": {"x": "x"}}, a string can be given. In the example given before, this
-            string would be "y1:x".
         """
 
         # log at beginning so that errors can be associated
-        logger.debug(f"Adding experiment '{exp_name}'")
+        logger.debug(f"Adding experiment '{name}'")
 
-        # check types of input arguments
-        if type(sensor_values) is not dict:
-            raise TypeError(
-                f"The sensor_values must be given as a dictionary. However, "
-                f"found type '{type(sensor_values)}'."
-            )
-        if type(fwd_model_name) is not str:
-            raise TypeError(
-                f"The fwd_model_name must be given as a string. However, "
-                f"found type '{type(fwd_model_name)}'."
-            )
-        for sensor_name, sensor_value in sensor_values.items():
-            if type(sensor_value) not in [list, tuple, np.ndarray, float, int]:
-                raise ValueError(
-                    f"The sensor value of sensor '{sensor_name}' stated for experiment "
-                    f"'{exp_name}' is of type '{type(sensor_value)}'. However, "
-                    f"only 'list', 'tuple', 'np.ndarray', 'float' or 'int' are allowed."
-                )
-
-        # check if the given forward model exists
-        if fwd_model_name not in self._forward_models.keys():
-            raise RuntimeError(
-                f"The forward model '{fwd_model_name}' does not exist! You need to "
-                f"define it before adding experiments that refer to it."
-            )
-        fwd_model = self._forward_models[fwd_model_name]
-
-        # check that the stated forward model is consistent with the experiment; to be
-        # consistent, the experiment must provide data to all input sensors of the
-        # referenced forward model and must also contain data to the forward model's
-        # output sensor (otherwise the forward model's response could not be compared
-        # with the experimental data)
-        experiment_sensors = [*sensor_values.keys()]
-        input_sensors = fwd_model.input_sensors
-        for input_sensor in input_sensors:
-            if input_sensor.name not in experiment_sensors:
-                raise RuntimeError(
-                    f"The forward model's ({fwd_model_name}) input sensor "
-                    f"'{input_sensor.name}' is not provided by the given "
-                    f"experiment '{exp_name}'!"
-                )
-        output_sensors = fwd_model.output_sensors
-        for output_sensor in output_sensors:
-            if output_sensor.name not in experiment_sensors:
-                raise RuntimeError(
-                    f"The forward model's ({fwd_model_name}) output sensor "
-                    f"'{output_sensor.name}' is not provided by the given "
-                    f"experiment '{exp_name}'!"
-                )
-
-        # check that the sensor values are given in the right format; only floats, ints,
-        # np.ndarray, lists and tuples are allowed; lists and tuples will be converted
-        # to 1D np.ndarrays; multidimensional np.ndarrays will lead to a value error
-        sensor_values_numpy = cp.deepcopy(sensor_values)
-        for sensor_name, values in sensor_values.items():
-            if isinstance(values, (list, tuple)):
-                sensor_values_numpy[sensor_name] = np.atleast_1d(np.array(values))
-            elif isinstance(values, np.ndarray):
-                if values.ndim > 1:
-                    raise ValueError(
-                        f"The sensor values of an experiment must be given as 1D "
-                        f"arrays. However, the sensor_values of '{sensor_name}' in "
-                        f"experiment '{exp_name}' are given as a {values.ndim}D array."
-                    )
-                if values.size == 1:
-                    raise ValueError(
-                        f"Encountered a np.ndarray with only one element in "
-                        f"experiment '{exp_name}', sensor '{sensor_name}'. "
-                        f"Please use floats or integers to provide scalar data."
-                    )
-                sensor_values_numpy[sensor_name] = values
-            elif isinstance(values, (float, int)):
-                sensor_values_numpy[sensor_name] = values
+        # create an experiment-object which will trigger some checks
+        experiment = Experiment(name, sensor_data)
 
         # throw warning when the experiment name was defined before
-        if exp_name in self._experiments.keys():
+        if name in self.experiments.keys():
             logger.warning(
-                f"An experiment with name '{exp_name}' is already defined within the "
+                f"An experiment with name '{name}' is already defined within the "
                 f"problem scope.\nIt will now be overwritten! Please make sure that "
                 f"this was intended."
             )
 
-        # check the given correlation information
-        if correlation_info is not None:
-            # for simple cases the correlation_info can be given as a string
-            if isinstance(correlation_info, str):
-                correlation_info = translate_simple_correlation(correlation_info)
-            for key_sensor, corr_dict in correlation_info.items():
-                # the keys of correlation_info must be sensor names of the experiment
-                if key_sensor not in sensor_values:
-                    raise RuntimeError(
-                        f"The key '{key_sensor}' in the argument correlation_info does"
-                        f" not appear in the given sensor_values!"
-                    )
-                # they keys of correlation_info must be names of output sensors of the
-                # experiment's forward model
-                if key_sensor not in fwd_model.output_sensor_names:
-                    raise RuntimeError(
-                        f"The correlation_info of experiment '{exp_name}' states the "
-                        f"sensor '{key_sensor}' as a key without this sensor\nbeing "
-                        f"the name of an output sensor of forward model "
-                        f"'{fwd_model_name}' (this is the forward model this "
-                        f"experiment refers to)."
-                    )
-                # the values must be dicts again
-                if not isinstance(corr_dict, dict):
-                    raise TypeError(
-                        f"Found invalid format of the 'correlation_info' argument in "
-                        f"experiment '{exp_name}'!\nThe required format is a 2-level "
-                        f"dictionary. However, the value of key '{key_sensor}' is not "
-                        f"a dictionary but a '{type(corr_dict)}'."
-                    )
-                # also the last-level values must be sensor names of the experiment
-                for val_sensor in corr_dict.values():
-                    if val_sensor not in sensor_values:
-                        raise RuntimeError(
-                            f"The value '{val_sensor}' in the argument correlation_info"
-                            f" does not appear in the given sensor_values!"
-                        )
-
-        # make the experimental data accessible in the corresponding sensors
-        fwd_model.connect_experimental_data_to_sensors(exp_name, sensor_values_numpy)
-
         # add the experiment to the central dictionary
-        self._experiments[exp_name] = {
-            "sensor_values": sensor_values_numpy,
-            "forward_model": fwd_model_name,
-            "correlation_info": correlation_info,
-        }
+        self.experiments[name] = experiment
 
     def get_experiment_names(
         self,
@@ -872,7 +735,7 @@ class InverseProblem:
         # if experiments is not further specified it is assumed that all given
         # experiments should be used
         if experiment_names is None:
-            experiment_names = [*self._experiments.keys()]
+            experiment_names = [*self.experiments.keys()]
 
         # this is for collecting the experiments
         relevant_experiment_names = []
@@ -882,7 +745,7 @@ class InverseProblem:
         if forward_model_names is not None:
             forward_model_names_list = make_list(forward_model_names)
             for exp_name in experiment_names:
-                fwd_model_name = self._experiments[exp_name]["forward_model"]
+                fwd_model_name = self.experiments[exp_name].forward_model
                 if fwd_model_name in forward_model_names_list:
                     relevant_experiment_names.append(exp_name)
             experiment_names = relevant_experiment_names
@@ -893,7 +756,7 @@ class InverseProblem:
             relevant_experiment_names = []
             sensor_names_list = make_list(sensor_names)
             for exp_name in experiment_names:
-                exp_sensors = [*self._experiments[exp_name]["sensor_values"].keys()]
+                exp_sensors = [*self.experiments[exp_name].sensor_data.keys()]
                 if all([s in exp_sensors for s in sensor_names_list]):
                     relevant_experiment_names.append(exp_name)
 
@@ -927,55 +790,65 @@ class InverseProblem:
         # the likelihood models are added to the problem after all parameters have been
         # added; this is why this method includes a silent automatic parameter type
         # detection, to avoid an extra command in the problem definition
-        for prm_name in self._parameters:
-            if self._parameters[prm_name].type == "not defined":
+        for prm_name in self.parameters:
+            if self.parameters[prm_name].type == "not defined":
                 for prior in self.priors.values():
                     if prm_name in prior.hyperparameters:
                         self.change_parameter_type(prm_name, "prior")
 
-        # check if the likelihood model has been assigned a name; if not, assign one
-        if likelihood_model.name == "":
-            name = f"likelihood_model_{len(self.likelihood_models)}"
-            logger.debug(
-                f"Adding likelihood model '{name}' (name assigned automatically)"
-            )
-        else:
-            name = likelihood_model.name
-            logger.debug(f"Adding likelihood model '{name}'")
-
         # ensure the likelihood model's experiment has been added to the problem
-        if likelihood_model.experiment_name not in self._experiments:
+        if likelihood_model.experiment_name not in self.experiments:
             raise RuntimeError(
                 f"The likelihood model's experiment {likelihood_model.experiment_name} "
                 f"was not found in the problem's experiments."
             )
 
-        # check if all given model parameters have already been added to the inverse
-        # problem; note that the likelihood model can only be added to the problem after
-        # the corresponding parameters have been defined
-        for prm_name in likelihood_model.prms_def:
-            self._parameters.confirm_that_parameter_exists(prm_name)
-            # check, if the type was set correctly; if it was not set yet, it will be
-            # set automatically here
-            if self._parameters[prm_name].type == "not defined":
-                self.change_parameter_type(prm_name, "likelihood")
-            elif self._parameters[prm_name].type in ["prior", "model"]:
-                raise ValueError(
-                    f"The parameter '{prm_name}' defined in likelihood model "
-                    f"'{likelihood_model.name}' was assigned the type "
-                    f"'{self._parameters[prm_name].type}' (it should be 'likelihood')."
-                )
-
         # set the likelihood's forward model based on the likelihood's experiment; only
         # after the forward model has been set, the correlation definitions can be
         # checked on consistency which is done via process_correlation_definition()
         exp_name = likelihood_model.experiment_name
-        fwd_model_name = self._experiments[exp_name]["forward_model"]
+        fwd_model_name = self.experiments[exp_name].forward_model
         likelihood_model.forward_model = self.forward_models[fwd_model_name]
-        likelihood_model.process_correlation_definition()
+
+        # derive the likelihood model's parameters
+        prms = []
+        if likelihood_model.measurement_error is not None:
+            prm_name = likelihood_model.measurement_error
+            self.parameters.confirm_that_parameter_exists(prm_name)
+            prms.append(prm_name)
+            for output_sensor in likelihood_model.forward_model.output_sensors:
+                output_sensor.std_measurement = prm_name
+        if likelihood_model.correlation_model is not None:
+            for prm_name in likelihood_model.correlation_model.parameters:
+                self.parameters.confirm_that_parameter_exists(prm_name)
+            prms += likelihood_model.correlation_model.parameters
+        for osensor in likelihood_model.forward_model.output_sensors:
+            prm_name = osensor.std_model
+            self.parameters.confirm_that_parameter_exists(prm_name)
+            prms.append(prm_name)
+        prms_def, prms_dim = translate_prms_def(prms)
+        likelihood_model.prms_def = prms_def
+        likelihood_model.prms_dim = prms_dim
+
+        # check if all given model parameters have already been added to the inverse
+        # problem; note that the likelihood model can only be added to the problem after
+        # the corresponding parameters have been defined
+        for prm_name in likelihood_model.prms_def:
+            self.parameters.confirm_that_parameter_exists(prm_name)
+            # check, if the type was set correctly; if it was not set yet, it will be
+            # set automatically here
+            if self.parameters[prm_name].type == "not defined":
+                self.change_parameter_type(prm_name, "likelihood")
+            elif self.parameters[prm_name].type in ["prior", "model"]:
+                raise ValueError(
+                    f"The parameter '{prm_name}' defined in the likelihood model of "
+                    f"experiment '{likelihood_model.experiment_name}' was assigned the "
+                    f"type '{self.parameters[prm_name].type}' (it should be "
+                    f"'likelihood')."
+                )
 
         # finally, add the likelihood_model to the internal dict
-        self._likelihood_models[name] = likelihood_model
+        self.likelihood_models[likelihood_model.experiment_name] = likelihood_model
 
     # =============================================================== #
     #                          Other methods                          #
@@ -1022,7 +895,7 @@ class InverseProblem:
 
         # provide information on the defined forward models
         rows_fwd_model = []
-        for name, model in self._forward_models.items():
+        for name, model in self.forward_models.items():
             glob_prms = simplified_list_string([*model.prms_def.keys()])
             loc_prms = simplified_list_string([*model.prms_def.values()])
             rows_fwd_model.append((name, glob_prms, loc_prms))
@@ -1041,9 +914,9 @@ class InverseProblem:
         prior_str = titled_table("Priors", prior_table)
 
         # provide various information on the problem's parameters
-        prm_string = self._parameters.parameter_overview(tablefmt=tablefmt)
-        prm_string += self._parameters.parameter_explanations(tablefmt=tablefmt)
-        prm_string += self._parameters.const_parameter_values(tablefmt=tablefmt)
+        prm_string = self.parameters.parameter_overview(tablefmt=tablefmt)
+        prm_string += self.parameters.parameter_explanations(tablefmt=tablefmt)
+        prm_string += self.parameters.const_parameter_values(tablefmt=tablefmt)
 
         # include the information on the theta interpretation
         theta_string = "\nTheta interpretation"
@@ -1052,29 +925,29 @@ class InverseProblem:
         # provide information on the added experiments
         max_length = 0
         max_digits = 0
-        for exp_dict in self._experiments.values():
-            for sensor_name, sensor_values in exp_dict["sensor_values"].items():
+        for experiment in self.experiments.values():
+            for sensor_name, sensor_data in experiment.sensor_data.items():
                 if len(sensor_name) > max_length:
                     max_length = len(sensor_name)
-                if len(str(len_or_one(sensor_values))) > max_digits:
-                    max_digits = len(str(len_or_one(sensor_values)))
+                if len(str(len_or_one(sensor_data))) > max_digits:
+                    max_digits = len(str(len_or_one(sensor_data)))
         rows_exp = []  # type: List[Tuple[str, str, str]]
-        for exp_name, exp_dict in self._experiments.items():
-            sensor_name_1 = [*exp_dict["sensor_values"].keys()][0]
-            sensor_values_1 = [*exp_dict["sensor_values"].values()][0]
-            n_values_1 = len_or_one(sensor_values_1)
+        for exp_name, experiment in self.experiments.items():
+            sensor_name_1 = experiment.sensor_names[0]
+            sensor_data_1 = experiment.sensor_data[sensor_name_1]
+            n_values_1 = len_or_one(sensor_data_1)
             sv_info_1 = f"{sensor_name_1:{max_length}} "
             if n_values_1 == 1:
                 sv_info_1 += f"({n_values_1:{max_digits}} element)"
             else:
                 sv_info_1 += f"({n_values_1:{max_digits}} elements)"
-            rows_exp.append((exp_name, sv_info_1, exp_dict["forward_model"]))
+            rows_exp.append((exp_name, sv_info_1, experiment.forward_model))
             # the remaining code is for experiments with more than one sensor val
-            if len([*exp_dict["sensor_values"].keys()]) > 1:
-                for sensor_name, sensor_values in exp_dict["sensor_values"].items():
+            if experiment.n_sensors > 1:
+                for sensor_name, sensor_data in experiment.sensor_data.items():
                     if sensor_name == sensor_name_1:
                         continue
-                    n_values = len_or_one(sensor_values)
+                    n_values = len_or_one(sensor_data)
                     sv_info = f"{sensor_name:{max_length}} "
                     if n_values == 1:
                         sv_info += f"({n_values:{max_digits}} element)"
@@ -1087,7 +960,7 @@ class InverseProblem:
 
         # provide information on the added likelihood models
         rows_like = []
-        for l_name, l_model in self._likelihood_models.items():
+        for l_name, l_model in self.likelihood_models.items():
             prms_glob = simplified_list_string([*l_model.prms_def.keys()])
             l_sensors = simplified_list_string(
                 l_model.forward_model.output_sensor_names
@@ -1125,63 +998,61 @@ class InverseProblem:
 
         # check if the central components have been added to the problem: parameters,
         # forward models, experiments and likelihood models
+        assert len(self.parameters) != 0, "The problem does not contain any parameters!"
         assert (
-            len(self._parameters) != 0
-        ), "The problem does not contain any parameters!"
-        assert (
-            len(self._forward_models) != 0
+            len(self.forward_models) != 0
         ), "The problem does not contain any forward models!"
         assert (
-            len(self._experiments) != 0
+            len(self.experiments) != 0
         ), "The problem does not contain any experiments!"
         assert (
-            len(self._likelihood_models) != 0
+            len(self.likelihood_models) != 0
         ), "The problem does not contain any likelihood models!"
 
-        # check if all parameters of the forward model(s) appear in self._parameters
+        # check if all parameters of the forward model(s) appear in self.parameters
         # and if they have the correct type
-        for fwd_name, forward_model in self._forward_models.items():
+        for fwd_name, forward_model in self.forward_models.items():
             for model_prm in forward_model.prms_def:
-                assert model_prm in self._parameters, (
+                assert model_prm in self.parameters, (
                     f"The forward model parameter '{model_prm}' that appears in "
                     f"forward model '{fwd_name}' is not defined within the problem!"
                 )
-                assert self._parameters[model_prm].type == "model", (
+                assert self.parameters[model_prm].type == "model", (
                     f"The forward model parameter '{model_prm}' that appears in "
                     f"forward model '{fwd_name}' has not been defined as of type "
-                    f"'model' but of type '{self._parameters[model_prm].type}' in the "
+                    f"'model' but of type '{self.parameters[model_prm].type}' in the "
                     f"problem definition!"
                 )
 
-        # check if all parameters of the likelihood model appear in self._parameters
+        # check if all parameters of the likelihood model appear in self.parameters
         # and if they have the correct type
-        for likelihood_name, likelihood_model in self._likelihood_models.items():
+        for likelihood_name, likelihood_model in self.likelihood_models.items():
             for likelihood_prm in likelihood_model.prms_def:
-                assert likelihood_prm in self._parameters, (
+                assert likelihood_prm in self.parameters, (
                     f"The likelihood model parameter '{likelihood_prm}' that appears "
                     f"in likelihood model '{likelihood_name}' is not defined within "
                     f"the problem!"
                 )
-                assert self._parameters[likelihood_prm].type == "likelihood", (
+                assert self.parameters[likelihood_prm].type == "likelihood", (
                     f"The likelihood model parameter '{likelihood_prm}' that appears "
                     f"in likelihood model '{likelihood_name}' has not been defined "
                     f"as of type 'likelihood' but of type "
-                    f"'{self._parameters[likelihood_prm].type}' in the problem "
+                    f"'{self.parameters[likelihood_prm].type}' in the problem "
                     f"definition!"
                 )
 
         # check if all prior objects in self.priors are consistent in terms of their
-        # parameters; each one of them must appear in self._parameters
+        # parameters; each one of them must appear in self.parameters
         for prior_name, prior_obj in self.priors.items():
             for prior_prm in prior_obj.hyperparameters:
-                assert prior_prm in self._parameters, (
+                assert prior_prm in self.parameters, (
                     f"The prior parameter '{prior_prm}' that appears in prior "
                     f"'{prior_name}' is not defined within the problem!"
                 )
-                assert self._parameters[prior_prm].type == "prior", (
+                assert self.parameters[prior_prm].type == "prior", (
                     f"The prior parameter '{prior_prm}' that appears in prior "
                     f"'{prior_name}' has not been defined as of type 'prior' but of "
-                    f"type '{self._parameters[prior_prm].type}' in the problem "
+                    f"type '{self.parameters[prior_prm].type}' in the problem "
                     f"definition!"
                 )
 
@@ -1189,7 +1060,7 @@ class InverseProblem:
         # an ascending vector of integers from 0 to n; no multiple or missing values
         # are allowed
         idx_list = []
-        for prm_name, parameter in self._parameters.items():
+        for prm_name, parameter in self.parameters.items():
             if parameter.is_latent:
                 idx_range = [*range(parameter.index, parameter.index_end)]
                 idx_list += idx_range
@@ -1199,14 +1070,14 @@ class InverseProblem:
         )
 
         # check the consistency of each parameter
-        for parameter in self._parameters.values():
+        for parameter in self.parameters.values():
             parameter.check_consistency()
 
         # check that each defined experiment appears in one of the likelihood models
         exp_names_in_likelihood_models = set()
-        for likelihood_model in self._likelihood_models.values():
+        for likelihood_model in self.likelihood_models.values():
             exp_names_in_likelihood_models.add(likelihood_model.experiment_name)
-        for exp_name in self._experiments.keys():
+        for exp_name in self.experiments.keys():
             if exp_name not in exp_names_in_likelihood_models:
                 logger.warning(
                     f"The globally defined experiment '{exp_name}' does not appear in "

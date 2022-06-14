@@ -66,13 +66,11 @@ class ForwardModelBase:
         self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
         self.input_sensors = make_list(self.input_sensors)
         self.output_sensors = make_list(self.output_sensors)
-        self.correlation_variables = self.check_sensor_correlation()
+        # self.correlation_variables = self.check_sensor_correlation()
 
         # here, it is checked if the output sensors of the forward model share the same
-        # error standard deviation parameters; this allows faster likelihood evaluations
+        # model error std. dev. parameters; this allows faster likelihood evaluations
         self.sensors_share_std_model = False
-        self.sensors_share_std_measurement = False
-        self.sensors_share_std_prms = False
         self.check_std_definitions()
 
         # set the attribute self.input_sensor for forward models with 1 input sensor
@@ -129,35 +127,33 @@ class ForwardModelBase:
         """Provides a list of all sensor names as an attribute."""
         return self.input_sensor_names + self.output_sensor_names
 
-    def check_sensor_correlation(self) -> list:
-        """
-        Checks if all output sensors share the same correlation variables, which is
-        a requirement for a valid forward model definition. If this is the case, the
-        common correlation variables are returned. Otherwise, an error is raised.
-
-        Returns
-        -------
-        correlation_variables
-            A list of strings (something like 't') or tuples (something like ('x', 'y'))
-            stating the common correlation variables defined in the forward model's
-            output sensors.
-        """
-        correlation_variables = self.output_sensors[0].correlation_variables
-        for output_sensor in self.output_sensors:
-            if output_sensor.correlation_variables != correlation_variables:
-                raise RuntimeError(
-                    f"The output sensors in forward model '{self.name}' do not share "
-                    f"the same correlation variables!"
-                )
-        return correlation_variables
+    # def check_sensor_correlation(self) -> list:
+    #     """
+    #     Checks if all output sensors share the same correlation variables, which is
+    #     a requirement for a valid forward model definition. If this is the case, the
+    #     common correlation variables are returned. Otherwise, an error is raised.
+    #
+    #     Returns
+    #     -------
+    #     correlation_variables
+    #         A list of strings (something like 't') or tuples (something like ('x', 'y'))
+    #         stating the common correlation variables defined in the forward model's
+    #         output sensors.
+    #     """
+    #     correlation_variables = self.output_sensors[0].correlation_variables
+    #     for output_sensor in self.output_sensors:
+    #         if output_sensor.correlation_variables != correlation_variables:
+    #             raise RuntimeError(
+    #                 f"The output sensors in forward model '{self.name}' do not share "
+    #                 f"the same correlation variables!"
+    #             )
+    #     return correlation_variables
 
     def check_std_definitions(self):
         """
-        Checks if the forward model's output sensors share a common model error and
-        measurement error standard deviation parameter. The result is written to three
-        of the forward model's attributes.
+        Checks if the forward model's output sensors share a common model error standard
+        deviation parameter. The result is written to self.sensors_share_std_model.
         """
-
         # first, check the model error standard deviation; the variable 'std_model_set'
         # will contain a set of all global parameter names for model error standard
         # deviations for the forward model's output sensors
@@ -166,20 +162,6 @@ class ForwardModelBase:
             std_model_set.add(output_sensor.std_model)
         if len(std_model_set) == 1:
             self.sensors_share_std_model = True
-
-        # now, consider the measurement error standard deviation; the variable
-        # 'std_measurement_set' will contain a set of all global parameter names for
-        # measurement error standard deviations for the forward model's output sensors
-        std_measurement_set = set()
-        for output_sensor in self.output_sensors:
-            std_measurement_set.add(output_sensor.std_measurement)
-        if len(std_measurement_set) == 1:
-            self.sensors_share_std_measurement = True
-
-        # combine the information to a single flag
-        self.sensors_share_std_prms = (
-            self.sensors_share_std_model and self.sensors_share_std_measurement
-        )
 
     def interface(self):
         """
@@ -395,8 +377,7 @@ class ForwardModelBase:
         reasons. Without this method, the loops over the input and output sensors would
         be repeated in each evaluation of the forward model. This method is called in
         the solvers before starting an inference routine. It sets the two general
-        attributes 'self.input_from_experiments' and 'self.output_from_experiment' as
-        well as the correlation-related attribute 'self.output_lengths'.
+        attributes 'self.input_from_experiments' and 'self.output_from_experiment'.
         """
 
         # set 'self.input_from_experiments' and 'self.output_from_experiments'; both
@@ -411,127 +392,3 @@ class ForwardModelBase:
             for output_sensor in self.output_sensors:
                 exp_out[output_sensor.name] = output_sensor[exp_name]
             self.output_from_experiments[exp_name] = exp_out
-
-        # set the self.output_lengths dictionary; this dict is required for the methods
-        # self.std_model and self.std_measurement; it contains information on the length
-        # of the returned values of the forward model in the different experiments; a
-        # simple example for an uncorrelated case could look like this:
-        # {'Ex1': {'': {'total': 202, 'increments': [101, 101], 'names': ['y1', 'y2']}},
-        #  'Ex2': {'': {'total': 102, 'increments': [51, 51], 'names': ['y1', 'y2']}}}
-        # this is interpreted as follows: for experiment 1 (named 'Ex1') the forward
-        # model's output dictionary will eventually be translated into a vector holding
-        # 202 values, where the first 101 belong to output sensor 'y1' and the following
-        # 101 values belong to output sensor 'y2'; an analogous interpretation holds for
-        # the second experiment (named 'Ex2'); in a correlated case, the created dict
-        # will additionally contain the lengths of the correlation variables, e.g.:
-        # {'Ex1': {'':  {'total': 12, 'increments': [6, 6], 'names': ['y1', 'y2']},
-        #          't': {'total': 2,  'increments': [1, 1], 'names': ['y1', 'y2']},
-        #          'x': {'total': 12, 'increments': [6, 6], 'names': ['y1', 'y2']}}
-        # the 't' and 'x' entries are interpreted as the 't'-correlation vector having
-        # length 2 and the 'x'-correlation vector having length 12, while the remaining
-        # information is interpreted analogously as described before
-        output_lengths = {}  # type: dict
-        for exp_name in self.experiment_names:
-            output_lengths[exp_name] = {}  # type: dict
-            # add the information for the model response
-            output_lengths[exp_name][""] = {
-                "total": 0,
-                "increments": [],
-                "names": [],
-            }
-            for output_sensor in self.output_sensors:
-                n_i = len_or_one(output_sensor[exp_name])
-                name = output_sensor.name
-                output_lengths[exp_name][""]["increments"].append(n_i)
-                output_lengths[exp_name][""]["names"].append(name)
-            output_lengths[exp_name][""]["total"] = sum(
-                output_lengths[exp_name][""]["increments"]
-            )
-            # add the information for the correlation vectors
-            for corr_var_ in self.correlation_variables:
-                corr_var_tuple = corr_var_
-                if isinstance(corr_var_, str):
-                    corr_var_tuple = (corr_var_,)
-                for corr_var in corr_var_tuple:
-                    output_lengths[exp_name][corr_var] = {
-                        "total": 0,
-                        "increments": [],
-                        "names": [],
-                    }
-                    for output_sensor in self.output_sensors:
-                        n_i = output_sensor.corr_var_lengths[exp_name][corr_var]
-                        name = output_sensor.name
-                        output_lengths[exp_name][corr_var]["increments"].append(n_i)
-                        output_lengths[exp_name][corr_var]["names"].append(name)
-                    output_lengths[exp_name][corr_var]["total"] = sum(
-                        output_lengths[exp_name][corr_var]["increments"]
-                    )
-        self.output_lengths = output_lengths
-
-    def std_values(
-        self,
-        prms: dict,
-        exp_name: str,
-        corr_var: str = "",
-        measurement_error=False,
-    ) -> Tuple[
-        Union[int, float, np.ndarray], Union[int, float, np.ndarray, None], bool
-    ]:
-        """
-        Returns the model/measurement error standard deviations either as scalar (if all
-        sensors share the same model/measurement error standard deviation) or as vectors
-        expanded to the length of the requested correlation variable vector.
-
-        Parameters
-        ----------
-        prms
-            The input parameter dictionary.
-        exp_name
-            The name of the considered experiment.
-        corr_var
-            The correlation variable the vector should be expanded to. If no correlation
-            is defined, this variable must be an empty string. In this case, a returned
-            vector would be expanded to the full vectorized forward model's response.
-        measurement_error
-            True, if also a measurement error should be considered. Otherwise, False.
-
-        Returns
-        -------
-        std_model
-            Either a scalar, or a vector with the forward model's model error standard
-            deviation expanded to the required length defined by the  given experiment.
-        std_measurement
-            Either a scalar, or a vector with the forward model's measurement error std.
-            deviation expanded to the required length defined by the given experiment.
-        stds_are_scalar
-            True, if the returned standard deviations are scalars, otherwise False.
-        """
-        std_measurement = None
-        if self.sensors_share_std_prms:
-            # in this case, all sensors have the same parameter that describes their
-            # model/measurement error; hence, we just need a scalar value
-            std_model = prms[self.output_sensors[0].std_model]
-            if measurement_error:
-                std_measurement = prms[self.output_sensors[0].std_measurement]
-            stds_are_scalar = True
-        else:
-            # in this case, the forward model has more than one sensor, and not all of
-            # those sensors share the same 'std_model' and/or 'std_measurement'
-            # attribute; so, we have to assemble non-constant vector(s) with different
-            # values for std_model or std_measurement
-            idx_start = 0
-            std_model = np.zeros(self.output_lengths[exp_name][corr_var]["total"])
-            if measurement_error:
-                std_measurement = np.zeros(
-                    self.output_lengths[exp_name][corr_var]["total"]
-                )
-            increments = self.output_lengths[exp_name][corr_var]["increments"]
-            for output_sensor, n_i in zip(self.output_sensors, increments):
-                idx_end = idx_start + n_i
-                std_model[idx_start:idx_end] = prms[output_sensor.std_model]
-                if measurement_error:
-                    std_meas = prms[output_sensor.std_measurement]
-                    std_measurement[idx_start:idx_end] = std_meas  # type: ignore
-                idx_start = idx_end
-            stds_are_scalar = False
-        return std_model, std_measurement, stds_are_scalar

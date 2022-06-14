@@ -65,13 +65,15 @@ class TestProblem(unittest.TestCase):
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
+
         test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
+        p.add_forward_model(test_model, experiments="Experiment_1")
+
         p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", experiment_name="Experiment_1")
+            GaussianLikelihoodModel(
+                experiment_name="Experiment_1", model_error="additive"
+            )
         )
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
@@ -91,14 +93,15 @@ class TestProblem(unittest.TestCase):
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
-        test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
 
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model, experiments="Experiment_1")
+
         p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", experiment_name="Experiment_1")
+            GaussianLikelihoodModel(
+                experiment_name="Experiment_1", model_error="additive"
+            )
         )
         sys.stdout = io.StringIO()  # redirect output to console
         print(p)
@@ -359,6 +362,14 @@ class TestProblem(unittest.TestCase):
             # no forward models defined yet
             p.check_problem_consistency()
 
+        # add an experiment
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
+        # add an unused experiment
+        p.add_experiment(
+            "Experiment_unused",
+            sensor_data={"y": 1, "x": 1},
+        )
+
         class FwdModel(ForwardModelBase):
             def interface(self):
                 self.parameters = "a"
@@ -366,23 +377,16 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
         test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
+        p.add_forward_model(test_model, experiments="Experiment_1")
         with self.assertRaises(AssertionError):
             # no noise models defined yet
             p.check_problem_consistency()
-        # add an experiment
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
-        # add an unused experiment
-        p.add_experiment(
-            "Experiment_unused",
-            sensor_values={"y": 1, "x": 1},
-            fwd_model_name="TestModel",
-        )
+
         # add a noise model
-        p.add_parameter("s", "likelihood", const=1.0)
-        like_model = GaussianLikelihoodModel("s", experiment_name="Experiment_1")
+        p.add_parameter("sigma_model", "likelihood", const=1.0)
+        like_model = GaussianLikelihoodModel(
+            experiment_name="Experiment_1", model_error="additive"
+        )
         p.add_likelihood_model(like_model)
         # now the problem should be consistent
         p.check_problem_consistency()
@@ -392,26 +396,15 @@ class TestProblem(unittest.TestCase):
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
 
-        class FwdModel(ForwardModelBase):
-            def interface(self):
-                self.parameters = "a"
-                self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y", std_model="sigma_model")
-
-        test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
-
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
         # the experiment may contain more sensors than needed by forward model
         p.add_experiment(
             "Experiment_2",
-            sensor_values={"x": 1, "y": 1, "z": 1},
-            fwd_model_name="TestModel",
+            sensor_data={"x": 1, "y": 1, "z": 1},
         )
+
         # check that scalar sensor_values are not transformed to numpy arrays
-        x_in_p = p.experiments["Experiment_2"]["sensor_values"]["x"]
+        x_in_p = p.experiments["Experiment_2"].sensor_data["x"]
         self.assertEqual(type(x_in_p), type(1))
         # check invalid input arguments
         with self.assertRaises(TypeError):
@@ -419,100 +412,36 @@ class TestProblem(unittest.TestCase):
             # noinspection PyTypeChecker
             p.add_experiment(
                 "Experiment_3",
-                sensor_values=[("x", 1), ("y", 2)],
-                fwd_model_name="TestModel",
-            )
-        with self.assertRaises(TypeError):
-            # wrong fwd_model_name type
-            # noinspection PyTypeChecker
-            p.add_experiment(
-                "Experiment_3", sensor_values={"x": 1, "y": 1}, fwd_model_name=1.2
-            )
-        with self.assertRaises(RuntimeError):
-            # referencing non-existing forward model
-            p.add_experiment(
-                "Experiment_3",
-                sensor_values={"x": 1, "y": 1},
-                fwd_model_name="ThisModelDoesNotExist",
-            )
-        with self.assertRaises(RuntimeError):
-            # forward model's input sensor not provided by experiment
-            p.add_experiment(
-                "Experiment_3", sensor_values={"y": 1}, fwd_model_name="TestModel"
-            )
-        with self.assertRaises(RuntimeError):
-            # forward model's output sensor not provided by experiment
-            p.add_experiment(
-                "Experiment_3", sensor_values={"x": 1}, fwd_model_name="TestModel"
+                sensor_data=[("x", 1), ("y", 2)],
             )
         # check that sensor_value lists are transformed to numpy arrays
         p.add_experiment(
             "Experiment_3",
-            fwd_model_name="TestModel",
-            sensor_values={"x": [1, 2], "y": [2, 3]},
+            sensor_data={"x": [1, 2], "y": [2, 3]},
         )
-        x_in_p = p.experiments["Experiment_3"]["sensor_values"]["x"]
-        y_in_p = p.experiments["Experiment_3"]["sensor_values"]["y"]
-        self.assertEqual(type(x_in_p), np.ndarray)
-        self.assertEqual(type(y_in_p), np.ndarray)
+        x_in_p = p.experiments["Experiment_3"].sensor_data["x"]
+        y_in_p = p.experiments["Experiment_3"].sensor_data["y"]
+        self.assertEqual(type(x_in_p), tuple)
+        self.assertEqual(type(y_in_p), tuple)
         # check adding the same experiment again
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
-        # add an experiment the correlation_info of which has a key that does not
-        # appear in the experiment's sensor_value
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_CORR_1",
-                sensor_values={"x": 1, "y": 1},
-                fwd_model_name="TestModel",
-                correlation_info="g:x",  # g is the intended problem here
-            )
-        # add an experiment the correlation_info of which has a key that does not
-        # appear in the forward model's output sensor names
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_CORR_2",
-                sensor_values={"x": 1, "y": 1, "z": 1},
-                fwd_model_name="TestModel",
-                correlation_info="z:x",  # z is the intended problem here
-            )
-        # add an experiment the correlation_info of which has a wrong format
-        with self.assertRaises(TypeError):
-            p.add_experiment(
-                "Experiment_CORR_2",
-                sensor_values={"x": 1, "y": 1, "z": 1},
-                fwd_model_name="TestModel",
-                correlation_info={"y": "x"},  # correct would be {"y": {"x": "x"}}
-            )
-        # add an experiment the correlation_info of which has a wrong format
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_CORR_2",
-                sensor_values={"x": 1, "y": 1, "z": 1},
-                fwd_model_name="TestModel",
-                correlation_info={"y": {"x": "u"}},  # u is not in the sensor_values
-            )
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
         # add an experiment with an invalid sensor_value type
         with self.assertRaises(ValueError):
             p.add_experiment(
                 "Exp_invalid_sensor_value_type",
-                sensor_values={"x": 1, "y": "1"},
-                fwd_model_name="TestModel",
+                sensor_data={"x": 1, "y": "1"},
             )
         # add an experiment with an multidimensional array as a sensor value
         with self.assertRaises(ValueError):
             p.add_experiment(
                 "Exp_invalid_array_shape",
-                sensor_values={"x": 1, "y": np.ones((2, 2))},
-                fwd_model_name="TestModel",
+                sensor_data={"x": 1, "y": np.ones((2, 2))},
             )
         # add an experiment with a scalar that is given in array format
         with self.assertRaises(ValueError):
             p.add_experiment(
                 "Exp_invalid_scalar_as_array",
-                sensor_values={"x": 1, "y": np.array([1.0])},
-                fwd_model_name="TestModel",
+                sensor_data={"x": 1, "y": np.array([1.0])},
             )
 
     def test_get_parameters(self):
@@ -532,6 +461,24 @@ class TestProblem(unittest.TestCase):
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
 
+        # define experiment_names to each forward model
+        p.add_experiment(
+            "Experiment_Y1",
+            sensor_data={"x": 1, "y1": 1, "y2": 1},
+        )
+        p.add_experiment(
+            "Experiment_Y2",
+            sensor_data={"x": 2, "y1": 2, "y2": 2},
+        )
+        p.add_experiment(
+            "Experiment_Z1",
+            sensor_data={"x": -1, "z1": -1, "z2": -1},
+        )
+        p.add_experiment(
+            "Experiment_Z2",
+            sensor_data={"x": -2, "z1": -2, "z2": -2},
+        )
+
         class FwdModel1(ForwardModelBase):
             def interface(self):
                 self.parameters = "a"
@@ -545,32 +492,15 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = [Sensor("z1"), Sensor("z2")]
 
         test_model_1 = FwdModel1("TestModel_1")
-        p.add_forward_model(test_model_1)
+        p.add_forward_model(
+            test_model_1, experiments=["Experiment_Y1", "Experiment_Y2"]
+        )
 
         test_model_2 = FwdModel2("TestModel_2")
-        p.add_forward_model(test_model_2)
+        p.add_forward_model(
+            test_model_2, experiments=["Experiment_Z1", "Experiment_Z2"]
+        )
 
-        # define experiment_names to each forward model
-        p.add_experiment(
-            "Experiment_Y1",
-            sensor_values={"x": 1, "y1": 1, "y2": 1},
-            fwd_model_name="TestModel_1",
-        )
-        p.add_experiment(
-            "Experiment_Y2",
-            sensor_values={"x": 2, "y1": 2, "y2": 2},
-            fwd_model_name="TestModel_1",
-        )
-        p.add_experiment(
-            "Experiment_Z1",
-            sensor_values={"x": -1, "z1": -1, "z2": -1},
-            fwd_model_name="TestModel_2",
-        )
-        p.add_experiment(
-            "Experiment_Z2",
-            sensor_values={"x": -2, "z1": -2, "z2": -2},
-            fwd_model_name="TestModel_2",
-        )
         # get experiment_names for specific forward model
         computed_result = p.get_experiment_names(forward_model_names="TestModel_1")
         expected_result = ["Experiment_Y1", "Experiment_Y2"]
@@ -678,6 +608,8 @@ class TestProblem(unittest.TestCase):
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
 
+        p.add_experiment("Exp", sensor_data={"x": 0, "y": 0})
+
         class FwdModel(ForwardModelBase):
             def interface(self):
                 self.parameters = "a"
@@ -685,7 +617,7 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
         test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
+        p.add_forward_model(test_model, experiments="Exp")
 
         # check for invalid input arguments
         with self.assertRaises(RuntimeError):
@@ -697,14 +629,15 @@ class TestProblem(unittest.TestCase):
                     self.output_sensors = Sensor("y", std_model="sigma_model")
 
             test_model_2 = FwdModel2("TestModel_2")
-            p.add_forward_model(test_model_2)
+            p.add_forward_model(test_model_2, experiments="Exp")
         with self.assertRaises(RuntimeError):
             # add a forward model with the same name
-            p.add_forward_model(test_model)
+            p.add_forward_model(test_model, experiments="Exp")
 
         # check using parameter with wrong type
         p = InverseProblem("TestProblem")
         p.add_parameter("a", "prior", prior=Normal(mean=0, std=1))
+        p.add_experiment("Exp", sensor_data={"x": 0, "y": 0})
 
         class FwdModel(ForwardModelBase):
             def interface(self):
@@ -714,7 +647,7 @@ class TestProblem(unittest.TestCase):
 
         test_model = FwdModel("TestModel")
         with self.assertRaises(ValueError):
-            p.add_forward_model(test_model)
+            p.add_forward_model(test_model, experiments="Exp")
 
     def test_add_likelihood_model(self):
         # check correct use
@@ -724,32 +657,22 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("s2", "likelihood", prior=Normal(mean=0, std=1))
         p.add_parameter("s3", "likelihood", prior=Normal(mean=0, std=1))
 
+        p.add_experiment("Exp", sensor_data={"x": 0, "y1": 0, "y2": 0})
+
         class FwdModel(ForwardModelBase):
             def interface(self):
                 self.parameters = "a"
                 self.input_sensors = Sensor("x")
-                self.output_sensors = [Sensor("y1"), Sensor("y2")]
+                self.output_sensors = [
+                    Sensor("y1", std_model="s1"),
+                    Sensor("y2", std_model="s2"),
+                ]
 
-        p.add_forward_model(FwdModel("TestModel"))
-        # try to add a likelihood model before adding experiments (not allowed)
-        with self.assertRaises(RuntimeError):
-            p.add_likelihood_model(GaussianLikelihoodModel("s1", "Exp"))
-        p.add_experiment(
-            "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
+        p.add_forward_model(FwdModel("TestModel"), experiments="Exp")
+
+        p.add_likelihood_model(
+            GaussianLikelihoodModel(experiment_name="Exp", model_error="additive")
         )
-        # try to add a likelihood model with parameter of wrong type
-        with self.assertRaises(ValueError):
-            p.add_likelihood_model(GaussianLikelihoodModel("a", "Exp"))
-        p.add_likelihood_model(GaussianLikelihoodModel("s1", experiment_name="Exp"))
-        # check invalid input arguments
-        with self.assertRaises(RuntimeError):
-            # the given noise model parameter has not been defined
-            p.add_likelihood_model(
-                GaussianLikelihoodModel(
-                    "not_existing_parameter",
-                    "Exp",
-                )
-            )
 
 
 if __name__ == "__main__":

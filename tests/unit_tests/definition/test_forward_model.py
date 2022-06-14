@@ -199,24 +199,6 @@ class TestProblem(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             InterfaceMethodNotSet("Bert")
 
-        class InvalidCorrelationStructure(ForwardModelBase):
-            def interface(self):
-                self.parameters = [{"a": "m"}, "b"]
-                self.input_sensors = Sensor("x")
-                self.output_sensors = [
-                    Sensor("y1", correlated_in={"x": "l_corr"}),
-                    Sensor("y2", correlated_in={"WRONG": "l_corr"}),
-                ]
-
-            def response(self, inp: dict) -> dict:
-                x = inp["x"]
-                m = inp["m"]
-                b = inp["b"]
-                return {"y": m * x + b}
-
-        with self.assertRaises(RuntimeError):
-            InvalidCorrelationStructure("Sigfried")
-
 
 if __name__ == "__main__":
     unittest.main()

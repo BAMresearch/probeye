@@ -144,19 +144,18 @@ problem.add_parameter(
 # As the next step, we need to add our forward model, the experimental data and the
 # likelihood model. Note that the order is important and cannot be changed.
 
-# forward model
-problem.add_forward_model(LinearModel("LinearModel"))
-
 # experimental data
 problem.add_experiment(
-    "TestSeries_1",
-    fwd_model_name="LinearModel",
-    sensor_values={"x": x_test, "y": y_test},
+    name="TestSeries_1",
+    sensor_data={"x": x_test, "y": y_test},
 )
+
+# forward model
+problem.add_forward_model(LinearModel("LinearModel"), experiments="TestSeries_1")
 
 # likelihood model
 problem.add_likelihood_model(
-    GaussianLikelihoodModel(prms_def="std_noise", experiment_name="TestSeries_1")
+    GaussianLikelihoodModel(experiment_name="TestSeries_1", model_error="additive")
 )
 
 # %%
@@ -195,7 +194,7 @@ if run_dynesty:
 # this is for using the emcee-solver
 if run_emcee:
     emcee_solver = EmceeSolver(problem, show_progress=False)
-    inference_data = emcee_solver.run_mcmc(n_steps=2000, n_initial_steps=200)
+    inference_data = emcee_solver.run_emcee(n_steps=2000, n_initial_steps=200)
 
 # %%
 # Finally, we want to plot the results we obtained. To that end, probeye provides some

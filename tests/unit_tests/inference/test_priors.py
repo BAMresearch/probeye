@@ -6,7 +6,7 @@ from scipy import stats
 
 # local imports
 from probeye.definition.distribution import *
-from probeye.inference.priors import Prior
+from probeye.inference.scipy.priors import Prior
 
 
 class TestProblem(unittest.TestCase):

@@ -64,6 +64,47 @@ class TestProblem(unittest.TestCase):
         seed = 1
 
         # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
+
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression (AME)")
+
+        # add all parameters to the problem
+        problem.add_parameter("m")
+        problem.add_parameter("b")
+        problem.add_parameter("sigma", domain="(0, +oo)")
+
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
+
+        # data-generation; normal likelihood with constant variance around each point
+        np.random.seed(seed)
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true = m_true * x_test + b_true
+        y_test = np.random.normal(loc=y_true, scale=sigma)
+
+        # add the experimental data
+        problem.add_experiment(
+            f"TestSeries_1",
+            sensor_data={
+                "x": x_test,
+                "y": y_test,
+            },
+        )
+
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
+
+        # ============================================================================ #
         #                           Define the Forward Model                           #
         # ============================================================================ #
 
@@ -76,53 +117,9 @@ class TestProblem(unittest.TestCase):
             def response(self, inp: dict) -> dict:
                 return {"y": inp["m"] * inp["x"] + inp["b"]}
 
-        # ============================================================================ #
-        #                         Define the Inference Problem                         #
-        # ============================================================================ #
-
-        # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear regression (AME)")
-
-        # add all parameters to the problem
-        problem.add_parameter("m", "model")
-        problem.add_parameter("b", "model")
-        problem.add_parameter("sigma", "likelihood", domain="(0, +oo)")
-
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
-
-        # ============================================================================ #
-        #                    Add test data to the Inference Problem                    #
-        # ============================================================================ #
-
-        # data-generation; normal likelihood with constant variance around each point
-        np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model.response(
-            {linear_model.input_sensor.name: x_test, "m": m_true, "b": b_true}
-        )[linear_model.output_sensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma)
-
-        # add the experimental data
-        problem.add_experiment(
-            f"TestSeries_1",
-            fwd_model_name="LinearModel",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                linear_model.output_sensor.name: y_test,
-            },
-        )
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(linear_model.input_sensor.name)
-            plt.ylabel(linear_model.output_sensor.name)
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
+        problem.add_forward_model(linear_model, experiments="TestSeries_1")
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -131,7 +128,6 @@ class TestProblem(unittest.TestCase):
         # add the likelihood model to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def="sigma",
                 experiment_name="TestSeries_1",
                 model_error="additive",
             )
