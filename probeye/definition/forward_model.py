@@ -1,13 +1,10 @@
 # standard library
-from typing import Union, List, Tuple, Dict
-import copy as cp
-import numpy as np
+from typing import List
 
 # local imports
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import translate_prms_def
 from probeye.subroutines import make_list
-from probeye.subroutines import len_or_one
 
 
 class ForwardModelBase:
@@ -36,52 +33,16 @@ class ForwardModelBase:
         self.parameters = ["_self.parameters_not_set"]
         self.input_sensors = [Sensor("_self.input_sensors_not_set")]
         self.output_sensors = [Sensor("_self.output_sensors_not_set")]
+        self.prms_def = {}  # type: dict
+        self.prms_dim = 0
 
-        # set the three attributes above by running the user-defined method
-        # self.ontology; the exception triggered by naming the forward model '_dummy_'
-        # is intended mostly for testing
-        if name != "_dummy_":
-
-            # now, run the user-defined 'ontology'-method which will set the attributes
-            # self.parameters, self.input_sensors and self.output_sensors
-            self.interface()
-
-            # check if self.parameters, self.input_sensors and self.output_sensors have
-            # been set by the user in the required self.ontology-method
-            if self.parameters == ["_self.parameters_not_set"]:
-                raise RuntimeError(
-                    f"You did not set the required attribute 'self.parameters' in the "
-                    f"forward model's 'interface'-method!"
-                )
-            if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
-                raise RuntimeError(
-                    "You did not set the required attribute 'self.input_sensors' in "
-                    "the forward model's 'interface'-method!"
-                )
-            if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
-                raise RuntimeError(
-                    "You did not set the required attribute 'self.output_sensors' in "
-                    "the forward model's 'interface'-method!"
-                )
-        self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
-        self.input_sensors = make_list(self.input_sensors)
-        self.output_sensors = make_list(self.output_sensors)
-        # self.correlation_variables = self.check_sensor_correlation()
+        # overwrite the attr. above by running the user-defined method self.interface
+        self._evaluate_interface()
 
         # here, it is checked if the output sensors of the forward model share the same
         # model error std. dev. parameters; this allows faster likelihood evaluations
         self.sensors_share_std_model = False
-        self.check_std_definitions()
-
-        # set the attribute self.input_sensor for forward models with 1 input sensor
-        self.input_sensor = Sensor("not_set_because_more_than_one_input_sensor")
-        if len(self.input_sensors) == 1:
-            self.input_sensor = self.input_sensors[0]
-
-        # set the attribute self.output_sensor for forward models with 1 output sensor
-        self.output_sensor = Sensor("not_set_because_more_than_one_output_sensor")
-        if len(self.output_sensors) == 1:
-            self.output_sensor = self.output_sensors[0]
+        self._check_std_definitions()
 
         # ================================== #
         #   Attributes used/set by solvers   #
@@ -96,6 +57,28 @@ class ForwardModelBase:
         self.input_from_experiments = {}  # type: dict
         self.output_from_experiments = {}  # type: dict
         self.output_lengths = {}  # type: dict
+
+    @property
+    def input_sensor(self) -> Sensor:
+        """Returns the 1st input sensor. Intended for models with only one onf them."""
+        if len(self.input_sensors) > 1:
+            raise RuntimeWarning(
+                f"You used the property 'input_sensor' which is intended for forward "
+                f"models with only one input sensor. However, the forward model "
+                f"'{self.name}' has {len(self.input_sensors)} input sensors."
+            )
+        return self.input_sensors[0]
+
+    @property
+    def output_sensor(self) -> Sensor:
+        """Returns the 1st output sensor. Intended for models with only one onf them."""
+        if len(self.output_sensors) > 1:
+            raise RuntimeWarning(
+                f"You used the property 'output_sensor' which is intended for forward "
+                f"models with only one output sensor. However, the forward model "
+                f"'{self.name}' has {len(self.output_sensors)} output sensors."
+            )
+        return self.input_sensors[0]
 
     @property
     def input_sensor_names(self) -> List[str]:
@@ -127,29 +110,42 @@ class ForwardModelBase:
         """Provides a list of all sensor names as an attribute."""
         return self.input_sensor_names + self.output_sensor_names
 
-    # def check_sensor_correlation(self) -> list:
-    #     """
-    #     Checks if all output sensors share the same correlation variables, which is
-    #     a requirement for a valid forward model definition. If this is the case, the
-    #     common correlation variables are returned. Otherwise, an error is raised.
-    #
-    #     Returns
-    #     -------
-    #     correlation_variables
-    #         A list of strings (something like 't') or tuples (something like ('x', 'y'))
-    #         stating the common correlation variables defined in the forward model's
-    #         output sensors.
-    #     """
-    #     correlation_variables = self.output_sensors[0].correlation_variables
-    #     for output_sensor in self.output_sensors:
-    #         if output_sensor.correlation_variables != correlation_variables:
-    #             raise RuntimeError(
-    #                 f"The output sensors in forward model '{self.name}' do not share "
-    #                 f"the same correlation variables!"
-    #             )
-    #     return correlation_variables
+    def _evaluate_interface(self):
+        """
+        Sets the attributes prms_def, prms_dim, input_sensors and output_sensors. This
+        method is called during initialization.
+        """
 
-    def check_std_definitions(self):
+        # the exception triggered by naming the forward model '_dummy_' is intended
+        # mostly for testing
+        if self.name != "_dummy_":
+
+            # now, run the user-defined 'ontology'-method which will set the attributes
+            # self.parameters, self.input_sensors and self.output_sensors
+            self.interface()
+
+            # check if self.parameters, self.input_sensors and self.output_sensors have
+            # been set by the user in the required self.ontology-method
+            if self.parameters == ["_self.parameters_not_set"]:
+                raise RuntimeError(
+                    f"You did not set the required attribute 'self.parameters' in the "
+                    f"forward model's 'interface'-method!"
+                )
+            if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
+                raise RuntimeError(
+                    "You did not set the required attribute 'self.input_sensors' in "
+                    "the forward model's 'interface'-method!"
+                )
+            if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
+                raise RuntimeError(
+                    "You did not set the required attribute 'self.output_sensors' in "
+                    "the forward model's 'interface'-method!"
+                )
+        self.prms_def, self.prms_dim = translate_prms_def(self.parameters)
+        self.input_sensors = make_list(self.input_sensors)
+        self.output_sensors = make_list(self.output_sensors)
+
+    def _check_std_definitions(self):
         """
         Checks if the forward model's output sensors share a common model error standard
         deviation parameter. The result is written to self.sensors_share_std_model.
@@ -201,171 +197,30 @@ class ForwardModelBase:
         """
         return self.response(inp)
 
-    def jacobian(self, inp: dict) -> Dict[str, dict]:
-        """
-        Numerically computes the Jacobian matrix of the forward model and returns it in
-        form of a dictionary. Note that this method should be overwritten, if there is a
-        more efficient way to compute the jacobian, for example, when one can compute
-        the Jacobian analytically.
-
-        Parameters
-        ----------
-        inp
-            Contains both the exp. input data and the  model's parameters. The keys are
-            the names, and the values are their numeric values.
-
-        Returns
-        -------
-        jac_dict
-            The Jacobian matrix in dict-form: The keys are the names of the forward
-            model's output sensors. The values are dictionaries with the forward model's
-            input channel's names as keys and the derivatives or Nones as values.
-            Derivatives are only provided for the model's parameters, see self.prms_def.
-            For all other input channels (e.g., measurements from an experiment) None is
-            written to the dictionary's values, since they are not required by sampling
-            routines. To give an example: the element jac['y']['a'] would give the
-            derivative dy/da, and jac['y'] would give the gradient of the fwd. model's
-            y-computation with respect to the input channels in a dictionary-format.
-        """
-        # eps is the machine precision; it is needed to compute the step size of the
-        # central difference scheme below; note that this refers to single precision
-        # (float32) since the processed arrays might be defined in float32, in which
-        # case using the eps of double precision (float64) would not work since the
-        # step size would be too small
-        eps = np.finfo(np.float32).eps
-        # the following evaluations are needed in the for-loop; they are put here so
-        # they are not repeatedly evaluated (to the same value) during the for-loop
-        sqrt_eps = np.sqrt(eps)
-        response_dict_center = self.response(inp)
-        inp_right = cp.deepcopy(inp)  # required to prevent side effects
-        # prepare the dictionary; this structure needs to be external from the main loop
-        # below since the filling of the dictionary could only be efficiently done in
-        # the format jac_dict[prm_name][os_name] which is less readable; the format
-        # created in the implemented way is easier to to read since jac['y']['a']
-        # corresponds to dy/da in jac['y'] is the gradient of y with respect to theta
-        jac_dict = {}  # type: Dict[str, dict]
-        for output_sensor in self.output_sensors:
-            jac_dict[output_sensor.name] = {}
-            for prm_name in inp.keys():
-                if prm_name in self.prms_def.values():  # values are local names
-                    nrows = len_or_one(response_dict_center[output_sensor.name])
-                    ncols = len_or_one(inp[prm_name])
-                    value = np.zeros((nrows, ncols))  # type: Union[np.ndarray, None]
-                else:
-                    value = None
-                jac_dict[output_sensor.name][prm_name] = value
-        for prm_name, prm_value in inp.items():
-            # derivatives only need to be computed for the model's parameters, not for
-            # the input that comes from the experiments; e.g., in case of y=mx+b with
-            # parameters m, b, one does not need dy/dx
-            if prm_name not in self.prms_def.values():  # values are local names
-                continue
-            # the following loop accounts for the fact, that parameters can be
-            # multidimensional
-            for i, x in enumerate(np.atleast_1d(inp[prm_name])):
-                # the following formula for the step size is NOT taken from the
-                # literature; in the literature, a common recommended choice for the
-                # step size h given x is not 0 is h = sqrt_eps * x, see for example:
-                # https://en.wikipedia.org/wiki/Numerical_differentiation; we added the
-                # term '+ sqrt_eps' below to also cover the cases where x actually is
-                # zero (or very close to 0)
-                h = sqrt_eps * x + sqrt_eps
-                inp_right[prm_name] = x + h
-                response_dict_right = self.response(inp_right)
-                for output_sensor in self.output_sensors:
-                    # the simple forward scheme should be sufficient for most
-                    # applications since the Jacobian will only be used as info for
-                    # choosing the next sample; for that purpose it is secondary if it
-                    # contains small numerical errors
-                    jac_dict[output_sensor.name][prm_name][:, i] = (
-                        response_dict_right[output_sensor.name]
-                        - response_dict_center[output_sensor.name]
-                    ) / h
-                inp_right[prm_name] = inp[prm_name]  # resetting perturbed value
-        return jac_dict
-
-    def jacobian_dict_to_array(
-        self,
-        inp: dict,
-        jac_dict: dict,
-        n_inp_dim: int,
-    ) -> np.ndarray:
-        """
-        Converts the Jacobian in dict-format (computed by the above 'jacobian' method)
-        into a numpy array. This method is external to the above 'jacobian' method, so
-        that it is easier for a user to overwrite the it (i.e., the 'jacobian' method)
-        without also having to define the conversion into an array.
-
-        Parameters
-        ----------
-        inp
-            See docstring of the 'jacobian'-method above.
-        jac_dict
-            See docstring of the 'jacobian'-method above.
-        n_inp_dim
-            The added-up dimensions of the forward model's input channels, i.e., of all
-            model parameters and other input variables.
-
-        Returns
-        -------
-        jac
-            Similar structure as the conventional Jacobi matrix with respect to the
-            columns and rows (i.e. the rows are the different gradients and the columns
-            are derivatives with respect to one fixed parameter).
-        """
-
-        # n1 is the number of the forward model's output sensors; n2 is the dimension of
-        # the forward model's input channels, i.e., the added up dimensions of the input
-        # sensors and the number of the forward model's parameters; finally, n3 is the
-        # maximum number of elements in the n2 input channels; the model's parameters
-        # are usually scalars, but the input sensors might be vectors with more than one
-        # element
-        n1 = len(self.output_sensors)
-        n2 = n_inp_dim
-        n3 = max([len_or_one(v) for v in inp.values()])
-        jac = np.zeros((n1 * n3, n2))
-        for i, prm_dict in enumerate(jac_dict.values()):
-            idx_start = i * n3
-            j = 0
-            for derivative in prm_dict.values():
-                if derivative is None:
-                    # in this case, the input variable is not a parameter; the
-                    # corresponding column in the Jacobian will remain zero, which is
-                    # ok, since it won't be used to compute anything
-                    j += 1
-                    continue
-                nvals = derivative.shape[0]
-                ncomp = derivative.shape[1]
-                idx_end = idx_start + nvals
-                jac[idx_start:idx_end, j : (j + ncomp)] = derivative
-                j += ncomp
-        return jac
-
-    def connect_experimental_data_to_sensors(self, exp_name: str, sensor_values: dict):
+    def connect_experimental_data_to_sensors(self, exp_name: str, sensor_data: dict):
         """
         Connects the experimental data from an experiments to the corresponding sensors
         of the forward model. Note that sensor-objects are essentially dictionaries, so
         the connection is established by adding the 'exp_name' as key to the respective
-        sensor-(dict)-object with the measurements as the dict-values. There are no
-        checks in this method because it is only used by InverseProblem.add_experiment
-        which already does the consistency checks before calling this method.
+        sensor-(dict)-object with the measurements as the dict-values. This method is
+        called in the solvers before starting an inference routine.
 
         Parameters
         ----------
         exp_name
             The name of the experiment the 'sensor_values' are coming from.
-        sensor_values
+        sensor_data
             Keys are the sensor names (like "x" or "y") and values are either floats,
             integers or numpy-ndarrays representing the measured values.
         """
 
         # connect the forward model's input sensors to the experiments
         for sensor in self.input_sensors:
-            sensor[exp_name] = sensor_values[sensor.name]
+            sensor[exp_name] = sensor_data[sensor.name]
 
         # connect the forward model's output sensors to the experiments
         for sensor in self.output_sensors:
-            sensor[exp_name] = sensor_values[sensor.name]
+            sensor[exp_name] = sensor_data[sensor.name]
 
         # collect all connected experiments to a separate list for convenience
         self.experiment_names.append(exp_name)

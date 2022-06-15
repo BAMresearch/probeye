@@ -166,23 +166,10 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["m"]
                 b = inp["b"]
                 return {"y": m * x + b}
-
-            def jacobian(self, inp: dict) -> dict:
-                # this method *can* be provided by the user (if a solver is used that
-                # requires gradients); if not provided (but required by a solver) the
-                # jacobian will be approximated by finite differences; note that
-                # currently no solver is implemented that requires gradients (April 22)
-                x = inp["x"]  # vector
-                one = np.ones((len(x), 1))
-                # partial derivatives must only be stated for the model parameters;
-                # all other input must be flagged by None; note: partial derivatives
-                # must be given as column vectors
-                return {"y": {"x": None, "m": x.reshape(-1, 1), "b": one}}
 
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
