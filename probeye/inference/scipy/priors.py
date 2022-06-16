@@ -69,13 +69,14 @@ class Prior(PriorBase):
         n_points: int = 200,
         color: str = "darkorange",
         rotate: bool = False,
+        label: str = "pdf",
     ):
         """
         Plots the prior-pdf to a given axis object using the prior's 'dist'-object.
         For more information on the arguments of this method checkout the reference
         method :func:`~probeye.definition.distribution.ProbabilityDistribution.plot`.
         """
-        self.dist.plot(self.ref_prm, ax, prms, x, n_points, color, rotate)
+        self.dist.plot(self.ref_prm, ax, prms, x, n_points, color, rotate, label)
 
 
 def translate_prior(prior_template: PriorBase) -> PriorBase:

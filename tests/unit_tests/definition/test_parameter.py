@@ -203,19 +203,6 @@ class TestProblem(unittest.TestCase):
                     "tex": r"$d$",
                 }
             )
-        with self.assertRaises(TypeError):
-            # value has invalid type
-            parameters["d"] = ParameterProperties(
-                {
-                    "index": None,
-                    "domain": None,
-                    "type": "model",
-                    "prior": None,
-                    "value": True,
-                    "info": "...",
-                    "tex": r"$d$",
-                }
-            )
         with self.assertRaises(RuntimeError):
             # index and dim are not consistent
             d_prior = PriorBase("d", ["s"], "d_dummy", Normal(mean=0, std=1))

@@ -49,6 +49,15 @@ class ScipySolver(Solver):
                     self.problem.parameters[prior_template.ref_prm].prior
                 )
             )
+        # translate non-scalar constants to numpy-arrays
+        for prm_name in self.problem.parameters:
+            if self.problem.parameters[prm_name].is_const:
+                if self.problem.parameters[prm_name].dim > 1:
+                    self.problem.parameters[prm_name] = self.problem.parameters[
+                        prm_name
+                    ].changed_copy(
+                        value=np.array(self.problem.parameters[prm_name].value)
+                    )
 
     def _translate_experiments(self):
         """

@@ -4,9 +4,9 @@ import unittest
 # local imports
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.distribution import Normal
-from probeye.postprocessing.sampling import create_pair_plot
-from probeye.postprocessing.sampling import create_posterior_plot
-from probeye.postprocessing.sampling import create_trace_plot
+from probeye.postprocessing.sampling_plots import create_pair_plot
+from probeye.postprocessing.sampling_plots import create_posterior_plot
+from probeye.postprocessing.sampling_plots import create_trace_plot
 
 
 class TestProblem(unittest.TestCase):

@@ -13,6 +13,7 @@ from probeye.subroutines import simplified_list_string
 from probeye.subroutines import len_or_one
 from probeye.subroutines import translate_number_string
 from probeye.subroutines import count_intervals
+from probeye.subroutines import convert_to_tuple
 from probeye.definition.prior import PriorBase
 from probeye.definition.distribution import ProbabilityDistribution, Uninformative
 
@@ -30,7 +31,7 @@ class Parameters(dict):
         prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
-        const: Union[int, float, np.ndarray, None] = None,
+        const: Union[int, float, tuple, np.ndarray, None] = None,
         prior: Optional[ProbabilityDistribution] = None,
         info: str = "No explanation provided",
         tex: Optional[str] = None,
@@ -143,7 +144,7 @@ class Parameters(dict):
             prm_dim = len_or_one(const)
             prm_domain = None  # type: ignore
             prm_prior = None
-            prm_value = const
+            prm_value = convert_to_tuple(const)  # type: ignore
             logger.debug(
                 f"Adding constant {prm_type}-parameter "
                 f"{prm_name} = {prm_value} to problem"
@@ -567,13 +568,13 @@ class ParameterProperties:
         return ParameterProperties(
             {
                 "index": index if index is not None else self._index,
-                "dim": dim or self._dim,
-                "domain": domain or self._domain,
-                "type": type or self._type,
-                "prior": prior or self._prior,
-                "value": value or self._value,
-                "info": info or self.info,
-                "tex": tex or self.tex,
+                "dim": dim if dim is not None else self._dim,
+                "domain": domain if domain is not None else self._domain,
+                "type": type if type is not None else self._type,
+                "prior": prior if prior is not None else self._prior,
+                "value": value if value is not None else self._value,
+                "info": info if info is not None else self.info,
+                "tex": tex if tex is not None else self.tex,
             }
         )
 
@@ -618,16 +619,6 @@ class ParameterProperties:
             raise TypeError(
                 f"Found invalid ParameterProperties._prior attribute! It must be of "
                 f"type PriorBase or None, but found {type(self._prior)}."
-            )
-
-        if not (
-            type(self._value) in [float, int, list, tuple, np.ndarray]
-            or self._value is None
-        ):
-            raise TypeError(
-                f"Found invalid ParameterProperties._value attribute! It must be of "
-                f"type float/int/list/tuple/numpy.ndarray or None, but found "
-                f"{type(self._value)}."
             )
 
         # -------------------------------- #

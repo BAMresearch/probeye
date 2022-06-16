@@ -1146,13 +1146,14 @@ def assemble_covariance_matrix(
     return cov_matrix
 
 
-def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
+def get_shape_2d(array_or_tuple: Union[np.ndarray, tuple]) -> Tuple[int, int]:
     """
-    Returns the number of rows and columns from a one or two dimensional numpy array.
+    Returns the number of rows and columns from a one or two dimensional numpy array or
+    tuple.
 
     Parameters
     ----------
-    array
+    array_or_tuple
         The given array of one or two dimensions.
 
     Returns
@@ -1162,6 +1163,12 @@ def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
         number_of_cols
             The number of columns found in the array.
     """
+
+    # convert tuple to array if a tuple is given
+    if isinstance(array_or_tuple, tuple):
+        array = np.array(array_or_tuple)
+    else:
+        array = array_or_tuple
 
     nd = len(array.shape)
     if nd == 1:
@@ -1176,6 +1183,35 @@ def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
             f"dimensions. However, the given array has {nd} dimensions."
         )
     return number_of_rows, number_of_cols
+
+
+def convert_to_tuple(a: Union[int, float, np.ndarray]) -> Union[int, float, tuple]:
+    """
+    Converts a given numpy array into a respective tuple.
+
+    Parameters
+    ----------
+    a
+        The given numpy array. Might also be a scalar (float/int) which will be
+        returned unprocessed.
+
+    Returns
+    -------
+        The given array as a tuple.
+    """
+
+    if isinstance(a, np.ndarray):
+        if len(a.shape) == 1:
+            return tuple(a)
+        elif len(a.shape) == 2:
+            return tuple(tuple(row) for row in a)
+        else:
+            raise ValueError(
+                f"Arrays of higher dimension than 2 are not supported! (The given "
+                f"array was {a})"
+            )
+    else:
+        return a
 
 
 def safe_string(string: str, n_max: int = 255) -> str:

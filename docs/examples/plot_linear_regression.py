@@ -28,9 +28,9 @@ from probeye.inference.emcee.solver import EmceeSolver
 from probeye.inference.dynesty.solver import DynestySolver
 
 # local imports (inference data post-processing)
-from probeye.postprocessing.sampling import create_pair_plot
-from probeye.postprocessing.sampling import create_posterior_plot
-from probeye.postprocessing.sampling import create_trace_plot
+from probeye.postprocessing.sampling_plots import create_pair_plot
+from probeye.postprocessing.sampling_plots import create_posterior_plot
+from probeye.postprocessing.sampling_plots import create_trace_plot
 
 # %%
 # We start by generating a synthetic data set from a known linear model to which we will

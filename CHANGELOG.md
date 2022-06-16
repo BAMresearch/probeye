@@ -7,6 +7,7 @@
 - After parameters one must now define experiments and then the forward models.
 - The four main attributes of InverseProblem are not private anymore to allow for manipulations in the solver.
 - The solver routines were revised.
+- Fixed some problems with the plotting routines.
 ### Added
 - Distribution classes have been added to make the prior-definition more clear.
 - A new experiment class was added.

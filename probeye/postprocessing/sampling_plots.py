@@ -5,6 +5,7 @@ from typing import Union, Optional, TYPE_CHECKING
 import arviz as az
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.figure import SubplotParams
 from loguru import logger
 
 # local imports
@@ -128,7 +129,7 @@ def create_pair_plot(
             kind=kind,
             figsize=figsize,
             textsize=textsize,
-            show=show,
+            show=False,
             **kwargs,
         )
 
@@ -198,7 +199,11 @@ def create_pair_plot(
                     posterior_handle, posterior_label = [], []
                 rotate = True if problem.n_latent_prms_dim == 2 and i == 1 else False
                 problem.parameters[prm_name].prior.plot(
-                    axs[i, i], problem.parameters, x=x, rotate=rotate
+                    axs[i, i],
+                    problem.parameters,
+                    x=x,
+                    rotate=rotate,
+                    label="prior",
                 )
                 if show_legends:
                     prior_handle, prior_label = axs[i, i].get_legend_handles_labels()
@@ -243,7 +248,10 @@ def create_pair_plot(
 
         # add a title to the plot, if requested
         if title:
-            fig = plt.gcf()
+            if isinstance(axs, np.ndarray):
+                fig = axs.ravel()[0].figure
+            else:
+                fig = axs.figure
             fig.suptitle(title, fontsize=title_size)
 
         # the following command reduces the otherwise wide margins; when only two
@@ -266,6 +274,14 @@ def create_pair_plot(
                 axs[i, i].set_xlim(axs[-1, i].get_xlim())
             axs[-1, -1].set_xticks(ticks=axs[-1, 0].get_yticks())
             axs[-1, -1].set_xlim(axs[-1, 0].get_ylim())
+
+        # show the plot if requested
+        if show:
+            plt.show()
+
+        # Note: the returned axs-object can be saved to a file via:
+        #     fig = axs.ravel()[0].figure
+        #     fig.savefig(filename, ...)
 
         return axs
 
@@ -362,14 +378,25 @@ def create_posterior_plot(
             figsize=figsize,
             textsize=textsize,
             hdi_prob=hdi_prob,
-            show=show,
+            show=False,
             **kwargs,
         )
 
         # add a title to the plot, if requested
         if title:
-            fig = plt.gcf()
+            if isinstance(axs, np.ndarray):
+                fig = axs.ravel()[0].figure
+            else:
+                fig = axs.figure
             fig.suptitle(title, fontsize=title_size)
+
+        # show the plot if requested
+        if show:
+            plt.show()
+
+        # Note: the returned axs-object can be saved to a file via:
+        #     fig = axs.ravel()[0].figure
+        #     fig.savefig(filename, ...)
 
         return axs
 
@@ -392,7 +419,7 @@ def create_posterior_plot(
 
 def create_trace_plot(
     inference_data: az.data.inference_data.InferenceData,
-    problem: "InverseProblem",
+    problem: "InverseProblem",  # for consistent interface
     plot_with: str = "arviz",
     kind: str = "trace",
     figsize: Optional[tuple] = (10, 6),
@@ -441,21 +468,39 @@ def create_trace_plot(
 
     if plot_with == "arviz":
 
-        # set default value for kde_kwargs if not given in kwargs; note that this
+        # set default value for plot_kwargs if not given in kwargs; note that this
         # default value is mutable, so it should not be given as a default argument in
-        # create_pair_plot
+        # create_trace_plot
         if "plot_kwargs" not in kwargs:
             kwargs["plot_kwargs"] = {"textsize": textsize}
 
+        # the following increases the space between the different subplot rows; in the
+        # default settings, this distance is too small (overlap is happening)
+        if "backend_kwargs" not in kwargs:
+            subplotpars = SubplotParams()
+            subplotpars.hspace = 0.50
+            kwargs["backend_kwargs"] = {"subplotpars": subplotpars}
+
         # call the main plotting routine from arviz and return the axes object
         axs = az.plot_trace(
-            inference_data, kind=kind, figsize=figsize, show=show, **kwargs
+            inference_data, kind=kind, figsize=figsize, show=False, **kwargs
         )
 
         # add a title to the plot, if requested
         if title:
-            fig = plt.gcf()
+            if isinstance(axs, np.ndarray):
+                fig = axs.ravel()[0].figure
+            else:
+                fig = axs.figure
             fig.suptitle(title, fontsize=title_size)
+
+        # show the plot if requested
+        if show:
+            plt.show()
+
+        # Note: the returned axs-object can be saved to a file via:
+        #     fig = axs.ravel()[0].figure
+        #     fig.savefig(filename, ...)
 
         return axs
 
