@@ -177,9 +177,16 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         else:
             # in this case, the correlation vector is assembled from scalars that are
             # attributed to the output sensors of the likelihood model's forward model
-            corr_vector = np.zeros(self.forward_model.n_output_sensors)
-            for i, output_sensor in enumerate(self.forward_model.output_sensors):
-                corr_vector[i] = getattr(output_sensor, correlation_variable)
+            corr_vector = np.zeros(self.output_lengths[":"]["total"])
+            increments = self.output_lengths[":"]["increments"]
+            output_sensors = self.forward_model.output_sensors
+            idx_start = 0
+            for output_sensor, n_i in zip(output_sensors, increments):
+                idx_end = idx_start + n_i
+                scalar = getattr(output_sensor, correlation_variable)
+                assert len_or_one(scalar) == 1
+                corr_vector[idx_start:idx_end] = scalar
+                idx_start = idx_end
 
         return corr_vector
 
