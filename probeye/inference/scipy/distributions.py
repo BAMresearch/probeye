@@ -707,10 +707,6 @@ def translate_probability_distribution(
         Examples for such classes are given above in this file.
     """
 
-    # no translation is required for an uninformative distribution
-    if dist_template.dist_type == "uninformative":
-        return dist_template
-
     # this dictionary defines the mapping
     dist_classes = {
         "normal": NormalDistribution,

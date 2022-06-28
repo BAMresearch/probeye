@@ -292,7 +292,7 @@ class TestProblem(unittest.TestCase):
             loglike = GaussianLikelihoodModel(
                 experiment_name=exp_name,
                 model_error="additive",
-                correlation=ExpModel(x__y="l_corr_x", t="l_corr_t"),
+                correlation=ExpModel(t="l_corr_t", x__y="l_corr_x"),
             )
             problem.add_likelihood_model(loglike)
 

@@ -90,11 +90,9 @@ class TestProblem(unittest.TestCase):
         # check the input channels
         self.assertEqual(forward_model.input_channel_names, ["x1", "x2", "a", "b"])
 
-        # check that a warning is raised here (we have multiple in/output sensors)
-        with self.assertRaises(RuntimeWarning):
-            _ = forward_model.input_sensor
-        with self.assertRaises(RuntimeWarning):
-            _ = forward_model.output_sensor
+        # these will trigger warnings in the log (we have multiple in/output sensors)
+        _ = forward_model.input_sensor
+        _ = forward_model.output_sensor
 
     def test_invalid_forward_model_definitions(self):
         class ParametersNotSet(ForwardModelBase):

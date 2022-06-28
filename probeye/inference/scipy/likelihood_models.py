@@ -262,7 +262,7 @@ class CorrelatedModelError1V(CorrelatedModelError):
                 f"For likelihood model 'CorrelatedModelError1V' only one correlation "
                 f"variable can be defined! Found self.correlation_variables"
                 f" = {self.correlation_variables}."
-            )
+            )  # pragma: no cover
 
 
 class CorrelatedModelError1D(CorrelatedModelError1V):

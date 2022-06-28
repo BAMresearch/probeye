@@ -1,6 +1,9 @@
 # standard library
 from typing import List
 
+# third party imports
+from loguru import logger
+
 # local imports
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import translate_prms_def
@@ -62,7 +65,7 @@ class ForwardModelBase:
     def input_sensor(self) -> Sensor:
         """Returns the 1st input sensor. Intended for models with only one onf them."""
         if len(self.input_sensors) > 1:
-            raise RuntimeWarning(
+            logger.warning(
                 f"You used the property 'input_sensor' which is intended for forward "
                 f"models with only one input sensor. However, the forward model "
                 f"'{self.name}' has {len(self.input_sensors)} input sensors."
@@ -73,7 +76,7 @@ class ForwardModelBase:
     def output_sensor(self) -> Sensor:
         """Returns the 1st output sensor. Intended for models with only one onf them."""
         if len(self.output_sensors) > 1:
-            raise RuntimeWarning(
+            logger.warning(
                 f"You used the property 'output_sensor' which is intended for forward "
                 f"models with only one output sensor. However, the forward model "
                 f"'{self.name}' has {len(self.output_sensors)} output sensors."
@@ -131,11 +134,13 @@ class ForwardModelBase:
                     f"You did not set the required attribute 'self.parameters' in the "
                     f"forward model's 'interface'-method!"
                 )
-            if make_list(self.input_sensors)[0].name == "_self.input_sensors_not_set":
-                raise RuntimeError(
-                    "You did not set the required attribute 'self.input_sensors' in "
-                    "the forward model's 'interface'-method!"
-                )
+            if len(self.input_sensors) > 0:
+                inp_sensors = self.input_sensors  # just to avoid line-break
+                if make_list(inp_sensors)[0].name == "_self.input_sensors_not_set":
+                    raise RuntimeError(
+                        "You did not set the required attribute 'self.input_sensors' "
+                        "in the forward model's 'interface'-method!"
+                    )
             if make_list(self.output_sensors)[0].name == "_self.output_sensors_not_set":
                 raise RuntimeError(
                     "You did not set the required attribute 'self.output_sensors' in "
