@@ -180,36 +180,8 @@ class Sensor(dict):
             is the measurement (vector) recorded by the sensor in the given experiment.
         """
 
-        # just for better understanding
-        exp_name = key
-        measurement_vector = value
-
-        # if self.correlated_in:
-        #     for corr_var_ in self.correlated_in:
-        #         # note that 'corr_var_' can be just a string (like 't') or a tuple of
-        #         # strings (like ('x', 'y') in case of a multidimensional spatial var.);
-        #         # so first, make sure that we have a tuple in each case
-        #         corr_var_tuple = corr_var_
-        #         if isinstance(corr_var_, str):
-        #             corr_var_tuple = (corr_var_,)
-        #         # now, add the length of each correlation variable defined
-        #         for corr_var in corr_var_tuple:
-        #             if exp_name not in self.corr_var_lengths:
-        #                 self.corr_var_lengths[exp_name] = {corr_var: 0}
-        #             if hasattr(self, corr_var) and getattr(self, corr_var) is not None:
-        #                 self.corr_var_lengths[exp_name][corr_var] = len_or_one(
-        #                     getattr(self, corr_var)
-        #                 )
-        #             else:
-        #                 self.corr_var_lengths[exp_name][corr_var] = len_or_one(
-        #                     measurement_vector
-        #                 )
-        # else:
-        #     # in this case, no correlation is defined for the sensor
-        #     self.corr_var_lengths[exp_name] = {":": len_or_one(measurement_vector)}
-
         # finally, add the key-value-pair to self
-        super().__setitem__(exp_name, value)
+        super().__setitem__(key, value)
 
     def __str__(self) -> str:
         """

@@ -144,6 +144,15 @@ class TestProblem(unittest.TestCase):
             tex="$a$",
             prior=Normal(mean="mean_a", std="std_a"),
         )
+        with self.assertRaises(TypeError):
+            # prior-parameter 'mean' has invalid type
+            p.add_parameter(
+                "w",
+                "model",
+                info="info",
+                tex="$w$",
+                prior=Normal(mean=True, std="std_a"),
+            )
         p.add_parameter("d", "model")  # latent param. with uninformative prior
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
@@ -617,7 +626,14 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
         test_model = FwdModel("TestModel")
+        with self.assertRaises(RuntimeError):
+            p.add_forward_model(test_model, experiments="UndefinedExperimentName")
+        with self.assertRaises(RuntimeError):
+            p.add_experiment("Exp_wrong", sensor_data={"W": 0, "y": 0})
+            p.add_forward_model(test_model, experiments="Exp_wrong")
         p.add_forward_model(test_model, experiments="Exp")
+        with self.assertRaises(NotImplementedError):
+            p.forward_models["TestModel"].response({})
 
         # check for invalid input arguments
         with self.assertRaises(RuntimeError):
@@ -669,6 +685,11 @@ class TestProblem(unittest.TestCase):
                 ]
 
         p.add_forward_model(FwdModel("TestModel"), experiments="Exp")
+
+        with self.assertRaises(RuntimeError):
+            p.add_likelihood_model(
+                GaussianLikelihoodModel(experiment_name="???", model_error="additive")
+            )
 
         p.add_likelihood_model(
             GaussianLikelihoodModel(experiment_name="Exp", model_error="additive")

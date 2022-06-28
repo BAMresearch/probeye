@@ -44,7 +44,7 @@ class Experiment:
                     raise ValueError(
                         f"The sensor values of an experiment must be given as 1D "
                         f"vectors. However, the sensor_data of '{sensor_name}' in "
-                        f"experiment '{name}' are given as a nested list."
+                        f"experiment '{name}' is given as a nested list."
                     )
                 sensor_data_tuples[sensor_name] = tuple(values)
             elif isinstance(values, np.ndarray):

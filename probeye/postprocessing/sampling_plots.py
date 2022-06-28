@@ -248,10 +248,7 @@ def create_pair_plot(
 
         # add a title to the plot, if requested
         if title:
-            if isinstance(axs, np.ndarray):
-                fig = axs.ravel()[0].figure
-            else:
-                fig = axs.figure
+            fig = axs.ravel()[0].figure
             fig.suptitle(title, fontsize=title_size)
 
         # the following command reduces the otherwise wide margins; when only two
@@ -277,7 +274,7 @@ def create_pair_plot(
 
         # show the plot if requested
         if show:
-            plt.show()
+            plt.show()  # pragma: no cover
 
         # Note: the returned axs-object can be saved to a file via:
         #     fig = axs.ravel()[0].figure
@@ -392,7 +389,7 @@ def create_posterior_plot(
 
         # show the plot if requested
         if show:
-            plt.show()
+            plt.show()  # pragma: no cover
 
         # Note: the returned axs-object can be saved to a file via:
         #     fig = axs.ravel()[0].figure
@@ -488,15 +485,12 @@ def create_trace_plot(
 
         # add a title to the plot, if requested
         if title:
-            if isinstance(axs, np.ndarray):
-                fig = axs.ravel()[0].figure
-            else:
-                fig = axs.figure
+            fig = axs.ravel()[0].figure
             fig.suptitle(title, fontsize=title_size)
 
         # show the plot if requested
         if show:
-            plt.show()
+            plt.show()  # pragma: no cover
 
         # Note: the returned axs-object can be saved to a file via:
         #     fig = axs.ravel()[0].figure

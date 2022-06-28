@@ -14,6 +14,10 @@ class TestProblem(unittest.TestCase):
                 model_error="INVALID",
             )
 
+    def test_no_correlation_variables(self):
+        glm = GaussianLikelihoodModel(experiment_name="Exp", model_error="additive")
+        self.assertEqual(glm.correlation_variables, [])
+
 
 if __name__ == "__main__":
     unittest.main()

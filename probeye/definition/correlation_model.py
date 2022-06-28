@@ -27,7 +27,7 @@ class CorrelationModel:
         # this dictionary allows to get the parameters associated with a specific
         # correlation variable
         self.corr_dict = {
-            key: val for key, val in zip(self.correlation_variables, self.parameters)
+            key: val for key, val in zip(self.correlation_variables, [*kwargs.values()])
         }
 
     @staticmethod

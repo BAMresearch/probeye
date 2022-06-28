@@ -839,13 +839,6 @@ class InverseProblem:
             # set automatically here
             if self.parameters[prm_name].type == "not defined":
                 self.change_parameter_type(prm_name, "likelihood")
-            elif self.parameters[prm_name].type in ["prior", "model"]:
-                raise ValueError(
-                    f"The parameter '{prm_name}' defined in the likelihood model of "
-                    f"experiment '{likelihood_model.experiment_name}' was assigned the "
-                    f"type '{self.parameters[prm_name].type}' (it should be "
-                    f"'likelihood')."
-                )
 
         # finally, add the likelihood_model to the internal dict
         self.likelihood_models[likelihood_model.experiment_name] = likelihood_model

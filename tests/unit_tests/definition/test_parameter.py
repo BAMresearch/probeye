@@ -1,8 +1,6 @@
 # standard library imports
 import unittest
 
-# third party imports
-
 # local imports
 from probeye.definition.distribution import Normal
 from probeye.definition.parameter import Parameters

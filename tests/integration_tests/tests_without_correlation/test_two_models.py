@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.distribution import Normal, Uniform
+from probeye.definition.distribution import Normal, Weibull
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -99,10 +99,10 @@ class TestProblem(unittest.TestCase):
         mean_alpha = 2.0
         std_alpha = 1.0
 
-        # 'true' value of sigma, and its normal prior parameters
+        # 'true' value of sigma, and its Weibull prior parameters
         sigma_true = 0.15
-        low_sigma = 0.0
-        high_sigma = 2.0
+        scale_sigma = 0.2
+        shape_sigma = 5.0
 
         # the number of generated experiment_names and seed for random numbers
         n_tests = 100
@@ -139,7 +139,7 @@ class TestProblem(unittest.TestCase):
             domain="(0, +oo)",
             tex=r"$\sigma$ (likelihood)",
             info="Standard deviation of zero-mean additive model error",
-            prior=Uniform(low=low_sigma, high=high_sigma),
+            prior=Weibull(scale=scale_sigma, shape=shape_sigma),
         )
 
         # ============================================================================ #
@@ -289,7 +289,7 @@ class TestProblem(unittest.TestCase):
                 basename_owl = os.path.basename(__file__).split(".")[0] + ".owl"
                 knowledge_graph_file = os.path.join(dir_path, basename_owl)
                 export_knowledge_graph_including_results(
-                    problem,
+                    scipy_solver.problem,
                     inference_data,
                     knowledge_graph_file,
                     data_dir=dir_path,

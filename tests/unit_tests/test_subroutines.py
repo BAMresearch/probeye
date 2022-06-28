@@ -40,6 +40,7 @@ from probeye.subroutines import HiddenPrints
 from probeye.subroutines import assemble_covariance_matrix
 from probeye.subroutines import get_shape_2d
 from probeye.subroutines import safe_string
+from probeye.subroutines import convert_to_tuple
 
 
 class TestProblem(unittest.TestCase):
@@ -705,6 +706,27 @@ class TestProblem(unittest.TestCase):
         for string, expected_result in in_out_dict.items():
             computed_result = safe_string(string)
             self.assertEqual(expected_result, computed_result)
+
+    def test_convert_to_tuple(self):
+
+        list_ = [1, 2, 3]
+        computed_result = convert_to_tuple(list_)
+        expected_result = [1, 2, 3]
+        self.assertEqual(computed_result, expected_result)
+
+        a1 = np.array([1, 2, 3])
+        computed_result = convert_to_tuple(a1)
+        expected_result = (1, 2, 3)
+        self.assertEqual(computed_result, expected_result)
+
+        a2 = np.array([[1, 2, 3], [4, 5, 6]])
+        computed_result = convert_to_tuple(a2)
+        expected_result = ((1, 2, 3), (4, 5, 6))
+        self.assertEqual(computed_result, expected_result)
+
+        a3 = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+        with self.assertRaises(ValueError):
+            convert_to_tuple(a3)
 
 
 if __name__ == "__main__":

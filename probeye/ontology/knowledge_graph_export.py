@@ -212,7 +212,7 @@ def export_knowledge_graph(
             raise RuntimeError(
                 f"Encountered unknown prior type '{prior_type}'. Currently no routines "
                 f"for this prior's knowledge graph export are implemented."
-            )
+            )  # pragma: no cover
         add(parameter, "has_prior_distribution", prior)
         add(inverse_problem, "has_parameter", parameter)
 
