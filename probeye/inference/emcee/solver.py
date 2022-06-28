@@ -140,7 +140,7 @@ class EmceeSolver(ScipySolver):
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
 
-    def run_emcee(
+    def run(
         self,
         n_walkers: int = 20,
         n_steps: int = 1000,

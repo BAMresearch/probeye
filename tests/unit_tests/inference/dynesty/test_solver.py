@@ -57,10 +57,10 @@ class TestProblem(unittest.TestCase):
         logging.root.disabled = True
         dynesty_solver = DynestySolver(problem, show_progress=True, seed=6174)
         with self.assertRaises(RuntimeError):
-            dynesty_solver.run_dynesty(
+            dynesty_solver.run(
                 "invalid_method", nlive_init=10, nlive_batch=10, maxbatch=2
             )
-        dynesty_solver.run_dynesty("dynamic", nlive_init=10, nlive_batch=10, maxbatch=2)
+        dynesty_solver.run("dynamic", nlive_init=10, nlive_batch=10, maxbatch=2)
 
         sample_means = dynesty_solver.summary["mean"]
         for parameter, true_value in true.items():

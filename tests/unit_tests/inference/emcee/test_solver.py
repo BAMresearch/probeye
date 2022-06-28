@@ -55,7 +55,7 @@ class TestProblem(unittest.TestCase):
         # run the emcee solver with deactivated output
         logging.root.disabled = True
         emcee_solver = EmceeSolver(problem, show_progress=False, seed=6174)
-        _ = emcee_solver.run_emcee(n_walkers=20, n_steps=200, vectorize=False)
+        _ = emcee_solver.run(n_walkers=20, n_steps=200, vectorize=False)
         # summary = run_emcee_postprocessing(problem, emcee_sampler,
         #                                    show_progress=True)
         # sample_means = summary['mean']

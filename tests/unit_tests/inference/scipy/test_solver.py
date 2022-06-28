@@ -10,7 +10,7 @@ from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 
 
 class TestProblem(unittest.TestCase):
@@ -58,7 +58,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # test the get_start_values method for given x0_dict
-        scipy_solver = ScipySolver(problem)
+        scipy_solver = MaxLikelihoodSolver(problem)
         x0, x0_dict = scipy_solver.get_start_values(
             x0_dict={"m": 2.5, "b": 1.5, "sigma": 0.6}
         )
@@ -66,7 +66,7 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(x0_dict, {"m": 2.5, "b": 1.5, "sigma": 0.6})
 
         # test the get_start_values method for automatic derivation
-        scipy_solver = ScipySolver(problem)
+        scipy_solver = MaxLikelihoodSolver(problem)
         x0, x0_dict = scipy_solver.get_start_values(x0_prior="mean")
         self.assertTrue(np.allclose(x0, np.array([1.0, 1.0, 0.45])))
         expected_x0_dict = {"m": 1.0, "b": 1.0, "sigma": 0.45}
@@ -76,7 +76,7 @@ class TestProblem(unittest.TestCase):
         # check that the solver can be run now; note that the additional solver option
         # is a default value, and only provided to check that this argument-pipeline
         # works
-        scipy_solver.run_max_likelihood(solver_options={"maxiter": 1000})
+        scipy_solver.run(solver_options={"maxiter": 1000})
 
         # check the 'summarize_point_estimate_results' methods when ML is not successful
         no_success_results = scipy_solver.raw_results
@@ -121,7 +121,7 @@ class TestProblem(unittest.TestCase):
         )
 
         # initialize the solver object
-        scipy_solver = ScipySolver(p)
+        scipy_solver = MaxLikelihoodSolver(p)
 
         # perform a check for all experiments
         a0_value, a1_value, a2_value = 1, 2, 3

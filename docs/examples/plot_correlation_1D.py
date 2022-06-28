@@ -31,7 +31,7 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.definition.correlation_model import ExpModel
 
 # local imports (problem solving)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 from probeye.inference.emcee.solver import EmceeSolver
 
 # local imports (inference data post-processing)
@@ -202,8 +202,8 @@ problem.info(print_header=True)
 # the emcee solver, which is a MCMC-sampling solver. Let's begin with the scipy-solver:
 
 # this is for using the scipy-solver (maximum likelihood estimation)
-scipy_solver = ScipySolver(problem, show_progress=False)
-max_like_data = scipy_solver.run_max_likelihood()
+scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
+max_like_data = scipy_solver.run()
 
 # %%
 # All solver have in common that they are first initialized, and then execute a
@@ -211,7 +211,7 @@ max_like_data = scipy_solver.run_max_likelihood()
 # object (except for the scipy-solver). Let's now take a look at the emcee-solver.
 
 emcee_solver = EmceeSolver(problem, show_progress=False)
-inference_data = emcee_solver.run_emcee(n_steps=2000, n_initial_steps=200)
+inference_data = emcee_solver.run(n_steps=2000, n_initial_steps=200)
 
 # %%
 # Finally, we want to plot the results we obtained. To that end, probeye provides some

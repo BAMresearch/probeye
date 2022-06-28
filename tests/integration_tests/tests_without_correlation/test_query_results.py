@@ -195,7 +195,7 @@ class TestProblem(unittest.TestCase):
         # run inference step using emcee
         true_values = {"a": a_true, "b": b_true, "sigma": sigma}
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)
-        inference_data = emcee_solver.run_emcee(
+        inference_data = emcee_solver.run(
             n_walkers=n_walkers,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,

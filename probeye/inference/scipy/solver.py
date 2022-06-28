@@ -23,15 +23,15 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class ScipySolver(Solver):
     """
-    Solver based on scipy and numpy for an InverseProblem. The ScipySolver is able to
-    perform maximum likelihood and maximum a-posteriori estimations. For information on
-    the arguments see :class:`~probeye.inference.solver.Solver`.
+    Solver based on scipy and numpy for an InverseProblem. The ScipySolver contains the
+    methods for log-prior and log-likelihood evaluation. For information on the
+    arguments see :class:`~probeye.inference.solver.Solver`.
     """
 
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
-        logger.debug(f"Initializing {self.__class__.__name__}")
+        logger.debug("Initializing ScipySolver")
         super().__init__(problem, seed=seed, show_progress=show_progress)
 
     def _translate_parameters(self):
@@ -373,52 +373,6 @@ class ScipySolver(Solver):
                 logger.info(line)
         logger.info("")  # empty line for visual buffer
 
-    def run_max_likelihood(
-        self,
-        x0_dict: Optional[dict] = None,
-        x0_prior: str = "mean",
-        x0_default: float = 1.0,
-        true_values: Optional[dict] = None,
-        method: str = "Nelder-Mead",
-        solver_options: Optional[dict] = None,
-    ) -> sp.optimize.OptimizeResult:
-        """
-        Triggers a maximum likelihood estimation. For more information on the arguments
-        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
-        """
-        return self._run_ml_or_map(
-            x0_dict,
-            x0_prior,
-            x0_default,
-            true_values,
-            method,
-            solver_options,
-            use_priors=False,
-        )
-
-    def run_max_a_posteriori(
-        self,
-        x0_dict: Optional[dict] = None,
-        x0_prior: str = "mean",
-        x0_default: float = 1.0,
-        true_values: Optional[dict] = None,
-        method: str = "Nelder-Mead",
-        solver_options: Optional[dict] = None,
-    ) -> sp.optimize.OptimizeResult:
-        """
-        Triggers a maximum a-posteriori estimation. For more information on the args
-        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
-        """
-        return self._run_ml_or_map(
-            x0_dict,
-            x0_prior,
-            x0_default,
-            true_values,
-            method,
-            solver_options,
-            use_priors=True,
-        )
-
     def _run_ml_or_map(
         self,
         x0_dict: Optional[dict] = None,
@@ -521,3 +475,77 @@ class ScipySolver(Solver):
         )
 
         return minimize_results
+
+
+class MaxLikelihoodSolver(ScipySolver):
+    """
+    Solver for a maximum likelihood estimation. This class is separate from ScipySolver
+    so that its main function can be triggered by a 'run'-method. For information on the
+    arguments see :class:`~probeye.inference.solver.Solver`.
+    """
+
+    def __init__(
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+    ):
+        logger.debug(f"Initializing {self.__class__.__name__}")
+        super().__init__(problem, seed=seed, show_progress=show_progress)
+
+    def run(
+        self,
+        x0_dict: Optional[dict] = None,
+        x0_prior: str = "mean",
+        x0_default: float = 1.0,
+        true_values: Optional[dict] = None,
+        method: str = "Nelder-Mead",
+        solver_options: Optional[dict] = None,
+    ) -> sp.optimize.OptimizeResult:
+        """
+        Triggers a maximum likelihood estimation. For more information on the arguments
+        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
+        """
+        return self._run_ml_or_map(
+            x0_dict,
+            x0_prior,
+            x0_default,
+            true_values,
+            method,
+            solver_options,
+            use_priors=False,
+        )
+
+
+class MaxPosteriorSolver(ScipySolver):
+    """
+    Solver for maximum a-posteriori estimation. This class is separate from ScipySolver
+    so that its main function can be triggered by a 'run'-method. For information on the
+    arguments see :class:`~probeye.inference.solver.Solver`.
+    """
+
+    def __init__(
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+    ):
+        logger.debug(f"Initializing {self.__class__.__name__}")
+        super().__init__(problem, seed=seed, show_progress=show_progress)
+
+    def run(
+        self,
+        x0_dict: Optional[dict] = None,
+        x0_prior: str = "mean",
+        x0_default: float = 1.0,
+        true_values: Optional[dict] = None,
+        method: str = "Nelder-Mead",
+        solver_options: Optional[dict] = None,
+    ) -> sp.optimize.OptimizeResult:
+        """
+        Triggers a maximum a-posteriori estimation. For more information on the args
+        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
+        """
+        return self._run_ml_or_map(
+            x0_dict,
+            x0_prior,
+            x0_default,
+            true_values,
+            method,
+            solver_options,
+            use_priors=True,
+        )

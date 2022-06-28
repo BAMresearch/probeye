@@ -32,7 +32,7 @@ from probeye.ontology.knowledge_graph_export import (
 )
 
 # local imports (testing related)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 from tests.integration_tests.subroutines import run_inference_engines
 
 
@@ -282,8 +282,8 @@ class TestProblem(unittest.TestCase):
         # the ScipySolver is called separately here to test the knowledge graph export
         # routine that directly includes the results in the graph
         if run_scipy:
-            scipy_solver = ScipySolver(problem, show_progress=show_progress)
-            inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+            scipy_solver = MaxLikelihoodSolver(problem, show_progress=show_progress)
+            inference_data = scipy_solver.run(true_values=true_values)
             if write_to_graph:
                 dir_path = os.path.dirname(__file__)
                 basename_owl = os.path.basename(__file__).split(".")[0] + ".owl"

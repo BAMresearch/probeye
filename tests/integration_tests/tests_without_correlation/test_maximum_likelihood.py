@@ -29,7 +29,7 @@ from probeye.ontology.knowledge_graph_export import export_knowledge_graph
 from probeye.ontology.knowledge_graph_export import export_results_to_knowledge_graph
 
 # local imports (inference related)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 
 
 class TestProblem(unittest.TestCase):
@@ -153,8 +153,8 @@ class TestProblem(unittest.TestCase):
         # this routine is imported from another script because it it used by all
         # integration tests in the same way; ref_values are used for plotting
         true_values = {"m": m_true, "b": b_true, "sigma": sigma}
-        scipy_solver = ScipySolver(problem)
-        inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+        ml_solver = MaxLikelihoodSolver(problem)
+        inference_data = ml_solver.run(true_values=true_values)
         if write_to_graph:
             export_results_to_knowledge_graph(
                 problem,

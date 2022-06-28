@@ -150,7 +150,9 @@ class CorrelatedModelError(ScipyLikelihoodBase):
     def __init__(self, scipy_base: ScipyLikelihoodBase):
         super().__init__(scipy_base)
 
-    def get_correlation_vector(self, correlation_variable: str) -> np.ndarray:
+    def get_correlation_vector(
+        self, correlation_variable: str, expand: bool = True
+    ) -> np.ndarray:
         """
         Gets the correlation vector of the likelihood model and returns it. This method
         is necessary, since the correlation vector can be defined in two ways via the
@@ -161,6 +163,10 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         ----------
         correlation_variable
             The name of the correlation variable. For example: 'x' and 'T_in'.
+        expand
+            When True, and when the correlation variable is assembled from the output
+            sensors, the collected scalars are not expanded to the forward model's
+            output lengths.
 
         Returns
         -------
@@ -177,20 +183,27 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         else:
             # in this case, the correlation vector is assembled from scalars that are
             # attributed to the output sensors of the likelihood model's forward model
-            corr_vector = np.zeros(self.output_lengths[":"]["total"])
-            increments = self.output_lengths[":"]["increments"]
-            output_sensors = self.forward_model.output_sensors
-            idx_start = 0
-            for output_sensor, n_i in zip(output_sensors, increments):
-                idx_end = idx_start + n_i
-                scalar = getattr(output_sensor, correlation_variable)
-                assert len_or_one(scalar) == 1
-                corr_vector[idx_start:idx_end] = scalar
-                idx_start = idx_end
+            if expand:
+                corr_vector = np.zeros(self.output_lengths[":"]["total"])
+                increments = self.output_lengths[":"]["increments"]
+                output_sensors = self.forward_model.output_sensors
+                idx_start = 0
+                for output_sensor, n_i in zip(output_sensors, increments):
+                    idx_end = idx_start + n_i
+                    scalar = getattr(output_sensor, correlation_variable)
+                    assert len_or_one(scalar) == 1
+                    corr_vector[idx_start:idx_end] = scalar
+                    idx_start = idx_end
+            else:
+                corr_vector = np.zeros(self.forward_model.n_output_sensors)
+                for i, output_sensor in enumerate(self.forward_model.output_sensors):
+                    corr_vector[i] = getattr(output_sensor, correlation_variable)
 
         return corr_vector
 
-    def spatial_coordinate_array(self, correlation_variables: tuple) -> np.ndarray:
+    def spatial_coordinate_array(
+        self, correlation_variables: tuple, expand: bool = True
+    ) -> np.ndarray:
         """
         Assemble the coordinate array from the experimental data and return it. This
         method is used in classes that relate to multidimensional (spatial) data, i.e.,
@@ -200,6 +213,10 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         ----------
         correlation_variables
             Contains strings of the spatial coordinates. For example ('x', 'y').
+        expand
+            When True, and when the correlation variable is assembled from the output
+            sensors, the collected scalars are not expanded to the forward model's
+            output lengths.
 
         Returns
         -------
@@ -210,14 +227,16 @@ class CorrelatedModelError(ScipyLikelihoodBase):
         """
 
         # allocate the array for the coordinates
-        n = len(self.get_correlation_vector(correlation_variables[0]))
+        n = len(self.get_correlation_vector(correlation_variables[0], expand=expand))
         d = len(correlation_variables)
         coords_array = np.zeros((n, d))
 
         # fill the prepared array for each spatial dimension-coordinate (in most cases
         # these correlation-variables will be 'x', 'y' or ''z)
         for i, correlation_variable in enumerate(correlation_variables):
-            coords_array[:, i] = self.get_correlation_vector(correlation_variable)
+            coords_array[:, i] = self.get_correlation_vector(
+                correlation_variable, expand=expand
+            )
 
         return coords_array
 
@@ -330,12 +349,12 @@ class CorrelatedModelError1D1D(CorrelatedModelError2V):
 
         # prepare the first correlation variable
         corr_var_1 = self.correlation_variables[0]
-        self.corr_vector_1 = self.get_correlation_vector(corr_var_1)
+        self.corr_vector_1 = self.get_correlation_vector(corr_var_1, expand=False)
         self.l_corr_1 = self.correlation_model.corr_dict[corr_var_1]
 
         # prepare the second correlation variable
         corr_var_2 = self.correlation_variables[1]
-        self.corr_vector_2 = self.get_correlation_vector(corr_var_2)
+        self.corr_vector_2 = self.get_correlation_vector(corr_var_2, expand=False)
         self.l_corr_2 = self.correlation_model.corr_dict[corr_var_2]
 
 
@@ -365,11 +384,11 @@ class CorrelatedModelError1DS23D(CorrelatedModelError2V):
             corr_var_23D = self.correlation_variables[1]
 
         # set attributes related to the 1D correlation variable
-        self.corr_vector_1D = self.get_correlation_vector(corr_var_1D)
+        self.corr_vector_1D = self.get_correlation_vector(corr_var_1D, expand=False)
         self.l_corr_1D = self.correlation_model.corr_dict[corr_var_1D]
 
         # set attributes related to the 2D/3D correlation variable
-        self.corr_vector_23D = self.spatial_coordinate_array(corr_var_23D)
+        self.corr_vector_23D = self.spatial_coordinate_array(corr_var_23D, expand=False)
         self.l_corr_23D = self.correlation_model.corr_dict[corr_var_23D]
 
 

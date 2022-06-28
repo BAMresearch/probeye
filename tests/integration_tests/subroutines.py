@@ -5,7 +5,7 @@ from typing import Optional, TYPE_CHECKING
 import matplotlib.pyplot as plt
 
 # local imports (inference engines)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver, MaxPosteriorSolver
 from probeye.inference.emcee.solver import EmceeSolver
 from probeye.inference.dynesty.solver import DynestySolver
 
@@ -131,12 +131,12 @@ def run_inference_engines(
             plt.close("all")
 
     if run_scipy:
-        scipy_solver = ScipySolver(problem, show_progress=show_progress)
-        inference_data_scipy = scipy_solver.run_max_likelihood(true_values=true_values)
+        ml_solver = MaxLikelihoodSolver(problem, show_progress=show_progress)
+        inference_data_ml = ml_solver.run(true_values=true_values)
         if write_to_graph:
             export_results_to_knowledge_graph(
                 problem,
-                inference_data_scipy,
+                inference_data_ml,
                 knowledge_graph_file,
                 data_dir=data_dir,
             )
@@ -145,11 +145,12 @@ def run_inference_engines(
             if prior_template.prior_type == "uninformative":
                 map_possible = False
         if map_possible:
-            _ = scipy_solver.run_max_a_posteriori(true_values=true_values)
+            map_solver = MaxPosteriorSolver(problem, show_progress=show_progress)
+            _ = map_solver.run(true_values=true_values)
 
     if run_emcee:
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)
-        inference_data_emcee = emcee_solver.run_emcee(
+        inference_data_emcee = emcee_solver.run(
             n_walkers=n_walkers,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
@@ -166,7 +167,7 @@ def run_inference_engines(
 
     if run_dynesty:
         dynesty_solver = DynestySolver(problem, show_progress=show_progress)
-        inference_data_dynesty = dynesty_solver.run_dynesty(
+        inference_data_dynesty = dynesty_solver.run(
             "static", nlive=250, true_values=true_values
         )
         if write_to_graph:

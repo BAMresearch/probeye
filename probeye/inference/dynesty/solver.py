@@ -179,7 +179,7 @@ class DynestySolver(ScipySolver):
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
 
-    def run_dynesty(
+    def run(
         self,
         estimation_method: str = "dynamic",
         nlive: int = 250,
