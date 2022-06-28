@@ -64,6 +64,8 @@ class TestProblem(unittest.TestCase):
         computed_result = dist("a", {"samples_a": samples}, "mean", False)
         expected_result = float(np.mean(samples))
         self.assertAlmostEqual(computed_result, expected_result)
+        sub_samples = dist("a", {"samples_a": samples}, "rvs", size=10)
+        self.assertEqual(len(sub_samples), 10)
 
 
 if __name__ == "__main__":

@@ -381,16 +381,15 @@ def export_knowledge_graph(
                 add(cov_assembler, "has_standard_deviation", std_model)
 
                 # associate the covariance assembler with a correlation function
-                if like_obj.correlation_model == "exp":
+                if like_obj.correlation_model.model_type == "exponential":
                     corr_func = peo.correlation_function(
                         "exp_corr_function", namespace=namespace
                     )
                     add(cov_assembler, "uses_mathematical_function", corr_func)
                     # associate the correlation lengths with this correlation function
                     corr_lengths = []  # type: list
-                    for output_sensor in fwd_model.output_sensors:
-                        for corr_length in output_sensor.correlated_in.values():
-                            append_latent_or_const_parameter(corr_lengths, corr_length)
+                    for corr_length in like_obj.correlation_model.parameters:
+                        append_latent_or_const_parameter(corr_lengths, corr_length)
                     add(corr_func, "has_correlation_length", corr_lengths)
 
             else:
@@ -476,16 +475,15 @@ def export_knowledge_graph(
                 add(cov_assembler, "has_standard_deviation", std_model)
 
                 # associate the covariance assembler with a correlation function
-                if like_obj.correlation_model == "exp":
+                if like_obj.correlation_model.model_type == "exponential":
                     corr_function = peo.correlation_function(
                         "exp_corr_function", namespace=namespace
                     )
                     add(cov_assembler, "uses_mathematical_function", corr_function)
                     # associate the correlation lengths with this correlation function
                     corr_lengths = []
-                    for output_sensor in fwd_model.output_sensors:
-                        for corr_length in output_sensor.correlated_in.values():
-                            append_latent_or_const_parameter(corr_lengths, corr_length)
+                    for corr_length in like_obj.correlation_model.parameters:
+                        append_latent_or_const_parameter(corr_lengths, corr_length)
                     add(corr_function, "has_correlation_length", corr_lengths)
 
             else:
