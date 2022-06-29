@@ -31,7 +31,7 @@ class Parameters(dict):
         prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
-        const: Union[int, float, tuple, np.ndarray, None] = None,
+        value: Union[int, float, tuple, np.ndarray, None] = None,
         prior: Optional[ProbabilityDistribution] = None,
         info: str = "No explanation provided",
         tex: Optional[str] = None,
@@ -54,7 +54,7 @@ class Parameters(dict):
         domain
             The parameter's domain (i.e., values it may assume). Note that this argument
             is only considered for latent parameter, but not for a constant.
-        const
+        value
             If the added parameter is a 'const'-parameter, the corresponding value has
             to be specified by this argument.
         prior
@@ -78,7 +78,7 @@ class Parameters(dict):
 
         # if neither const nor prior are given, the parameter is interpreted as being
         # defined as latent with an uninformative prior
-        if const is None and prior is None:
+        if value is None and prior is None:
             prior = Uninformative()
 
         # add the parameter to the central parameter dictionary
@@ -102,10 +102,10 @@ class Parameters(dict):
 
             prior_dict = prior.prm_dict  # dictionary with parameter-value pairs
             prior_parameter_names = []  # type: List[Union[str, dict]]
-            for prior_parameter_name, value in prior_dict.items():
+            for prior_parameter_name, prior_value in prior_dict.items():
                 # create unique name for this prior parameter
                 new_name = f"{prior_parameter_name}_{prm_name}"
-                if type(value) in {float, int, list, tuple, np.ndarray}:
+                if type(prior_value) in {float, int, list, tuple, np.ndarray}:
                     # in this case, the prior-parameter is considered a 'const'-
                     # parameter and added to the problem accordingly here
                     default_info = f"{prior_type.capitalize()} "
@@ -114,14 +114,14 @@ class Parameters(dict):
                     # the following call is recursive, but only with a depth of one,
                     # since the added parameter is a constant here
                     self.add_parameter(
-                        new_name, "prior", const=value, info=default_info
+                        new_name, "prior", value=prior_value, info=default_info
                     )
                     prior_parameter_names.append(new_name)
-                elif type(value) is str:
+                elif type(prior_value) is str:
                     # in this case the prior-parameter is defined as an already defined
                     # parameter with the name stated in value
-                    self.confirm_that_parameter_exists(value)
-                    prior_parameter_names.append({value: new_name})
+                    self.confirm_that_parameter_exists(prior_value)
+                    prior_parameter_names.append({prior_value: new_name})
                 else:
                     raise TypeError(
                         f"The prior-parameter {new_name} is not assigned a "
@@ -141,10 +141,10 @@ class Parameters(dict):
             # in this case we are adding a 'const'-parameter, which means that the
             # prm_index and prm_prior values are not used here
             prm_index = None
-            prm_dim = len_or_one(const)
+            prm_dim = len_or_one(value)
             prm_domain = None  # type: ignore
             prm_prior = None
-            prm_value = convert_to_tuple(const)  # type: ignore
+            prm_value = convert_to_tuple(value)  # type: ignore
             logger.debug(
                 f"Adding constant {prm_type}-parameter "
                 f"{prm_name} = {prm_value} to problem"
@@ -353,7 +353,7 @@ class Parameters(dict):
         """
         return {name: props.value for name, props in self.items()}
 
-    def parameter_overview(self, tablefmt: str = "presto") -> str:
+    def overview(self, tablefmt: str = "presto") -> str:
         """
         Returns a string providing an overview of the defined parameters.
 

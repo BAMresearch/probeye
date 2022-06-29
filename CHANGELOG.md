@@ -1,8 +1,9 @@
 # probeye changelog
 
-## 3.0.0 (2022-Jun-14)
+## 3.0.0 (2022-Jun-29)
 ### Changed
 - The definition of the latent parameter's priors was revised (from tuples to objects).
+- Constant parameters are now added using a 'value' instead of the 'const' keyword argument in the InverseProblem's method 'add_parameter'.
 - The forward model's response method is stripped from the problem definition so that the pure definition of an inverse problem indeed does not contain any computing methods.
 - After parameters one must now define experiments and then the forward models.
 - The four main attributes of InverseProblem are not private anymore to allow for manipulations in the solver.

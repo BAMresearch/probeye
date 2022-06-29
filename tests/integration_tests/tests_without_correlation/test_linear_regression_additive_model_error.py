@@ -37,7 +37,7 @@ class TestProblem(unittest.TestCase):
         n_steps: int = 200,
         n_initial_steps: int = 100,
         n_walkers: int = 20,
-        plot: bool = True,
+        plot: bool = False,
         show_progress: bool = False,
         write_to_graph: bool = True,
         run_scipy: bool = True,
@@ -229,7 +229,7 @@ class TestProblem(unittest.TestCase):
 
         # reduce the number of latent parameters to two; this is done to check if some
         # plotting routines also work in this setup
-        problem.change_parameter_role("sigma", const=sigma)
+        problem.change_parameter_role("sigma", value=sigma)
         true_values = {"a": a_true, "b": b_true}
         run_inference_engines(
             problem,
@@ -249,7 +249,7 @@ class TestProblem(unittest.TestCase):
         problem.change_parameter_role(
             "sigma", prior=Uniform(low=low_sigma, high=high_sigma)
         )
-        problem.change_parameter_role("b", const=b_true)
+        problem.change_parameter_role("b", value=b_true)
         true_values = {"a": a_true, "sigma": sigma}
         run_inference_engines(
             problem,
@@ -266,7 +266,7 @@ class TestProblem(unittest.TestCase):
 
         # reduce the number of latent parameters to one; this is done to check if some
         # plotting routines also work in this setup
-        problem.change_parameter_role("sigma", const=sigma)
+        problem.change_parameter_role("sigma", value=sigma)
         true_values = {"a": a_true}
         run_inference_engines(
             problem,

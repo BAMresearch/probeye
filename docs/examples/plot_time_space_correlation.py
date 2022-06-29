@@ -266,7 +266,7 @@ problem.add_parameter(
     prior=Normal(mean=0.9 * EI_true, std=0.25 * EI_true),
 )
 problem.add_parameter(
-    "L", "model", tex="$L$", info="Length of the beam [m]", const=L_bridge
+    "L", "model", tex="$L$", info="Length of the beam [m]", value=L_bridge
 )
 problem.add_parameter(
     "sigma",

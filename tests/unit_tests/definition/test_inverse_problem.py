@@ -43,7 +43,7 @@ class TestProblem(unittest.TestCase):
         # simply check that no errors occur when info-method is called; the output that
         # is usually printed is redirected
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", const=1.0)
+        p.add_parameter("a", "model", value=1.0)
         p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         p.add_parameter("sigma_model", "likelihood", prior=Normal(mean=0, std=1))
         sys.stdout = io.StringIO()
@@ -83,7 +83,7 @@ class TestProblem(unittest.TestCase):
     def test_str(self):
         # set up a consistent problem and print it
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", const=1.0)
+        p.add_parameter("a", "model", value=1.0)
         p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         p.add_parameter("sigma_model", "likelihood", prior=Normal(mean=0, std=1))
 
@@ -110,10 +110,10 @@ class TestProblem(unittest.TestCase):
     def test_add_parameter(self):
         p = InverseProblem("TestProblem")
         # check valid use cases for constant parameters
-        p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
-        p.add_parameter("mean_a", "prior", const=1.0, info="info", tex=r"$mean_a$")
+        p.add_parameter("c", "model", value=1.0, info="info", tex=r"$c$")
+        p.add_parameter("mean_a", "prior", value=1.0, info="info", tex=r"$mean_a$")
         p.add_parameter(
-            "sigma_1", "likelihood", const=1.0, info="info", tex=r"$\sigma_1$"
+            "sigma_1", "likelihood", value=1.0, info="info", tex=r"$\sigma_1$"
         )
         # check valid use cases for latent parameters
         p.add_parameter(
@@ -157,18 +157,18 @@ class TestProblem(unittest.TestCase):
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # adding a parameter with wrong type
-            p.add_parameter("d", "wrong_type", const=1.0)
+            p.add_parameter("d", "wrong_type", value=1.0)
         with self.assertRaises(RuntimeError):
             # adding a parameter with both const and prior given
             p.add_parameter(
                 "a",
                 "model",
-                const=1.0,
+                value=1.0,
                 prior=Uniform(low=0.1, high=2.0),
             )
         with self.assertRaises(RuntimeError):
             # adding a parameter with a name that was used before
-            p.add_parameter("c", "likelihood", const=2.0, info="info", tex=r"$c$")
+            p.add_parameter("c", "likelihood", value=2.0, info="info", tex=r"$c$")
         with self.assertRaises(TypeError):
             # adding a parameter with an invalid prior
             # noinspection PyTypeChecker
@@ -183,10 +183,10 @@ class TestProblem(unittest.TestCase):
     def test_remove_parameter(self):
         # set up a problem with some parameters so we can remove them
         p = InverseProblem("TestProblem")
-        p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
-        p.add_parameter("mean_a", "prior", const=1.0, info="info", tex=r"$mean_a$")
+        p.add_parameter("c", "model", value=1.0, info="info", tex=r"$c$")
+        p.add_parameter("mean_a", "prior", value=1.0, info="info", tex=r"$mean_a$")
         p.add_parameter(
-            "sigma_model", "likelihood", const=1.0, info="info", tex=r"$\sigma$"
+            "sigma_model", "likelihood", value=1.0, info="info", tex=r"$\sigma$"
         )
         p.add_parameter(
             "std_a",
@@ -270,10 +270,10 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(set(p.latent_prms), {"a"})
         self.assertEqual(set(p.constant_prms), {"mean_a", "std_a"})
         self.assertEqual(set(p.prms), {"a", "mean_a", "std_a"})
-        p.change_parameter_role("a", const=1.0)  # <-- here the role changes
+        p.change_parameter_role("a", value=1.0)  # <-- here the role changes
         with self.assertRaises(RuntimeError):
             # trying to change a constant to a constant
-            p.change_parameter_role("a", const=1.0)
+            p.change_parameter_role("a", value=1.0)
         self.assertEqual(set(p.latent_prms), set())
         self.assertEqual(set(p.constant_prms), {"a"})
         self.assertEqual(set(p.prms), {"a"})
@@ -285,13 +285,13 @@ class TestProblem(unittest.TestCase):
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # stated parameter does not exist
-            p.change_parameter_role("undefined", const=1.0)
+            p.change_parameter_role("undefined", value=1.0)
         with self.assertRaises(RuntimeError):
             # neither const nor prior are given
             p.change_parameter_role("a")
         with self.assertRaises(RuntimeError):
             # both const and prior are given
-            p.change_parameter_role("a", const=1.0, prior=Normal(mean=0, std=1))
+            p.change_parameter_role("a", value=1.0, prior=Normal(mean=0, std=1))
         with self.assertRaises(RuntimeError):
             # change to role the parameter already has
             p.change_parameter_role("a", prior=Normal(mean=0, std=1))
@@ -334,7 +334,7 @@ class TestProblem(unittest.TestCase):
     def test_change_constant(self):
         p = InverseProblem("TestProblem")
         # simple check that the change works and has the expected effect
-        p.add_parameter("a", "model", const=0.0)
+        p.add_parameter("a", "model", value=0.0)
         p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         new_const = 1.0
         p.change_constant("a", new_const)
@@ -354,8 +354,8 @@ class TestProblem(unittest.TestCase):
             # nothing is defined at this point
             p.check_problem_consistency()
         # define some parameters that do not require priors
-        p.add_parameter("mean_a", "prior", const=0.0)
-        p.add_parameter("std_a", "prior", const=1.0)
+        p.add_parameter("mean_a", "prior", value=0.0)
+        p.add_parameter("std_a", "prior", value=1.0)
         with self.assertRaises(AssertionError):
             # no priors defined yet
             p.check_problem_consistency()
@@ -392,7 +392,7 @@ class TestProblem(unittest.TestCase):
             p.check_problem_consistency()
 
         # add a noise model
-        p.add_parameter("sigma_model", "likelihood", const=1.0)
+        p.add_parameter("sigma_model", "likelihood", value=1.0)
         like_model = GaussianLikelihoodModel(
             experiment_name="Experiment_1", model_error="additive"
         )
@@ -456,7 +456,7 @@ class TestProblem(unittest.TestCase):
     def test_get_parameters(self):
         # check a simple use case
         p = InverseProblem("TestProblem")
-        p.add_parameter("c", "model", const=1.0)
+        p.add_parameter("c", "model", value=1.0)
         p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
         p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         a_value, b_value = 3.1, 14.7
@@ -604,7 +604,7 @@ class TestProblem(unittest.TestCase):
         # simply check that no errors occur when theta_explanation is called; the output
         # that is usually printed is redirected
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", const=1.0)
+        p.add_parameter("a", "model", value=1.0)
         p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         p.add_parameter("sigma_model", "likelihood", prior=Normal(mean=0, std=1))
         # check the model_consistency flag

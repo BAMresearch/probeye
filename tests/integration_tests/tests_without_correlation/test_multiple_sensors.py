@@ -158,12 +158,12 @@ class TestProblem(unittest.TestCase):
         )
         problem.add_parameter(
             name="sigma_m",
-            const=sigma_m,
+            value=sigma_m,
             info="Standard deviation of zero-mean additive measurement error",
         )
         problem.add_parameter(
             name="c",
-            const=c,
+            value=c,
             info="Known model constant of forward model",
         )
 

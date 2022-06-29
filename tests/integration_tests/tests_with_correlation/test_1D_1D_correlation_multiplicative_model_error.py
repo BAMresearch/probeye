@@ -157,7 +157,7 @@ class TestProblem(unittest.TestCase):
             prior=Normal(mean=mean_EI, std=std_EI),
         )
         problem.add_parameter(
-            "L", "model", tex="$L$", info="Length of the beam [m]", const=L
+            "L", "model", tex="$L$", info="Length of the beam [m]", value=L
         )
         problem.add_parameter(
             name="sigma",

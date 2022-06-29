@@ -156,7 +156,7 @@ class TestProblem(unittest.TestCase):
             info="Bending stiffness of the beam [Nm^2]",
             prior=Normal(mean=mean_EI, std=std_EI),
         )
-        problem.add_parameter(name="L", info="Length of the beam [m]", const=L)
+        problem.add_parameter(name="L", info="Length of the beam [m]", value=L)
         problem.add_parameter(
             name="sigma",
             domain="(0, +oo)",

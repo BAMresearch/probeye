@@ -136,7 +136,7 @@ class TestProblem(unittest.TestCase):
             "likelihood",  # this is an optional tag
             tex=r"$\sigma_m$",
             info="Standard deviation of zero-mean additive measurement error",
-            const=sigma_m,
+            value=sigma_m,
         )
 
         # ============================================================================ #

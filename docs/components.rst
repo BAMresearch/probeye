@@ -54,12 +54,12 @@ And a typical definition of a constant parameter looks like this:
     problem.add_parameter(
         "sigma_meas",
         "likelihood",
-        const=0.1,
+        value=0.1,
         tex="r$\sigma_\mathrm{meas}$",
         info="Standard deviation of measurement error",
     )
 
-As one can see, the definition of either a latent or a constant parameter is triggered by using the :code:`prior` or the :code:`const` keyword argument in the :code:`add_parameter`-method. The :code:`const` keyword argument can be a scalar like in the example above or a numpy-based vector, for example :code:`const=np.array([0.9, -0.3])`. The :code:`prior` keyword argument on the other hand has to be given as a pair, where the first element states the kind of distribution (possible options are currently :code:`"normal"`, :code:`"uniform"`, :code:`"lognormal"`, :code:`"truncnormal"`, :code:`"weibull"`), and the second argument is a dictionary stating the prior's parameters. More information on the priors is given in this :ref:`section<Prior definition of latent parameters>` below.
+As one can see, the definition of either a latent or a constant parameter is triggered by using the :code:`prior` or the :code:`value` keyword argument in the :code:`add_parameter`-method. The :code:`value` keyword argument can be a scalar like in the example above or a numpy-based vector, for example :code:`value=np.array([0.9, -0.3])`. The :code:`prior` keyword argument on the other hand has to be given as a pair, where the first element states the kind of distribution (possible options are currently :code:`"normal"`, :code:`"uniform"`, :code:`"lognormal"`, :code:`"truncnormal"`, :code:`"weibull"`), and the second argument is a dictionary stating the prior's parameters. More information on the priors is given in this :ref:`section<Prior definition of latent parameters>` below.
 
 Finally, it should be pointed out that it is possible to give a very short definition of a latent parameter by neither specifying the :code:`prior` nor the :code:`const` keyword argument. Examples could look like this:
 

@@ -208,7 +208,7 @@ class InverseProblem:
         prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
-        const: Union[int, float, np.ndarray, None] = None,
+        value: Union[int, float, np.ndarray, None] = None,
         prior: Optional[ProbabilityDistribution] = None,
         info: str = "No explanation provided",
         tex: Optional[str] = None,
@@ -225,7 +225,7 @@ class InverseProblem:
             prm_type,
             dim=dim,
             domain=domain,
-            const=const,
+            value=value,
             prior=prior,
             info=info,
             tex=tex,
@@ -247,7 +247,7 @@ class InverseProblem:
     def change_parameter_role(
         self,
         prm_name: str,
-        const: Union[int, float, None] = None,
+        value: Union[int, float, None] = None,
         prior: Optional[ProbabilityDistribution] = None,
         domain: str = "(-oo, +oo)",
     ):
@@ -261,7 +261,7 @@ class InverseProblem:
         ----------
         prm_name
             The name of the parameter whose role should be changed.
-        const
+        value
             If the new role is 'const', the corresponding value has to be specified by
             this argument.
         prior
@@ -276,14 +276,14 @@ class InverseProblem:
         self.parameters.confirm_that_parameter_exists(prm_name)
 
         # exactly one of the const and prior key word arguments must be given
-        if const is not None and prior is not None:
+        if value is not None and prior is not None:
             raise RuntimeError(
-                f"You must specify either the 'const' or the 'prior' key argument. You "
+                f"You must specify either the 'value' or the 'prior' key argument. You "
                 f"have specified both."
             )
-        if const is None and prior is None:
+        if value is None and prior is None:
             raise RuntimeError(
-                f"You must specify either the 'const' or the 'prior' key argument. You "
+                f"You must specify either the 'value' or the 'prior' key argument. You "
                 f"have specified none."
             )
         # raise an error if the role change would not change the role
@@ -291,7 +291,7 @@ class InverseProblem:
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as constant."
             )
-        if self.parameters[prm_name].is_latent and (const is None):
+        if self.parameters[prm_name].is_latent and (value is None):
             raise RuntimeError(
                 f"The parameter '{prm_name}' is already defined as a "
                 f"latent parameter."
@@ -306,7 +306,7 @@ class InverseProblem:
             dim = len_or_one(prm.value)  # type: Union[int, None]
         else:
             # in this case, a latent parameter should be made constant; since the dim-
-            # attribute will be inferred from the given value (const) it does not need
+            # attribute will be inferred from the given value (value) it does not need
             # to be specified here
             dim = None
         self.remove_parameter(prm_name)
@@ -315,7 +315,7 @@ class InverseProblem:
             prm.type,
             dim=dim,
             domain=domain,
-            const=const,
+            value=value,
             prior=prior,
             info=prm.info,
             tex=prm.tex,
@@ -907,7 +907,7 @@ class InverseProblem:
         prior_str = titled_table("Priors", prior_table)
 
         # provide various information on the problem's parameters
-        prm_string = self.parameters.parameter_overview(tablefmt=tablefmt)
+        prm_string = self.parameters.overview(tablefmt=tablefmt)
         prm_string += self.parameters.parameter_explanations(tablefmt=tablefmt)
         prm_string += self.parameters.const_parameter_values(tablefmt=tablefmt)
 

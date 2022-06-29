@@ -91,7 +91,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter("a0", "model", prior=Normal(mean=0, std=1))
         p.add_parameter("a1", "model", prior=Normal(mean=0, std=1))
         p.add_parameter("a2", "model", prior=Normal(mean=0, std=1), domain="[0, 1]")
-        p.add_parameter("sigma", "likelihood", const=1.0)
+        p.add_parameter("sigma", "likelihood", value=1.0)
 
         # add experiment_names
         p.add_experiment("Exp1", sensor_data={"x": 1, "y": 2})
