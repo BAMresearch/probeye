@@ -18,18 +18,19 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (problem solving)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 from probeye.inference.emcee.solver import EmceeSolver
 from probeye.inference.dynesty.solver import DynestySolver
 
 # local imports (inference data post-processing)
-from probeye.postprocessing.sampling import create_pair_plot
-from probeye.postprocessing.sampling import create_posterior_plot
-from probeye.postprocessing.sampling import create_trace_plot
+from probeye.postprocessing.sampling_plots import create_pair_plot
+from probeye.postprocessing.sampling_plots import create_posterior_plot
+from probeye.postprocessing.sampling_plots import create_trace_plot
 
 # %%
 # We start by generating a synthetic data set from a known linear model to which we will
@@ -121,14 +122,14 @@ problem.add_parameter(
     "model",
     tex="$a$",
     info="Slope of the graph",
-    prior=("normal", {"mean": 2.0, "std": 1.0}),
+    prior=Normal(mean=2.0, std=1.0),
 )
 problem.add_parameter(
     "b",
     "model",
     info="Intersection of graph with y-axis",
     tex="$b$",
-    prior=("normal", {"mean": 1.0, "std": 1.0}),
+    prior=Normal(mean=1.0, std=1.0),
 )
 problem.add_parameter(
     "std_noise",
@@ -136,26 +137,25 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Standard deviation, of zero-mean Gaussian noise model",
-    prior=("uniform", {"low": 0.0, "high": 0.8}),
+    prior=Uniform(low=0.0, high=0.8),
 )
 
 # %%
 # As the next step, we need to add our forward model, the experimental data and the
 # likelihood model. Note that the order is important and cannot be changed.
 
-# forward model
-problem.add_forward_model(LinearModel("LinearModel"))
-
 # experimental data
 problem.add_experiment(
-    "TestSeries_1",
-    fwd_model_name="LinearModel",
-    sensor_values={"x": x_test, "y": y_test},
+    name="TestSeries_1",
+    sensor_data={"x": x_test, "y": y_test},
 )
+
+# forward model
+problem.add_forward_model(LinearModel("LinearModel"), experiments="TestSeries_1")
 
 # likelihood model
 problem.add_likelihood_model(
-    GaussianLikelihoodModel(prms_def="std_noise", experiment_name="TestSeries_1")
+    GaussianLikelihoodModel(experiment_name="TestSeries_1", model_error="additive")
 )
 
 # %%
@@ -171,8 +171,8 @@ problem.info(print_header=True)
 # the emcee solver, which is a MCMC-sampling solver. Let's begin with the scipy-solver:
 
 # this is for using the scipy-solver (maximum likelihood estimation)
-scipy_solver = ScipySolver(problem, show_progress=False)
-max_like_data = scipy_solver.run_max_likelihood()
+scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
+max_like_data = scipy_solver.run()
 
 # %%
 # All solver have in common that they are first initialized, and then execute a
@@ -189,12 +189,12 @@ run_pyro = False
 # this is for running the dynesty-solver
 if run_dynesty:
     dynesty_solver = DynestySolver(problem, show_progress=False)
-    inference_data = dynesty_solver.run_dynesty()
+    inference_data = dynesty_solver.run()
 
 # this is for using the emcee-solver
 if run_emcee:
     emcee_solver = EmceeSolver(problem, show_progress=False)
-    inference_data = emcee_solver.run_mcmc(n_steps=2000, n_initial_steps=200)
+    inference_data = emcee_solver.run(n_steps=2000, n_initial_steps=200)
 
 # %%
 # Finally, we want to plot the results we obtained. To that end, probeye provides some

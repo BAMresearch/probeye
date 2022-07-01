@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, TruncNormal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -88,14 +89,75 @@ class TestProblem(unittest.TestCase):
         mean_b = 1.0
         std_b = 1.0
 
-        # 'true' value of additive error sd, and its uniform prior parameters
+        # 'true' value of additive error sd, and its trunc. normal prior parameters
         sigma = 0.5
         low_sigma = 0.0
-        high_sigma = 0.8
+        high_sigma = 1.4
+        mean_sigma = 0.7
+        std_sigma = 1.0
 
         # the number of generated experiment_names and seed for random numbers
         n_tests = 50
         seed = 1
+
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
+
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression (AME)")
+
+        # add all parameters to the problem
+        problem.add_parameter(
+            name="a",
+            tex="$a$",
+            info="Slope of the graph",
+            prior=Normal(mean=mean_a, std=std_a),
+        )
+        problem.add_parameter(
+            name="b",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=Normal(mean=mean_b, std=std_b),
+        )
+        problem.add_parameter(
+            name="sigma",
+            domain="(0, +oo)",
+            tex=r"$\sigma$",
+            info="Standard deviation, of zero-mean additive model error",
+            prior=TruncNormal(
+                low=low_sigma, high=high_sigma, mean=mean_sigma, std=std_sigma
+            ),
+        )
+
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
+
+        # data-generation; normal likelihood with constant variance around each point
+        np.random.seed(seed)
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true = a_true * x_test + b_true
+        y_test = np.random.normal(loc=y_true, scale=sigma)
+
+        # add the experimental data
+        problem.add_experiment(
+            name=f"TestSeries_1",
+            sensor_data={
+                "x": x_test,
+                "y": y_test,
+            },
+        )
+
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
 
         # ============================================================================ #
         #                           Define the Forward Model                           #
@@ -108,100 +170,14 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
-                # this method *must* be provided by the user
                 x = inp["x"]
                 m = inp["m"]
                 b = inp["b"]
                 return {"y": m * x + b}
 
-            def jacobian(self, inp: dict) -> dict:
-                # this method *can* be provided by the user (if a solver is used that
-                # requires gradients); if not provided (but required by a solver) the
-                # jacobian will be approximated by finite differences; note that
-                # currently no solver is implemented that requires gradients (April 22)
-                x = inp["x"]  # vector
-                one = np.ones((len(x), 1))
-                # partial derivatives must only be stated for the model parameters;
-                # all other input must be flagged by None; note: partial derivatives
-                # must be given as column vectors
-                return {"y": {"x": None, "m": x.reshape(-1, 1), "b": one}}
-
-        # ============================================================================ #
-        #                         Define the Inference Problem                         #
-        # ============================================================================ #
-
-        # initialize the inverse problem with a useful name; note that the name will
-        # only be stored as an attribute of the InverseProblem and is not important
-        # for the problem itself; can be useful when dealing with multiple problems
-        problem = InverseProblem("Linear regression (AME)")
-
-        # add all parameters to the problem; the first argument states the parameter's
-        # global name (here: 'a', 'b' and 'sigma'); the second argument defines the
-        # parameter type (three options: 'model' for parameter's of the forward model,
-        # 'prior' for prior parameters and 'likelihood' for parameters of the likelihood
-        # model); the 'info'-argument is a short description string used for logging,
-        # and the tex-argument gives a tex-string of the parameter used for plotting;
-        # finally, the prior-argument specifies the parameter's prior; note that this
-        # definition of a prior will result in the initialization of constant parameters
-        # of type 'prior' in the background
-        problem.add_parameter(
-            "a",
-            "model",
-            tex="$a$",
-            info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
-        )
-        problem.add_parameter(
-            "b",
-            "model",
-            info="Intersection of graph with y-axis",
-            tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
-        )
-        problem.add_parameter(
-            "sigma",
-            "likelihood",
-            domain="(0, +oo)",
-            tex=r"$\sigma$",
-            info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
-        )
-
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
-
-        # ============================================================================ #
-        #                    Add test data to the Inference Problem                    #
-        # ============================================================================ #
-
-        # data-generation; normal likelihood with constant variance around each point
-        np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model.response(
-            {linear_model.input_sensor.name: x_test, "m": a_true, "b": b_true}
-        )[linear_model.output_sensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma)
-
-        # add the experimental data
-        problem.add_experiment(
-            f"TestSeries_1",
-            fwd_model_name="LinearModel",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                linear_model.output_sensor.name: y_test,
-            },
-        )
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(linear_model.input_sensor.name)
-            plt.ylabel(linear_model.output_sensor.name)
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
+        problem.add_forward_model(linear_model, experiments="TestSeries_1")
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -210,10 +186,8 @@ class TestProblem(unittest.TestCase):
         # add the likelihood model to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def="sigma",
                 experiment_name="TestSeries_1",
                 model_error="additive",
-                name="SimpleLikelihoodModel",
             )
         )
 
@@ -255,7 +229,7 @@ class TestProblem(unittest.TestCase):
 
         # reduce the number of latent parameters to two; this is done to check if some
         # plotting routines also work in this setup
-        problem.change_parameter_role("sigma", const=sigma)
+        problem.change_parameter_role("sigma", value=sigma)
         true_values = {"a": a_true, "b": b_true}
         run_inference_engines(
             problem,
@@ -273,9 +247,9 @@ class TestProblem(unittest.TestCase):
         # again, only two parameters; this case is done to have a uniform prior plotted
         # on the vertical axis in a 2-parameter pairplot
         problem.change_parameter_role(
-            "sigma", prior=("uniform", {"low": low_sigma, "high": high_sigma})
+            "sigma", prior=Uniform(low=low_sigma, high=high_sigma)
         )
-        problem.change_parameter_role("b", const=b_true)
+        problem.change_parameter_role("b", value=b_true)
         true_values = {"a": a_true, "sigma": sigma}
         run_inference_engines(
             problem,
@@ -292,7 +266,7 @@ class TestProblem(unittest.TestCase):
 
         # reduce the number of latent parameters to one; this is done to check if some
         # plotting routines also work in this setup
-        problem.change_parameter_role("sigma", const=sigma)
+        problem.change_parameter_role("sigma", value=sigma)
         true_values = {"a": a_true}
         run_inference_engines(
             problem,

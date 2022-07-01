@@ -103,8 +103,6 @@ class Sensor(dict):
         coords: Optional[np.ndarray] = None,
         order: Tuple[str, ...] = ("x", "y", "z"),
         std_model: str = "not defined",
-        std_measurement: str = "not defined",
-        correlated_in: Optional[dict] = None,
     ):
 
         # basic attributes
@@ -124,24 +122,24 @@ class Sensor(dict):
         # model error and the measurement error in this sensor respectively; they will
         # be referred to when evaluating the likelihood function of a likelihood model
         self.std_model = std_model
-        self.std_measurement = std_measurement
+        self.std_measurement = "not defined"
 
         # attributes directly relating to correlation variables; note that the way of
         # defining both of these attributes guaranties that 'self.correlated_in' is
         # always a dict (and never None, which is a valid value for 'correlated_in')
         # and 'self.correlation_variables' is always a list
-        self.correlated_in = {}  # type: dict
-        self.correlation_variables = []
-        if correlated_in is not None:
-            self.correlated_in = correlated_in
-            self.correlation_variables = [*self.correlated_in.keys()]
+        # self.correlated_in = {}  # type: dict
+        # self.correlation_variables = []
+        # if correlated_in is not None:
+        #     self.correlated_in = correlated_in
+        #     self.correlation_variables = [*self.correlated_in.keys()]
 
         # this dictionary stores the lengths of the correlation vectors for each
         # experiment associated with this sensor; if correlation is defined for this
         # sensor, the keys of 'self.corr_var_lengths' will be experiment names, while
         # the values will be dictionaries that have correlation variable names as keys
         # and the corresponding lengths as values
-        self.corr_var_lengths = {}  # type: dict
+        # self.corr_var_lengths = {}  # type: dict
 
         # required due to inheriting from dict-class
         super().__init__()
@@ -182,33 +180,11 @@ class Sensor(dict):
             is the measurement (vector) recorded by the sensor in the given experiment.
         """
 
-        # just for better understanding
-        exp_name = key
-        measurement_vector = value
-
-        if self.correlated_in:
-            for corr_var_ in self.correlated_in:
-                # note that 'corr_var_' can be just a string (like 't') or a tuple of
-                # strings (like ('x', 'y') in case of a multidimensional spatial var.);
-                # so first, make sure that we have a tuple in each case
-                corr_var_tuple = corr_var_
-                if isinstance(corr_var_, str):
-                    corr_var_tuple = (corr_var_,)
-                # now, add the length of each correlation variable defined
-                for corr_var in corr_var_tuple:
-                    if exp_name not in self.corr_var_lengths:
-                        self.corr_var_lengths[exp_name] = {corr_var: 0}
-                    if hasattr(self, corr_var) and getattr(self, corr_var) is not None:
-                        self.corr_var_lengths[exp_name][corr_var] = len_or_one(
-                            getattr(self, corr_var)
-                        )
-                    else:
-                        self.corr_var_lengths[exp_name][corr_var] = len_or_one(
-                            measurement_vector
-                        )
-        else:
-            # in this case, no correlation is defined for the sensor
-            self.corr_var_lengths[exp_name] = {"": len_or_one(measurement_vector)}
-
         # finally, add the key-value-pair to self
-        super().__setitem__(exp_name, value)
+        super().__setitem__(key, value)
+
+    def __str__(self) -> str:
+        """
+        Allows to print the sensor via print(sensor) if sensor is an instance of Sensor.
+        """
+        return f"Sensor(name='{self.name}')"

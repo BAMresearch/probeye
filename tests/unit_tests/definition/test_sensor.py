@@ -15,6 +15,7 @@ class TestProblem(unittest.TestCase):
         sensor = Sensor(sensor_name)
         # check if everything is where it should be
         self.assertEqual(sensor.name, sensor_name)
+        self.assertEqual(sensor.__str__(), f"Sensor(name='{sensor.name}')")
 
     def test_sensor_with_coords_init(self):
         # check a position sensor with three coordinates via x-y-z-input

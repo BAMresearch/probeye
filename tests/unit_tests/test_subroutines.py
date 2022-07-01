@@ -8,6 +8,7 @@ import numpy as np
 
 # local imports
 from probeye.definition.inverse_problem import InverseProblem
+from probeye.definition.distribution import Uniform
 from probeye.subroutines import len_or_one
 from probeye.subroutines import make_list
 from probeye.subroutines import underlined_string
@@ -39,6 +40,7 @@ from probeye.subroutines import HiddenPrints
 from probeye.subroutines import assemble_covariance_matrix
 from probeye.subroutines import get_shape_2d
 from probeye.subroutines import safe_string
+from probeye.subroutines import convert_to_tuple
 
 
 class TestProblem(unittest.TestCase):
@@ -469,9 +471,7 @@ class TestProblem(unittest.TestCase):
     def test_check_for_uninformative_priors(self):
         # check if the detection works as expected
         problem = InverseProblem("Problem with uninformative prior")
-        problem.add_parameter(
-            "sigma", "likelihood", prior=("uniform", {"low": 0.1, "high": 0.8})
-        )
+        problem.add_parameter("sigma", "likelihood", prior=Uniform(low=0.1, high=0.8))
         check_for_uninformative_priors(problem)  # no error should be raised
         problem.add_parameter("m", "model")  # uninformative prior
         with self.assertRaises(RuntimeError):
@@ -706,6 +706,27 @@ class TestProblem(unittest.TestCase):
         for string, expected_result in in_out_dict.items():
             computed_result = safe_string(string)
             self.assertEqual(expected_result, computed_result)
+
+    def test_convert_to_tuple(self):
+
+        list_ = [1, 2, 3]
+        computed_result = convert_to_tuple(list_)
+        expected_result = [1, 2, 3]
+        self.assertEqual(computed_result, expected_result)
+
+        a1 = np.array([1, 2, 3])
+        computed_result = convert_to_tuple(a1)
+        expected_result = (1, 2, 3)
+        self.assertEqual(computed_result, expected_result)
+
+        a2 = np.array([[1, 2, 3], [4, 5, 6]])
+        computed_result = convert_to_tuple(a2)
+        expected_result = ((1, 2, 3), (4, 5, 6))
+        self.assertEqual(computed_result, expected_result)
+
+        a3 = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]])
+        with self.assertRaises(ValueError):
+            convert_to_tuple(a3)
 
 
 if __name__ == "__main__":

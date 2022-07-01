@@ -1,7 +1,6 @@
 # standard library imports
 from typing import TYPE_CHECKING, Optional
 import time
-import random
 import contextlib
 
 # third party imports
@@ -47,7 +46,7 @@ class DynestySolver(ScipySolver):
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
-        logger.debug("Initializing DynestySolver")
+        logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
         check_for_uninformative_priors(problem)
         # initialize the scipy-based solver (ScipySolver)
@@ -70,11 +69,11 @@ class DynestySolver(ScipySolver):
             The vector of quantiles for each prior distribution at theta.
         """
         qs = []
-        for prior in self.priors.values():
+        for prior in self.problem.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
             try:
                 qs.append(prior(prms, "ppf"))
-            except AttributeError as e:
+            except AttributeError:
                 # This branch is active when there is no `ppf` method in
                 # the prior distribution. For the case of a multivariate
                 # normal distribution, we implement a workaround.
@@ -180,7 +179,7 @@ class DynestySolver(ScipySolver):
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
 
-    def run_dynesty(
+    def run(
         self,
         estimation_method: str = "dynamic",
         nlive: int = 250,

@@ -1,5 +1,6 @@
 # standard library imports
-from copy import copy
+import types
+from copy import copy, deepcopy
 from typing import Union, List, Tuple, Any, Optional, Generator, Callable
 from typing import TYPE_CHECKING
 import os
@@ -1145,13 +1146,14 @@ def assemble_covariance_matrix(
     return cov_matrix
 
 
-def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
+def get_shape_2d(array_or_tuple: Union[np.ndarray, tuple]) -> Tuple[int, int]:
     """
-    Returns the number of rows and columns from a one or two dimensional numpy array.
+    Returns the number of rows and columns from a one or two dimensional numpy array or
+    tuple.
 
     Parameters
     ----------
-    array
+    array_or_tuple
         The given array of one or two dimensions.
 
     Returns
@@ -1161,6 +1163,12 @@ def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
         number_of_cols
             The number of columns found in the array.
     """
+
+    # convert tuple to array if a tuple is given
+    if isinstance(array_or_tuple, tuple):
+        array = np.array(array_or_tuple)
+    else:
+        array = array_or_tuple
 
     nd = len(array.shape)
     if nd == 1:
@@ -1175,6 +1183,35 @@ def get_shape_2d(array: np.ndarray) -> Tuple[int, int]:
             f"dimensions. However, the given array has {nd} dimensions."
         )
     return number_of_rows, number_of_cols
+
+
+def convert_to_tuple(a: Union[int, float, np.ndarray]) -> Union[int, float, tuple]:
+    """
+    Converts a given numpy array into a respective tuple.
+
+    Parameters
+    ----------
+    a
+        The given numpy array. Might also be a scalar (float/int) which will be
+        returned unprocessed.
+
+    Returns
+    -------
+        The given array as a tuple.
+    """
+
+    if isinstance(a, np.ndarray):
+        if len(a.shape) == 1:
+            return tuple(a)
+        elif len(a.shape) == 2:
+            return tuple(tuple(row) for row in a)
+        else:
+            raise ValueError(
+                f"Arrays of higher dimension than 2 are not supported! (The given "
+                f"array was {a})"
+            )
+    else:
+        return a
 
 
 def safe_string(string: str, n_max: int = 255) -> str:
@@ -1218,6 +1255,47 @@ def safe_string(string: str, n_max: int = 255) -> str:
         safe = safe[:n_max]
 
     return safe
+
+
+def synchronize_objects(
+    new_obj: object, ref_obj: object, exclude_startswith: tuple = ("_", "__")
+):
+    """
+    Copies all attributes from a reference object (ref_obj) to a given object (new_obj)
+    if those attributes exist in both objects. For example, if new_obj.a = None and
+    ref_obj.a = 3 then this function will result in new_obj.a = 3. Excluded from this
+    synchronization are properties and functions.
+
+    Parameters
+    ----------
+    new_obj
+        The new object that should get the attribute-values of ref_obj.
+    ref_obj
+        The reference object that should 'give' its attributes to new_obj.
+    exclude_startswith
+        All attributes that start with one of the strings given in this tuple will not
+        be copied.
+    """
+    for attribute in dir(ref_obj):
+        attr_is_valid = True
+        for s in exclude_startswith:
+            if attribute.startswith(s):
+                attr_is_valid = False
+                break
+        # make sure that the attribute is not a property
+        if isinstance(getattr(type(ref_obj), attribute, None), property):
+            attr_is_valid = False
+        # make sure that the attribute is not a function
+        if isinstance(getattr(type(ref_obj), attribute, None), types.FunctionType):
+            attr_is_valid = False
+        if attr_is_valid:
+            if hasattr(new_obj, attribute):
+                try:
+                    setattr(new_obj, attribute, deepcopy(getattr(ref_obj, attribute)))
+                except AttributeError:  # pragma: no cover
+                    raise AttributeError(
+                        f"can't set attribute '{attribute}'"
+                    )  # pragma: no cover
 
 
 class HiddenPrints:

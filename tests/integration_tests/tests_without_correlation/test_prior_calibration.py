@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -103,6 +104,69 @@ class TestProblem(unittest.TestCase):
         seed = 1
 
         # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
+
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression (AME)")
+
+        # add all parameters to the problem
+        problem.add_parameter(
+            name="mean_a",
+            info="Location parameter of normal prior for 'a'",
+            tex=r"$\mu_a^\mathrm{prior}$",
+            prior=Uniform(low=low_loc_a, high=high_loc_a),
+        )
+        problem.add_parameter(
+            name="a",
+            info="Slope of the graph",
+            tex="$a$",
+            prior=Normal(mean="mean_a", std=std_a),
+        )
+        problem.add_parameter(
+            name="b",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=Normal(mean=mean_b, std=std_b),
+        )
+        problem.add_parameter(
+            name="sigma",
+            domain="(0, +oo)",
+            info="Standard deviation of zero-mean additive model error",
+            tex=r"$\sigma$",
+            prior=Uniform(low=low_sigma, high=high_sigma),
+        )
+
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
+
+        # data-generation; normal likelihood with constant variance around each point
+        np.random.seed(seed)
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true = a_true * x_test + b_true
+        y_test = np.random.normal(loc=y_true, scale=sigma)
+
+        # add the experimental data
+        problem.add_experiment(
+            name=f"TestSeries_1",
+            sensor_data={
+                "x": x_test,
+                "y": y_test,
+            },
+        )
+
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
+
+        # ============================================================================ #
         #                           Define the Forward Model                           #
         # ============================================================================ #
 
@@ -118,75 +182,9 @@ class TestProblem(unittest.TestCase):
                 b = inp["b"]
                 return {"y": a * x + b}
 
-        # ============================================================================ #
-        #                         Define the Inference Problem                         #
-        # ============================================================================ #
-
-        # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear regression (AME)")
-
-        # add all parameters to the problem
-        problem.add_parameter(
-            "mean_a",
-            info="Location parameter of normal prior for 'a'",
-            tex=r"$\mu_a^\mathrm{prior}$",
-            prior=("uniform", {"low": low_loc_a, "high": high_loc_a}),
-        )
-        problem.add_parameter(
-            "a",
-            info="Slope of the graph",
-            tex="$a$",
-            prior=("normal", {"mean": "mean_a", "std": std_a}),
-        )
-        problem.add_parameter(
-            "b",
-            info="Intersection of graph with y-axis",
-            tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
-        )
-        problem.add_parameter(
-            "sigma",
-            domain="(0, +oo)",
-            info="Standard deviation, of zero-mean additive model error",
-            tex=r"$\sigma$",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
-        )
-
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
-
-        # ============================================================================ #
-        #                    Add test data to the Inference Problem                    #
-        # ============================================================================ #
-
-        # data-generation; normal likelihood with constant variance around each point
-        np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model(
-            {linear_model.input_sensor.name: x_test, "a": a_true, "b": b_true}
-        )[linear_model.output_sensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma)
-
-        # add the experimental data
-        problem.add_experiment(
-            f"TestSeries_1",
-            fwd_model_name="LinearModel",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                linear_model.output_sensor.name: y_test,
-            },
-        )
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(linear_model.input_sensor.name)
-            plt.ylabel(linear_model.output_sensor.name)
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
+        problem.add_forward_model(linear_model, experiments="TestSeries_1")
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -195,7 +193,6 @@ class TestProblem(unittest.TestCase):
         # add the likelihood model to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def="sigma",
                 experiment_name="TestSeries_1",
                 model_error="additive",
             )

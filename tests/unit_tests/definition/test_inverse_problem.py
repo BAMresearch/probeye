@@ -9,6 +9,7 @@ import numpy as np
 # local imports
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Uniform, Normal, MultivariateNormal
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -17,11 +18,11 @@ class TestProblem(unittest.TestCase):
     def test_properties(self):
         p = InverseProblem("TestProblem")
         # add first latent parameter; n_latent_prms should be 1
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0.0, "std": 1.0}))
+        p.add_parameter("a", "model", prior=Normal(mean=0.0, std=1.0))
         self.assertEqual(p.n_latent_prms, 1)
         self.assertEqual(p.latent_prms_dims, [1])
         # add second latent parameter; n_latent_prms should be 2
-        p.add_parameter("b", "likelihood", prior=("normal", {"mean": 0.0, "std": 1.0}))
+        p.add_parameter("b", "likelihood", prior=Normal(mean=0.0, std=1.0))
         self.assertEqual(p.n_latent_prms, 2)
         self.assertEqual(p.latent_prms_dims, [1, 1])
         # check the different properties
@@ -42,11 +43,9 @@ class TestProblem(unittest.TestCase):
         # simply check that no errors occur when info-method is called; the output that
         # is usually printed is redirected
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", const=1.0)
-        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter(
-            "sigma_model", "likelihood", prior=("normal", {"mean": 0, "std": 1})
-        )
+        p.add_parameter("a", "model", value=1.0)
+        p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("sigma_model", "likelihood", prior=Normal(mean=0, std=1))
         sys.stdout = io.StringIO()
         # try out different options
         p.info(tablefmt="presto", check_consistency=False)
@@ -66,13 +65,15 @@ class TestProblem(unittest.TestCase):
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
+
         test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
+        p.add_forward_model(test_model, experiments="Experiment_1")
+
         p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", experiment_name="Experiment_1")
+            GaussianLikelihoodModel(
+                experiment_name="Experiment_1", model_error="additive"
+            )
         )
         sys.stdout = io.StringIO()
         # now, the consistency_check should not raise an error
@@ -82,11 +83,9 @@ class TestProblem(unittest.TestCase):
     def test_str(self):
         # set up a consistent problem and print it
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", const=1.0)
-        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter(
-            "sigma_model", "likelihood", prior=("normal", {"mean": 0, "std": 1})
-        )
+        p.add_parameter("a", "model", value=1.0)
+        p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("sigma_model", "likelihood", prior=Normal(mean=0, std=1))
 
         class FwdModel(ForwardModelBase):
             def interface(self):
@@ -94,14 +93,15 @@ class TestProblem(unittest.TestCase):
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
-        test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
 
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
+        test_model = FwdModel("TestModel")
+        p.add_forward_model(test_model, experiments="Experiment_1")
+
         p.add_likelihood_model(
-            GaussianLikelihoodModel("sigma_model", experiment_name="Experiment_1")
+            GaussianLikelihoodModel(
+                experiment_name="Experiment_1", model_error="additive"
+            )
         )
         sys.stdout = io.StringIO()  # redirect output to console
         print(p)
@@ -110,16 +110,16 @@ class TestProblem(unittest.TestCase):
     def test_add_parameter(self):
         p = InverseProblem("TestProblem")
         # check valid use cases for constant parameters
-        p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
-        p.add_parameter("mean_a", "prior", const=1.0, info="info", tex=r"$mean_a$")
+        p.add_parameter("c", "model", value=1.0, info="info", tex=r"$c$")
+        p.add_parameter("mean_a", "prior", value=1.0, info="info", tex=r"$mean_a$")
         p.add_parameter(
-            "sigma_1", "likelihood", const=1.0, info="info", tex=r"$\sigma_1$"
+            "sigma_1", "likelihood", value=1.0, info="info", tex=r"$\sigma_1$"
         )
         # check valid use cases for latent parameters
         p.add_parameter(
             "b",
             "model",
-            prior=("normal", {"mean": 0, "std": 1}),
+            prior=Normal(mean=0, std=1),
             info="info",
             tex="$b$",
         )
@@ -128,35 +128,47 @@ class TestProblem(unittest.TestCase):
             "prior",
             info="info",
             tex="$b$",
-            prior=("uniform", {"low": 0.1, "high": 2.0}),
+            prior=Uniform(low=0.1, high=2.0),
         )
         p.add_parameter(
             "sigma_2",
             "likelihood",
             info="info",
             tex=r"$\sigma_2$",
-            prior=("uniform", {"low": 0.1, "high": 2.0}),
+            prior=Uniform(low=0.1, high=2.0),
         )
         p.add_parameter(
             "a",
             "model",
             info="info",
             tex="$a$",
-            prior=("normal", {"mean": "mean_a", "std": "std_a"}),
+            prior=Normal(mean="mean_a", std="std_a"),
         )
+        with self.assertRaises(TypeError):
+            # prior-parameter 'mean' has invalid type
+            p.add_parameter(
+                "w",
+                "model",
+                info="info",
+                tex="$w$",
+                prior=Normal(mean=True, std="std_a"),
+            )
         p.add_parameter("d", "model")  # latent param. with uninformative prior
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # adding a parameter with wrong type
-            p.add_parameter("d", "wrong_type", const=1.0)
+            p.add_parameter("d", "wrong_type", value=1.0)
         with self.assertRaises(RuntimeError):
             # adding a parameter with both const and prior given
             p.add_parameter(
-                "a", "model", const=1.0, prior=("uniform", {"low": 0.1, "high": 2.0})
+                "a",
+                "model",
+                value=1.0,
+                prior=Uniform(low=0.1, high=2.0),
             )
         with self.assertRaises(RuntimeError):
             # adding a parameter with a name that was used before
-            p.add_parameter("c", "likelihood", const=2.0, info="info", tex=r"$c$")
+            p.add_parameter("c", "likelihood", value=2.0, info="info", tex=r"$c$")
         with self.assertRaises(TypeError):
             # adding a parameter with an invalid prior
             # noinspection PyTypeChecker
@@ -167,80 +179,35 @@ class TestProblem(unittest.TestCase):
                 tex=r"$\epsilon$",
                 prior="Wrong prior format",
             )
-        with self.assertRaises(RuntimeError):
-            # adding a parameter with an invalid prior
-            p.add_parameter(
-                "eps",
-                "model",
-                info="info",
-                tex=r"$\epsilon$",
-                prior=[{"low": 0.1, "high": 2.0}],
-            )
-        with self.assertRaises(RuntimeError):
-            # adding a parameter with an invalid prior
-            p.add_parameter(
-                "eps",
-                "model",
-                info="info",
-                tex=r"$\epsilon$",
-                prior=("uniform", {"low": 0.1, "high": 2.0}, "3"),
-            )
-        with self.assertRaises(TypeError):
-            # adding a parameter with an invalid prior
-            p.add_parameter(
-                "eps",
-                "model",
-                info="info",
-                tex=r"$\epsilon$",
-                prior=(None, {"low": 0.1, "high": 2.0}),
-            )
-        with self.assertRaises(TypeError):
-            # adding a parameter with an invalid prior
-            p.add_parameter(
-                "eps",
-                "model",
-                info="info",
-                tex=r"$\epsilon$",
-                prior=("uniform", [{"low": 0.1}, {"high": 2.0}]),
-            )
-        with self.assertRaises(TypeError):
-            # adding a parameter with an invalid prior
-            p.add_parameter(
-                "eps",
-                "model",
-                info="info",
-                tex=r"$\epsilon$",
-                prior=("uniform", {"low": None, "high": 2.0}),
-            )
 
     def test_remove_parameter(self):
         # set up a problem with some parameters so we can remove them
         p = InverseProblem("TestProblem")
-        p.add_parameter("c", "model", const=1.0, info="info", tex=r"$c$")
-        p.add_parameter("mean_a", "prior", const=1.0, info="info", tex=r"$mean_a$")
+        p.add_parameter("c", "model", value=1.0, info="info", tex=r"$c$")
+        p.add_parameter("mean_a", "prior", value=1.0, info="info", tex=r"$mean_a$")
         p.add_parameter(
-            "sigma_model", "likelihood", const=1.0, info="info", tex=r"$\sigma$"
+            "sigma_model", "likelihood", value=1.0, info="info", tex=r"$\sigma$"
         )
         p.add_parameter(
             "std_a",
             "prior",
             info="info",
             tex="$b$",
-            prior=("uniform", {"low": 0.1, "high": 2.0}),
+            prior=Uniform(low=0.1, high=2.0),
         )
         p.add_parameter(
             "sigma",
             "likelihood",
             info="info",
             tex=r"$\sigma$",
-            prior=("uniform", {"low": 0.1, "high": 2.0}),
+            prior=Uniform(low=0.1, high=2.0),
         )
         p.add_parameter(
             "a",
             "model",
             info="info",
             tex="$a$",
-            prior=("normal", {"mean": "mean_a", "std": "std_a"}),
+            prior=Normal(mean="mean_a", std="std_a"),
         )
         # check removing a constant parameter
         self.assertEqual(
@@ -290,7 +257,7 @@ class TestProblem(unittest.TestCase):
     def test_check_if_parameter_exists(self):
         # check confirming existing parameter
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
         p.parameters.confirm_that_parameter_exists("a")
         # check RuntimeError for non-existing parameter
         with self.assertRaises(RuntimeError):
@@ -299,42 +266,40 @@ class TestProblem(unittest.TestCase):
     def test_change_parameter_role(self):
         p = InverseProblem("TestProblem")
         # check change of role from latent to constant parameter
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
         self.assertEqual(set(p.latent_prms), {"a"})
         self.assertEqual(set(p.constant_prms), {"mean_a", "std_a"})
         self.assertEqual(set(p.prms), {"a", "mean_a", "std_a"})
-        p.change_parameter_role("a", const=1.0)  # <-- here the role changes
+        p.change_parameter_role("a", value=1.0)  # <-- here the role changes
         with self.assertRaises(RuntimeError):
             # trying to change a constant to a constant
-            p.change_parameter_role("a", const=1.0)
+            p.change_parameter_role("a", value=1.0)
         self.assertEqual(set(p.latent_prms), set())
         self.assertEqual(set(p.constant_prms), {"a"})
         self.assertEqual(set(p.prms), {"a"})
         # check change of role from latent to constant parameter
-        p.change_parameter_role("a", prior=("normal", {"mean": 0, "std": 1}))
+        p.change_parameter_role("a", prior=Normal(mean=0, std=1))
         self.assertEqual(set(p.latent_prms), {"a"})
         self.assertEqual(set(p.constant_prms), {"mean_a", "std_a"})
         self.assertEqual(set(p.prms), {"a", "mean_a", "std_a"})
         # check invalid input arguments
         with self.assertRaises(RuntimeError):
             # stated parameter does not exist
-            p.change_parameter_role("undefined", const=1.0)
+            p.change_parameter_role("undefined", value=1.0)
         with self.assertRaises(RuntimeError):
             # neither const nor prior are given
             p.change_parameter_role("a")
         with self.assertRaises(RuntimeError):
             # both const and prior are given
-            p.change_parameter_role(
-                "a", const=1.0, prior=("normal", {"mean": 0, "std": 1})
-            )
+            p.change_parameter_role("a", value=1.0, prior=Normal(mean=0, std=1))
         with self.assertRaises(RuntimeError):
             # change to role the parameter already has
-            p.change_parameter_role("a", prior=("normal", {"mean": 0, "std": 1}))
+            p.change_parameter_role("a", prior=Normal(mean=0, std=1))
 
     def test_change_parameter_type(self):
         p = InverseProblem("TestProblem")
         # check change of type from 'model' to 'likelihood'
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
         self.assertEqual(p.parameters["a"].type, "model")
         p.change_parameter_type("a", "likelihood")
         self.assertEqual(p.parameters["a"].type, "likelihood")
@@ -348,7 +313,7 @@ class TestProblem(unittest.TestCase):
         p.add_parameter(
             "a",
             "model",
-            prior=("normal", {"mean": 0, "std": 1}),
+            prior=Normal(mean=0, std=1),
             info="Info",
             tex="$a$",
         )
@@ -369,8 +334,8 @@ class TestProblem(unittest.TestCase):
     def test_change_constant(self):
         p = InverseProblem("TestProblem")
         # simple check that the change works and has the expected effect
-        p.add_parameter("a", "model", const=0.0)
-        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", value=0.0)
+        p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         new_const = 1.0
         p.change_constant("a", new_const)
         self.assertEqual(p.parameters["a"].value, new_const)
@@ -389,8 +354,8 @@ class TestProblem(unittest.TestCase):
             # nothing is defined at this point
             p.check_problem_consistency()
         # define some parameters that do not require priors
-        p.add_parameter("mean_a", "prior", const=0.0)
-        p.add_parameter("std_a", "prior", const=1.0)
+        p.add_parameter("mean_a", "prior", value=0.0)
+        p.add_parameter("std_a", "prior", value=1.0)
         with self.assertRaises(AssertionError):
             # no priors defined yet
             p.check_problem_consistency()
@@ -400,11 +365,19 @@ class TestProblem(unittest.TestCase):
             "model",
             info="Some model parameter",
             tex="$a$",
-            prior=("normal", {"mean": "mean_a", "std": "std_a"}),
+            prior=Normal(mean="mean_a", std="std_a"),
         )
         with self.assertRaises(AssertionError):
             # no forward models defined yet
             p.check_problem_consistency()
+
+        # add an experiment
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
+        # add an unused experiment
+        p.add_experiment(
+            "Experiment_unused",
+            sensor_data={"y": 1, "x": 1},
+        )
 
         class FwdModel(ForwardModelBase):
             def interface(self):
@@ -413,23 +386,16 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
         test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
+        p.add_forward_model(test_model, experiments="Experiment_1")
         with self.assertRaises(AssertionError):
             # no noise models defined yet
             p.check_problem_consistency()
-        # add an experiment
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
-        # add an unused experiment
-        p.add_experiment(
-            "Experiment_unused",
-            sensor_values={"y": 1, "x": 1},
-            fwd_model_name="TestModel",
-        )
+
         # add a noise model
-        p.add_parameter("s", "likelihood", const=1.0)
-        like_model = GaussianLikelihoodModel("s", experiment_name="Experiment_1")
+        p.add_parameter("sigma_model", "likelihood", value=1.0)
+        like_model = GaussianLikelihoodModel(
+            experiment_name="Experiment_1", model_error="additive"
+        )
         p.add_likelihood_model(like_model)
         # now the problem should be consistent
         p.check_problem_consistency()
@@ -437,28 +403,17 @@ class TestProblem(unittest.TestCase):
     def test_add_experiment(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
 
-        class FwdModel(ForwardModelBase):
-            def interface(self):
-                self.parameters = "a"
-                self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor("y", std_model="sigma_model")
-
-        test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
-
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
         # the experiment may contain more sensors than needed by forward model
         p.add_experiment(
             "Experiment_2",
-            sensor_values={"x": 1, "y": 1, "z": 1},
-            fwd_model_name="TestModel",
+            sensor_data={"x": 1, "y": 1, "z": 1},
         )
+
         # check that scalar sensor_values are not transformed to numpy arrays
-        x_in_p = p.experiments["Experiment_2"]["sensor_values"]["x"]
+        x_in_p = p.experiments["Experiment_2"].sensor_data["x"]
         self.assertEqual(type(x_in_p), type(1))
         # check invalid input arguments
         with self.assertRaises(TypeError):
@@ -466,108 +421,44 @@ class TestProblem(unittest.TestCase):
             # noinspection PyTypeChecker
             p.add_experiment(
                 "Experiment_3",
-                sensor_values=[("x", 1), ("y", 2)],
-                fwd_model_name="TestModel",
-            )
-        with self.assertRaises(TypeError):
-            # wrong fwd_model_name type
-            # noinspection PyTypeChecker
-            p.add_experiment(
-                "Experiment_3", sensor_values={"x": 1, "y": 1}, fwd_model_name=1.2
-            )
-        with self.assertRaises(RuntimeError):
-            # referencing non-existing forward model
-            p.add_experiment(
-                "Experiment_3",
-                sensor_values={"x": 1, "y": 1},
-                fwd_model_name="ThisModelDoesNotExist",
-            )
-        with self.assertRaises(RuntimeError):
-            # forward model's input sensor not provided by experiment
-            p.add_experiment(
-                "Experiment_3", sensor_values={"y": 1}, fwd_model_name="TestModel"
-            )
-        with self.assertRaises(RuntimeError):
-            # forward model's output sensor not provided by experiment
-            p.add_experiment(
-                "Experiment_3", sensor_values={"x": 1}, fwd_model_name="TestModel"
+                sensor_data=[("x", 1), ("y", 2)],
             )
         # check that sensor_value lists are transformed to numpy arrays
         p.add_experiment(
             "Experiment_3",
-            fwd_model_name="TestModel",
-            sensor_values={"x": [1, 2], "y": [2, 3]},
+            sensor_data={"x": [1, 2], "y": [2, 3]},
         )
-        x_in_p = p.experiments["Experiment_3"]["sensor_values"]["x"]
-        y_in_p = p.experiments["Experiment_3"]["sensor_values"]["y"]
-        self.assertEqual(type(x_in_p), np.ndarray)
-        self.assertEqual(type(y_in_p), np.ndarray)
+        x_in_p = p.experiments["Experiment_3"].sensor_data["x"]
+        y_in_p = p.experiments["Experiment_3"].sensor_data["y"]
+        self.assertEqual(type(x_in_p), tuple)
+        self.assertEqual(type(y_in_p), tuple)
         # check adding the same experiment again
-        p.add_experiment(
-            "Experiment_1", sensor_values={"x": 1, "y": 1}, fwd_model_name="TestModel"
-        )
-        # add an experiment the correlation_info of which has a key that does not
-        # appear in the experiment's sensor_value
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_CORR_1",
-                sensor_values={"x": 1, "y": 1},
-                fwd_model_name="TestModel",
-                correlation_info="g:x",  # g is the intended problem here
-            )
-        # add an experiment the correlation_info of which has a key that does not
-        # appear in the forward model's output sensor names
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_CORR_2",
-                sensor_values={"x": 1, "y": 1, "z": 1},
-                fwd_model_name="TestModel",
-                correlation_info="z:x",  # z is the intended problem here
-            )
-        # add an experiment the correlation_info of which has a wrong format
-        with self.assertRaises(TypeError):
-            p.add_experiment(
-                "Experiment_CORR_2",
-                sensor_values={"x": 1, "y": 1, "z": 1},
-                fwd_model_name="TestModel",
-                correlation_info={"y": "x"},  # correct would be {"y": {"x": "x"}}
-            )
-        # add an experiment the correlation_info of which has a wrong format
-        with self.assertRaises(RuntimeError):
-            p.add_experiment(
-                "Experiment_CORR_2",
-                sensor_values={"x": 1, "y": 1, "z": 1},
-                fwd_model_name="TestModel",
-                correlation_info={"y": {"x": "u"}},  # u is not in the sensor_values
-            )
+        p.add_experiment("Experiment_1", sensor_data={"x": 1, "y": 1})
         # add an experiment with an invalid sensor_value type
         with self.assertRaises(ValueError):
             p.add_experiment(
                 "Exp_invalid_sensor_value_type",
-                sensor_values={"x": 1, "y": "1"},
-                fwd_model_name="TestModel",
+                sensor_data={"x": 1, "y": "1"},
             )
         # add an experiment with an multidimensional array as a sensor value
         with self.assertRaises(ValueError):
             p.add_experiment(
                 "Exp_invalid_array_shape",
-                sensor_values={"x": 1, "y": np.ones((2, 2))},
-                fwd_model_name="TestModel",
+                sensor_data={"x": 1, "y": np.ones((2, 2))},
             )
         # add an experiment with a scalar that is given in array format
         with self.assertRaises(ValueError):
             p.add_experiment(
                 "Exp_invalid_scalar_as_array",
-                sensor_values={"x": 1, "y": np.array([1.0])},
-                fwd_model_name="TestModel",
+                sensor_data={"x": 1, "y": np.array([1.0])},
             )
 
     def test_get_parameters(self):
         # check a simple use case
         p = InverseProblem("TestProblem")
-        p.add_parameter("c", "model", const=1.0)
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("c", "model", value=1.0)
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
         a_value, b_value = 3.1, 14.7
         prms_def = {"b": "b", "a": "a", "mean_b": "mean_b", "c": "c"}
         computed_result = p.get_parameters(np.array([a_value, b_value]), prms_def)
@@ -577,7 +468,25 @@ class TestProblem(unittest.TestCase):
     def test_get_experiment_names(self):
         # prepare for checks
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
+
+        # define experiment_names to each forward model
+        p.add_experiment(
+            "Experiment_Y1",
+            sensor_data={"x": 1, "y1": 1, "y2": 1},
+        )
+        p.add_experiment(
+            "Experiment_Y2",
+            sensor_data={"x": 2, "y1": 2, "y2": 2},
+        )
+        p.add_experiment(
+            "Experiment_Z1",
+            sensor_data={"x": -1, "z1": -1, "z2": -1},
+        )
+        p.add_experiment(
+            "Experiment_Z2",
+            sensor_data={"x": -2, "z1": -2, "z2": -2},
+        )
 
         class FwdModel1(ForwardModelBase):
             def interface(self):
@@ -592,32 +501,15 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = [Sensor("z1"), Sensor("z2")]
 
         test_model_1 = FwdModel1("TestModel_1")
-        p.add_forward_model(test_model_1)
+        p.add_forward_model(
+            test_model_1, experiments=["Experiment_Y1", "Experiment_Y2"]
+        )
 
         test_model_2 = FwdModel2("TestModel_2")
-        p.add_forward_model(test_model_2)
+        p.add_forward_model(
+            test_model_2, experiments=["Experiment_Z1", "Experiment_Z2"]
+        )
 
-        # define experiment_names to each forward model
-        p.add_experiment(
-            "Experiment_Y1",
-            sensor_values={"x": 1, "y1": 1, "y2": 1},
-            fwd_model_name="TestModel_1",
-        )
-        p.add_experiment(
-            "Experiment_Y2",
-            sensor_values={"x": 2, "y1": 2, "y2": 2},
-            fwd_model_name="TestModel_1",
-        )
-        p.add_experiment(
-            "Experiment_Z1",
-            sensor_values={"x": -1, "z1": -1, "z2": -1},
-            fwd_model_name="TestModel_2",
-        )
-        p.add_experiment(
-            "Experiment_Z2",
-            sensor_values={"x": -2, "z1": -2, "z2": -2},
-            fwd_model_name="TestModel_2",
-        )
         # get experiment_names for specific forward model
         computed_result = p.get_experiment_names(forward_model_names="TestModel_1")
         expected_result = ["Experiment_Y1", "Experiment_Y2"]
@@ -675,12 +567,8 @@ class TestProblem(unittest.TestCase):
     def test_get_theta_names(self):
         # check some simple use cases
         p = InverseProblem("TestProblem")
-        p.add_parameter(
-            "a", "model", prior=("normal", {"mean": 0, "std": 1}), tex="$a$"
-        )
-        p.add_parameter(
-            "b", "model", prior=("normal", {"mean": 0, "std": 1}), tex="$b$"
-        )
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1), tex="$a$")
+        p.add_parameter("b", "model", prior=Normal(mean=0, std=1), tex="$b$")
         computed_result = p.get_theta_names(tex=False)
         expected_result = ["a", "b"]
         self.assertEqual(computed_result, expected_result)
@@ -694,11 +582,11 @@ class TestProblem(unittest.TestCase):
             "model",
             dim=2,
             tex="$a$",
-            prior=("normal", {"mean": [0, 0], "cov": [[1, 0], [0, 1]]}),
+            prior=MultivariateNormal(
+                mean=np.array([0, 0]), cov=np.array([[1, 0], [0, 1]])
+            ),
         )
-        p.add_parameter(
-            "b", "model", tex="$b$", prior=("normal", {"mean": 0, "std": 1})
-        )
+        p.add_parameter("b", "model", tex="$b$", prior=Normal(mean=0, std=1))
         computed_result = p.get_theta_names(tex=False, components=False)
         expected_result = ["a", "b"]
         self.assertEqual(computed_result, expected_result)
@@ -716,11 +604,9 @@ class TestProblem(unittest.TestCase):
         # simply check that no errors occur when theta_explanation is called; the output
         # that is usually printed is redirected
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", const=1.0)
-        p.add_parameter("b", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter(
-            "sigma_model", "likelihood", prior=("normal", {"mean": 0, "std": 1})
-        )
+        p.add_parameter("a", "model", value=1.0)
+        p.add_parameter("b", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("sigma_model", "likelihood", prior=Normal(mean=0, std=1))
         # check the model_consistency flag
         with self.assertRaises(AssertionError):
             # the model is not consistent
@@ -729,7 +615,9 @@ class TestProblem(unittest.TestCase):
     def test_add_forward_model(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
+
+        p.add_experiment("Exp", sensor_data={"x": 0, "y": 0})
 
         class FwdModel(ForwardModelBase):
             def interface(self):
@@ -738,7 +626,14 @@ class TestProblem(unittest.TestCase):
                 self.output_sensors = Sensor("y", std_model="sigma_model")
 
         test_model = FwdModel("TestModel")
-        p.add_forward_model(test_model)
+        with self.assertRaises(RuntimeError):
+            p.add_forward_model(test_model, experiments="UndefinedExperimentName")
+        with self.assertRaises(RuntimeError):
+            p.add_experiment("Exp_wrong", sensor_data={"W": 0, "y": 0})
+            p.add_forward_model(test_model, experiments="Exp_wrong")
+        p.add_forward_model(test_model, experiments="Exp")
+        with self.assertRaises(NotImplementedError):
+            p.forward_models["TestModel"].response({})
 
         # check for invalid input arguments
         with self.assertRaises(RuntimeError):
@@ -750,14 +645,15 @@ class TestProblem(unittest.TestCase):
                     self.output_sensors = Sensor("y", std_model="sigma_model")
 
             test_model_2 = FwdModel2("TestModel_2")
-            p.add_forward_model(test_model_2)
+            p.add_forward_model(test_model_2, experiments="Exp")
         with self.assertRaises(RuntimeError):
             # add a forward model with the same name
-            p.add_forward_model(test_model)
+            p.add_forward_model(test_model, experiments="Exp")
 
         # check using parameter with wrong type
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "prior", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "prior", prior=Normal(mean=0, std=1))
+        p.add_experiment("Exp", sensor_data={"x": 0, "y": 0})
 
         class FwdModel(ForwardModelBase):
             def interface(self):
@@ -767,42 +663,37 @@ class TestProblem(unittest.TestCase):
 
         test_model = FwdModel("TestModel")
         with self.assertRaises(ValueError):
-            p.add_forward_model(test_model)
+            p.add_forward_model(test_model, experiments="Exp")
 
     def test_add_likelihood_model(self):
         # check correct use
         p = InverseProblem("TestProblem")
-        p.add_parameter("a", "model", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter("s1", "likelihood", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter("s2", "likelihood", prior=("normal", {"mean": 0, "std": 1}))
-        p.add_parameter("s3", "likelihood", prior=("normal", {"mean": 0, "std": 1}))
+        p.add_parameter("a", "model", prior=Normal(mean=0, std=1))
+        p.add_parameter("s1", "likelihood", prior=Normal(mean=0, std=1))
+        p.add_parameter("s2", "likelihood", prior=Normal(mean=0, std=1))
+        p.add_parameter("s3", "likelihood", prior=Normal(mean=0, std=1))
+
+        p.add_experiment("Exp", sensor_data={"x": 0, "y1": 0, "y2": 0})
 
         class FwdModel(ForwardModelBase):
             def interface(self):
                 self.parameters = "a"
                 self.input_sensors = Sensor("x")
-                self.output_sensors = [Sensor("y1"), Sensor("y2")]
+                self.output_sensors = [
+                    Sensor("y1", std_model="s1"),
+                    Sensor("y2", std_model="s2"),
+                ]
 
-        p.add_forward_model(FwdModel("TestModel"))
-        # try to add a likelihood model before adding experiments (not allowed)
+        p.add_forward_model(FwdModel("TestModel"), experiments="Exp")
+
         with self.assertRaises(RuntimeError):
-            p.add_likelihood_model(GaussianLikelihoodModel("s1", "Exp"))
-        p.add_experiment(
-            "Exp", fwd_model_name="TestModel", sensor_values={"x": 0, "y1": 0, "y2": 0}
-        )
-        # try to add a likelihood model with parameter of wrong type
-        with self.assertRaises(ValueError):
-            p.add_likelihood_model(GaussianLikelihoodModel("a", "Exp"))
-        p.add_likelihood_model(GaussianLikelihoodModel("s1", experiment_name="Exp"))
-        # check invalid input arguments
-        with self.assertRaises(RuntimeError):
-            # the given noise model parameter has not been defined
             p.add_likelihood_model(
-                GaussianLikelihoodModel(
-                    "not_existing_parameter",
-                    "Exp",
-                )
+                GaussianLikelihoodModel(experiment_name="???", model_error="additive")
             )
+
+        p.add_likelihood_model(
+            GaussianLikelihoodModel(experiment_name="Exp", model_error="additive")
+        )
 
 
 if __name__ == "__main__":

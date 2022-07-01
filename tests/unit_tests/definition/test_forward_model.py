@@ -1,9 +1,6 @@
 # standard library imports
 import unittest
 
-# third party imports
-import numpy as np
-
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
@@ -51,27 +48,6 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(forward_model.input_sensor_names, ["x"])
         self.assertEqual(forward_model.output_sensor_names, ["y"])
 
-        # check the jacobian-method (dict-version)
-        computed_result = forward_model.jacobian({**{"x": 1.0}, **prms})
-        expected_result = {
-            "y": {"x": None, "a": np.array([[1.0]]), "b": np.array([[1.0]])}
-        }
-        for k1, v1 in computed_result.items():
-            for k2, v2 in v1.items():
-                self.assertAlmostEqual(v2, expected_result[k1][k2], places=2)
-        # check the jacobian-method (array-version)
-        inp_ = {**{"x": 1.0}, **prms}
-        jac_dict = forward_model.jacobian(inp_)
-        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict, 3)
-        # note that the first element of the expected result is zero, because it wasn't
-        # computed; the first input channel is not a model parameter, hence its partial
-        # derivative is not evaluated
-        expected_result = np.array([[0.0, 1.0, 1.0]])
-        self.assertTrue(
-            np.allclose(computed_result, expected_result, atol=1e-3)
-            and computed_result.shape == expected_result.shape
-        )
-
     def test_model_template_multiple_sensors(self):
 
         # define an output sensor with an offset attribute
@@ -111,37 +87,12 @@ class TestProblem(unittest.TestCase):
         self.assertEqual(forward_model.input_sensor_names, ["x1", "x2"])
         self.assertEqual(forward_model.output_sensor_names, ["y1", "y2"])
 
-        # check the jacobian-method (dict-version)
-        computed_result = forward_model.jacobian({**{"x1": 2.0, "x2": 3.0}, **prms})
-        expected_result = {
-            "y1": {
-                "x1": None,
-                "x2": None,
-                "a": np.array([[4.0]]),
-                "b": np.array([[3.0]]),
-            },
-            "y2": {
-                "x1": None,
-                "x2": None,
-                "a": np.array([[4.0]]),
-                "b": np.array([[3.0]]),
-            },
-        }
-        for k1, v1 in computed_result.items():
-            for k2, v2 in v1.items():
-                self.assertAlmostEqual(v2, expected_result[k1][k2], places=2)
-        # check the jacobian-method (array-version)
-        inp_ = {**{"x1": 2.0, "x2": 3.0}, **prms}
-        jac_dict = forward_model.jacobian(inp_)
-        computed_result = forward_model.jacobian_dict_to_array(inp_, jac_dict, 4)
-        # note that the first two elements of the expected result-rows are zero, because
-        # they weren't computed; the first two input channels are not model parameters,
-        # hence their partial derivatives are not evaluated
-        expected_result = np.array([[0.0, 0.0, 4.0, 3.0], [0.0, 0.0, 4.0, 3.0]])
-        self.assertTrue(
-            np.allclose(computed_result, expected_result, atol=1e-3)
-            and computed_result.shape == expected_result.shape
-        )
+        # check the input channels
+        self.assertEqual(forward_model.input_channel_names, ["x1", "x2", "a", "b"])
+
+        # these will trigger warnings in the log (we have multiple in/output sensors)
+        _ = forward_model.input_sensor
+        _ = forward_model.output_sensor
 
     def test_invalid_forward_model_definitions(self):
         class ParametersNotSet(ForwardModelBase):
@@ -198,24 +149,6 @@ class TestProblem(unittest.TestCase):
 
         with self.assertRaises(RuntimeError):
             InterfaceMethodNotSet("Bert")
-
-        class InvalidCorrelationStructure(ForwardModelBase):
-            def interface(self):
-                self.parameters = [{"a": "m"}, "b"]
-                self.input_sensors = Sensor("x")
-                self.output_sensors = [
-                    Sensor("y1", correlated_in={"x": "l_corr"}),
-                    Sensor("y2", correlated_in={"WRONG": "l_corr"}),
-                ]
-
-            def response(self, inp: dict) -> dict:
-                x = inp["x"]
-                m = inp["m"]
-                b = inp["b"]
-                return {"y": m * x + b}
-
-        with self.assertRaises(RuntimeError):
-            InvalidCorrelationStructure("Sigfried")
 
 
 if __name__ == "__main__":

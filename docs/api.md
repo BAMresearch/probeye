@@ -45,6 +45,14 @@ package.
     :private-members:
     :show-inheritance:
 ```
+### `distribution`
+```{eval-rst}
+.. automodule:: probeye.definition.distribution
+    :members:
+    :undoc-members:
+    :private-members:
+    :show-inheritance:
+```
 ### `sensor`
 ```{eval-rst}
 .. automodule:: probeye.definition.sensor

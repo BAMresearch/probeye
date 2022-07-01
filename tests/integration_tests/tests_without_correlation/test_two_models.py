@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Weibull
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -31,7 +32,7 @@ from probeye.ontology.knowledge_graph_export import (
 )
 
 # local imports (testing related)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 from tests.integration_tests.subroutines import run_inference_engines
 
 
@@ -98,14 +99,106 @@ class TestProblem(unittest.TestCase):
         mean_alpha = 2.0
         std_alpha = 1.0
 
-        # 'true' value of sigma, and its normal prior parameters
+        # 'true' value of sigma, and its Weibull prior parameters
         sigma_true = 0.15
-        low_sigma = 0.0
-        high_sigma = 2.0
+        scale_sigma = 0.2
+        shape_sigma = 5.0
 
         # the number of generated experiment_names and seed for random numbers
         n_tests = 100
         seed = 1
+
+        # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
+
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Two forward models with a shared parameter (AME)")
+
+        # add all parameters to the problem
+        problem.add_parameter(
+            name="a",
+            info="Slope of the graph in linear model",
+            tex="$a$ (linear)",
+            prior=Normal(mean=mean_a, std=std_a),
+        )
+        problem.add_parameter(
+            name="alpha",
+            info="Factor of quadratic term",
+            tex=r"$\alpha$ (quad.)",
+            prior=Normal(mean=mean_alpha, std=std_alpha),
+        )
+        problem.add_parameter(
+            name="b",
+            info="Intersection of graph with y-axis",
+            tex="$b$ (shared)",
+            prior=Normal(mean=mean_b, std=std_b),
+        )
+        problem.add_parameter(
+            name="sigma",
+            domain="(0, +oo)",
+            tex=r"$\sigma$ (likelihood)",
+            info="Standard deviation of zero-mean additive model error",
+            prior=Weibull(scale=scale_sigma, shape=shape_sigma),
+        )
+
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
+
+        # data generation for linear model
+        np.random.seed(seed)
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true_linear = a_true * x_test + b_true
+        y_test_linear = np.random.normal(loc=y_true_linear, scale=sigma_true)
+
+        # add the experimental data
+        problem.add_experiment(
+            name=f"TestSeries_linear",
+            sensor_data={
+                "x": x_test,
+                "y": y_test_linear,
+            },
+        )
+
+        # data generation for quadratic model
+        y_true_quadratic = alpha_true * x_test**2 + b_true
+        y_test_quadratic = np.random.normal(loc=y_true_quadratic, scale=sigma_true)
+
+        # add the experimental data
+        problem.add_experiment(
+            name=f"TestSeries_quadratic",
+            sensor_data={
+                "x": x_test,
+                "y": y_test_quadratic,
+            },
+        )
+
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(
+                x_test,
+                y_test_linear,
+                label="measured data (linear)",
+                s=10,
+                c="red",
+                zorder=10,
+            )
+            plt.plot(x_test, y_true_linear, label="true (linear)", c="black")
+            plt.scatter(
+                x_test,
+                y_test_quadratic,
+                s=10,
+                c="orange",
+                zorder=10,
+                label="measured data (quadratic)",
+            )
+            plt.plot(x_test, y_true_quadratic, label="true (quadratic)", c="blue")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
 
         # ============================================================================ #
         #                          Define the Forward Models                           #
@@ -135,116 +228,11 @@ class TestProblem(unittest.TestCase):
                 beta = inp["beta"]
                 return {"y": alpha * x**2 + beta}
 
-        # ============================================================================ #
-        #                         Define the Inference Problem                         #
-        # ============================================================================ #
-
-        # initialize the inverse problem with a useful name
-        problem = InverseProblem("Two forward models with a shared parameter (AME)")
-
-        # add all parameters to the problem
-        problem.add_parameter(
-            "a",
-            "model",
-            info="Slope of the graph in linear model",
-            tex="$a$ (linear)",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
-        )
-        problem.add_parameter(
-            "alpha",
-            "model",
-            info="Factor of quadratic term",
-            tex=r"$\alpha$ (quad.)",
-            prior=("normal", {"mean": mean_alpha, "std": std_alpha}),
-        )
-        problem.add_parameter(
-            "b",
-            "model",
-            info="Intersection of graph with y-axis",
-            tex="$b$ (shared)",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
-        )
-        problem.add_parameter(
-            "sigma",
-            "likelihood",
-            domain="(0, +oo)",
-            tex=r"$\sigma$ (likelihood)",
-            info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
-        )
-
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
+        problem.add_forward_model(linear_model, experiments="TestSeries_linear")
         quadratic_model = QuadraticModel("QuadraticModel")
-        problem.add_forward_model(quadratic_model)
-
-        # ============================================================================ #
-        #                    Add test data to the Inference Problem                    #
-        # ============================================================================ #
-
-        # data-generation; normal likelihood with constant variance around each point
-        np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_linear_true = linear_model(
-            {linear_model.input_sensor.name: x_test, "a": a_true, "b": b_true}
-        )[linear_model.output_sensor.name]
-        y_test_linear = np.random.normal(loc=y_linear_true, scale=sigma_true)
-        y_quadratic_true = quadratic_model(
-            {
-                quadratic_model.input_sensor.name: x_test,
-                "alpha": alpha_true,
-                "beta": b_true,
-            }
-        )[quadratic_model.output_sensor.name]
-        y_test_quadratic = np.random.normal(loc=y_quadratic_true, scale=sigma_true)
-
-        # add the experimental data
-        problem.add_experiment(
-            f"TestSeries_linear",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                linear_model.output_sensor.name: y_test_linear,
-            },
-            fwd_model_name="LinearModel",
-        )
-        problem.add_experiment(
-            f"TestSeries_quadratic",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                quadratic_model.output_sensor.name: y_test_quadratic,
-            },
-            fwd_model_name="QuadraticModel",
-        )
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(
-                x_test,
-                y_test_linear,
-                label="measured data (linear)",
-                s=10,
-                c="red",
-                zorder=10,
-            )
-            plt.plot(x_test, y_linear_true, label="true (linear)", c="black")
-            plt.scatter(
-                x_test,
-                y_test_quadratic,
-                s=10,
-                c="orange",
-                zorder=10,
-                label="measured data (quadratic)",
-            )
-            plt.plot(x_test, y_quadratic_true, label="true (quadratic)", c="blue")
-            plt.xlabel(linear_model.input_sensor.name)
-            plt.ylabel(
-                f"{linear_model.output_sensor.name}, "
-                f"{quadratic_model.output_sensor.name}"
-            )
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
+        problem.add_forward_model(quadratic_model, experiments="TestSeries_quadratic")
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -252,14 +240,12 @@ class TestProblem(unittest.TestCase):
 
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def="sigma",
                 experiment_name="TestSeries_linear",
                 model_error="additive",
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def="sigma",
                 experiment_name="TestSeries_quadratic",
                 model_error="additive",
             )
@@ -296,14 +282,14 @@ class TestProblem(unittest.TestCase):
         # the ScipySolver is called separately here to test the knowledge graph export
         # routine that directly includes the results in the graph
         if run_scipy:
-            scipy_solver = ScipySolver(problem, show_progress=show_progress)
-            inference_data = scipy_solver.run_max_likelihood(true_values=true_values)
+            scipy_solver = MaxLikelihoodSolver(problem, show_progress=show_progress)
+            inference_data = scipy_solver.run(true_values=true_values)
             if write_to_graph:
                 dir_path = os.path.dirname(__file__)
                 basename_owl = os.path.basename(__file__).split(".")[0] + ".owl"
                 knowledge_graph_file = os.path.join(dir_path, basename_owl)
                 export_knowledge_graph_including_results(
-                    problem,
+                    scipy_solver.problem,
                     inference_data,
                     knowledge_graph_file,
                     data_dir=dir_path,

@@ -13,7 +13,9 @@ from probeye.subroutines import simplified_list_string
 from probeye.subroutines import len_or_one
 from probeye.subroutines import translate_number_string
 from probeye.subroutines import count_intervals
+from probeye.subroutines import convert_to_tuple
 from probeye.definition.prior import PriorBase
+from probeye.definition.distribution import ProbabilityDistribution, Uninformative
 
 
 class Parameters(dict):
@@ -29,8 +31,8 @@ class Parameters(dict):
         prm_type: str = "not defined",
         dim: Optional[int] = 1,
         domain: str = "(-oo, +oo)",
-        const: Union[int, float, np.ndarray, None] = None,
-        prior: Union[tuple, list, None] = None,
+        value: Union[int, float, tuple, np.ndarray, None] = None,
+        prior: Optional[ProbabilityDistribution] = None,
         info: str = "No explanation provided",
         tex: Optional[str] = None,
     ):
@@ -52,7 +54,7 @@ class Parameters(dict):
         domain
             The parameter's domain (i.e., values it may assume). Note that this argument
             is only considered for latent parameter, but not for a constant.
-        const
+        value
             If the added parameter is a 'const'-parameter, the corresponding value has
             to be specified by this argument.
         prior
@@ -76,11 +78,11 @@ class Parameters(dict):
 
         # if neither const nor prior are given, the parameter is interpreted as being
         # defined as latent with an uninformative prior
-        if const is None and prior is None:
-            prior = ("uninformative", {})
+        if value is None and prior is None:
+            prior = Uninformative()
 
         # add the parameter to the central parameter dictionary
-        if prior is not None:  # i.e. adding 'latent'-parameter
+        if isinstance(prior, ProbabilityDistribution):  # i.e. adding 'latent'-parameter
             # first, define the index of this parameter in the numeric vector theta,
             # which is given to self.loglike and self.logprior
             prm_index = self.n_latent_prms_dim  # type: Union[int, None]
@@ -93,38 +95,17 @@ class Parameters(dict):
             # in this case, where we are adding a 'latent'-param.
             prm_value = None
             # the remaining code in this if-branch defines the prior that is associated
-            # with this 'latent'-parameter; first, however, check whether the given
-            # prior has a valid structure
-            if type(prior) not in [list, tuple]:
-                raise TypeError(
-                    f"The given prior is of type {type(prior)} but must be "
-                    f"either a list or a tuple!"
-                )
-            if len(prior) != 2:
-                raise RuntimeError(
-                    f"The given prior must be a list/tuple with two elements. "
-                    f"However, the given prior has {len(prior)} element(s)."
-                )
-            if type(prior[0]) is not str:
-                raise TypeError(
-                    f"The first element of the prior must be of type string. "
-                    f"However, the given first element is of type "
-                    f"{type(prior[0])}."
-                )
-            if type(prior[1]) is not dict:
-                raise TypeError(
-                    f"The second element of the prior must be of type dict. "
-                    f"However, the given second element is of type "
-                    f"{type(prior[1])}."
-                )
+            # with this 'latent'-parameter
+
             # extract the prior's elements
-            prior_type = prior[0]  # e.g. 'normal', 'lognormal', etc.
-            prior_dict = prior[1]  # dictionary with parameter-value pairs
+            prior_type = prior.dist_type  # e.g. 'normal', 'lognormal', etc.
+
+            prior_dict = prior.prm_dict  # dictionary with parameter-value pairs
             prior_parameter_names = []  # type: List[Union[str, dict]]
-            for prior_parameter_name, value in prior_dict.items():
+            for prior_parameter_name, prior_value in prior_dict.items():
                 # create unique name for this prior parameter
                 new_name = f"{prior_parameter_name}_{prm_name}"
-                if type(value) in {float, int, list, tuple, np.ndarray}:
+                if type(prior_value) in {float, int, list, tuple, np.ndarray}:
                     # in this case, the prior-parameter is considered a 'const'-
                     # parameter and added to the problem accordingly here
                     default_info = f"{prior_type.capitalize()} "
@@ -133,14 +114,14 @@ class Parameters(dict):
                     # the following call is recursive, but only with a depth of one,
                     # since the added parameter is a constant here
                     self.add_parameter(
-                        new_name, "prior", const=value, info=default_info
+                        new_name, "prior", value=prior_value, info=default_info
                     )
                     prior_parameter_names.append(new_name)
-                elif type(value) is str:
+                elif type(prior_value) is str:
                     # in this case the prior-parameter is defined as an already defined
                     # parameter with the name stated in value
-                    self.confirm_that_parameter_exists(value)
-                    prior_parameter_names.append({value: new_name})
+                    self.confirm_that_parameter_exists(prior_value)
+                    prior_parameter_names.append({prior_value: new_name})
                 else:
                     raise TypeError(
                         f"The prior-parameter {new_name} is not assigned a "
@@ -149,24 +130,29 @@ class Parameters(dict):
                     )
             prior_name = f"{prm_name}_{prior_type}"  # unique name of this prior
             prm_prior = PriorBase(
-                prm_name, prior_parameter_names, prior_name, prior_type
+                prm_name, prior_parameter_names, prior_name, prior
             )  # type: Union[PriorBase, None]
             logger.debug(
                 f"Adding  latent  {prm_type}-parameter "
                 f"{prm_name} with {prior_type} prior to problem"
             )
 
-        else:
+        elif prior is None:
             # in this case we are adding a 'const'-parameter, which means that the
             # prm_index and prm_prior values are not used here
             prm_index = None
-            prm_dim = len_or_one(const)
+            prm_dim = len_or_one(value)
             prm_domain = None  # type: ignore
             prm_prior = None
-            prm_value = const
+            prm_value = convert_to_tuple(value)  # type: ignore
             logger.debug(
                 f"Adding constant {prm_type}-parameter "
                 f"{prm_name} = {prm_value} to problem"
+            )
+        else:
+            raise TypeError(
+                f"The 'prior'-flag of parameter '{prm_name}' is neither a "
+                f"ProbabilityDistribution nor None."
             )
 
         # add the parameter to the central parameter dictionary
@@ -358,7 +344,16 @@ class Parameters(dict):
         """Access the number of all 'likelihood'-parameters as an attribute."""
         return len(self.likelihood_prms)
 
-    def parameter_overview(self, tablefmt: str = "presto") -> str:
+    @property
+    def value_dict(self) -> dict:
+        """
+        Returns a dict with the parameter names as keys and their numeric values as
+        values. A parameter will only have a value if it is a constant. For latent
+        parameters the dictionary-value will be None
+        """
+        return {name: props.value for name, props in self.items()}
+
+    def overview(self, tablefmt: str = "presto") -> str:
         """
         Returns a string providing an overview of the defined parameters.
 
@@ -573,13 +568,13 @@ class ParameterProperties:
         return ParameterProperties(
             {
                 "index": index if index is not None else self._index,
-                "dim": dim or self._dim,
-                "domain": domain or self._domain,
-                "type": type or self._type,
-                "prior": prior or self._prior,
-                "value": value or self._value,
-                "info": info or self.info,
-                "tex": tex or self.tex,
+                "dim": dim if dim is not None else self._dim,
+                "domain": domain if domain is not None else self._domain,
+                "type": type if type is not None else self._type,
+                "prior": prior if prior is not None else self._prior,
+                "value": value if value is not None else self._value,
+                "info": info if info is not None else self.info,
+                "tex": tex if tex is not None else self.tex,
             }
         )
 
@@ -620,20 +615,10 @@ class ParameterProperties:
                 f"'{self._type}'."
             )
 
-        if not (type(self._prior) == PriorBase or self._prior is None):
+        if not (isinstance(self._prior, PriorBase) or self._prior is None):
             raise TypeError(
                 f"Found invalid ParameterProperties._prior attribute! It must be of "
                 f"type PriorBase or None, but found {type(self._prior)}."
-            )
-
-        if not (
-            type(self._value) in [float, int, list, tuple, np.ndarray]
-            or self._value is None
-        ):
-            raise TypeError(
-                f"Found invalid ParameterProperties._value attribute! It must be of "
-                f"type float/int/list/tuple/numpy.ndarray or None, but found "
-                f"{type(self._value)}."
             )
 
         # -------------------------------- #

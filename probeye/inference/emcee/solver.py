@@ -45,7 +45,7 @@ class EmceeSolver(ScipySolver):
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
-        logger.debug("Initializing EmceeSolver")
+        logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
         check_for_uninformative_priors(problem)
         # initialize the scipy-based solver (ScipySolver)
@@ -140,7 +140,7 @@ class EmceeSolver(ScipySolver):
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
 
-    def run_mcmc(
+    def run(
         self,
         n_walkers: int = 20,
         n_steps: int = 1000,
