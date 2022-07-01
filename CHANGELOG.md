@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 2.3.3 (2022-Jul-01)
+### Changed
+- The likelihood function in the emcee-solver has been equipped with a check if the log-prior was evaluated to minus infinity to prevent unnecessary likelihood evaluations.
+
 ## 2.3.2 (2022-May-30)
 ### Added
 - The Scipy-solver was equipped with a maximum a-posteriori estimation method.
