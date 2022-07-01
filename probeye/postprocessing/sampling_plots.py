@@ -386,6 +386,7 @@ def create_posterior_plot(
             else:
                 fig = axs.figure
             fig.suptitle(title, fontsize=title_size)
+            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
 
         # show the plot if requested
         if show:
