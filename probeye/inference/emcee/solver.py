@@ -208,11 +208,21 @@ class EmceeSolver(ScipySolver):
         np.random.seed(self.seed)
         rstate = np.random.mtrand.RandomState(self.seed)
 
+        def logprob(x):
+            # Skip loglikelihood evaluation if logprior is equal
+            # to negative infinity
+            logprior = self.logprior(x)
+            if logprior == -np.inf:
+                return logprior
+
+            # Otherwise return logprior + loglikelihood
+            return logprior + self.loglike(x)
+
         logger.debug("Setting up EnsembleSampler")
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=lambda x: self.logprior(x) + self.loglike(x),
+            log_prob_fn=logprob,
             **kwargs,
         )
 
