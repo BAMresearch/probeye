@@ -1,6 +1,6 @@
 # probeye changelog
 
-## 3.0.0 (2022-Jun-29)
+## 3.0.0 (2022-Jul-01)
 ### Changed
 - The definition of the latent parameter's priors was revised (from tuples to objects).
 - Constant parameters are now added using a 'value' instead of the 'const' keyword argument in the InverseProblem's method 'add_parameter'.
@@ -13,6 +13,10 @@
 - Distribution classes have been added to make the prior-definition more clear.
 - A new experiment class was added.
 - A new correlation_model class was added.
+
+## 2.3.3 (2022-Jul-01)
+### Changed
+- The likelihood function in the emcee-solver has been equipped with a check if the log-prior was evaluated to minus infinity to prevent unnecessary likelihood evaluations.
 
 ## 2.3.2 (2022-May-30)
 ### Added
