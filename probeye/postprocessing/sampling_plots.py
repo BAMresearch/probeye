@@ -471,7 +471,7 @@ def create_posterior_plot(
             if len(axs.shape) == 1:
                 n_rows, n_cols = 1, axs.size
             else:
-                n_rows, n_cols = axs.shape
+                n_rows, n_cols = axs.shape  # pragma: no cover
         else:
             fig = axs.figure
             n_rows, n_cols = 1, 1

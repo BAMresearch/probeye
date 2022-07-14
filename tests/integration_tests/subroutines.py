@@ -97,8 +97,10 @@ def run_inference_engines(
             kind="hexbin",
             true_values=true_values_cp,
             show=False,
+            figsize=(8, 8),
             marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
-            title="plot_priors=True, focus_on_posterior=False (hex + hist)",
+            title="plot_priors=True, focus_on_posterior=False, figsize=(8, 8) "
+            + "(hex + hist)",
         )
         create_pair_plot(
             inference_data,
@@ -127,8 +129,23 @@ def run_inference_engines(
             show=False,
             title="This is a posterior-plot",
         )
+        create_posterior_plot(
+            inference_data,
+            problem_cp,
+            true_values=true_values_cp,
+            figsize=(10, 5),
+            show=False,
+            title="This is a posterior-plot (figsize = (10, 5))",
+        )
         create_trace_plot(
             inference_data, problem_cp, show=False, title="This is a trace-plot"
+        )
+        create_trace_plot(
+            inference_data,
+            problem_cp,
+            show=False,
+            figsize=(8, 8),
+            title="This is a trace-plot (figsize = (8, 8))",
         )
         if plot:
             plt.show()  # shows all plots at once due to 'show=False' above
