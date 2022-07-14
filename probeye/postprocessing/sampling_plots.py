@@ -5,7 +5,6 @@ from typing import Union, Optional, TYPE_CHECKING
 import arviz as az
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.figure import SubplotParams
 from loguru import logger
 
 # local imports
@@ -22,9 +21,11 @@ def create_pair_plot(
     problem: "InverseProblem",
     plot_with: str = "arviz",
     plot_priors: bool = True,
-    focus_on_posterior: bool = False,
+    focus_on_posterior: bool = True,
     kind: str = "kde",
-    figsize: Optional[tuple] = (9, 9),
+    figsize: Optional[tuple] = None,
+    inches_per_row: Union[int, float] = 2.0,
+    inches_per_col: Union[int, float] = 2.0,
     textsize: Union[int, float] = 10,
     title_size: Union[int, float] = 14,
     title: Optional[str] = None,
@@ -57,8 +58,14 @@ def create_pair_plot(
     kind
         Type of plot to display ('scatter', 'kde' and/or 'hexbin').
     figsize
-        Defines the size of the generated plot in the default unit. If None is chosen,
-        the figsize will be derived automatically.
+        Defines the size of the generated plot in inches. If None is chosen, the figsize
+        will be derived automatically by using inches_per_row and inches_per_col.
+    inches_per_row
+        If figsize is None, this will specify the inches per row in the subplot-grid.
+        This argument has no effect if figsize is specified.
+    inches_per_col
+        If figsize is None, this will specify the inches per column in the subplot-grid.
+        This argument has no effect if figsize is specified.
     textsize
         Defines the font size in the default unit.
     title_size
@@ -104,20 +111,43 @@ def create_pair_plot(
                 "contour_kwargs": {"colors": None},
             }
 
+        if "backend_kwargs" not in kwargs:
+            if problem.n_latent_prms_dim == 2:
+                kwargs["backend_kwargs"] = {"constrained_layout": True}
+
+        histograms_on_diagonal = False
+        if "marginal_kwargs" in kwargs:
+            if "kind" in kwargs["marginal_kwargs"]:
+                if kwargs["marginal_kwargs"]["kind"] == "hist":
+                    histograms_on_diagonal = True
+
         # process true_values if specified
         if true_values is not None:
-            reference_values = dict()
+            reference_values_unsorted = dict()
+            index_list = []
             for prm_name, value in true_values.items():
                 dim = problem.parameters[prm_name].dim
-                tex = problem.parameters[prm_name].tex
+                tex = prm_name  # prevents tex being None
+                if problem.parameters[prm_name].tex is not None:
+                    tex = problem.parameters[prm_name].tex
                 if dim > 1:
                     # all the channels in the inference data are 1D
+                    idx_start = problem.parameters[prm_name].index
+                    index_list.append(idx_start)
                     for i in range(dim):
                         key = add_index_to_tex_prm_name(tex, i + 1)
-                        reference_values[key] = value[i]
+                        reference_values_unsorted[key] = value[i]
+                        index_list.append(idx_start + (i + 1))
                 else:
                     key = tex
-                    reference_values[key] = value
+                    reference_values_unsorted[key] = value
+                    index_list.append(problem.parameters[prm_name].index)
+            key_list_unsorted = [*reference_values_unsorted.keys()]
+            key_list = [key for _, key in sorted(zip(index_list, key_list_unsorted))]
+            reference_values = dict()
+            for key in key_list:
+                reference_values[key] = reference_values_unsorted[key]
+
             kwargs["reference_values"] = reference_values
             if "reference_values_kwargs" not in kwargs:
                 kwargs["reference_values_kwargs"] = {"marker": "o", "color": "red"}
@@ -127,7 +157,6 @@ def create_pair_plot(
             inference_data,
             marginals=True,
             kind=kind,
-            figsize=figsize,
             textsize=textsize,
             show=False,
             **kwargs,
@@ -148,8 +177,8 @@ def create_pair_plot(
                         0,
                         label="true value",
                         zorder=10,
-                        **reference_values_kwargs,
                         edgecolor="black",
+                        **reference_values_kwargs,
                     )
             else:
                 # in this case, the plot on the bottom right is rotated
@@ -205,6 +234,17 @@ def create_pair_plot(
                     rotate=rotate,
                     label="prior",
                 )
+                # don't use the histogram bin ticks when the prior is also plotted
+                if histograms_on_diagonal and not focus_on_posterior:
+                    if rotate:
+                        y_min, y_max = axs[i, i].get_ylim()
+                        tick_list = np.linspace(y_min, y_max, 9).tolist()
+                        axs[i, i].set_yticks(tick_list)
+                    else:
+                        x_min, x_max = axs[i, i].get_xlim()
+                        tick_list = np.linspace(x_min, x_max, 9).tolist()
+                        axs[i, i].set_xticks(tick_list)
+                # create the legends if requested
                 if show_legends:
                     prior_handle, prior_label = axs[i, i].get_legend_handles_labels()
                     axs[i, i].legend(
@@ -218,9 +258,12 @@ def create_pair_plot(
             if (not focus_on_posterior) and (problem.n_latent_prms_dim > 2):
                 n = problem.n_latent_prms_dim
                 for i in range(n):
+                    # the reference is the plot on the diagonal
                     x_min, x_max = axs[i, i].get_xlim()
+                    # loop over axes in the column below
                     for j in range(i + 1, n):
                         axs[j, i].set_xlim((x_min, x_max))
+                    # loop over axes in the row to the left
                     for j in range(0, i):
                         axs[i, j].set_ylim((x_min, x_max))
         else:
@@ -245,17 +288,43 @@ def create_pair_plot(
                         posterior_label + existing_labels,
                         loc="best",
                     )
+            # synchronize the axes, which is only necessary if there are at least 3
+            # latent parameters; in this case of only 2 latent parameters (note that
+            # only one latent parameter is not allowed for a pair plot), a slightly
+            # different plot is created where the marginal plot on the right is rotated
+            n = problem.n_latent_prms_dim
+            if n > 2:
+                for i in range(n):
+                    # the reference is the plot on the diagonal
+                    x_min, x_max = axs[i, i].get_xlim()
+                    # loop over axes in the column below
+                    for j in range(i + 1, n):
+                        axs[j, i].set_xlim((x_min, x_max))
+                    # loop over axes in the row to the left
+                    for j in range(0, i):
+                        axs[i, j].set_ylim((x_min, x_max))
 
-        # add a title to the plot, if requested
+        # set the figure size; this is done either automatically if the user did not
+        # specify the figsize argument, or it simply sets the requested figsize
+        fig = axs.ravel()[0].figure
+        if figsize is None:
+            if problem.n_latent_prms_dim > 2:
+                n_rows, n_cols = axs.shape
+                fig.set_size_inches(n_cols * inches_per_col, n_rows * inches_per_row)
+            else:
+                fig.set_size_inches(6.0, 5.0)
+        else:
+            fig.set_size_inches(figsize[0], figsize[1])
+
+        # add a title to the plot (if requested) and apply a tight layout
         if title:
-            fig = axs.ravel()[0].figure
             fig.suptitle(title, fontsize=title_size)
 
         # the following command reduces the otherwise wide margins; when only two
         # parameter (components) are given, the tight_layout()-call only results in a
         # warning without having an effect - hence, the if-clause
         if problem.n_latent_prms_dim > 2:
-            plt.tight_layout()
+            fig.tight_layout()
 
         # by default, the y-axis of the first and last marginal plot have ticks, tick-
         # labels and axis-labels that are not meaningful to show on the y-axis; hence,
@@ -267,10 +336,19 @@ def create_pair_plot(
                 axs[i, i].yaxis.set_ticklabels([])
                 axs[i, i].yaxis.set_visible(False)
             for i in range(problem.n_latent_prms_dim - 1):
+                xlim = axs[-1, i].get_xlim()
                 axs[i, i].set_xticks(ticks=axs[-1, i].get_xticks())
-                axs[i, i].set_xlim(axs[-1, i].get_xlim())
+                axs[i, i].set_xlim(xlim)
+            ylim = axs[-1, 0].get_ylim()
             axs[-1, -1].set_xticks(ticks=axs[-1, 0].get_yticks())
-            axs[-1, -1].set_xlim(axs[-1, 0].get_ylim())
+            axs[-1, -1].set_xlim(ylim)
+
+        # when histograms are used to plot the marginals, the tick labels are often
+        # rather close together, so that they overlap; here, they are rotated to
+        # alleviate this overlap
+        if histograms_on_diagonal:
+            for i in range(problem.n_latent_prms_dim):
+                axs[-1, i].tick_params(axis="x", labelrotation=45)
 
         # show the plot if requested
         if show:
@@ -304,7 +382,9 @@ def create_posterior_plot(
     problem: "InverseProblem",
     plot_with: str = "arviz",
     kind: str = "hist",
-    figsize: Optional[tuple] = (10, 3),
+    figsize: Optional[tuple] = None,
+    inches_per_row: Union[int, float] = 3.0,
+    inches_per_col: Union[int, float] = 2.5,
     textsize: Union[int, float] = 10,
     title_size: Union[int, float] = 14,
     title: Optional[str] = None,
@@ -328,8 +408,14 @@ def create_posterior_plot(
     kind
         Type of plot to display ('kde' or 'hist').
     figsize
-        Defines the size of the generated plot in the default unit. If None is chosen,
-        the figsize will be derived automatically.
+        Defines the size of the generated plot in inches. If None is chosen, the figsize
+        will be derived automatically by using inches_per_row and inches_per_col.
+    inches_per_row
+        If figsize is None, this will specify the inches per row in the subplot-grid.
+        This argument has no effect if figsize is specified.
+    inches_per_col
+        If figsize is None, this will specify the inches per column in the subplot-grid.
+        This argument has no effect if figsize is specified.
     textsize
         Defines the font size in the default unit.
     title_size
@@ -372,21 +458,32 @@ def create_posterior_plot(
         axs = az.plot_posterior(
             inference_data,
             kind=kind,
-            figsize=figsize,
             textsize=textsize,
             hdi_prob=hdi_prob,
             show=False,
             **kwargs,
         )
 
-        # add a title to the plot, if requested
-        if title:
-            if isinstance(axs, np.ndarray):
-                fig = axs.ravel()[0].figure
+        # set the figure size; this is done either automatically if the user did not
+        # specify the figsize argument, or it simply sets the requested figsize
+        if isinstance(axs, np.ndarray):
+            fig = axs.ravel()[0].figure
+            if len(axs.shape) == 1:
+                n_rows, n_cols = 1, axs.size
             else:
-                fig = axs.figure
+                n_rows, n_cols = axs.shape  # pragma: no cover
+        else:
+            fig = axs.figure
+            n_rows, n_cols = 1, 1
+        if figsize is None:
+            fig.set_size_inches(n_cols * inches_per_col, n_rows * inches_per_row)
+        else:
+            fig.set_size_inches(figsize[0], figsize[1])
+
+        # add a title to the plot (if requested) and apply a tight layout
+        if title:
             fig.suptitle(title, fontsize=title_size)
-            fig.tight_layout(rect=[0, 0.03, 1, 0.95])
+        fig.tight_layout()
 
         # show the plot if requested
         if show:
@@ -420,7 +517,9 @@ def create_trace_plot(
     problem: "InverseProblem",  # for consistent interface
     plot_with: str = "arviz",
     kind: str = "trace",
-    figsize: Optional[tuple] = (10, 6),
+    figsize: Optional[tuple] = None,
+    inches_per_row: Union[int, float] = 2.0,
+    inches_per_col: Union[int, float] = 3.0,
     textsize: Union[int, float] = 10,
     title_size: Union[int, float] = 14,
     title: Optional[str] = None,
@@ -443,8 +542,14 @@ def create_trace_plot(
         Allows to choose between plotting sampled values per iteration ("trace") and
         rank plots ("rank_bar", "rank_vlines").
     figsize
-        Defines the size of the generated plot in the default unit. If None is chose,
-        the figsize will be derived automatically.
+        Defines the size of the generated plot in inches. If None is chosen, the figsize
+        will be derived automatically by using inches_per_row and inches_per_col.
+    inches_per_row
+        If figsize is None, this will specify the inches per row in the subplot-grid.
+        This argument has no effect if figsize is specified.
+    inches_per_col
+        If figsize is None, this will specify the inches per column in the subplot-grid.
+        This argument has no effect if figsize is specified.
     textsize
         Defines the font size in the default unit.
     title_size
@@ -472,22 +577,22 @@ def create_trace_plot(
         if "plot_kwargs" not in kwargs:
             kwargs["plot_kwargs"] = {"textsize": textsize}
 
-        # the following increases the space between the different subplot rows; in the
-        # default settings, this distance is too small (overlap is happening)
-        if "backend_kwargs" not in kwargs:
-            subplotpars = SubplotParams()
-            subplotpars.hspace = 0.50
-            kwargs["backend_kwargs"] = {"subplotpars": subplotpars}
-
         # call the main plotting routine from arviz and return the axes object
-        axs = az.plot_trace(
-            inference_data, kind=kind, figsize=figsize, show=False, **kwargs
-        )
+        axs = az.plot_trace(inference_data, kind=kind, show=False, **kwargs)
 
-        # add a title to the plot, if requested
+        # set the figure size; this is done either automatically if the user did not
+        # specify the figsize argument, or it simply sets the requested figsize
+        fig = axs.ravel()[0].figure
+        if figsize is None:
+            n_rows, n_cols = axs.shape
+            fig.set_size_inches(n_cols * inches_per_col, n_rows * inches_per_row)
+        else:
+            fig.set_size_inches(figsize[0], figsize[1])
+
+        # add a title to the plot (if requested) and apply a tight layout
         if title:
-            fig = axs.ravel()[0].figure
             fig.suptitle(title, fontsize=title_size)
+        fig.tight_layout(h_pad=1.75)
 
         # show the plot if requested
         if show:

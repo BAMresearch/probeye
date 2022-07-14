@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 3.0.1 (2022-Jul-14)
+### Changed
+- Improved plotting functions to work better with a larger number of parameters.
+
 ## 3.0.0 (2022-Jul-01)
 ### Changed
 - The definition of the latent parameter's priors was revised (from tuples to objects).
