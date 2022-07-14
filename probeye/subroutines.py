@@ -1149,7 +1149,8 @@ def assemble_covariance_matrix(
 def get_shape_2d(array_or_tuple: Union[np.ndarray, tuple]) -> Tuple[int, int]:
     """
     Returns the number of rows and columns from a one or two dimensional numpy array or
-    tuple.
+    tuple. If a flat vector is given the number of elements will be interpreted as the
+    number of rows.
 
     Parameters
     ----------

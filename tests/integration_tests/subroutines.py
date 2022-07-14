@@ -83,37 +83,42 @@ def run_inference_engines(
         create_pair_plot(
             inference_data,
             problem_cp,
+            plot_priors=True,
+            focus_on_posterior=True,
             true_values=true_values_cp,
             show=False,
-            title="plot_priors=True, focus_on_posterior=False (default)",
+            title="plot_priors=True, focus_on_posterior=True (default)",
         )
         create_pair_plot(
             inference_data,
             problem_cp,
-            focus_on_posterior=True,
+            plot_priors=True,
+            focus_on_posterior=False,
             kind="hexbin",
             true_values=true_values_cp,
             show=False,
             marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
-            title="plot_priors=True, focus_on_posterior=True (hex + hist)",
+            title="plot_priors=True, focus_on_posterior=False (hex + hist)",
         )
         create_pair_plot(
             inference_data,
             problem_cp,
             plot_priors=False,
+            focus_on_posterior=False,
             kind="scatter",
             true_values=true_values_cp,
             show=False,
             marginal_kwargs={"kind": "hist", "hist_kwargs": {"bins": 10}},
-            title="plot_priors=False (scatter + hist)",
+            title="plot_priors=False, focus_on_posterior=False (scatter + hist)",
         )
         create_pair_plot(
             inference_data,
             problem_cp,
             plot_priors=False,
+            focus_on_posterior=True,
             true_values=true_values_cp,
             show=False,
-            title="plot_priors=False",
+            title="plot_priors=False, focus_on_posterior=True",
         )
         create_posterior_plot(
             inference_data,

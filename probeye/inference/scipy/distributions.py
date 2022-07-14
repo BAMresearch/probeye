@@ -495,11 +495,18 @@ class UniformDistribution(Uniform):
         if (low is not None) and (high is not None):
             if x is None:
                 x = np.linspace(low, high, n_points)
+                # the following two modifications are made so that in the plot of the
+                # uniform prior you don't just see a horizontal line, but also vertical
+                # lines at the boundary (because the first/last y-value will be zero)
+                x[0] -= 1e-9
+                x[-1] += 1e-9
+            x_min = float(np.min(x))
+            x_max = float(np.max(x))
+            margin = 0.025 * abs(x_max - x_min)
+            adjusted_left = x_min - margin
+            adjusted_right = x_max + margin
             prms[primary_var] = x
             y = self(primary_var, prms, "pdf")
-            margin = 0.025 * abs(high - low)
-            adjusted_left = low - margin
-            adjusted_right = high + margin
             self._plot(x, y, ax, color, rotate, adjusted_left, adjusted_right, label)
 
 
