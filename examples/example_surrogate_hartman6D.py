@@ -34,7 +34,11 @@ from probeye.postprocessing.sampling import create_pair_plot
 from probeye.postprocessing.sampling import create_posterior_plot
 
 # Surrogate model imports
-from harlow.surrogate_model import ModelListGaussianProcess
+from harlow.sampling import Sampler
+from harlow.sampling import LatinHypercube
+from harlow.surrogating import Surrogate
+from harlow.surrogating import ModelListGaussianProcess
+from harlow.utils.transforms import ExpandDims
 
 import torch
 from botorch.test_functions.synthetic import Hartmann
@@ -126,17 +130,16 @@ class SyntheticModel(ForwardModelBase):
 # =========================================================================
 
 
-class SurrogateModel(SyntheticModel):
+class HarlowSurrogate(ForwardModelBase):
     """
     The inheritance from ExpensiveModel 'copies' the interface-method from
     ExpensiveModel (the surrogate model should have the same interface as the
-    forward model). The inheritance from SurrogateModelBase is required to
-    assign a forward model to the surrogate model, see surrogate_model.py.
+    forward model).
     """
 
     def __init__(
         self,
-        name: str,
+        name,
         forward_model: ForwardModelBase,
         surrogate_model,
         surrogate_kwargs,
@@ -144,55 +147,146 @@ class SurrogateModel(SyntheticModel):
         output_transform=None,
     ):
 
-        super().__init__(name, forward_model)
+        # Get interface from existing forward model
         self.forward_model = forward_model
-        self.surrogate_model = surrogate_model
-        self.surrogate_kwargs = surrogate_kwargs
+        self.interface = self.forward_model.interface
+
+        super().__init__(name, forward_model)
+
         self.input_transform = input_transform
         self.output_transform = output_transform
+        self.surrogate_kwargs = surrogate_kwargs
+        self._surrogate = surrogate_model
+        self.lower_bounds = []
+        self.upper_bounds = []
 
-        # List of model names for ModelListGP
-        self.model_names = []
-        for idx_x, os in enumerate(self.output_sensors):
-            self.model_names.append(os.name)
+        # Common input arguments for surrogate models
+        if self.surrogate_kwargs["model_names"] == None:
+            self.model_names = []
+            for idx_x, os in enumerate(self.output_sensors):
+                self.model_names.append(os.name)
+            self.surrogate_kwargs["model_names"] = self.model_names
 
-        if not self.input_transform:
-            self.input_transform = lambda x: x
-        if not self.output_transform:
-            self.output_transform = lambda y: y
+        if self.surrogate_kwargs["num_features"] == None:
+            self.num_features = len(self.output_sensors)
+            self.surrogate_kwargs["num_features"] = self.num_features
 
-    def fit(self, train_X, train_y):
+        # Get bounds
+        # TODO:
 
-        # Initialize model
-        self.model = self.surrogate_model(
-            self.input_transform(train_X),
-            self.output_transform(train_y),
-            self.model_names,
-            **self.surrogate_kwargs,
-        )
+        # Get param names
 
-        # Fit model
-        self.model.fit()
+        # Initialize surrogate
+        self.surrogate_model = self._surrogate(**self.surrogate_kwargs)
+
+    def _cast_to_numpy(self, inp: dict) -> np.ndarray:
+        raise NotImplementedError
+
+    def _cast_to_dict(self, X: np.ndarray) -> dict:
+        raise NotImplementedError
+
+    def target(self, X: np.ndarray) -> np.ndarray:
+        inp = self._cast_to_dict(X)
+        response = self.forward_model.response(inp)
+        y = [[]] * len(self.output_sensors)
+        for idx, os in enumerate(self.output_sensors):
+            y[idx] = response[os.name]
+        return np.array(y).T
 
     def response(self, inp: dict) -> dict:
 
         params = np.tile([inp["X" + str(i + 1)] for i in range(4)], (Nt, 1))
-        X = input_transform(torch.tensor(np.hstack((params, t_vec.reshape(-1, 1)))))
+        X = torch.tensor(np.hstack((params, t_vec.reshape(-1, 1))))
 
-        # # ==========================================
-        # # If surrogate is regular GP
-        # # ==========================================
         response = dict()
 
         # Evaluate function and arange output on grid
-        _ = self.model.predict(X, return_std=False)
-        f = np.array(self.model.mean).T
+        f = self.model.predict(X, return_std=False)
 
         for idx_x, os in enumerate(self.output_sensors):
             response[os.name] = f[idx_x, :]
 
         return response
 
+
+# class HarlowSurrogate(ForwardModelBase):
+#     """
+#     The inheritance from ExpensiveModel 'copies' the interface-method from
+#     ExpensiveModel (the surrogate model should have the same interface as the
+#     forward model). The inheritance from SurrogateModelBase is required to
+#     assign a forward model to the surrogate model, see surrogate_model.py.
+#     """
+#
+#     def __init__(
+#         self,
+#         name: str,
+#         forward_model: ForwardModelBase,
+#         surrogate_model,
+#         surrogate_kwargs,
+#         input_transform=None,
+#         output_transform=None,
+#     ):
+#
+#         super().__init__(name, forward_model)
+#         self.forward_model = forward_model
+#         self.surrogate_model = surrogate_model
+#         self.surrogate_kwargs = surrogate_kwargs
+#         self.input_transform = input_transform
+#         self.output_transform = output_transform
+#
+#         # List of model names for ModelListGP
+#         self.model_names = []
+#         for idx_x, os in enumerate(self.output_sensors):
+#             self.model_names.append(os.name)
+#
+#         if not self.input_transform:
+#             self.input_transform = lambda x: x
+#         if not self.output_transform:
+#             self.output_transform = lambda y: y
+#
+#     def fit(self, train_X, train_y):
+#
+#         # Initialize model
+#         self.model = self.surrogate_model(
+#             self.input_transform(train_X),
+#             self.output_transform(train_y),
+#             **self.surrogate_kwargs,
+#         )
+#
+#         # Fit model
+#         self.model.fit()
+#
+#
+#     def update(self, train_X, train_y):
+#
+#         # Initialize model
+#         self.model = self.surrogate_model(
+#             self.input_transform(train_X),
+#             self.output_transform(train_y),
+#             **self.surrogate_kwargs,
+#         )
+#
+#         # Fit model
+#         self.model.fit()
+#
+#     def response(self, inp: dict) -> dict:
+#
+#         params = np.tile([inp["X" + str(i + 1)] for i in range(4)], (Nt, 1))
+#         X = input_transform(torch.tensor(np.hstack((params, t_vec.reshape(-1, 1)))))
+#
+#         # # ==========================================
+#         # # If surrogate is regular GP
+#         # # ==========================================
+#         response = dict()
+#
+#         # Evaluate function and arange output on grid
+#         _ = self.model.predict(X, return_std=False)
+#         f = np.array(self.model.mean).T
+#
+#         for idx_x, os in enumerate(self.output_sensors):
+#             response[os.name] = f[idx_x, :]
+#
+#         return response
 
 # =========================================================================
 # Define inference problem
@@ -238,22 +332,11 @@ surrogate_kwargs = {
     "fast_pred_var": True,
 }
 
-
-def input_transform(X):
-    return torch.tensor(X).float()
-
-
-def output_transform(y):
-    return torch.tensor(y).float()
-
-
-surrogate_model = SurrogateModel(
-    "FastModel",
-    forward_model,
-    ModelListGaussianProcess,
+surrogate_model = HarlowSurrogate(
+    name="FastModel",
+    forward_model=forward_model,
+    surrogate_model=ModelListGaussianProcess,
     surrogate_kwargs=surrogate_kwargs,
-    input_transform=input_transform,
-    output_transform=output_transform,
 )
 
 problem.add_forward_model(surrogate_model)
