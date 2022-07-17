@@ -23,19 +23,21 @@ from tripy.utils import correlation_function
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.definition.correlation_model import ExpModel
 from probeye.definition.sensor import Sensor
 from probeye.subroutines import len_or_one
 from probeye.subroutines import HiddenPrints
 
 # local imports (problem solving)
-from probeye.inference.scipy.solver import ScipySolver
+from probeye.inference.scipy.solver import MaxLikelihoodSolver
 from probeye.inference.emcee.solver import EmceeSolver
 
 # local imports (inference data post-processing)
-from probeye.postprocessing.sampling import create_pair_plot
-from probeye.postprocessing.sampling import create_posterior_plot
-from probeye.postprocessing.sampling import create_trace_plot
+from probeye.postprocessing.sampling_plots import create_pair_plot
+from probeye.postprocessing.sampling_plots import create_posterior_plot
+from probeye.postprocessing.sampling_plots import create_trace_plot
 
 # %%
 # The bridge that is considered in this example should have a length of 'L_bridge',
@@ -118,12 +120,7 @@ class BridgeModel(ForwardModelBase):
         self.output_sensors = []
         for i, x_i in enumerate(x_sensors):
             self.output_sensors.append(
-                Sensor(
-                    name=f"y{i + 1}",
-                    x=x_i,
-                    std_model="sigma",
-                    correlated_in={"x": "l_corr_x", "t": "l_corr_t"},
-                )
+                Sensor(name=f"y{i + 1}", x=x_i, std_model="sigma")
             )
 
     @staticmethod
@@ -266,10 +263,10 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex="$EI$",
     info="Bending stiffness of the beam [Nm^2]",
-    prior=("normal", {"mean": 0.9 * EI_true, "std": 0.25 * EI_true}),
+    prior=Normal(mean=0.9 * EI_true, std=0.25 * EI_true),
 )
 problem.add_parameter(
-    "L", "model", tex="$L$", info="Length of the beam [m]", const=L_bridge
+    "L", "model", tex="$L$", info="Length of the beam [m]", value=L_bridge
 )
 problem.add_parameter(
     "sigma",
@@ -277,7 +274,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Std. dev, of 0-mean noise model",
-    prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+    prior=Uniform(low=low_sigma, high=high_sigma),
 )
 problem.add_parameter(
     "l_corr_x",
@@ -285,7 +282,7 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,x}$",
     info="Spatial correlation length of correlation model",
-    prior=("uniform", {"low": low_l_corr_x, "high": high_l_corr_x}),
+    prior=Uniform(low=low_l_corr_x, high=high_l_corr_x),
 )
 problem.add_parameter(
     "l_corr_t",
@@ -293,15 +290,12 @@ problem.add_parameter(
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,t}$",
     info="Temporal correlation length of correlation model",
-    prior=("uniform", {"low": low_l_corr_t, "high": high_l_corr_t}),
+    prior=Uniform(low=low_l_corr_t, high=high_l_corr_t),
 )
 
 # %%
 # As the next step, we need to add our forward model, the experimental data and the
 # likelihood model. Note that the order is important and cannot be changed.
-
-# add the forward model to the problem
-problem.add_forward_model(bridge_model)
 
 # experimental data
 for exp_name, data in data_dict.items():
@@ -312,20 +306,19 @@ for exp_name, data in data_dict.items():
     sensor_values = {**sensor_values_vtF, **sensor_values_x, **sensor_values_y}
 
     problem.add_experiment(
-        exp_name,
-        fwd_model_name="BridgeModel",
-        sensor_values=sensor_values,
+        name=exp_name,
+        sensor_data=sensor_values,
     )
+
+# add the forward model to the problem
+problem.add_forward_model(bridge_model, experiments=[*data_dict.keys()])
 
 # likelihood models
 for exp_name in problem.experiments.keys():
     loglike = GaussianLikelihoodModel(
-        ["sigma", "l_corr_x", "l_corr_t"],
         experiment_name=exp_name,
         model_error="additive",
-        additive_measurement_error=False,
-        correlation_variables=["x", "t"],
-        correlation_model="exp",
+        correlation=ExpModel(x="l_corr_x", t="l_corr_t"),
     )
     problem.add_likelihood_model(loglike)
 
@@ -342,8 +335,8 @@ problem.info(print_header=True)
 # the emcee solver, which is a MCMC-sampling solver. Let's begin with the scipy-solver:
 
 # this is for using the scipy-solver (maximum likelihood estimation)
-scipy_solver = ScipySolver(problem, show_progress=False)
-max_like_data = scipy_solver.run_max_likelihood()
+scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
+max_like_data = scipy_solver.run()
 
 # %%
 # All solver have in common that they are first initialized, and then execute a
@@ -351,7 +344,7 @@ max_like_data = scipy_solver.run_max_likelihood()
 # object (except for the scipy-solver). Let's now take a look at the emcee-solver.
 
 emcee_solver = EmceeSolver(problem, show_progress=False)
-inference_data = emcee_solver.run_mcmc(n_steps=2000, n_initial_steps=200)
+inference_data = emcee_solver.run(n_steps=2000, n_initial_steps=200)
 
 # %%
 # Finally, we want to plot the results we obtained. To that end, probeye provides some

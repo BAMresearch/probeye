@@ -45,7 +45,7 @@ class EmceeSolver(ScipySolver):
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
-        logger.debug("Initializing EmceeSolver")
+        logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
         check_for_uninformative_priors(problem)
         # initialize the scipy-based solver (ScipySolver)
@@ -140,7 +140,7 @@ class EmceeSolver(ScipySolver):
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
 
-    def run_mcmc(
+    def run(
         self,
         n_walkers: int = 20,
         n_steps: int = 1000,
@@ -208,11 +208,21 @@ class EmceeSolver(ScipySolver):
         np.random.seed(self.seed)
         rstate = np.random.mtrand.RandomState(self.seed)
 
+        def logprob(x):
+            # Skip loglikelihood evaluation if logprior is equal
+            # to negative infinity
+            logprior = self.logprior(x)
+            if logprior == -np.inf:
+                return logprior
+
+            # Otherwise return logprior + loglikelihood
+            return logprior + self.loglike(x)
+
         logger.debug("Setting up EnsembleSampler")
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=lambda x: self.logprior(x) + self.loglike(x),
+            log_prob_fn=logprob,
             **kwargs,
         )
 

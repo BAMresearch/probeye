@@ -3,16 +3,17 @@ from typing import Tuple, Optional, TYPE_CHECKING
 import copy as cp
 
 # third party imports
-import copy
 import numpy as np
 import scipy as sp
 from scipy.optimize import minimize
 from loguru import logger
 
 # local imports
-from probeye.inference.priors import translate_prior
-from probeye.inference.likelihood_models import translate_likelihood_model
+from probeye.inference.solver import Solver
+from probeye.inference.scipy.priors import translate_prior
+from probeye.inference.scipy.likelihood_models import translate_likelihood_model
 from probeye.subroutines import print_dict_in_rows, vectorize_numpy_dict
+from probeye.subroutines import synchronize_objects
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -20,55 +21,106 @@ if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.forward_model import ForwardModelBase
 
 
-class ScipySolver:
+class ScipySolver(Solver):
     """
-    Solver routines based on scipy and numpy for an InverseProblem.
-
-    Parameters
-    ----------
-    problem
-        Describes the inverse problem including e.g. parameters and data.
-    seed
-        Random state used for random number generation.
-    show_progress
-        When True, the progress of a solver routine will be shown (for example as a
-        progress-bar) if such a feature is available. Otherwise, the progress will
-        not shown.
+    Solver based on scipy and numpy for an InverseProblem. The ScipySolver contains the
+    methods for log-prior and log-likelihood evaluation. For information on the
+    arguments see :class:`~probeye.inference.solver.Solver`.
     """
 
     def __init__(
         self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
     ):
-
-        # log at beginning so that errors can be associated
         logger.debug("Initializing ScipySolver")
+        super().__init__(problem, seed=seed, show_progress=show_progress)
 
-        # attributes from arguments
-        self.problem = problem
-        self.show_progress = show_progress
-        self.seed = seed
+    def _translate_parameters(self):
+        """
+        Translate the inverse problem's parameters as needed for this solver.
+        """
+        # translate the prior definitions to objects with computing capabilities
+        logger.debug("Translate the problem's parameters")
+        for prior_template in self.problem.priors.values():
+            prm_name = prior_template.ref_prm
+            self.problem.parameters[prm_name] = self.problem.parameters[
+                prm_name
+            ].changed_copy(
+                prior=translate_prior(
+                    self.problem.parameters[prior_template.ref_prm].prior
+                )
+            )
+        # translate non-scalar constants to numpy-arrays
+        for prm_name in self.problem.parameters:
+            if self.problem.parameters[prm_name].is_const:
+                if self.problem.parameters[prm_name].dim > 1:
+                    self.problem.parameters[prm_name] = self.problem.parameters[
+                        prm_name
+                    ].changed_copy(
+                        value=np.array(self.problem.parameters[prm_name].value)
+                    )
 
-        # the following attributes will be set after the solver was run
-        self.raw_results = None
-        self.summary = {}  # type: dict
+    def _translate_experiments(self):
+        """
+        Translate the inverse problem's experiments as needed for this solver.
+        """
+        # each tuple in the sensor_data must be converted to a numpy.ndarray
+        logger.debug("Translate the problem's experiments")
+        for exp_name in self.problem.experiments:
+            for sensor_name in self.problem.experiments[exp_name].sensor_data:
+                v = self.problem.experiments[exp_name].sensor_data[sensor_name]
+                if isinstance(v, tuple):
+                    a = np.array(v)
+                    self.problem.experiments[exp_name].sensor_data[sensor_name] = a
 
-        # this prepares the inputs and outputs based on experimental data for all of
-        # the problem's forward models
-        for forward_model in self.problem.forward_models.values():
+    def _translate_forward_models(self):
+        """
+        Translate the inverse problem's forward models as needed for this solver.
+        """
+        logger.debug("Translate the problem's forward models")
+        for fwd_name in self.problem.forward_models:
+
+            # create a full forward model from its hull where the sensors are not yet
+            # connected to the experimental data
+            forward_model_hull = self.problem.forward_models[fwd_name]
+            forward_model = forward_model_hull.__class__.__bases__[0](fwd_name)
+            synchronize_objects(
+                forward_model,
+                forward_model_hull,
+                exclude_startswith=("__", "_", "experiment_names"),
+            )
+
+            # add the experiments to the created forward model object by connecting
+            # them with the respective sensors
+            for exp_name in forward_model_hull.experiment_names:
+                sensor_data = self.problem.experiments[exp_name].sensor_data
+                forward_model.connect_experimental_data_to_sensors(
+                    exp_name, sensor_data
+                )
+
+            # this is a default preparation for increased efficiency
             forward_model.prepare_experimental_inputs_and_outputs()
 
-        # translate the prior definitions to objects with computing capabilities
-        logger.debug("Translate problem's priors")
-        self.priors = copy.deepcopy(self.problem.priors)
-        for prior_name, prior_template in self.problem.priors.items():
-            self.priors[prior_name] = translate_prior(prior_template)
+            # finally, add the forward model to the problem
+            self.problem.forward_models[fwd_name] = forward_model
 
-        # translate the general likelihood model objects into solver specific ones
-        logger.debug("Translate problem's likelihood models")
-        self.likelihood_models = []
-        for likelihood_model_definition in self.problem.likelihood_models.values():
-            self.likelihood_models.append(
-                translate_likelihood_model(likelihood_model_definition)
+    def _translate_likelihood_models(self):
+        """
+        Translate the inverse problem's likelihood models as needed for this solver.
+        """
+
+        logger.debug("Translate the problem's likelihood models")
+        for like_name in self.problem.likelihood_models:
+
+            # the likelihood model's forward model is still referencing the old (i.e.,
+            # not-translated) forward model and needs to be reset to the updated one
+            fwd_name = self.problem.likelihood_models[like_name].forward_model.name
+            fwd_model = self.problem.forward_models[fwd_name]
+            self.problem.likelihood_models[like_name].forward_model = fwd_model
+            self.problem.likelihood_models[like_name].determine_output_lengths()
+
+            # translate the likelihood model
+            self.problem.likelihood_models[like_name] = translate_likelihood_model(
+                self.problem.likelihood_models[like_name]
             )
 
     def evaluate_model_response(
@@ -130,7 +182,7 @@ class ScipySolver:
             The evaluated log-prior function for the given theta-vector.
         """
         lp = 0.0
-        for prior in self.priors.values():
+        for prior in self.problem.priors.values():
             prms = self.problem.get_parameters(theta, prior.prms_def)
             lp += prior(prms, "logpdf")
         return lp
@@ -151,7 +203,8 @@ class ScipySolver:
         -------
             The generated samples.
         """
-        prior = self.priors[self.problem.parameters[prm_name].prior.name]
+        prior_name = self.problem.parameters[prm_name].prior.name
+        prior = self.problem.priors[prior_name]
         # check for prior-priors; if a prior parameter is a latent parameter and not a
         # constant, one first samples from the prior parameter's prior distribution, and
         # then takes the mean of those samples to sample from the first prior
@@ -194,7 +247,7 @@ class ScipySolver:
         # compute the contribution to the log-likelihood function for each likelihood
         # model and sum it all up
         ll = 0.0
-        for likelihood_model in self.likelihood_models:
+        for likelihood_model in self.problem.likelihood_models.values():
             # compute the model response/residuals for the likelihood model's experiment
             response, residuals = self.evaluate_model_response(
                 theta, likelihood_model.forward_model, likelihood_model.experiment_name
@@ -248,7 +301,7 @@ class ScipySolver:
                 idx_end = self.problem.parameters[prm_name].index_end
                 dim = self.problem.parameters[prm_name].dim
                 if prior_type != "uninformative":
-                    prm_value = self.priors[prior_name](
+                    prm_value = self.problem.priors[prior_name](
                         prms, x0_prior, use_ref_prm=False
                     )
                     prms[prm_name] = prm_value
@@ -265,11 +318,12 @@ class ScipySolver:
 
         return x0, x0_dict
 
-    def summarize_ml_results(
+    def summarize_point_estimate_results(
         self,
         minimize_results: sp.optimize.OptimizeResult,
         true_values: Optional[dict],
         x0_dict: dict,
+        estimate_type: str = "maximum likelihood estimation",
     ):
         """
         Prints a summary of the results of the maximum likelihood estimation. For an
@@ -280,7 +334,7 @@ class ScipySolver:
         # the first part of the summary contains process information
         n_char_message = len(minimize_results.message)
         msg = (
-            f"Results of maximum likelihood estimation\n"
+            f"Results of {estimate_type}\n"
             f"{'=' * n_char_message}\n"
             f"{minimize_results.message}\n"
             f"{'-' * n_char_message}\n"
@@ -319,7 +373,7 @@ class ScipySolver:
                 logger.info(line)
         logger.info("")  # empty line for visual buffer
 
-    def run_max_likelihood(
+    def _run_ml_or_map(
         self,
         x0_dict: Optional[dict] = None,
         x0_prior: str = "mean",
@@ -327,11 +381,12 @@ class ScipySolver:
         true_values: Optional[dict] = None,
         method: str = "Nelder-Mead",
         solver_options: Optional[dict] = None,
+        use_priors: bool = True,
     ) -> sp.optimize.OptimizeResult:
         """
         Finds values for an InverseProblem's latent parameters that maximize the
-        problem's likelihood function. The used method is scipy's minimize function from
-        the optimize submodule.
+        problem's likelihood or likelihood * prior function. The used method is scipy's
+        minimize function from the optimize submodule.
 
         Parameters
         ----------
@@ -356,6 +411,10 @@ class ScipySolver:
         solver_options
             Options passed to scipy.optimize.minimize under the 'options' keyword arg.
             See the documentation of this scipy method to see available options.
+        use_priors
+            When True, the priors are included in the objective function (MAP).
+            Otherwise, the priors are not included (ML).
+
 
         Returns
         -------
@@ -365,14 +424,23 @@ class ScipySolver:
             requested via 'minimize_results.x'.
         """
 
-        # log at beginning so that errors can be associated
-        logger.info("Solving problem via maximum likelihood estimation")
-
         # since scipy's minimize function is used, we need a function that returns the
         # negative log-likelihood function (minimizing the negative log-likelihood is
         # equivalent to maximizing the (log-)likelihood)
-        def fun(x):
-            return -self.loglike(x)
+        if use_priors:
+            estimate_type = "maximum a-posteriori estimation"
+
+            def fun(x):
+                return -(self.loglike(x) + self.logprior(x))
+
+        else:
+            estimate_type = "maximum likelihood estimation"
+
+            def fun(x):
+                return -self.loglike(x)
+
+        # log at beginning so that errors can be associated
+        logger.info(f"Solving problem via {estimate_type}")
 
         # prepare the start value either from the given x0_dict or from the mean values
         # of the latent parameter's priors
@@ -402,6 +470,82 @@ class ScipySolver:
         }
 
         # some convenient printout with respect to the solver's results
-        self.summarize_ml_results(minimize_results, true_values, x0_dict)
+        self.summarize_point_estimate_results(
+            minimize_results, true_values, x0_dict, estimate_type
+        )
 
         return minimize_results
+
+
+class MaxLikelihoodSolver(ScipySolver):
+    """
+    Solver for a maximum likelihood estimation. This class is separate from ScipySolver
+    so that its main function can be triggered by a 'run'-method. For information on the
+    arguments see :class:`~probeye.inference.solver.Solver`.
+    """
+
+    def __init__(
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+    ):
+        logger.debug(f"Initializing {self.__class__.__name__}")
+        super().__init__(problem, seed=seed, show_progress=show_progress)
+
+    def run(
+        self,
+        x0_dict: Optional[dict] = None,
+        x0_prior: str = "mean",
+        x0_default: float = 1.0,
+        true_values: Optional[dict] = None,
+        method: str = "Nelder-Mead",
+        solver_options: Optional[dict] = None,
+    ) -> sp.optimize.OptimizeResult:
+        """
+        Triggers a maximum likelihood estimation. For more information on the arguments
+        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
+        """
+        return self._run_ml_or_map(
+            x0_dict,
+            x0_prior,
+            x0_default,
+            true_values,
+            method,
+            solver_options,
+            use_priors=False,
+        )
+
+
+class MaxPosteriorSolver(ScipySolver):
+    """
+    Solver for maximum a-posteriori estimation. This class is separate from ScipySolver
+    so that its main function can be triggered by a 'run'-method. For information on the
+    arguments see :class:`~probeye.inference.solver.Solver`.
+    """
+
+    def __init__(
+        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+    ):
+        logger.debug(f"Initializing {self.__class__.__name__}")
+        super().__init__(problem, seed=seed, show_progress=show_progress)
+
+    def run(
+        self,
+        x0_dict: Optional[dict] = None,
+        x0_prior: str = "mean",
+        x0_default: float = 1.0,
+        true_values: Optional[dict] = None,
+        method: str = "Nelder-Mead",
+        solver_options: Optional[dict] = None,
+    ) -> sp.optimize.OptimizeResult:
+        """
+        Triggers a maximum a-posteriori estimation. For more information on the args
+        check out :func:`probeye.inference.scipy.solver._run_ml_or_map`.
+        """
+        return self._run_ml_or_map(
+            x0_dict,
+            x0_prior,
+            x0_default,
+            true_values,
+            method,
+            solver_options,
+            use_priors=True,
+        )

@@ -17,16 +17,17 @@ import os
 # third party imports
 import numpy as np
 import matplotlib.pyplot as plt
+from owlready2 import default_world, get_ontology
 
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 # local imports (knowledge graph)
 from probeye.ontology.knowledge_graph_export import export_knowledge_graph
-from probeye.ontology.knowledge_graph_import import import_parameter_samples
 from probeye.ontology.knowledge_graph_export import export_results_to_knowledge_graph
 
 # local imports (testing related)
@@ -86,6 +87,63 @@ class TestProblem(unittest.TestCase):
         seed = 1
 
         # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
+
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear regression (AME)")
+
+        # add all parameters to the problem
+        problem.add_parameter(
+            name="a",
+            tex="$a$",
+            info="Slope of the graph",
+            prior=Normal(mean=mean_a, std=std_a),
+        )
+        problem.add_parameter(
+            name="b",
+            info="Intersection of graph with y-axis",
+            tex="$b$",
+            prior=Normal(mean=mean_b, std=std_b),
+        )
+        problem.add_parameter(
+            name="sigma",
+            domain="(0, +oo)",
+            tex=r"$\sigma$",
+            info="Standard deviation of zero-mean additive model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
+        )
+
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
+
+        # data-generation; normal likelihood with constant variance around each point
+        np.random.seed(seed)
+        x_test = np.linspace(0.0, 1.0, n_tests)
+        y_true = a_true * x_test + b_true
+        y_test = np.random.normal(loc=y_true, scale=sigma)
+
+        # add the experimental data
+        problem.add_experiment(
+            name="TestSeries_1",
+            sensor_data={
+                "x": x_test,
+                "y": y_test,
+            },
+        )
+
+        # plot the true and noisy data
+        if plot:
+            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
+            plt.plot(x_test, y_true, label="true", c="black")
+            plt.xlabel("x")
+            plt.ylabel("y")
+            plt.legend()
+            plt.tight_layout()
+            plt.draw()  # does not stop execution
+
+        # ============================================================================ #
         #                           Define the Forward Model                           #
         # ============================================================================ #
 
@@ -101,72 +159,9 @@ class TestProblem(unittest.TestCase):
                 b = inp["b"]
                 return {"y": m * x + b}
 
-        # ============================================================================ #
-        #                         Define the Inference Problem                         #
-        # ============================================================================ #
-
-        # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear regression (AME)")
-
-        # add all parameters to the problem
-        problem.add_parameter(
-            "a",
-            "model",
-            tex="$a$",
-            info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
-        )
-        problem.add_parameter(
-            "b",
-            "model",
-            info="Intersection of graph with y-axis",
-            tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
-        )
-        problem.add_parameter(
-            "sigma",
-            "likelihood",
-            domain="(0, +oo)",
-            tex=r"$\sigma$",
-            info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
-        )
-
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
-
-        # ============================================================================ #
-        #                    Add test data to the Inference Problem                    #
-        # ============================================================================ #
-
-        # data-generation; normal likelihood with constant variance around each point
-        np.random.seed(seed)
-        x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model.response(
-            {linear_model.input_sensor.name: x_test, "m": a_true, "b": b_true}
-        )[linear_model.output_sensor.name]
-        y_test = np.random.normal(loc=y_true, scale=sigma)
-
-        # add the experimental data
-        problem.add_experiment(
-            f"TestSeries_1",
-            fwd_model_name="LinearModel",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                linear_model.output_sensor.name: y_test,
-            },
-        )
-
-        # plot the true and noisy data
-        if plot:
-            plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
-            plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(linear_model.input_sensor.name)
-            plt.ylabel(linear_model.output_sensor.name)
-            plt.legend()
-            plt.tight_layout()
-            plt.draw()  # does not stop execution
+        problem.add_forward_model(linear_model, experiments="TestSeries_1")
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -175,10 +170,8 @@ class TestProblem(unittest.TestCase):
         # add the likelihood model to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def="sigma",
                 experiment_name="TestSeries_1",
                 model_error="additive",
-                name="SimpleLikelihoodModel",
             )
         )
 
@@ -202,7 +195,7 @@ class TestProblem(unittest.TestCase):
         # run inference step using emcee
         true_values = {"a": a_true, "b": b_true, "sigma": sigma}
         emcee_solver = EmceeSolver(problem, show_progress=show_progress)
-        inference_data = emcee_solver.run_mcmc(
+        inference_data = emcee_solver.run(
             n_walkers=n_walkers,
             n_steps=n_steps,
             n_initial_steps=n_initial_steps,
@@ -221,8 +214,44 @@ class TestProblem(unittest.TestCase):
         #                          Query the knowledge graph                           #
         # ============================================================================ #
 
-        # get the samples from the knowledge graph
-        sample_dict = import_parameter_samples(knowledge_graph_file)
+        # load the given knowledge graph from file
+        get_ontology(knowledge_graph_file).load()
+
+        # query the graph; the result will be a list of lists with three entries (like
+        # in [[e1, e2, e3], [e1, e2, e3]]) where the first elements contain the
+        # parameter names the second elements are the row indices in the posterior
+        # sample file, and the last elements should be all equal stating the file of
+        # the joint posterior samples
+        query_result_raw = list(
+            default_world.sparql(
+                """
+                PREFIX peo: <http://www.parameter_estimation_ontology.org#>
+                SELECT ?x ?index ?f
+                WHERE { ?i a peo:inverse_problem .
+                        ?i peo:has_joint_posterior_distribution ?d .
+                        ?d peo:has_samples ?s .
+                        ?s peo:has_file ?f .
+                        ?i peo:has_parameter ?x .
+                        ?x peo:has_posterior_index ?index}
+                """
+            )
+        )
+
+        # get the filename of the joint posterior's samples
+        filenames_list = [e[2] for e in query_result_raw]
+        filenames_set = set(filenames_list)
+        assert len(filenames_set) == 1
+        filename = filenames_list[0]
+
+        # load the samples from the file
+        samples_array = np.loadtxt(filename)
+
+        # post-process the raw query results into a dictionary
+        sample_dict = {}
+        for sublist in query_result_raw:
+            prm_name = str(sublist[0]).split(".")[-1]
+            idx = sublist[1]
+            sample_dict[prm_name] = samples_array[idx]
 
         # check if the parameters returned from the query are the same as the ones
         # defined within the problem scope

@@ -1,2 +1,2 @@
 # module imports
-from probeye.postprocessing import sampling
+from probeye.postprocessing import sampling_plots

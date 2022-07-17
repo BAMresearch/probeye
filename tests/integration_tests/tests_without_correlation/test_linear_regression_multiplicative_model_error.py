@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -101,24 +102,6 @@ class TestProblem(unittest.TestCase):
         seed = 1
 
         # ============================================================================ #
-        #                           Define the Forward Model                           #
-        # ============================================================================ #
-
-        class LinearModel(ForwardModelBase):
-            def interface(self):
-                self.parameters = [{"a": "m"}, "b"]
-                self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor(
-                    "y", std_model="sigma", std_measurement="sigma_m"
-                )
-
-            def response(self, inp: dict) -> dict:
-                x = inp["x"]
-                m = inp["m"]
-                b = inp["b"]
-                return {"y": m * x + b}
-
-        # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
@@ -128,37 +111,33 @@ class TestProblem(unittest.TestCase):
         # add all parameters to the problem
         problem.add_parameter(
             "a",
-            "model",
+            "model",  # this is an optional tag (will be inferred if not given)
             tex="$a$",
             info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
+            prior=Normal(mean=mean_a, std=std_a),
         )
         problem.add_parameter(
             "b",
-            "model",
+            "model",  # this is an optional tag (will be inferred if not given)
             info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
         )
         problem.add_parameter(
             "sigma",
-            "likelihood",
+            "likelihood",  # this is an optional tag (will be inferred if not given)
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of unit-mean multiplicative model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            info="Standard deviation of unit-mean multiplicative model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
         problem.add_parameter(
             "sigma_m",
-            "likelihood",
+            "likelihood",  # this is an optional tag
             tex=r"$\sigma_m$",
-            info="Standard deviation, of zero-mean additive measurement error",
-            const=sigma_m,
+            info="Standard deviation of zero-mean additive measurement error",
+            value=sigma_m,
         )
-
-        # add the forward model to the problem
-        linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -167,18 +146,15 @@ class TestProblem(unittest.TestCase):
         # data-generation; normal likelihood with constant variance around each point
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_tests)
-        y_true = linear_model.response(
-            {linear_model.input_sensor.name: x_test, "m": a_true, "b": b_true}
-        )[linear_model.output_sensor.name]
+        y_true = a_true * x_test + b_true
         y_test = np.random.normal(loc=y_true, scale=sigma * y_true + sigma_m)
 
         # add the experimental data
         problem.add_experiment(
-            f"TestSeries_1",
-            fwd_model_name="LinearModel",
-            sensor_values={
-                linear_model.input_sensor.name: x_test,
-                linear_model.output_sensor.name: y_test,
+            name=f"TestSeries_1",
+            sensor_data={
+                "x": x_test,
+                "y": y_test,
             },
         )
 
@@ -186,11 +162,31 @@ class TestProblem(unittest.TestCase):
         if plot:
             plt.scatter(x_test, y_test, label="measured data", s=10, c="red", zorder=10)
             plt.plot(x_test, y_true, label="true", c="black")
-            plt.xlabel(linear_model.input_sensor.name)
-            plt.ylabel(linear_model.output_sensor.name)
+            plt.xlabel("x")
+            plt.ylabel("y")
             plt.legend()
             plt.tight_layout()
             plt.draw()  # does not stop execution
+
+        # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
+
+        class LinearModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = [{"a": "m"}, "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma")
+
+            def response(self, inp: dict) -> dict:
+                x = inp["x"]
+                m = inp["m"]
+                b = inp["b"]
+                return {"y": m * x + b}
+
+        # add the forward model to the problem
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(linear_model, experiments="TestSeries_1")
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -199,10 +195,9 @@ class TestProblem(unittest.TestCase):
         # add the likelihood model to the problem
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
-                prms_def=["sigma", "sigma_m"],
                 experiment_name="TestSeries_1",
                 model_error="multiplicative",
-                additive_measurement_error=True,
+                measurement_error="sigma_m",
             )
         )
 

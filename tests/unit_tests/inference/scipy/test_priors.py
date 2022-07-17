@@ -3,21 +3,17 @@ import unittest
 
 # third party imports
 from scipy import stats
-import numpy as np
 
 # local imports
-from probeye.inference.priors import PriorNormal
-from probeye.inference.priors import PriorMultivariateNormal
-from probeye.inference.priors import PriorTruncnormal
-from probeye.inference.priors import PriorLognormal
-from probeye.inference.priors import PriorUniform
-from probeye.inference.priors import PriorWeibull
-from probeye.inference.priors import translate_prior
+from probeye.definition.distribution import *
+from probeye.inference.scipy.priors import Prior
 
 
 class TestProblem(unittest.TestCase):
     def test_prior_normal(self):
-        prior_normal = PriorNormal("a", ["mean_a", "std_a"], "a_normal")
+        prior_normal = Prior(
+            "a", ["mean_a", "std_a"], "a_normal", Normal(mean="", std="")
+        )
         # check the evaluation of the log-pdf
         prms = {"a": 1.0, "mean_a": 0.0, "std_a": 1.0}
         self.assertEqual(
@@ -33,7 +29,9 @@ class TestProblem(unittest.TestCase):
         for s1, s2 in zip(prior_samples, sp_samples):
             self.assertEqual(s1, s2)
         # test multivariate version
-        prior_normal = PriorMultivariateNormal("a", ["mean_a", "std_a"], "a_normal")
+        prior_normal = Prior(
+            "a", ["mean_a", "std_a"], "a_normal", MultivariateNormal(mean="", cov="")
+        )
         prms = {"mean_a": [0.0, 0.0], "cov_a": [1.0, 1.0]}
         sample = prior_normal(prms, method="rvs", use_ref_prm=False, size=10)
         self.assertEqual(len(sample), 10)
@@ -42,22 +40,25 @@ class TestProblem(unittest.TestCase):
             prior_normal(prms, method="invalid method")
 
     def test_prior_truncnormal(self):
-        prior_truncnormal = PriorTruncnormal(
-            "sigma", ["mean_sigma", "std_sigma"], "sigma_normal"
+        prior_truncnormal = Prior(
+            "sigma",
+            ["mean_sigma", "std_sigma"],
+            "sigma_normal",
+            TruncNormal(mean="", std="", low="", high=""),
         )
         # check the evaluation of the log-pdf
         prms = {
             "sigma": 1.0,
             "mean_sigma": 0.0,
             "std_sigma": 1.0,
-            "a_sigma": 0.0,
-            "b_sigma": 5.0,
+            "low_sigma": 0.0,
+            "high_sigma": 5.0,
         }
         self.assertEqual(
             stats.truncnorm.logpdf(
                 prms["sigma"],
-                a=prms["a_sigma"],
-                b=prms["b_sigma"],
+                a=prms["low_sigma"],
+                b=prms["high_sigma"],
                 loc=prms["mean_sigma"],
                 scale=prms["std_sigma"],
             ),
@@ -68,18 +69,18 @@ class TestProblem(unittest.TestCase):
         self.assertAlmostEqual(
             mean,
             stats.truncnorm.mean(
-                prms["a_sigma"],
-                prms["b_sigma"],
+                prms["low_sigma"],
+                prms["high_sigma"],
                 loc=prms["mean_sigma"],
                 scale=prms["std_sigma"],
             ),
         )
         # check the sampling-method (samples are checked one by one)
-        prms = {"mean_sigma": 0.0, "std_sigma": 1.0, "a_sigma": 0.0, "b_sigma": 5.0}
+        prms = {"mean_sigma": 0.0, "std_sigma": 1.0, "low_sigma": 0, "high_sigma": 5}
         prior_samples = prior_truncnormal.generate_samples(prms, 10, seed=1)
         sp_samples = stats.truncnorm.rvs(
-            a=prms["a_sigma"],
-            b=prms["b_sigma"],
+            a=prms["low_sigma"],
+            b=prms["high_sigma"],
             loc=prms["mean_sigma"],
             scale=prms["std_sigma"],
             size=10,
@@ -89,7 +90,9 @@ class TestProblem(unittest.TestCase):
             self.assertEqual(s1, s2)
 
     def test_prior_lognormal(self):
-        prior_lognormal = PriorLognormal("a", ["mean_a", "std_a"], "a_lognormal")
+        prior_lognormal = Prior(
+            "a", ["mean_a", "std_a"], "a_lognormal", LogNormal(mean="", std="")
+        )
         # check the evaluation of the log-pdf
         prms = {"a": 2.0, "mean_a": 1.0, "std_a": 1.0}
         self.assertEqual(
@@ -114,7 +117,9 @@ class TestProblem(unittest.TestCase):
             self.assertEqual(s1, s2)
 
     def test_prior_uniform(self):
-        prior_uniform = PriorUniform("a", ["low_a", "high_a"], "a_uniform")
+        prior_uniform = Prior(
+            "a", ["low_a", "high_a"], "a_uniform", Uniform(low="", high="")
+        )
         # check the evaluation of the log-pdf
         prms = {"a": 0.5, "low_a": 0.0, "high_a": 1.0}
         self.assertEqual(
@@ -134,21 +139,23 @@ class TestProblem(unittest.TestCase):
             self.assertEqual(s1, s2)
 
     def test_prior_weibull(self):
-        prior_weibull = PriorWeibull("a", ["loc_a", "scale_a", "shape_a"], "a_weibull")
+        prior_weibull = Prior(
+            "a",
+            ["loc_a", "scale_a", "shape_a"],
+            "a_weibull",
+            Weibull(scale="", shape=""),
+        )
         # check the evaluation of the log-pdf
-        prms = {"a": 1.0, "loc_a": 1.0, "scale_a": 1.0, "shape_a": 2.0}
+        prms = {"a": 1.0, "scale_a": 1.0, "shape_a": 2.0}
         self.assertEqual(
-            stats.weibull_min.logpdf(
-                prms["a"], prms["shape_a"], prms["loc_a"], prms["scale_a"]
-            ),
+            stats.weibull_min.logpdf(prms["a"], prms["shape_a"], scale=prms["scale_a"]),
             prior_weibull(prms, "logpdf"),
         )
         # check the sampling-method (samples are checked one by one)
-        prms = {"loc_a": 1.0, "scale_a": 1.0, "shape_a": 2.0}
+        prms = {"scale_a": 1.0, "shape_a": 2.0}
         prior_samples = prior_weibull.generate_samples(prms, 10, seed=1)
         sp_samples = stats.weibull_min.rvs(
             prms["shape_a"],
-            loc=prms["loc_a"],
             scale=prms["scale_a"],
             size=10,
             random_state=1,
@@ -157,14 +164,7 @@ class TestProblem(unittest.TestCase):
             self.assertEqual(s1, s2)
         # check the evaluation of the mean
         mean = prior_weibull(prms, method="mean", use_ref_prm=False)
-        self.assertAlmostEqual(mean, stats.weibull_min.mean(2, loc=1, scale=1))
-
-    def test_translate_prior(self):
-        # check the invalid prior_classes type
-        prior_uniform = PriorUniform("a", ["low_a", "high_a"], "a_uniform")
-        with self.assertRaises(TypeError):
-            # noinspection PyTypeChecker
-            translate_prior(prior_uniform, prior_classes=[1, 2, 3])
+        self.assertAlmostEqual(mean, stats.weibull_min.mean(2, scale=1))
 
 
 if __name__ == "__main__":

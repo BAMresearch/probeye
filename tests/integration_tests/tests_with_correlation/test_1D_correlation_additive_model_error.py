@@ -28,8 +28,10 @@ from tripy.utils import correlation_matrix
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
+from probeye.definition.correlation_model import ExpModel
 
 # local imports (knowledge graph)
 from probeye.ontology.knowledge_graph_export import export_knowledge_graph
@@ -112,24 +114,6 @@ class TestProblem(unittest.TestCase):
         seed = 1
 
         # ============================================================================ #
-        #                           Define the Forward Model                           #
-        # ============================================================================ #
-
-        class LinearModel(ForwardModelBase):
-            def interface(self):
-                self.parameters = ["a", "b"]
-                self.input_sensors = Sensor("x")
-                self.output_sensors = Sensor(
-                    "y", std_model="sigma", correlated_in={"x": "l_corr"}
-                )
-
-            def response(self, inp: dict) -> dict:
-                a = inp["a"]
-                b = inp["b"]
-                x = inp["x"]
-                return {"y": a * x + b}
-
-        # ============================================================================ #
         #                         Define the Inference Problem                         #
         # ============================================================================ #
 
@@ -138,39 +122,31 @@ class TestProblem(unittest.TestCase):
 
         # add all parameters to the problem
         problem.add_parameter(
-            "a",
-            "model",
+            name="a",
             tex="$a$",
             info="Slope of the graph",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
+            prior=Normal(mean=mean_a, std=std_a),
         )
         problem.add_parameter(
-            "b",
-            "model",
+            name="b",
             info="Intersection of graph with y-axis",
             tex="$b$",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
+            prior=Normal(mean=mean_b, std=std_b),
         )
         problem.add_parameter(
-            "sigma",
-            "likelihood",
+            name="sigma",
             domain="(0, +oo)",
             tex=r"$\sigma$",
-            info="Standard deviation, of zero-mean additive model error",
-            prior=("uniform", {"low": low_sigma, "high": high_sigma}),
+            info="Standard deviation of zero-mean additive model error",
+            prior=Uniform(low=low_sigma, high=high_sigma),
         )
         problem.add_parameter(
-            "l_corr",
-            "likelihood",
+            name="l_corr",
             domain="(0, +oo)",
             tex=r"$l_\mathrm{corr}$",
             info="Correlation length of correlation model",
-            prior=("uniform", {"low": low_l_corr, "high": high_l_corr}),
+            prior=Uniform(low=low_l_corr, high=high_l_corr),
         )
-
-        # add the forward model to the problem
-        linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
 
         # ============================================================================ #
         #                    Add test data to the Inference Problem                    #
@@ -181,9 +157,7 @@ class TestProblem(unittest.TestCase):
         # distribution that accounts for the intended correlation
         np.random.seed(seed)
         x_test = np.linspace(0.0, 1.0, n_points)
-        y_true = linear_model({"a": a_true, "b": b_true, "x": x_test})[
-            linear_model.output_sensor.name
-        ]
+        y_true = a_true * x_test + b_true
 
         # assemble the spatial covariance matrix
         x_test_as_column_matrix = x_test.reshape((n_points, -1))
@@ -193,28 +167,52 @@ class TestProblem(unittest.TestCase):
         # now generate the noisy test data including correlations; we assume here that
         # there are n_experiments test series
         for i in range(n_experiments):
-            exp_name = f"Test_{i}"
             y_test = np.random.multivariate_normal(mean=y_true, cov=cov)
             problem.add_experiment(
-                exp_name,
-                fwd_model_name="LinearModel",
-                sensor_values={
-                    linear_model.input_sensor.name: x_test,
-                    linear_model.output_sensor.name: y_test,
+                name=f"Test_{i}",
+                sensor_data={
+                    "x": x_test,
+                    "y": y_test,
                 },
             )
             if plot:
                 plt.scatter(
-                    x_test, y_test, label=f"measured data (test {i+1})", s=10, zorder=10
+                    x_test,
+                    y_test,
+                    label=f"measured data (test {i + 1})",
+                    s=10,
+                    zorder=10,
                 )
         # finish the plot
         if plot:
             plt.plot(x_test, y_true, label="true model", c="black", linewidth=3)
             plt.xlabel("x")
-            plt.ylabel(linear_model.output_sensor.name)
+            plt.ylabel("y")
             plt.legend()
             plt.tight_layout()
             plt.show()
+
+        # ============================================================================ #
+        #                           Define the Forward Model                           #
+        # ============================================================================ #
+
+        class LinearModel(ForwardModelBase):
+            def interface(self):
+                self.parameters = ["a", "b"]
+                self.input_sensors = Sensor("x")
+                self.output_sensors = Sensor("y", std_model="sigma")
+
+            def response(self, inp: dict) -> dict:
+                a = inp["a"]
+                b = inp["b"]
+                x = inp["x"]
+                return {"y": a * x + b}
+
+        # add the forward model to the problem
+        linear_model = LinearModel("LinearModel")
+        problem.add_forward_model(
+            linear_model, experiments=[f"Test_{i}" for i in range(n_experiments)]
+        )
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -223,11 +221,9 @@ class TestProblem(unittest.TestCase):
         # each likelihood model is assigned exactly one experiment
         for i in range(n_experiments):
             likelihood_model = GaussianLikelihoodModel(
-                prms_def=["sigma", "l_corr"],
                 experiment_name=f"Test_{i}",
-                correlation_variables="x",
-                correlation_model="exp",
                 model_error="additive",
+                correlation=ExpModel(x="l_corr"),
             )
             problem.add_likelihood_model(likelihood_model)
 

@@ -22,6 +22,7 @@ import numpy as np
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
+from probeye.definition.distribution import Normal, Uniform
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
@@ -115,6 +116,91 @@ class TestProblem(unittest.TestCase):
         c = 0.5
 
         # ============================================================================ #
+        #                         Define the Inference Problem                         #
+        # ============================================================================ #
+
+        # initialize the inverse problem with a useful name
+        problem = InverseProblem("Linear model with three sensors")
+
+        # add all parameters to the problem
+        problem.add_parameter(
+            name="a",
+            prior=Normal(mean=mean_a, std=std_a),
+            info="Slope of the graph in x",
+            tex="$A$",
+        )
+        problem.add_parameter(
+            name="b",
+            prior=Normal(mean=mean_b, std=std_b),
+            info="Slope of the graph in t",
+            tex="$B$",
+        )
+        problem.add_parameter(
+            name="sigma_1",
+            domain="(0, +oo)",
+            prior=Uniform(low=low_s1, high=high_s1),
+            info="Standard deviation, of zero-mean additive model error for S1",
+            tex=r"$\sigma_1$",
+        )
+        problem.add_parameter(
+            name="sigma_2",
+            domain="(0, +oo)",
+            prior=Uniform(low=low_s2, high=high_s2),
+            info="Standard deviation of zero-mean additive model error for S2",
+            tex=r"$\sigma_2$",
+        )
+        problem.add_parameter(
+            name="sigma_3",
+            domain="(0, +oo)",
+            prior=Uniform(low=low_s3, high=high_s3),
+            info="Standard deviation of zero-mean additive model error S3",
+            tex=r"$\sigma_3$",
+        )
+        problem.add_parameter(
+            name="sigma_m",
+            value=sigma_m,
+            info="Standard deviation of zero-mean additive measurement error",
+        )
+        problem.add_parameter(
+            name="c",
+            value=c,
+            info="Known model constant of forward model",
+        )
+
+        # ============================================================================ #
+        #                    Add test data to the Inference Problem                    #
+        # ============================================================================ #
+
+        # add the experimental data
+        np.random.seed(1)
+
+        def generate_data(n_time_steps, idx=None):
+            # true values
+            time_steps = np.linspace(0, 1, n_time_steps)
+            sensor_data = {
+                "time": time_steps,
+                "y1": a_true * pos_s1 + b_true * time_steps + c,
+                "y2": a_true * pos_s2 + b_true * time_steps + c,
+                "y3": a_true * pos_s3 + b_true * time_steps + c,
+            }
+            # add noise
+            sensor_data["y1"] += np.random.normal(
+                0.0, np.sqrt(sd_s1_true**2 + sigma_m**2), size=n_time_steps
+            )
+            sensor_data["y2"] += np.random.normal(
+                0.0, np.sqrt(sd_s2_true**2 + sigma_m**2), size=n_time_steps
+            )
+            sensor_data["y3"] += np.random.normal(
+                0.0, np.sqrt(sd_s3_true**2 + sigma_m**2), size=n_time_steps
+            )
+            # add experiment to problem
+            problem.add_experiment(name=f"TestSeries_{idx}", sensor_data=sensor_data)
+
+        # generate the data for fitting
+        for i, n_t in enumerate([101, 51]):
+            generate_data(n_t, idx=i + 1)
+
+        # ============================================================================ #
         #                           Define the Forward Model                           #
         # ============================================================================ #
 
@@ -123,15 +209,9 @@ class TestProblem(unittest.TestCase):
                 self.parameters = ["a", "b", {"c": "const"}]
                 self.input_sensors = Sensor("time")
                 self.output_sensors = [
-                    Sensor(
-                        "y1", x=pos_s1, std_model="sigma_1", std_measurement="sigma_m"
-                    ),
-                    Sensor(
-                        "y2", x=pos_s2, std_model="sigma_2", std_measurement="sigma_m"
-                    ),
-                    Sensor(
-                        "y3", x=pos_s3, std_model="sigma_3", std_measurement="sigma_m"
-                    ),
+                    Sensor("y1", x=pos_s1, std_model="sigma_1"),
+                    Sensor("y2", x=pos_s2, std_model="sigma_2"),
+                    Sensor("y3", x=pos_s3, std_model="sigma_3"),
                 ]
 
             def response(self, inp: dict) -> dict:
@@ -144,96 +224,11 @@ class TestProblem(unittest.TestCase):
                     response[osensor.name] = a * osensor.x + b * t + const
                 return response
 
-        # ============================================================================ #
-        #                         Define the Inference Problem                         #
-        # ============================================================================ #
-
-        # initialize the inverse problem with a useful name
-        problem = InverseProblem("Linear model with three sensors")
-
-        # add all parameters to the problem
-        problem.add_parameter(
-            "a",
-            "model",
-            prior=("normal", {"mean": mean_a, "std": std_a}),
-            info="Slope of the graph in x",
-            tex="$A$",
-        )
-        problem.add_parameter(
-            "b",
-            "model",
-            prior=("normal", {"mean": mean_b, "std": std_b}),
-            info="Slope of the graph in t",
-            tex="$B$",
-        )
-        problem.add_parameter(
-            "sigma_1",
-            "likelihood",
-            domain="(0, +oo)",
-            prior=("uniform", {"low": low_s1, "high": high_s1}),
-            info="Standard deviation, of zero-mean additive model error for S1",
-            tex=r"$\sigma_1$",
-        )
-        problem.add_parameter(
-            "sigma_2",
-            "likelihood",
-            domain="(0, +oo)",
-            prior=("uniform", {"low": low_s2, "high": high_s2}),
-            info="Standard deviation, of zero-mean additive model error for S2",
-            tex=r"$\sigma_2$",
-        )
-        problem.add_parameter(
-            "sigma_3",
-            "likelihood",
-            domain="(0, +oo)",
-            prior=("uniform", {"low": low_s3, "high": high_s3}),
-            info="Standard deviation, of zero-mean additive model error S3",
-            tex=r"$\sigma_3$",
-        )
-        problem.add_parameter(
-            "sigma_m",
-            "likelihood",
-            const=sigma_m,
-            info="Standard deviation, of zero-mean additive measurement error",
-        )
-        problem.add_parameter(
-            "c",
-            "model",
-            const=c,
-            info="Known model constant of forward model",
-        )
-
         # add the forward model to the problem
         linear_model = LinearModel("LinearModel")
-        problem.add_forward_model(linear_model)
-
-        # ============================================================================ #
-        #                    Add test data to the Inference Problem                    #
-        # ============================================================================ #
-
-        # add the experimental data
-        np.random.seed(1)
-        sd_dict = {
-            linear_model.output_sensors[0].name: sd_s1_true,
-            linear_model.output_sensors[1].name: sd_s2_true,
-            linear_model.output_sensors[2].name: sd_s3_true,
-        }
-
-        def generate_data(n_time_steps, idx=None):
-            time_steps = np.linspace(0, 1, n_time_steps)
-            inp = {"a": a_true, "b": b_true, "const": c, "time": time_steps}
-            sensors = linear_model(inp)
-            for key, val in sensors.items():
-                sensors[key] = val + np.random.normal(
-                    0.0, np.sqrt(sd_dict[key] ** 2 + sigma_m**2), size=n_time_steps
-                )
-            sensors[linear_model.input_sensor.name] = time_steps
-            problem.add_experiment(
-                f"TestSeries_{idx}", sensor_values=sensors, fwd_model_name="LinearModel"
-            )
-
-        for i, n_t in enumerate([101, 51]):
-            generate_data(n_t, idx=i + 1)
+        problem.add_forward_model(
+            linear_model, experiments=["TestSeries_1", "TestSeries_2"]
+        )
 
         # ============================================================================ #
         #                           Add likelihood model(s)                            #
@@ -243,15 +238,15 @@ class TestProblem(unittest.TestCase):
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
                 experiment_name="TestSeries_1",
-                prms_def=["sigma_1", "sigma_2", "sigma_3", "sigma_m"],
-                additive_measurement_error=True,
+                model_error="additive",
+                measurement_error="sigma_m",
             )
         )
         problem.add_likelihood_model(
             GaussianLikelihoodModel(
                 experiment_name="TestSeries_2",
-                prms_def=["sigma_1", "sigma_2", "sigma_3", "sigma_m"],
-                additive_measurement_error=True,
+                model_error="additive",
+                measurement_error="sigma_m",
             )
         )
 

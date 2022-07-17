@@ -39,33 +39,11 @@ class Sensor(dict):
     unit
         Defines what unit is associated with the sensor's measurements, for example
         'mm' for a deflection or 'K' for a temperature.
-    correlated_in
-        Must only be given, if the values recorded/computed by the sensor instance
-        should be modeled as being correlated with respect to one or two correlation
-        variables. If this is the case, the 'correlated_in' dictionary must contain the
-        respective correlation variable names as keys. A 1D correlation variable must be
-        given as a single string, for example 't'. However, if the correlation variable
-        is multidimensional, for example a 3D spatial position, the key must be given as
-        a tuple containing the 1D correlation variable names that belong to the multi-
-        dimensional one. For example ('x', 'y', 'z'). The values of this dictionary must
-        be the global names of all correlation parameters that are required for the
-        anticipated correlation function. In many cases, this is just the correlation
-        length that refers to the considered correlation variable. To give an example:
-        correlated_in = {('x', 'y', 'z'): 'l_corr_space', 't': 'l_corr_time'} could be
-        defined for a sensor, the values of which are modeled to be correlated in space
-        and time with two different correlation lengths. Note that in this case the two
-        parameters 'l_corr_space' and 'l_corr_time' would have to be already defined in
-        the scope of the considered inverse problem.
     std_model
         The name of the globally defined parameter that describes the standard deviation
         of the model prediction error in this sensor. If multiple output sensors are
         defined on a forward model, these sensors can have different parameters that
-        describe their model prediction error.
-    std_measurement
-        The name of the globally defined parameter that describes the standard deviation
-        of the measurement error in this sensor. If multiple output sensors are defined
-        on a forward model, these sensors can have different parameters that describe
-        their measurement error.
+        describe their model prediction error..
     x
         x-coordinate(s) of the sensor. When given, the coords- argument must be None.
         Usually, this value will be a scalar (for example if the sensor represents a
@@ -103,8 +81,6 @@ class Sensor(dict):
         coords: Optional[np.ndarray] = None,
         order: Tuple[str, ...] = ("x", "y", "z"),
         std_model: str = "not defined",
-        std_measurement: str = "not defined",
-        correlated_in: Optional[dict] = None,
     ):
 
         # basic attributes
@@ -124,24 +100,7 @@ class Sensor(dict):
         # model error and the measurement error in this sensor respectively; they will
         # be referred to when evaluating the likelihood function of a likelihood model
         self.std_model = std_model
-        self.std_measurement = std_measurement
-
-        # attributes directly relating to correlation variables; note that the way of
-        # defining both of these attributes guaranties that 'self.correlated_in' is
-        # always a dict (and never None, which is a valid value for 'correlated_in')
-        # and 'self.correlation_variables' is always a list
-        self.correlated_in = {}  # type: dict
-        self.correlation_variables = []
-        if correlated_in is not None:
-            self.correlated_in = correlated_in
-            self.correlation_variables = [*self.correlated_in.keys()]
-
-        # this dictionary stores the lengths of the correlation vectors for each
-        # experiment associated with this sensor; if correlation is defined for this
-        # sensor, the keys of 'self.corr_var_lengths' will be experiment names, while
-        # the values will be dictionaries that have correlation variable names as keys
-        # and the corresponding lengths as values
-        self.corr_var_lengths = {}  # type: dict
+        self.std_measurement = "not defined"
 
         # required due to inheriting from dict-class
         super().__init__()
@@ -182,33 +141,11 @@ class Sensor(dict):
             is the measurement (vector) recorded by the sensor in the given experiment.
         """
 
-        # just for better understanding
-        exp_name = key
-        measurement_vector = value
-
-        if self.correlated_in:
-            for corr_var_ in self.correlated_in:
-                # note that 'corr_var_' can be just a string (like 't') or a tuple of
-                # strings (like ('x', 'y') in case of a multidimensional spatial var.);
-                # so first, make sure that we have a tuple in each case
-                corr_var_tuple = corr_var_
-                if isinstance(corr_var_, str):
-                    corr_var_tuple = (corr_var_,)
-                # now, add the length of each correlation variable defined
-                for corr_var in corr_var_tuple:
-                    if exp_name not in self.corr_var_lengths:
-                        self.corr_var_lengths[exp_name] = {corr_var: 0}
-                    if hasattr(self, corr_var) and getattr(self, corr_var) is not None:
-                        self.corr_var_lengths[exp_name][corr_var] = len_or_one(
-                            getattr(self, corr_var)
-                        )
-                    else:
-                        self.corr_var_lengths[exp_name][corr_var] = len_or_one(
-                            measurement_vector
-                        )
-        else:
-            # in this case, no correlation is defined for the sensor
-            self.corr_var_lengths[exp_name] = {"": len_or_one(measurement_vector)}
-
         # finally, add the key-value-pair to self
-        super().__setitem__(exp_name, value)
+        super().__setitem__(key, value)
+
+    def __str__(self) -> str:
+        """
+        Allows to print the sensor via print(sensor) if sensor is an instance of Sensor.
+        """
+        return f"Sensor(name='{self.name}')"

@@ -1,5 +1,35 @@
 # probeye changelog
 
+## 3.0.1 (2022-Jul-14)
+### Changed
+- Improved plotting functions to work better with a larger number of parameters.
+
+## 3.0.0 (2022-Jul-01)
+### Changed
+- The definition of the latent parameter's priors was revised (from tuples to objects).
+- Constant parameters are now added using a 'value' instead of the 'const' keyword argument in the InverseProblem's method 'add_parameter'.
+- The forward model's response method is stripped from the problem definition so that the pure definition of an inverse problem indeed does not contain any computing methods.
+- After parameters one must now define experiments and then the forward models.
+- The four main attributes of InverseProblem are not private anymore to allow for manipulations in the solver.
+- The solver routines were revised.
+- Fixed some problems with the plotting routines.
+### Added
+- Distribution classes have been added to make the prior-definition more clear.
+- A new experiment class was added.
+- A new correlation_model class was added.
+
+## 2.3.3 (2022-Jul-01)
+### Changed
+- The likelihood function in the emcee-solver has been equipped with a check if the log-prior was evaluated to minus infinity to prevent unnecessary likelihood evaluations.
+
+## 2.3.2 (2022-May-30)
+### Added
+- The Scipy-solver was equipped with a maximum a-posteriori estimation method.
+
+## 2.3.1 (2022-May-30)
+### Removed
+- The 'knowledge_graph_import.py' script was removed. The functionality was moved to the integration test 'test_query_results.py'.
+
 ## 2.3.0 (2022-May-16)
 ### Added
 - Added new submodule 'ontology' for an import/export of the problem's knowledge graph

@@ -163,19 +163,19 @@ def export_knowledge_graph(
             cov_name = f"cov_{prm_name}"
             set_latent_or_const_parameter(prior, "has_covariance_matrix", cov_name)
 
-        elif prior_type == "truncnormal":
+        elif prior_type == "trunc-normal":
             prior = peo.truncated_normal_density_function(prior_name)
             add(prior, "has_primary_variable", parameter)
             mean_name = f"mean_{prm_name}"
             set_latent_or_const_parameter(prior, "has_mean", mean_name)
             std_name = f"std_{prm_name}"
             set_latent_or_const_parameter(prior, "has_standard_deviation", std_name)
-            a_name = f"a_{prm_name}"
+            a_name = f"low_{prm_name}"
             set_latent_or_const_parameter(prior, "has_lower_bound", a_name)
-            b_name = f"b_{prm_name}"
+            b_name = f"high_{prm_name}"
             set_latent_or_const_parameter(prior, "has_upper_bound", b_name)
 
-        elif prior_type == "lognormal":
+        elif prior_type == "log-normal":
             prior = peo.lognormal_density_function(prior_name)
             add(prior, "has_primary_variable", parameter)
             mean_name = f"mean_{prm_name}"
@@ -191,6 +191,14 @@ def export_knowledge_graph(
             high_name = f"high_{prm_name}"
             set_latent_or_const_parameter(prior, "has_upper_bound", high_name)
 
+        elif prior_type == "weibull":
+            prior = peo.Weibull_density_function(prior_name)
+            add(prior, "has_primary_variable", parameter)
+            scale_name = f"scale_{prm_name}"
+            set_latent_or_const_parameter(prior, "has_scale", scale_name)
+            shape_name = f"shape_{prm_name}"
+            set_latent_or_const_parameter(prior, "has_shape", shape_name)
+
         elif prior_type == "sample-based":
             prior = peo.sample_based_density_function(prior_name)
             add(prior, "has_primary_variable", parameter)
@@ -204,7 +212,7 @@ def export_knowledge_graph(
             raise RuntimeError(
                 f"Encountered unknown prior type '{prior_type}'. Currently no routines "
                 f"for this prior's knowledge graph export are implemented."
-            )
+            )  # pragma: no cover
         add(parameter, "has_prior_distribution", prior)
         add(inverse_problem, "has_parameter", parameter)
 
@@ -248,7 +256,7 @@ def export_knowledge_graph(
     #               Add the problem's EXPERIMENTS to the knowledge graph               #
     # -------------------------------------------------------------------------------- #
 
-    for exp_name, exp_dict in problem.experiments.items():
+    for exp_name, exp_obj in problem.experiments.items():
 
         # this is where the experiment instance is added to the graph
         experiment = peo.single_experiment_data_set(exp_name)
@@ -258,31 +266,32 @@ def export_knowledge_graph(
         add(
             experiment,
             "is_deterministically_modeled_by",
-            peo.forward_model(exp_dict["forward_model"]),
+            peo.forward_model(exp_obj.forward_model),
         )
-        fwd_namespace = peo.get_namespace(exp_dict["forward_model"])
+        fwd_namespace = peo.get_namespace(exp_obj.forward_model)
         sensors = []
-        for isensor in problem.forward_models[exp_dict["forward_model"]].input_sensors:
+        for isensor in problem.forward_models[exp_obj.forward_model].input_sensors:
             input_sensor = peo.input_sensor(isensor.name, namespace=fwd_namespace)
             sensors.append(input_sensor)
-        for osensor in problem.forward_models[exp_dict["forward_model"]].output_sensors:
+        for osensor in problem.forward_models[exp_obj.forward_model].output_sensors:
             output_sensor = peo.input_sensor(osensor.name, namespace=fwd_namespace)
             sensors.append(output_sensor)
         add(experiment, "has_sensor", sensors)
 
         # associate the sensor values with the experiment
         measurements = []
-        for sensor_name, sensor_data in exp_dict["sensor_values"].items():
+        for sensor_name, sensor_values in exp_obj.sensor_data.items():
             constant = peo.constant(sensor_name, namespace=namespace)
-            if len_or_one(sensor_data) == 1:
-                add(constant, "has_scalar_value", sensor_data)
+            if len_or_one(sensor_values) == 1:
+                add(constant, "has_scalar_value", sensor_values)
             else:
+                sv_numpy = np.array(sensor_values)
                 filename = os.path.join(data_dir, f"{sensor_name}_{exp_name}.dat")
                 filename = os.path.abspath(filename)
-                np.savetxt(filename, sensor_data)
+                np.savetxt(filename, sv_numpy)
                 add(constant, "has_file", filename)
-                add(constant, "has_dimension", sensor_data.size)
-                nr, nc = get_shape_2d(sensor_data)
+                add(constant, "has_dimension", sv_numpy.size)
+                nr, nc = get_shape_2d(sv_numpy)
                 add(constant, "has_number_of_rows", nc)
                 add(constant, "has_number_of_columns", nr)
             measurements.append(constant)
@@ -372,16 +381,15 @@ def export_knowledge_graph(
                 add(cov_assembler, "has_standard_deviation", std_model)
 
                 # associate the covariance assembler with a correlation function
-                if like_obj.correlation_model == "exp":
+                if like_obj.correlation_model.model_type == "exponential":
                     corr_func = peo.correlation_function(
                         "exp_corr_function", namespace=namespace
                     )
                     add(cov_assembler, "uses_mathematical_function", corr_func)
                     # associate the correlation lengths with this correlation function
                     corr_lengths = []  # type: list
-                    for output_sensor in fwd_model.output_sensors:
-                        for corr_length in output_sensor.correlated_in.values():
-                            append_latent_or_const_parameter(corr_lengths, corr_length)
+                    for corr_length in like_obj.correlation_model.parameters:
+                        append_latent_or_const_parameter(corr_lengths, corr_length)
                     add(corr_func, "has_correlation_length", corr_lengths)
 
             else:
@@ -467,16 +475,15 @@ def export_knowledge_graph(
                 add(cov_assembler, "has_standard_deviation", std_model)
 
                 # associate the covariance assembler with a correlation function
-                if like_obj.correlation_model == "exp":
+                if like_obj.correlation_model.model_type == "exponential":
                     corr_function = peo.correlation_function(
                         "exp_corr_function", namespace=namespace
                     )
                     add(cov_assembler, "uses_mathematical_function", corr_function)
                     # associate the correlation lengths with this correlation function
                     corr_lengths = []
-                    for output_sensor in fwd_model.output_sensors:
-                        for corr_length in output_sensor.correlated_in.values():
-                            append_latent_or_const_parameter(corr_lengths, corr_length)
+                    for corr_length in like_obj.correlation_model.parameters:
+                        append_latent_or_const_parameter(corr_lengths, corr_length)
                     add(corr_function, "has_correlation_length", corr_lengths)
 
             else:
@@ -497,7 +504,7 @@ def export_knowledge_graph(
         #           Measurement error           #
         # ------------------------------------- #
 
-        if like_obj.additive_measurement_error:
+        if like_obj.measurement_error is not None:
 
             # add the zero-mean normal random variable
             nrv = peo.normal_random_variable("measurement_error", namespace=namespace)
