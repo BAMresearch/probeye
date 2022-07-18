@@ -26,16 +26,16 @@ from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.surrogate.initial_sampling import LatinHypercubeSampler
 from probeye.inference.emcee.solver import EmceeSolver
+from probeye.definition.distribution import Uniform
 
 # local imports (inference data post-processing)
-from probeye.postprocessing.sampling import create_pair_plot
-from probeye.postprocessing.sampling import create_posterior_plot
+from probeye.postprocessing.sampling_plots import create_pair_plot
+from probeye.postprocessing.sampling_plots import create_posterior_plot
 
 # Surrogate model imports
 from harlow.sampling import Sampler
-from harlow.sampling import LatinHypercube
+from harlow.sampling import LatinHypercube, FuzzyLolaVoronoi
 from harlow.surrogating import Surrogate
 from harlow.surrogating import ModelListGaussianProcess
 from harlow.utils.transforms import ExpandDims
@@ -81,8 +81,8 @@ std_high = 1.0
 # =========================================================================
 
 # Number of sensors and number of points in timeseries
-Nx = 3
-Nt = 5
+Nx = 1
+Nt = 10
 
 # Sensor names and positions
 sensor_names = ["S" + str(i + 1) for i in range(Nx)]
@@ -130,163 +130,117 @@ class SyntheticModel(ForwardModelBase):
 # =========================================================================
 
 
-class HarlowSurrogate(ForwardModelBase):
-    """
-    The inheritance from ExpensiveModel 'copies' the interface-method from
-    ExpensiveModel (the surrogate model should have the same interface as the
-    forward model).
-    """
+def harlow_model_factory(
+    problem: InverseProblem,
+    forward_model: ForwardModelBase,
+    surrogate_model: Surrogate,
+    **kwargs,
+) -> ForwardModelBase:
+    class HarlowSurrogate(ForwardModelBase):
+        """
+        The inheritance from ExpensiveModel 'copies' the interface-method from
+        ExpensiveModel (the surrogate model should have the same interface as the
+        forward model).
+        """
 
-    def __init__(
-        self,
-        name,
-        forward_model: ForwardModelBase,
-        surrogate_model,
-        surrogate_kwargs,
-        input_transform=None,
-        output_transform=None,
-    ):
+        def __init__(
+            self,
+            name,
+        ):
+
+            self.name = name
+            self.kwargs = kwargs
+            self.lower_bounds = []
+            self.upper_bounds = []
+            self.bounds = {}
+
+            self.forward_model = forward_model
+            self.problem = problem
+            self._surrogate = surrogate_model
+
+            self.model_names = []
+            for idx_x, os in enumerate(forward_model.output_sensors):
+                self.model_names.append(os.name)
+            self.kwargs["model_names"] = self.model_names
+
+            self.num_features = len(forward_model.output_sensors)
+            self.kwargs["num_features"] = self.num_features
+
+            # Check inputs
+            if "input_transform" not in self.kwargs.keys():
+                self.input_transform = None
+            else:
+                self.input_transform = self.kwargs["input_transform"]
+
+            if "output_transform" not in self.kwargs.keys():
+                self.output_transform = None
+            else:
+                self.output_transform = self.kwargs["output_transform"]
+
+            # Initialize surrogate
+            self.model = self._surrogate(**kwargs)
+            self.initialize_forward_model()
 
         # Get interface from existing forward model
-        self.forward_model = forward_model
-        self.interface = self.forward_model.interface
+        def interface(self):
+            self.input_sensors = self.forward_model.input_sensors
+            self.output_sensors = self.forward_model.output_sensors
+            self.parameters = self.forward_model.parameters
 
-        super().__init__(name, forward_model)
+        def initialize_forward_model(self):
+            super().__init__(self.name)
+            self._get_bounds()
 
-        self.input_transform = input_transform
-        self.output_transform = output_transform
-        self.surrogate_kwargs = surrogate_kwargs
-        self._surrogate = surrogate_model
-        self.lower_bounds = []
-        self.upper_bounds = []
+        # TODO: This will likely fail for multidimensional parameters. FIX!
+        def _get_bounds(self):
 
-        # Common input arguments for surrogate models
-        if self.surrogate_kwargs["model_names"] == None:
-            self.model_names = []
+            # Find the priors corresponding to model parameters
+            for key, value in self.priors.items():
+
+                # Error if any of the model priors are not uniform
+                if value.prior_type != "uniform":
+                    raise ValueError(
+                        f"Non-uniform distribution of type {value.prior_type}"
+                        f" found for prior {key}. The `HarlowSurrogate` currently"
+                        f" only supports uniform priors."
+                    )
+
+            for param in self.problem.model_prms:
+                lb = self.const_prms_dict["low_" + param]
+                ub = self.const_prms_dict["high_" + param]
+                self.bounds[param] = {"low": lb, "high": ub}
+
+        def _cast_to_numpy(self, inp: dict) -> np.ndarray:
+            raise NotImplementedError
+
+        def _cast_to_dict(self, X: np.ndarray) -> dict:
+            raise NotImplementedError
+
+        def target(self, X: np.ndarray) -> np.ndarray:
+            inp = self._cast_to_dict(X)
+            response = self.forward_model.response(inp)
+            y = [[]] * len(self.output_sensors)
+            for idx, os in enumerate(self.output_sensors):
+                y[idx] = response[os.name]
+            return np.array(y).T
+
+        def response(self, inp: dict) -> dict:
+
+            params = np.tile([inp["X" + str(i + 1)] for i in range(4)], (Nt, 1))
+            X = np.hstack((params, t_vec.reshape(-1, 1)))
+
+            response = dict()
+
+            # Evaluate function and arange output on grid
+            f = self.model.predict(X, return_std=False)
+
             for idx_x, os in enumerate(self.output_sensors):
-                self.model_names.append(os.name)
-            self.surrogate_kwargs["model_names"] = self.model_names
+                response[os.name] = f[idx_x, :]
 
-        if self.surrogate_kwargs["num_features"] == None:
-            self.num_features = len(self.output_sensors)
-            self.surrogate_kwargs["num_features"] = self.num_features
+            return response
 
-        # Get bounds
-        # TODO:
+    return HarlowSurrogate
 
-        # Get param names
-
-        # Initialize surrogate
-        self.surrogate_model = self._surrogate(**self.surrogate_kwargs)
-
-    def _cast_to_numpy(self, inp: dict) -> np.ndarray:
-        raise NotImplementedError
-
-    def _cast_to_dict(self, X: np.ndarray) -> dict:
-        raise NotImplementedError
-
-    def target(self, X: np.ndarray) -> np.ndarray:
-        inp = self._cast_to_dict(X)
-        response = self.forward_model.response(inp)
-        y = [[]] * len(self.output_sensors)
-        for idx, os in enumerate(self.output_sensors):
-            y[idx] = response[os.name]
-        return np.array(y).T
-
-    def response(self, inp: dict) -> dict:
-
-        params = np.tile([inp["X" + str(i + 1)] for i in range(4)], (Nt, 1))
-        X = torch.tensor(np.hstack((params, t_vec.reshape(-1, 1))))
-
-        response = dict()
-
-        # Evaluate function and arange output on grid
-        f = self.model.predict(X, return_std=False)
-
-        for idx_x, os in enumerate(self.output_sensors):
-            response[os.name] = f[idx_x, :]
-
-        return response
-
-
-# class HarlowSurrogate(ForwardModelBase):
-#     """
-#     The inheritance from ExpensiveModel 'copies' the interface-method from
-#     ExpensiveModel (the surrogate model should have the same interface as the
-#     forward model). The inheritance from SurrogateModelBase is required to
-#     assign a forward model to the surrogate model, see surrogate_model.py.
-#     """
-#
-#     def __init__(
-#         self,
-#         name: str,
-#         forward_model: ForwardModelBase,
-#         surrogate_model,
-#         surrogate_kwargs,
-#         input_transform=None,
-#         output_transform=None,
-#     ):
-#
-#         super().__init__(name, forward_model)
-#         self.forward_model = forward_model
-#         self.surrogate_model = surrogate_model
-#         self.surrogate_kwargs = surrogate_kwargs
-#         self.input_transform = input_transform
-#         self.output_transform = output_transform
-#
-#         # List of model names for ModelListGP
-#         self.model_names = []
-#         for idx_x, os in enumerate(self.output_sensors):
-#             self.model_names.append(os.name)
-#
-#         if not self.input_transform:
-#             self.input_transform = lambda x: x
-#         if not self.output_transform:
-#             self.output_transform = lambda y: y
-#
-#     def fit(self, train_X, train_y):
-#
-#         # Initialize model
-#         self.model = self.surrogate_model(
-#             self.input_transform(train_X),
-#             self.output_transform(train_y),
-#             **self.surrogate_kwargs,
-#         )
-#
-#         # Fit model
-#         self.model.fit()
-#
-#
-#     def update(self, train_X, train_y):
-#
-#         # Initialize model
-#         self.model = self.surrogate_model(
-#             self.input_transform(train_X),
-#             self.output_transform(train_y),
-#             **self.surrogate_kwargs,
-#         )
-#
-#         # Fit model
-#         self.model.fit()
-#
-#     def response(self, inp: dict) -> dict:
-#
-#         params = np.tile([inp["X" + str(i + 1)] for i in range(4)], (Nt, 1))
-#         X = input_transform(torch.tensor(np.hstack((params, t_vec.reshape(-1, 1)))))
-#
-#         # # ==========================================
-#         # # If surrogate is regular GP
-#         # # ==========================================
-#         response = dict()
-#
-#         # Evaluate function and arange output on grid
-#         _ = self.model.predict(X, return_std=False)
-#         f = np.array(self.model.mean).T
-#
-#         for idx_x, os in enumerate(self.output_sensors):
-#             response[os.name] = f[idx_x, :]
-#
-#         return response
 
 # =========================================================================
 # Define inference problem
@@ -298,7 +252,7 @@ for i in range(4):
     problem.add_parameter(
         "X" + str(i + 1),
         "model",
-        prior=("uniform", {"low": X_low, "high": X_high}),
+        prior=Uniform(low=X_low, high=X_high),
         info="Parameter of the 6D Hartmann function",
         tex=r"$X_{{{}}}$".format(i + 1),
     )
@@ -307,7 +261,7 @@ for i in range(4):
 problem.add_parameter(
     "sigma",
     "likelihood",
-    prior=("uniform", {"low": std_low, "high": std_high}),
+    prior=Uniform(low=std_low, high=std_high),
     info="Std. dev. of zero-mean noise model",
     tex=r"$\sigma$",
 )
@@ -315,8 +269,6 @@ problem.add_parameter(
 # add the forward model to the problem
 forward_model = SyntheticModel("ExpensiveModel")
 
-# Add Expensive FE model to forward models
-problem.add_forward_model(forward_model)
 
 # =========================================================================
 # Create surrogate model
@@ -327,25 +279,25 @@ list_params = [[0, 1, 2, 3, 4]] * len(sensor_names)
 surrogate_kwargs = {
     "training_max_iter": N_train_iter,
     "list_params": list_params,
+    "model_names": [name for name in forward_model.sensor_names],
     "show_progress": True,
     "silence_warnings": True,
     "fast_pred_var": True,
 }
 
-surrogate_model = HarlowSurrogate(
-    name="FastModel",
-    forward_model=forward_model,
-    surrogate_model=ModelListGaussianProcess,
-    surrogate_kwargs=surrogate_kwargs,
+# Generate surrogate class using model factory
+surrogate_class = harlow_model_factory(
+    problem, forward_model, ModelListGaussianProcess, **surrogate_kwargs
 )
 
-problem.add_forward_model(surrogate_model)
+# Initialize surrogate model
+surrogate_model = surrogate_class(
+    name="FastModel",
+)
 
 # =========================================================================
 # Add test data to the inference problem
 # =========================================================================
-
-
 def generate_data():
     inp = {"X" + str(idx + 1): X_i for idx, X_i in enumerate(X_true)}
     sensors = forward_model(inp)
@@ -354,36 +306,42 @@ def generate_data():
             np.array(svals) + np.random.normal(loc=0.0, scale=std_true, size=Nt)
         )
     sensors[isensor.name] = t_vec
-    problem.add_experiment(
-        "TestSeriesSurrogate", sensor_values=sensors, fwd_model_name="FastModel"
-    )
-    problem.add_experiment(
-        "TestSeriesFull", sensor_values=sensors, fwd_model_name="ExpensiveModel"
-    )
+    problem.add_experiment("TestSeriesFull", sensor_data=sensors)
+    problem.add_experiment("TestSeriesSurrogate", sensor_data=sensors)
 
 
 generate_data()
 
+# Add Expensive FE model to forward models
+problem.add_forward_model(forward_model, experiments="TestSeriesFull")
+problem.add_forward_model(surrogate_model, experiments="TestSeriesSurrogate")
+
 # =========================================================================
-# Create training data
+# Train surrogate model
 # =========================================================================
-sampler = LatinHypercubeSampler(problem=problem)
-test_samples = sampler.generate_samples(N_train)
-train_samples, train_data = sampler.generate_training_data(forward_model, N_train)
-train_X = train_samples.to_numpy()[:, :-1]
-train_y = train_data["TestSeriesFull"]
 
-# Reshape `train_X` and `train_y
-t_arr = np.tile(t_vec, N_train).reshape(-1, 1)
-train_X_arr = np.repeat(train_X, Nt, axis=0)
-train_X_arr = np.hstack((train_X_arr, t_arr))
+# Initialize sampler
+sampler = FuzzyLolaVoronoi(
+    target_function=surrogate_model.target,
+    surrogate_model=surrogate_model.model,
+    domain_lower_bound=surrogate_model.lower_bound,
+    domain_upper_bound=surrogate_model.upper_bound,
+    test_points_x=test_X,
+    test_points_y=test_y,
+    evaluation_metric=rmse,
+)
+# main_start = time.time()
+sampler.sample(
+    n_iter=n_iter,
+    n_initial_point=n_initial_point,
+    n_new_point_per_iteration=n_new_points_per_iteration,
+    ignore_old_neighborhoods=False,
+    ignore_far_neighborhoods=False,
+)
 
-train_y_arr = np.transpose(train_y, axes=[0, 2, 1])
-train_y_arr = train_y_arr.reshape(N_train * Nt, Nx)
-
-# Train surrogate
-model_names = sensor_names
-surrogate_model.fit(train_X_arr, train_y_arr)
+# # Train surrogate
+# model_names = sensor_names
+# surrogate_model.fit(train_X_arr, train_y_arr)
 
 
 # ====================================================================
