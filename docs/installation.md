@@ -35,7 +35,7 @@ pip install --user ".[tests,lint_type_checks,docs]"
 ```
 ````
 
-Please note that there are several dependencies, including [pytorch](https://pytorch.org/), which might take some time to download and install, if they are not installed in your environment yet.
+Please note that there are several dependencies which might take some time to download and install, if they are not installed in your environment yet.
 
 
 [repository]: https://github.com/BAMresearch/probeye
