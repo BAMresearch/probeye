@@ -259,7 +259,6 @@ problem = InverseProblem(
 # add all parameters to the problem
 problem.add_parameter(
     "EI",
-    "model",
     domain="(0, +oo)",
     tex="$EI$",
     info="Bending stiffness of the beam [Nm^2]",
@@ -270,7 +269,6 @@ problem.add_parameter(
 )
 problem.add_parameter(
     "sigma",
-    "likelihood",
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Std. dev, of 0-mean noise model",
@@ -278,7 +276,6 @@ problem.add_parameter(
 )
 problem.add_parameter(
     "l_corr_x",
-    "likelihood",
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,x}$",
     info="Spatial correlation length of correlation model",
@@ -286,7 +283,6 @@ problem.add_parameter(
 )
 problem.add_parameter(
     "l_corr_t",
-    "likelihood",
     domain="(0, +oo)",
     tex=r"$l_\mathrm{corr,t}$",
     info="Temporal correlation length of correlation model",
@@ -294,8 +290,8 @@ problem.add_parameter(
 )
 
 # %%
-# As the next step, we need to add our forward model, the experimental data and the
-# likelihood model. Note that the order is important and cannot be changed.
+# As the next step, we need to add our experimental data the forward model and the
+# likelihood model. Note that the order is important and should not be changed.
 
 # experimental data
 for exp_name, data in data_dict.items():
@@ -361,9 +357,10 @@ true_values = {
 # this is an overview plot that allows to visualize correlations
 pair_plot_array = create_pair_plot(
     inference_data,
-    problem,
+    emcee_solver.problem,
     true_values=true_values,
     focus_on_posterior=True,
+    show_legends=False,
     title="Sampling results from emcee-Solver (pair plot)",
 )
 
@@ -372,7 +369,7 @@ pair_plot_array = create_pair_plot(
 # this is a posterior-focused plot, without including priors
 post_plot_array = create_posterior_plot(
     inference_data,
-    problem,
+    emcee_solver.problem,
     true_values=true_values,
     title="Sampling results from emcee-Solver (posterior plot)",
 )
@@ -382,6 +379,6 @@ post_plot_array = create_posterior_plot(
 # trace plots are used to check for "healthy" sampling
 trace_plot_array = create_trace_plot(
     inference_data,
-    problem,
+    emcee_solver.problem,
     title="Sampling results from emcee-Solver (trace plot)",
 )
