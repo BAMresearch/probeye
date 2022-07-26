@@ -63,17 +63,9 @@ package.
 ```
 
 ## `probeye.inference`
-### `priors`
+### `solver`
 ```{eval-rst}
-.. automodule:: probeye.inference.priors
-    :members:
-    :undoc-members:
-    :private-members:
-    :show-inheritance:
-```
-### `likelihood_models`
-```{eval-rst}
-.. automodule:: probeye.inference.likelihood_models
+.. automodule:: probeye.inference.solver
     :members:
     :undoc-members:
     :private-members:
@@ -108,9 +100,9 @@ package.
 ```
 
 ## `probeye.postprocessing`
-### `sampling`
+### `sampling_plots`
 ```{eval-rst}
-.. automodule:: probeye.postprocessing.sampling
+.. automodule:: probeye.postprocessing.sampling_plots
     :members:
     :undoc-members:
     :private-members:

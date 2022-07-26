@@ -68,7 +68,7 @@ plt.legend()
 plt.show()
 
 # %%
-# Until this point, we didn't use probeye at all, since we just generate some data. In
+# Until this point, we didn't use probeye at all, since we just generated some data. In
 # a normal use case, we wouldn't have to generate our data of course. Instead, it would
 # be provided to us, for example as the result of some test series. As the first step in
 # any calibration problem, one needs to have a parameterized model (in probeye such a
@@ -81,7 +81,7 @@ class LinearModel(ForwardModelBase):
     def interface(self):
         self.parameters = ["a", "b"]
         self.input_sensors = Sensor("x")
-        self.output_sensors = Sensor("y", std_model="std_noise")
+        self.output_sensors = Sensor("y", std_model="sigma")
 
     def response(self, inp: dict) -> dict:
         x = inp["x"]
@@ -93,16 +93,16 @@ class LinearModel(ForwardModelBase):
 # %%
 # First, note that this model class is based on the probeye class 'ForwardModelBase'.
 # While this is a requirement, the name of the class can be chosen freely. As you can
-# see, this class has a 'ontology' and a 'response' method. In the 'ontology' method
+# see, this class has an 'interface' and a 'response' method. In the 'interface' method
 # we define that our model has two parameters, 'a' and 'b', next to one input and one
-# output sensors, called 'x' and 'y' respectively. Keeping this ontology in mind,
+# output sensors, called 'x' and 'y' respectively. Keeping this interface in mind,
 # let's now take a look at the 'response' method. This method describes the actual
 # forward model evaluation. The method takes one dictionary as an input and returns one
 # dictionary as its output. The input dictionary 'inp' will have the keys 'a', 'b' and
-# 'x' because of the definitions given in self.ontology. Analogously, the returned
+# 'x' because of the definitions given in self.interface. Analogously, the returned
 # dictionary must have the key 'y', because we defined an output sensor with the name
-# 'y'. Note that the entire ontology of the 'response' method is described by the
-# 'ontology' method. Parameters and input sensors will be contained in the 'inp'
+# 'y'. Note that the entire interface of the 'response' method is described by the
+# 'interface' method. Parameters and input sensors will be contained in the 'inp'
 # dictionary, while the output sensors must be contained in the returned dictionary.
 
 # %%
@@ -113,27 +113,25 @@ class LinearModel(ForwardModelBase):
 # 'Components'-part of this documentation to get more information on the arguments seen
 # below. However, most of the code should be self-explanatory.
 
-# initialize the problem
+# initialize the problem (the print_header=False is only set to avoid the printout of
+# the probeye header which is not helpful here)
 problem = InverseProblem("Linear regression with Gaussian noise", print_header=False)
 
 # add the problem's parameters
 problem.add_parameter(
     "a",
-    "model",
     tex="$a$",
     info="Slope of the graph",
     prior=Normal(mean=2.0, std=1.0),
 )
 problem.add_parameter(
     "b",
-    "model",
     info="Intersection of graph with y-axis",
     tex="$b$",
     prior=Normal(mean=1.0, std=1.0),
 )
 problem.add_parameter(
-    "std_noise",
-    "likelihood",
+    "sigma",
     domain="(0, +oo)",
     tex=r"$\sigma$",
     info="Standard deviation, of zero-mean Gaussian noise model",
@@ -141,8 +139,8 @@ problem.add_parameter(
 )
 
 # %%
-# As the next step, we need to add our forward model, the experimental data and the
-# likelihood model. Note that the order is important and cannot be changed.
+# As the next step, we need to add our experimental data the forward model and the
+# likelihood model. Note that the order is important and should not be changed.
 
 # experimental data
 problem.add_experiment(
@@ -177,47 +175,35 @@ max_like_data = scipy_solver.run()
 # %%
 # All solver have in common that they are first initialized, and then execute a
 # run-method, which returns its result data in the format of an arviz inference-data
-# object (except for the scipy-solver). Let's now take a look at the emcee-solver. If
-# you want to try out another solver, you just have to change the flags that follow
-# below.
+# object (except for the scipy-solver). Let's now take a look at the emcee-solver.
 
-# solver flags
-run_emcee = True
-run_dynesty = False
-run_pyro = False
-
-# this is for running the dynesty-solver
-if run_dynesty:
-    dynesty_solver = DynestySolver(problem, show_progress=False)
-    inference_data = dynesty_solver.run()
-
-# this is for using the emcee-solver
-if run_emcee:
-    emcee_solver = EmceeSolver(problem, show_progress=False)
-    inference_data = emcee_solver.run(n_steps=2000, n_initial_steps=200)
+# this is for using the emcee-solver (MCMC sampling)
+emcee_solver = EmceeSolver(problem, show_progress=False)
+inference_data = emcee_solver.run(n_steps=2000, n_initial_steps=200)
 
 # %%
 # Finally, we want to plot the results we obtained. To that end, probeye provides some
 # post-processing routines, which are mostly based on the arviz-plotting routines.
 
 # this is optional, since in most cases we don't know the ground truth
-true_values = {"a": a_true, "b": b_true, "std_noise": std_noise}
+true_values = {"a": a_true, "b": b_true, "sigma": std_noise}
 
 # this is an overview plot that allows to visualize correlations
 pair_plot_array = create_pair_plot(
     inference_data,
-    problem,
+    emcee_solver.problem,
     true_values=true_values,
     focus_on_posterior=True,
+    show_legends=True,
     title="Sampling results from emcee-Solver (pair plot)",
 )
 
 # %%
 
-# this is a posterior-focused plot, without including priors
+# this is a posterior plot, without including priors
 post_plot_array = create_posterior_plot(
     inference_data,
-    problem,
+    emcee_solver.problem,
     true_values=true_values,
     title="Sampling results from emcee-Solver (posterior plot)",
 )
@@ -227,6 +213,6 @@ post_plot_array = create_posterior_plot(
 # trace plots are used to check for "healthy" sampling
 trace_plot_array = create_trace_plot(
     inference_data,
-    problem,
+    emcee_solver.problem,
     title="Sampling results from emcee-Solver (trace plot)",
 )
