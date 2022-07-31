@@ -29,7 +29,10 @@ class ScipySolver(Solver):
     """
 
     def __init__(
-        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+        self,
+        problem: "InverseProblem",
+        seed: Optional[int] = None,
+        show_progress: bool = True,
     ):
         logger.debug("Initializing ScipySolver")
         super().__init__(problem, seed=seed, show_progress=show_progress)
@@ -485,7 +488,10 @@ class MaxLikelihoodSolver(ScipySolver):
     """
 
     def __init__(
-        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+        self,
+        problem: "InverseProblem",
+        seed: Optional[int] = None,
+        show_progress: bool = True,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         super().__init__(problem, seed=seed, show_progress=show_progress)
@@ -522,7 +528,10 @@ class MaxPosteriorSolver(ScipySolver):
     """
 
     def __init__(
-        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+        self,
+        problem: "InverseProblem",
+        seed: Optional[int] = None,
+        show_progress: bool = True,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         super().__init__(problem, seed=seed, show_progress=show_progress)
