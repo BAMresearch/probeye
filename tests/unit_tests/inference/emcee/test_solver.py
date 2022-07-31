@@ -51,17 +51,24 @@ class TestProblem(unittest.TestCase):
             GaussianLikelihoodModel(experiment_name="Tests", model_error="additive")
         )
 
-        # run the emcee solver with different seeds
+        # run the emcee solver with different seeds (the 'vectorize=False' does not do
+        # anything and is just for code coverage)
         n_walkers, n_steps = 10, 100
 
         emcee_solver_1a = EmceeSolver(problem, seed=123)
-        inference_data_1a = emcee_solver_1a.run(n_walkers=n_walkers, n_steps=n_steps)
+        inference_data_1a = emcee_solver_1a.run(
+            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+        )
 
         emcee_solver_2 = EmceeSolver(problem, seed=42)
-        inference_data_2 = emcee_solver_2.run(n_walkers=n_walkers, n_steps=n_steps)
+        inference_data_2 = emcee_solver_2.run(
+            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+        )
 
         emcee_solver_1b = EmceeSolver(problem, seed=123)
-        inference_data_1b = emcee_solver_1b.run(n_walkers=n_walkers, n_steps=n_steps)
+        inference_data_1b = emcee_solver_1b.run(
+            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+        )
 
         # first, check that the sampled results make sense
         true_values = {"a": a_true, "b": b_true, "sigma": sigma_true}
