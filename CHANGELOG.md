@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 3.0.2 (2022-Jul-31)
+### Changed
+- Ensured reproducibility of solver results via seeds. It is also possible now to not use a seed (instead of a default seed). The reproducibility of the sampling results is explicitly checked in the unit tests of the solvers.
+
 ## 3.0.1 (2022-Jul-14)
 ### Changed
 - Improved plotting functions to work better with a larger number of parameters.
