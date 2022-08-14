@@ -23,20 +23,20 @@ where :math:`\bm\theta_y\in\mathbb{R}^n`, :math:`n\in\mathbb{N}` is the model pa
 
     \mathbf{Y}_e = \mathbf{y}(\mathbf{x}_e,\bm\theta_y) + \mathbf{E}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) + \mathbf{E}_\mathrm{meas}
 
-Here, :math:`\mathbf{E}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) \sim \mathcal{N}(\mathbf{0}, \bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell))` denotes a Gaussian model for the prediction error, introducing additional latent parameters :math:`\bm\theta_\ell\in\mathbb{R}^m`, :math:`m\in\mathbb{N}`, while :math:`\mathbf{E}_\mathrm{meas} \sim \mathcal{N}(\mathbf{0}, \mathrm{diag}(\sigma_m))`, :math:`\sigma_m\in\mathbb{R}_+` describes an independent and identical distributed (i.i.d.) measurement error. The alternative to the additive model prediction error is a multiplicative one. In this case, Expression :ref:`(1) <eq:1>` is specified to
+Here, :math:`\mathbf{E}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) \sim \mathcal{N}(\mathbf{0}, \bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell))` denotes a Gaussian model for the prediction error, introducing additional latent parameters :math:`\bm\theta_\ell\in\mathbb{R}^m`, :math:`m\in\mathbb{N}`, while :math:`\mathbf{E}_\mathrm{meas} \sim \mathcal{N}(\mathbf{0}, \mathrm{diag}(\sigma_m^2))`, :math:`\sigma_m\in\mathbb{R}_+` describes an independent and identical distributed (i.i.d.) measurement error. The alternative to the additive model prediction error is a multiplicative one. In this case, Expression :ref:`(1) <eq:1>` is specified to
 
 .. math::
     :name: eq:3
 
     \mathbf{Y}_e =  \mathbf{K}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell)\mathbf{y}(\mathbf{x}_e,\bm\theta_y) + \mathbf{E}_\mathrm{meas}
 
-where  :math:`\mathbf{K}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) \sim \mathcal{N}(\mathbf{1}, \bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell))` denotes the unit-mean prediction error while :math:`\mathbf{E}_\mathrm{meas} \sim \mathcal{N}(\mathbf{0}, \mathrm{diag}(\sigma_m))` describes the measurement error as defined before. Both data generation processes, Equations :ref:`(2) <eq:2>` and :ref:`(3) <eq:3>`, describe a random variable following a multivariate normal distribution as given by :ref:`(1) <eq:1>` where the covariance matrix is given by
+where  :math:`\mathbf{K}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) \sim \mathcal{N}(\mathbf{1}, \bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell))` denotes the unit-mean prediction error while :math:`\mathbf{E}_\mathrm{meas} \sim \mathcal{N}(\mathbf{0}, \mathrm{diag}(\sigma_m^2))` describes the measurement error as defined before. Both data generation processes, Equations :ref:`(2) <eq:2>` and :ref:`(3) <eq:3>`, describe a random variable following a multivariate normal distribution as given by :ref:`(1) <eq:1>` where the covariance matrix is given by
 
 .. math::
 
     \bm{\Sigma}(\mathbf{x}_e) = \begin{cases}
-        \bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) + \mathrm{diag}(\sigma_m)  & \text{(additive)} \\
-        \mathrm{diag}(\mathbf{y}(\mathbf{x}_e,\bm\theta_y))\bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell)\mathrm{diag}(\mathbf{y}(\mathbf{x}_e,\bm\theta_y)) + \mathrm{diag}(\sigma_m) & \text{(multiplicative).}
+        \bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell) + \mathrm{diag}(\sigma_m^2)  & \text{(additive)} \\
+        \mathrm{diag}(\mathbf{y}(\mathbf{x}_e,\bm\theta_y))\bm{\Sigma}_\mathrm{model}(\mathbf{x}_e,\bm{\theta}_\ell)\mathrm{diag}(\mathbf{y}(\mathbf{x}_e,\bm\theta_y)) + \mathrm{diag}(\sigma_m^2) & \text{(multiplicative).}
         \end{cases}
 
 Once the mean vector :math:`\bm\mu(\mathbf{x}_e)` and the covariance matrix :math:`\bm{\Sigma}(\mathbf{x}_e)` are determined, the likelihood of the statistical model can be evaluated via
