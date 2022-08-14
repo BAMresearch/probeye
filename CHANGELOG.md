@@ -1,5 +1,9 @@
 # probeye changelog
 
+## 3.0.4 (2022-Aug-14)
+### Changed
+- Small fix of a wrong type-specification in forward_model.py
+
 ## 3.0.3 (2022-Aug-14)
 ### Changed
 - The forward model's init method can now take positional and keyword arguments.

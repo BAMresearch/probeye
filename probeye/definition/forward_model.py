@@ -33,8 +33,8 @@ class ForwardModelBase:
     def __init__(
         self,
         name: str,
-        *args: tuple,
-        **kwargs: dict,
+        *args,
+        **kwargs,
     ):
 
         # set the forward model's name
