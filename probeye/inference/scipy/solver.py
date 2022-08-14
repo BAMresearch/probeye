@@ -80,12 +80,14 @@ class ScipySolver(Solver):
         Translate the inverse problem's forward models as needed for this solver.
         """
         logger.debug("Translate the problem's forward models")
-        for fwd_name in self.problem.forward_models:
+        for fwd_name, fwd_obj in self.problem.forward_models.items():
 
             # create a full forward model from its hull where the sensors are not yet
             # connected to the experimental data
             forward_model_hull = self.problem.forward_models[fwd_name]
-            forward_model = forward_model_hull.__class__.__bases__[0](fwd_name)
+            forward_model = forward_model_hull.__class__.__bases__[0](
+                fwd_name, *fwd_obj.args, **fwd_obj.kwargs
+            )
             synchronize_objects(
                 forward_model,
                 forward_model_hull,
