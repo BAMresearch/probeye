@@ -43,7 +43,10 @@ class EmceeSolver(ScipySolver):
     """
 
     def __init__(
-        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+        self,
+        problem: "InverseProblem",
+        seed: Optional[int] = None,
+        show_progress: bool = True,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
@@ -184,6 +187,8 @@ class EmceeSolver(ScipySolver):
 
         # draw initial samples from the parameter's priors
         logger.debug("Drawing initial samples")
+        if self.seed is not None:
+            np.random.seed(self.seed)
         sampling_initial_positions = np.zeros(
             (n_walkers, self.problem.n_latent_prms_dim)
         )
@@ -204,10 +209,6 @@ class EmceeSolver(ScipySolver):
         #                                 Pre-process                                  #
         # ............................................................................ #
 
-        random.seed(self.seed)
-        np.random.seed(self.seed)
-        rstate = np.random.mtrand.RandomState(self.seed)
-
         def logprob(x):
             # Skip loglikelihood evaluation if logprior is equal
             # to negative infinity
@@ -226,7 +227,9 @@ class EmceeSolver(ScipySolver):
             **kwargs,
         )
 
-        sampler.random_state = rstate
+        if self.seed is not None:
+            random.seed(self.seed)
+            sampler.random_state = np.random.mtrand.RandomState(self.seed)
 
         # ............................................................................ #
         #        Initial sampling, burn-in: used to avoid a poor starting point        #

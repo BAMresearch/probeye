@@ -711,7 +711,9 @@ class InverseProblem:
 
         # add an instance of the forward model's hull (which contains its 'interface'-
         # method but not its 'response'-method) to the problem
-        fwd_model_hull = ForwardModelHull(forward_model.name)
+        fwd_model_hull = ForwardModelHull(
+            forward_model.name, *forward_model.args, **forward_model.kwargs
+        )
         fwd_model_hull.experiment_names = experiment_list
         self.forward_models[forward_model.name] = fwd_model_hull
 

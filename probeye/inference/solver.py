@@ -1,5 +1,5 @@
 # standard library imports
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import copy as cp
 
 # imports only needed for type hints
@@ -24,7 +24,10 @@ class Solver:
     """
 
     def __init__(
-        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+        self,
+        problem: "InverseProblem",
+        seed: Optional[int] = None,
+        show_progress: bool = True,
     ):
 
         # attributes from arguments

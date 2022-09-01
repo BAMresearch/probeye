@@ -44,7 +44,10 @@ class DynestySolver(ScipySolver):
     """
 
     def __init__(
-        self, problem: "InverseProblem", seed: int = 1, show_progress: bool = True
+        self,
+        problem: "InverseProblem",
+        seed: Optional[int] = None,
+        show_progress: bool = True,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
@@ -218,7 +221,9 @@ class DynestySolver(ScipySolver):
         # ............................................................................ #
         #                                 Pre-process                                  #
         # ............................................................................ #
-        rstate = np.random.default_rng(self.seed)
+        rstate = None
+        if self.seed is not None:
+            rstate = np.random.default_rng(self.seed)
 
         if estimation_method == "dynamic":
             sampler = dynesty.DynamicNestedSampler(

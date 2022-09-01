@@ -22,15 +22,27 @@ class ForwardModelBase:
     name
         The name of the forward model. Must be unique among all forward model's names
         within a considered InverseProblem.
+    args
+        Additional positional arguments that might be passed to the forward model when
+        it is initialized.
+    kwargs
+        Additional keyword arguments that might be passed to the forward model when it
+        is initialized.
     """
 
     def __init__(
         self,
         name: str,
+        *args,
+        **kwargs,
     ):
 
         # set the forward model's name
         self.name = name
+
+        # possibly additional arguments for initialization
+        self.args = args
+        self.kwargs = kwargs
 
         # this is just for consistency; values will be overwritten with the next command
         self.parameters = ["_self.parameters_not_set"]

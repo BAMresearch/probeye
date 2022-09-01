@@ -1,5 +1,18 @@
 # probeye changelog
 
+## 3.0.4 (2022-Aug-14)
+### Changed
+- Small fix of a wrong type-specification in forward_model.py
+
+## 3.0.3 (2022-Aug-14)
+### Changed
+- The forward model's init method can now take positional and keyword arguments.
+- Small correction in docs (Mathematics sections, sigma_m -> sigma_m^2).
+
+## 3.0.2 (2022-Jul-31)
+### Changed
+- Ensured reproducibility of solver results via seeds. It is also possible now to not use a seed (instead of a default seed). The reproducibility of the sampling results is explicitly checked in the unit tests of the solvers.
+
 ## 3.0.1 (2022-Jul-14)
 ### Changed
 - Improved plotting functions to work better with a larger number of parameters.
