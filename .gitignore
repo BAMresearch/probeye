@@ -140,3 +140,5 @@ catalog-*.xml
 *.ttl
 *.sqlite3
 *.sqlite3-journal
+*.owl
+*.dat
