@@ -55,6 +55,11 @@ n_steps = 1_000
 n_init_steps = 200
 n_walkers = 20
 
+# Sampler settings
+n_init = 20
+n_iter = 20
+n_point_per_iter = 2
+
 # Surrogate settings
 N_train = 50
 N_train_iter = 200
@@ -195,7 +200,7 @@ def harlow_model_factory(
         def _get_bounds(self):
 
             # Find the priors corresponding to model parameters
-            for key, value in self.priors.items():
+            for key, value in self.problem.priors.items():
 
                 # Error if any of the model priors are not uniform
                 if value.prior_type != "uniform":
@@ -205,24 +210,37 @@ def harlow_model_factory(
                         f" only supports uniform priors."
                     )
 
-            for param in self.problem.model_prms:
-                lb = self.const_prms_dict["low_" + param]
-                ub = self.const_prms_dict["high_" + param]
+            # Dictionary of upper and lower bounds
+            for param in self.parameters:
+                lb = self.problem.constant_prms_dict["low_" + param]
+                ub = self.problem.constant_prms_dict["high_" + param]
+
+                # List of upper and lower bounds
+                self.lower_bounds.append(lb)
+                self.upper_bounds.append(ub)
+
+                # Append to dict
                 self.bounds[param] = {"low": lb, "high": ub}
 
         def _cast_to_numpy(self, inp: dict) -> np.ndarray:
             raise NotImplementedError
 
         def _cast_to_dict(self, X: np.ndarray) -> dict:
-            raise NotImplementedError
+            return dict(zip(self.parameters, X))
 
         def target(self, X: np.ndarray) -> np.ndarray:
-            inp = self._cast_to_dict(X)
-            response = self.forward_model.response(inp)
-            y = [[]] * len(self.output_sensors)
-            for idx, os in enumerate(self.output_sensors):
-                y[idx] = response[os.name]
-            return np.array(y).T
+
+            # Create empty array of shape `(n_points, n_output_sensors)`
+            # y = np.zeros((X.shape[0], len(self.output_sensors)))
+            y = [[[]] * X.shape[0]] * len(self.output_sensors)
+
+            # Evaluate physical model for each input vector
+            for idx_Xi, Xi in enumerate(X):
+                response = self.forward_model.response(self._cast_to_dict(Xi))
+                for idx_os, os in enumerate(self.output_sensors):
+                    y[idx_os][idx_Xi] = response[os.name]
+
+            return np.array(y)
 
         def response(self, inp: dict) -> dict:
 
@@ -324,19 +342,18 @@ problem.add_forward_model(surrogate_model, experiments="TestSeriesSurrogate")
 sampler = FuzzyLolaVoronoi(
     target_function=surrogate_model.target,
     surrogate_model=surrogate_model.model,
-    domain_lower_bound=surrogate_model.lower_bound,
-    domain_upper_bound=surrogate_model.upper_bound,
-    test_points_x=test_X,
-    test_points_y=test_y,
-    evaluation_metric=rmse,
+    domain_lower_bound=surrogate_model.lower_bounds,
+    domain_upper_bound=surrogate_model.upper_bounds,
+    run_name="test",
+    # test_points_x=test_X,
+    # test_points_y=test_y,
+    # evaluation_metric=rmse,
 )
 # main_start = time.time()
 sampler.sample(
     n_iter=n_iter,
-    n_initial_point=n_initial_point,
-    n_new_point_per_iteration=n_new_points_per_iteration,
-    ignore_old_neighborhoods=False,
-    ignore_far_neighborhoods=False,
+    n_initial_point=n_init,
+    n_new_point_per_iteration=n_point_per_iter,
 )
 
 # # Train surrogate
