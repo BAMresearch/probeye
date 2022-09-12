@@ -6,7 +6,7 @@
 [![coverage](https://img.shields.io/endpoint?url=https://gist.githubusercontent.com/aklawonn/5eb707145cc7d75de25b43d25b13c972/raw/probeye_main_coverage.json)](https://en.wikipedia.org/wiki/Code_coverage)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-This package provides a transparent and easy-to-use framework for solving parameter estimation problems (i.e., [inverse problems](https://en.wikipedia.org/wiki/Inverse_problem)) chiefly via [sampling](https://ermongroup.github.io/cs228-notes/inference/sampling/) methods in a characteristic two-step approach. 
+This package provides a transparent and easy-to-use framework for solving parameter estimation problems (i.e., [inverse problems](https://en.wikipedia.org/wiki/Inverse_problem)) primarily via [sampling](https://ermongroup.github.io/cs228-notes/inference/sampling/) methods in a characteristic two-step approach. 
 
 1. In the first step, the problem at hand is defined in a **solver-independent** fashion, i.e., without specifying which computational means are supposed to be utilized for finding a solution.
 2. In the second step, the problem definition is handed over to a **user-selected solver**, that finds a solution to the problem. The currently supported solvers focus on Bayesian methods for posterior sampling.

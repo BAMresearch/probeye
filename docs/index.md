@@ -1,6 +1,6 @@
 # probeye
 
-This package provides a transparent and easy-to-use framework for solving parameter estimation problems (i.e., [inverse problems](https://en.wikipedia.org/wiki/Inverse_problem)) chiefly via [sampling](https://ermongroup.github.io/cs228-notes/inference/sampling/) methods in a characteristic two-step approach. 
+This package provides a transparent and easy-to-use framework for solving parameter estimation problems (i.e., [inverse problems](https://en.wikipedia.org/wiki/Inverse_problem)) primarily via [sampling](https://ermongroup.github.io/cs228-notes/inference/sampling/) methods in a characteristic two-step approach. 
 
 1. In the first step, the problem at hand is defined in a **solver-independent** fashion, i.e., without specifying which computational means are supposed to be utilized for finding a solution.
 2. In the second step, the problem definition is handed over to a **user-selected solver**, that finds a solution to the problem. The currently supported solvers focus on Bayesian methods for posterior sampling.
