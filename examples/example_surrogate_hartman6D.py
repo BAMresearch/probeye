@@ -28,23 +28,19 @@ from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.emcee.solver import EmceeSolver
 from probeye.definition.distribution import Uniform
-from probeye.definition.surrogate_model import HarlowModelFactory
+from probeye.metamodeling.sampling import LatinHypercubeSampler, HarlowSampler
+from probeye.metamodeling.surrogating import HarlowSurrogate
 
 # local imports (inference data post-processing)
 from probeye.postprocessing.sampling_plots import create_pair_plot
 from probeye.postprocessing.sampling_plots import create_posterior_plot
 
 # Surrogate model imports
-from harlow.sampling import LatinHypercube, FuzzyLolaVoronoi
+from harlow.sampling import FuzzyLolaVoronoi, ProbabilisticSampler, LatinHypercube
 from harlow.surrogating import (
-    Surrogate,
-    ModelListGaussianProcess,
     VanillaGaussianProcess,
 )
 from harlow.utils.transforms import (
-    ExpandDims,
-    TensorTransform,
-    ChainTransform,
     Identity,
 )
 
@@ -64,9 +60,10 @@ n_init_steps = 200
 n_walkers = 20
 
 # Sampler settings
-n_init = 250
-n_iter = 0
-n_point_per_iter = 2
+n_init = 100
+n_iter = 5
+n_point_per_iter = 20
+stopping_criterium = -np.inf
 
 # Surrogate settings
 N_train_iter = 50
@@ -196,6 +193,7 @@ problem.add_forward_model(forward_model, experiments="TestSeriesFull")
 n_params = 4
 list_params = [[i for i in range(n_params)]] * len(sensor_names) * len(t_vec)
 
+# Kwargs to be passed to the surrogate model
 surrogate_kwargs = {
     "training_max_iter": N_train_iter,
     "list_params": list_params,
@@ -206,24 +204,29 @@ surrogate_kwargs = {
     "output_transform": Identity,
 }
 
-# Generate surrogate class using model factory
-model_factory = HarlowModelFactory(
-    problem,
-    forward_model,
-    FuzzyLolaVoronoi,
-    VanillaGaussianProcess,
-    **surrogate_kwargs,
-)
+# Define the surrogate model
+surrogate_model = VanillaGaussianProcess(**surrogate_kwargs)
 
-# Sample
-model_factory.sample(
-    n_iter=n_iter,
+# Probeye's latin hypercube sampler
+lhs_sampler = LatinHypercubeSampler(problem)
+
+# An iterative sampler. Here we pass the surrogate ForwardModel directly to the sampler. However, it is
+# also possible to pass a surrogate model that will be included in a forward model after fitting.
+harlow_sampler = HarlowSampler(problem, forward_model, LatinHypercube, surrogate_model)
+
+# Sampler and fit
+harlow_sampler.sample(
     n_initial_point=n_init,
     n_new_point_per_iteration=n_point_per_iter,
+    n_iter=n_iter,
+    stopping_criterium=stopping_criterium,
 )
+harlow_sampler.fit()
 
-# Get forward model instance
-forward_surrogate_model = model_factory.get_harlow_model("FastModel")
+# Define the surrogate forward model
+forward_surrogate_model = HarlowSurrogate(
+    "SurrogateModel", surrogate_model, forward_model
+)
 
 # =========================================================================
 # Add forward models

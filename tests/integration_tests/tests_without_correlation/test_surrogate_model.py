@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 # local imports (problem definition)
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
-from probeye.definition.surrogate_model import SurrogateModelBase
+from probeye.metamodeling.surrogating import SurrogateModelBase
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 

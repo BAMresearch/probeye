@@ -8,7 +8,7 @@ import numpy as np
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.sensor import Sensor
-from probeye.surrogate.initial_sampling import LatinHypercubeSampler
+from probeye.metamodeling.initial_sampling import LatinHypercubeSampler
 
 
 class LinearModel(ForwardModelBase):
