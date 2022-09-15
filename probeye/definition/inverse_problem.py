@@ -408,6 +408,37 @@ class InverseProblem:
             value=new_value
         )
 
+    def get_latent_prior_hyperparameters(self, prm_name: str) -> list:
+        """
+        Returns a list of the latent hyperparameters of a parameter's prior. In most
+        cases there will be none, so an empty list will be returned.
+
+        Parameters
+        ----------
+        prm_name
+            The name of the parameter the prior of which should be checked for latent
+            hyperparameters.
+
+        Returns
+        -------
+        latent_hyperparameters
+            Contains the global names of latent hyperparameters in the prior of the
+            parameter 'prm_name'.
+        """
+
+        # first, make sure that the given parameter exists
+        self._parameters.confirm_that_parameter_exists(prm_name)
+
+        # now look for possible latent hyperparameters
+        latent_hyperparameters = []
+        if self.parameters[prm_name].is_latent:
+            hyperparameters = self.parameters[prm_name].prior.hyperparameters
+            for hyperparameter in hyperparameters:
+                if self.parameters[hyperparameter].is_latent:
+                    latent_hyperparameters.append(hyperparameter)
+
+        return latent_hyperparameters
+
     def get_parameters(self, theta: np.ndarray, prm_def: dict) -> dict:
         """
         Extracts the numeric values for given parameters that have been defined within
@@ -449,6 +480,35 @@ class InverseProblem:
                     prms[local_name] = theta[idx]
                 else:
                     prms[local_name] = theta[idx:idx_end]
+        return prms
+
+    def get_constants(self, prm_def: dict) -> dict:
+        """
+        Similar to 'get_parameters' with the difference that this method only extracts
+        the numeric values of constants that have been defined within the problem scope.
+        For that reason it does not need the 'theta' argument as in 'get_parameters'. If
+        'prm_def' also contains latent parameters, they will simply be ignored.
+
+        Parameters
+        ----------
+        prm_def
+            Defines which constants to extract. The keys of this dictionary are the
+            global parameter names, while the values are the local parameter names. In
+            most cases global and local names will be identical, but sometimes it is
+            convenient to define a local parameter name, e.g. in the forward model.
+
+        Returns
+        -------
+        prms
+            Contains <local parameter name> : <(global) parameter value> pairs. If a
+            parameter is scalar, its value will be returned as a float. In case of a
+            vector-valued parameter, its value will be returned as a np.ndarray.
+        """
+        prms = {}
+        for global_name, local_name in prm_def.items():
+            idx = self._parameters[global_name].index
+            if idx is None:
+                prms[local_name] = self._parameters[global_name].value
         return prms
 
     def check_parameter_domains(self, theta: np.ndarray) -> bool:
