@@ -95,10 +95,10 @@ jobs:
   test_with_latest:
       name: Test with latest dependencies on Python ${{ matrix.python-version }}
       runs-on: ubuntu-latest
-      if: |
-        github.ref == 'refs/heads/main' &&
-        github.repository == 'BAMresearch/probeye' &&
-        github.event_name == 'schedule'
+  #    if: |
+  #      github.ref == 'refs/heads/main' &&
+  #      github.repository == 'BAMresearch/probeye' &&
+  #      github.event_name == 'schedule'
       needs: [ lint_and_type_check ]
       strategy:
         matrix:
