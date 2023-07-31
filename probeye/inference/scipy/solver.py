@@ -165,6 +165,10 @@ class ScipySolver(Solver):
 
         # compute the residuals by comparing to the experimental response
         exp_response_dict = forward_model.output_from_experiments[experiment_name]
+        # Reorder exmperiment response dict to match model response dict
+        if not list(model_response_dict.keys()) == list(exp_response_dict.keys()):
+            exp_response_dict={key: exp_response_dict[key] for key in model_response_dict.keys()}
+            forward_model.output_from_experiments[experiment_name] = exp_response_dict
         exp_response_vector = vectorize_numpy_dict(exp_response_dict)
         residuals_vector = exp_response_vector - model_response_vector
 

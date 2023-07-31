@@ -141,6 +141,75 @@ class TestProblem(unittest.TestCase):
         comp_result = scipy_solver.loglike(theta)
         self.assertEqual(comp_result, -np.infty)
 
+    def test_ordered_sensors(self):
+        def linearModel(par1, par2, pos) :
+            return pos * par1 + par2
+
+        # true parameter values
+        par1True = 42
+        par2True = 16
+
+        # correct forward model
+        class CorrectDummyModel(ForwardModelBase) :
+            def interface(self) :
+                self.parameters = ["par1", "par2"]
+                self.input_sensors= []
+                self.output_sensors= [
+                    Sensor("S1", std_model="sigma"),
+                    Sensor("S2", std_model="sigma"),
+                ]
+            
+            def response(self, inp: dict) :  
+                res1 = linearModel(inp['par1'], inp['par2'], 10)
+                res2 = linearModel(inp['par1'], inp['par2'], -10)
+                return {'S1' : res1, 'S2': res2, }
+
+        # incorrect forward model
+        class WrongDummyModel(ForwardModelBase) :
+            def interface(self) :
+                self.parameters = ["par1", "par2"]
+                self.input_sensors= []
+                self.output_sensors= [
+                    Sensor("S1", std_model="sigma"),
+                    Sensor("S2", std_model="sigma"),
+                ]
+            
+            def response(self, inp: dict) :
+                
+                res1 = linearModel(inp['par1'], inp['par2'], 10)
+                res2 = linearModel(inp['par1'], inp['par2'], -10)
+                
+                return {'S2': res2, 'S1' : res1, }
+
+        problem = InverseProblem('Linear problem', print_header=False)
+
+        problem.add_parameter("par1",prior=Uniform( low = -250.0, high = 250.0))
+        problem.add_parameter("par2",prior=Uniform( low = -100.0, high = 100.0),)
+        problem.add_parameter("sigma",value=0.01)
+        # experimental data 
+        res_test = dict()
+        res_test['S1'] = linearModel(par1True, par2True, 10)
+        res_test['S2'] = linearModel(par1True, par2True, -10)
+
+        problem.add_experiment(name='Correct',sensor_data= res_test)
+        problem.add_experiment(name='Wrong',sensor_data= res_test)
+        problem.add_forward_model(CorrectDummyModel("RM"), experiments = ["Correct"])
+        problem.add_forward_model(WrongDummyModel("WM"), experiments = ["Wrong"])
+
+        # likelihoods
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(experiment_name="Correct", model_error="additive")
+        )
+        problem.add_likelihood_model(
+            GaussianLikelihoodModel(experiment_name="Wrong", model_error="additive")
+        )
+        scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
+        max_like_data = scipy_solver.run( solver_options = {
+                                                            "maxiter" : 5000,
+                                                            "maxfev" : 10000,
+                                                            })
+        self.assertTrue(np.allclose(max_like_data.x, np.array([par1True, par2True, 0.01])))
+
 
 if __name__ == "__main__":
     unittest.main()
