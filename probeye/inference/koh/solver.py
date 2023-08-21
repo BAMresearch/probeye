@@ -100,6 +100,8 @@ class KOHSolver(EmceeSolver):
 
         if not self.problem.check_parameter_domains(theta):
             return -np.inf
+        
+        # Formualtion for extended problem
         if self.extended_problem:
             ll = 0.0
             for likelihood_model in self.problem.likelihood_models.values():
@@ -111,6 +113,8 @@ class KOHSolver(EmceeSolver):
                     theta, likelihood_model.prms_def
                 )
             return ll
+        
+        # Formulation for standard problem
         else:
             # compute the contribution to the log-likelihood function for each likelihood
             # model and sum it all up

@@ -1292,7 +1292,7 @@ def synchronize_objects(
         if attr_is_valid:
             if hasattr(new_obj, attribute):
                 try:
-                    setattr(new_obj, attribute, deepcopy(getattr(ref_obj, attribute)))
+                    setattr(new_obj, attribute, getattr(ref_obj, attribute))
                 except AttributeError:  # pragma: no cover
                     raise AttributeError(
                         f"can't set attribute '{attribute}'"
