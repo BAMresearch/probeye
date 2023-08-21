@@ -39,6 +39,7 @@ class KOHSolver(EmceeSolver):
         seed: Optional[int] = None,
         show_progress: bool = True,
         extended_problem: bool = False,
+        extension_variable: Optional[str] = None,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
@@ -46,6 +47,16 @@ class KOHSolver(EmceeSolver):
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
         self.extended_problem = extended_problem
+        if self.extended_problem:
+            if extension_variable is None:
+                raise Exception("Extension variable must be specified if extended problem is used.")
+            else:
+                self.extension_variable = extension_variable
+
+            # The extended model needs the bias defined in the inverse problem
+            if not hasattr(problem, "bias_model"):
+                raise Exception("The inverse problem must have a bias model defined.")
+
 
     def _translate_likelihood_models(self):
         """
@@ -67,15 +78,6 @@ class KOHSolver(EmceeSolver):
                 self.problem.likelihood_models[like_name]
             )
     
-    def _translate_parameters(self):
-        """
-        Translate the inverse problem's parameters as needed for this solver.
-        """
-        logger.debug("Translate the problem's parameters")
-        # translate the parameters
-        for par_name in self.problem.parameters:
-            self.problem.parameters[par_name] = self.problem.parameters[par_name].translate()
-
     def loglike(self, theta: np.ndarray) -> float:
         """
         Evaluates the log-likelihood function of the problem at theta.
@@ -103,6 +105,8 @@ class KOHSolver(EmceeSolver):
         
         # Formualtion for extended problem
         if self.extended_problem:
+            residuals_list = []
+            extension_coordinates =[] #TODO: Currently only one extension variable is supported
             ll = 0.0
             for likelihood_model in self.problem.likelihood_models.values():
                 # compute the model response/residuals for the likelihood model's experiment
@@ -112,7 +116,19 @@ class KOHSolver(EmceeSolver):
                 prms_likelihood = self.problem.get_parameters(
                     theta, likelihood_model.prms_def
                 )
-            return ll
+                residuals_list.append(residuals)
+                extension_coordinates.append(self.problem.experiments[likelihood_model.experiment_name].sensor_data[self.extension_variable])
+            # TODO: In future, bias should have its own model that allows for input/output definition
+            #       For now, we assume that the bias is a GP that takes the extension variable as input
+            bias = self.problem.bias_model_class(**self.problem.bias_parameters)
+            bias.train(np.array(extension_coordinates).reshape(-1,1), np.array(residuals_list))
+
+            # Save bias
+            self.problem.bias_model = bias.clone_with_theta()
+            # Return log_marginal_likelihood of the bias GP
+            # TODO: This should be more flexible in the future
+
+            return float(bias.gp.log_marginal_likelihood())
         
         # Formulation for standard problem
         else:
