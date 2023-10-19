@@ -40,6 +40,7 @@ class KOHSolver(EmceeSolver):
         show_progress: bool = True,
         extended_problem: bool = False,
         extension_variables: Optional[str] = None,
+        scale_coordinates_flag: bool = False,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
@@ -52,6 +53,8 @@ class KOHSolver(EmceeSolver):
                 raise Exception("Extension variable must be specified if extended problem is used.")
             else:
                 self.extension_variables = extension_variables
+
+            self.scale_coordinates = self.scale_coordinates if scale_coordinates_flag else lambda x: x
 
             # The extended model needs the bias defined in the inverse problem
             if not hasattr(problem, "bias_model_class") and not hasattr(problem, "bias_parameters"):
@@ -128,7 +131,7 @@ class KOHSolver(EmceeSolver):
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(np.array(extension_coordinates).transpose(), np.concatenate(residuals_list))
+            bias.train(self.scale_coordinates(np.array(extension_coordinates)).transpose(), np.concatenate(residuals_list))
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta()
@@ -155,6 +158,19 @@ class KOHSolver(EmceeSolver):
                 ll += likelihood_model.loglike(response, residuals, prms_likelihood)
             return ll
         
+    @staticmethod
+    def scale_coordinates(arr):
+        """
+        Scales an n-dimensional numpy array of coordinates to the range [0, 1] based on the original min and max values present in the array.
+        """
+        
+        # Iterate over dimensions and scale each dimension
+        for dim in range(arr.shape[1]):
+            min_val, max_val = arr[:, dim].min(), arr[:, dim].max()
+            arr[:, dim] = (arr[:, dim] - min_val) / (max_val - min_val)
+        
+        return arr
+    
 class OGPSolver(KOHSolver):
 
     def loglike(self, theta: np.ndarray) -> float:
@@ -184,7 +200,7 @@ class OGPSolver(KOHSolver):
         if not self.problem.check_parameter_domains(theta):
             return -np.inf
         
-        # Formualtion for extended problem
+        # Formulation for extended problem
         if self.extended_problem:
             residuals_list = []
             extension_coordinates =np.array([]).reshape(len(self.extension_variables),0)
@@ -214,7 +230,7 @@ class OGPSolver(KOHSolver):
                 self.problem.bias_parameters["derivative"] = self.generate_derivative(list(self.problem.likelihood_models.values())[0].forward_model.derivative, len(self.problem.likelihood_models.values()))
             self.problem.bias_parameters["evaluation_point"] = theta
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(np.array(extension_coordinates).transpose(), np.concatenate(residuals_list))
+            bias.train(self.scale_coordinates(np.array(extension_coordinates)).transpose(), np.concatenate(residuals_list))
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta(theta)
