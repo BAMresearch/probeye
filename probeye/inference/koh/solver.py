@@ -131,7 +131,7 @@ class KOHSolver(EmceeSolver):
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(self.scale_coordinates(np.array(extension_coordinates)).transpose(), np.concatenate(residuals_list))
+            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list))
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta()
@@ -230,7 +230,7 @@ class OGPSolver(KOHSolver):
                 self.problem.bias_parameters["derivative"] = self.generate_derivative(list(self.problem.likelihood_models.values())[0].forward_model.derivative, len(self.problem.likelihood_models.values()))
             self.problem.bias_parameters["evaluation_point"] = theta
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(self.scale_coordinates(np.array(extension_coordinates)).transpose(), np.concatenate(residuals_list))
+            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list))
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta(theta)
