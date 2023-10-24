@@ -41,6 +41,7 @@ class KOHSolver(EmceeSolver):
         extended_problem: bool = False,
         extension_variables: Optional[str] = None,
         scale_coordinates_flag: bool = False,
+        scale_residuals: float = 1.0
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
@@ -48,6 +49,7 @@ class KOHSolver(EmceeSolver):
         # initialize the scipy-based solver (ScipySolver)
         super().__init__(problem, seed=seed, show_progress=show_progress)
         self.extended_problem = extended_problem
+        self.scale_residuals = scale_residuals
         if self.extended_problem:
             if extension_variables is None:
                 raise Exception("Extension variable must be specified if extended problem is used.")
@@ -131,7 +133,7 @@ class KOHSolver(EmceeSolver):
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list))
+            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list)*self.scale_residuals)
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta()
@@ -230,7 +232,7 @@ class OGPSolver(KOHSolver):
                 self.problem.bias_parameters["derivative"] = self.generate_derivative(list(self.problem.likelihood_models.values())[0].forward_model.derivative, len(self.problem.likelihood_models.values()))
             self.problem.bias_parameters["evaluation_point"] = theta
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list))
+            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list)*self.scale_residuals)
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta(theta)
