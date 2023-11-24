@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Optional, Union, Callable
 import numpy as np
 import arviz as az
 from loguru import logger
+import matplotlib.pyplot as plt
 
 # local imports
 from probeye.subroutines import check_for_uninformative_priors
@@ -129,6 +130,8 @@ class KOHSolver(EmceeSolver):
                         temp_extension_coordinates = np.vstack((temp_extension_coordinates, self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]))
                     except ValueError:
                         temp_extension_coordinates = self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]
+                if len(temp_extension_coordinates.shape) == 1:
+                    temp_extension_coordinates = temp_extension_coordinates.reshape(1,-1)
                 extension_coordinates = np.hstack((extension_coordinates, temp_extension_coordinates))
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
@@ -234,6 +237,31 @@ class OGPSolver(KOHSolver):
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
             bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list)*self.scale_residuals)
 
+            ############# BLOCK FOR DEBUGGING #############
+            # prediction, covariance = bias.predict(self.scale_coordinates(np.array(extension_coordinates).transpose())[126:168], return_cov=True)
+            # prediction_scaled = prediction/self.scale_residuals
+            # covariance_scaled = covariance/self.scale_residuals**2
+
+            # plt.figure(figsize=[6.4,4.8])
+            # plt.plot(np.concatenate(residuals_list)[126:168], label="Residuals")
+            # plt.plot(prediction_scaled, label="Bias prediction")
+            # plt.title( r"Fitted bias for E = {:.2f} GPa and $\Delta T$ = 4.6E-5 K".format(theta[0]/1E12))
+            # plt.xlabel("Timesteps [-]")
+            # plt.ylabel("Residuals [m]")
+            # plt.legend()
+            # plt.savefig("./figures/bridge/bias_ogp_fitting_analysis.png")
+            # plt.savefig("./figures/bridge/bias_ogp_fitting_analysis.pdf")
+            # plt.savefig("./figures/bridge/bias_ogp_fitting_analysis.eps", format="eps", dpi = 800)
+            # plt.show()
+
+            # log_cov_matrix = np.log(np.abs(covariance_scaled))
+            # plt.imshow(log_cov_matrix, cmap='coolwarm')
+            # plt.colorbar()
+            # plt.title('Covariance Matrix')
+            # plt.show()
+
+            ########### END BLOCK FOR DEBUGGING ###########
+
             # Save bias
             self.problem.bias_model = bias.clone_with_theta(theta)
             # Return log_marginal_likelihood of the bias GP
@@ -259,12 +287,11 @@ class OGPSolver(KOHSolver):
                 ll += likelihood_model.loglike(response, residuals, prms_likelihood)
             return ll
         
-    @staticmethod
-    def generate_derivative(derivative, number_likelihood_models):
+    def generate_derivative(self, derivative, number_likelihood_models):
         def derivative_wrapper(evaluation_point):
             derivative_list = []
             for i in range(number_likelihood_models):
                 derivative_list.append(derivative(evaluation_point))
                 #FIXME: This does not work if the derivatives are more than 1D
-            return np.array(derivative_list).flatten()
+            return np.array(derivative_list).flatten()*self.scale_residuals
         return derivative_wrapper
