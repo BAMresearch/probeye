@@ -226,6 +226,8 @@ class OGPSolver(KOHSolver):
                         temp_extension_coordinates = np.vstack((temp_extension_coordinates, self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]))
                     except ValueError:
                         temp_extension_coordinates = self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]
+                    if len(temp_extension_coordinates.shape) == 1:
+                        temp_extension_coordinates = temp_extension_coordinates.reshape(1,-1)
                 extension_coordinates = np.hstack((extension_coordinates, temp_extension_coordinates))
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
