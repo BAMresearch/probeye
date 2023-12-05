@@ -3,9 +3,7 @@ from typing import TYPE_CHECKING, Optional, Union, Callable
 
 # third party imports
 import numpy as np
-import arviz as az
 from loguru import logger
-import matplotlib.pyplot as plt
 
 # local imports
 from probeye.subroutines import check_for_uninformative_priors
@@ -19,7 +17,7 @@ if TYPE_CHECKING:  # pragma: no cover
 
 class KOHSolver(EmceeSolver):
     """
-    Provides a modification of emcee solver to work with Kennedy and O'Hagan's 
+    Provides a modification of emcee solver to work with Kennedy and O'Hagan's
     type of implementations.
 
     Parameters
@@ -42,7 +40,7 @@ class KOHSolver(EmceeSolver):
         extended_problem: bool = False,
         extension_variables: Optional[str] = None,
         scale_coordinates_flag: bool = False,
-        scale_residuals: float = 1.0
+        scale_residuals: float = 1.0,
     ):
         logger.debug(f"Initializing {self.__class__.__name__}")
         # check that the problem does not contain a uninformative prior
@@ -63,7 +61,6 @@ class KOHSolver(EmceeSolver):
             if not hasattr(problem, "bias_model_class") and not hasattr(problem, "bias_parameters"):
                 raise Exception("The inverse problem must have a bias model defined.")
 
-
     def _translate_likelihood_models(self):
         """
         Translate the inverse problem's likelihood models as needed for this solver.
@@ -71,7 +68,6 @@ class KOHSolver(EmceeSolver):
 
         logger.debug("Translate the problem's likelihood models")
         for like_name in self.problem.likelihood_models:
-
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
@@ -83,7 +79,7 @@ class KOHSolver(EmceeSolver):
             self.problem.likelihood_models[like_name] = translate_likelihood_model(
                 self.problem.likelihood_models[like_name]
             )
-    
+
     def loglike(self, theta: np.ndarray) -> float:
         """
         Evaluates the log-likelihood function of the problem at theta.
@@ -108,35 +104,43 @@ class KOHSolver(EmceeSolver):
 
         if not self.problem.check_parameter_domains(theta):
             return -np.inf
-        
+
         # Formualtion for extended problem
         if self.extended_problem:
             residuals_list = []
-            extension_coordinates =np.array([]).reshape(len(self.extension_variables),0)
+            extension_coordinates = np.array([]).reshape(len(self.extension_variables), 0)
             ll = 0.0
             for likelihood_model in self.problem.likelihood_models.values():
                 # compute the model response/residuals for the likelihood model's experiment
                 response, residuals = self.evaluate_model_response(
                     theta, likelihood_model.forward_model, likelihood_model.experiment_name
                 )
-                prms_likelihood = self.problem.get_parameters(
-                    theta, likelihood_model.prms_def
-                )
+                prms_likelihood = self.problem.get_parameters(theta, likelihood_model.prms_def)
                 residuals_list.append(residuals)
-                #TODO: Doing this in the extension evaluation is very inefficient
+                # TODO: Doing this in the extension evaluation is very inefficient
                 temp_extension_coordinates = np.array([])
                 for variable in self.extension_variables:
                     try:
-                        temp_extension_coordinates = np.vstack((temp_extension_coordinates, self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]))
+                        temp_extension_coordinates = np.vstack(
+                            (
+                                temp_extension_coordinates,
+                                self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable],
+                            )
+                        )
                     except ValueError:
-                        temp_extension_coordinates = self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]
+                        temp_extension_coordinates = self.problem.experiments[
+                            likelihood_model.experiment_name
+                        ].sensor_data[variable]
                 if len(temp_extension_coordinates.shape) == 1:
-                    temp_extension_coordinates = temp_extension_coordinates.reshape(1,-1)
+                    temp_extension_coordinates = temp_extension_coordinates.reshape(1, -1)
                 extension_coordinates = np.hstack((extension_coordinates, temp_extension_coordinates))
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list)*self.scale_residuals)
+            bias.train(
+                self.scale_coordinates(np.array(extension_coordinates).transpose()),
+                np.concatenate(residuals_list) * self.scale_residuals,
+            )
 
             # Save bias
             self.problem.bias_model = bias.clone_with_theta()
@@ -144,7 +148,7 @@ class KOHSolver(EmceeSolver):
             # TODO: This should be more flexible in the future
 
             return float(bias.gp.log_marginal_likelihood())
-        
+
         # Formulation for standard problem
         else:
             # compute the contribution to the log-likelihood function for each likelihood
@@ -156,28 +160,26 @@ class KOHSolver(EmceeSolver):
                     theta, likelihood_model.forward_model, likelihood_model.experiment_name
                 )
                 # get the parameter values for the likelihood model's parameters
-                prms_likelihood = self.problem.get_parameters(
-                    theta, likelihood_model.prms_def
-                )
+                prms_likelihood = self.problem.get_parameters(theta, likelihood_model.prms_def)
                 # evaluate the loglike-contribution for the likelihood model
                 ll += likelihood_model.loglike(response, residuals, prms_likelihood)
             return ll
-        
+
     @staticmethod
     def scale_coordinates(arr):
         """
         Scales an n-dimensional numpy array of coordinates to the range [0, 1] based on the original min and max values present in the array.
         """
-        
+
         # Iterate over dimensions and scale each dimension
         for dim in range(arr.shape[1]):
             min_val, max_val = arr[:, dim].min(), arr[:, dim].max()
             arr[:, dim] = (arr[:, dim] - min_val) / (max_val - min_val)
-        
-        return arr
-    
-class OGPSolver(KOHSolver):
 
+        return arr
+
+
+class OGPSolver(KOHSolver):
     def loglike(self, theta: np.ndarray) -> float:
         """
         Evaluates the log-likelihood function of the problem at theta.
@@ -195,8 +197,12 @@ class OGPSolver(KOHSolver):
             The evaluated log-likelihood function for the given theta-vector.
         """
 
-        assert (self.problem.bias_parameters["computational_gp"] == "forward_model") or isinstance(self.problem.bias_parameters["computational_gp"], Callable), "Computational GP must be either a callable or 'forward_model'"
-        assert (self.problem.bias_parameters["derivative"] == "forward_model") or isinstance(self.problem.bias_parameters["derivative"], Callable), "Derivative must be either a callable or 'forward_model'"
+        assert (self.problem.bias_parameters["computational_gp"] == "forward_model") or isinstance(
+            self.problem.bias_parameters["computational_gp"], Callable
+        ), "Computational GP must be either a callable or 'forward_model'"
+        assert (self.problem.bias_parameters["derivative"] == "forward_model") or isinstance(
+            self.problem.bias_parameters["derivative"], Callable
+        ), "Derivative must be either a callable or 'forward_model'"
         # check whether the values of the latent parameters are within their domains;
         # they can end up outside their domains for example during sampling, when a
         # parameter vector is proposed, that contains a value that is not within the
@@ -204,40 +210,53 @@ class OGPSolver(KOHSolver):
 
         if not self.problem.check_parameter_domains(theta):
             return -np.inf
-        
+
         # Formulation for extended problem
         if self.extended_problem:
             residuals_list = []
-            extension_coordinates =np.array([]).reshape(len(self.extension_variables),0)
+            extension_coordinates = np.array([]).reshape(len(self.extension_variables), 0)
             ll = 0.0
             for likelihood_model in self.problem.likelihood_models.values():
                 # compute the model response/residuals for the likelihood model's experiment
                 response, residuals = self.evaluate_model_response(
                     theta, likelihood_model.forward_model, likelihood_model.experiment_name
                 )
-                prms_likelihood = self.problem.get_parameters(
-                    theta, likelihood_model.prms_def
-                )
+                prms_likelihood = self.problem.get_parameters(theta, likelihood_model.prms_def)
                 residuals_list.append(residuals)
-                #TODO: Doing this in the extension evaluation is very inefficient
+                # TODO: Doing this in the extension evaluation is very inefficient
                 temp_extension_coordinates = np.array([])
                 for variable in self.extension_variables:
                     try:
-                        temp_extension_coordinates = np.vstack((temp_extension_coordinates, self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]))
+                        temp_extension_coordinates = np.vstack(
+                            (
+                                temp_extension_coordinates,
+                                self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable],
+                            )
+                        )
                     except ValueError:
-                        temp_extension_coordinates = self.problem.experiments[likelihood_model.experiment_name].sensor_data[variable]
+                        temp_extension_coordinates = self.problem.experiments[
+                            likelihood_model.experiment_name
+                        ].sensor_data[variable]
                     if len(temp_extension_coordinates.shape) == 1:
-                        temp_extension_coordinates = temp_extension_coordinates.reshape(1,-1)
+                        temp_extension_coordinates = temp_extension_coordinates.reshape(1, -1)
                 extension_coordinates = np.hstack((extension_coordinates, temp_extension_coordinates))
             # TODO: In future, bias should have its own model that allows for input/output definition
             #       For now, we assume that the bias is a GP that takes the extension variable as input
             if self.problem.bias_parameters["computational_gp"] == "forward_model":
-                self.problem.bias_parameters["computational_gp"] = list(self.problem.likelihood_models.values())[0].forward_model.response
+                self.problem.bias_parameters["computational_gp"] = list(self.problem.likelihood_models.values())[
+                    0
+                ].forward_model.response
             if self.problem.bias_parameters["derivative"] == "forward_model":
-                self.problem.bias_parameters["derivative"] = self.generate_derivative(list(self.problem.likelihood_models.values())[0].forward_model.derivative, len(self.problem.likelihood_models.values()))
+                self.problem.bias_parameters["derivative"] = self.generate_derivative(
+                    list(self.problem.likelihood_models.values())[0].forward_model.derivative,
+                    len(self.problem.likelihood_models.values()),
+                )
             self.problem.bias_parameters["evaluation_point"] = theta
             bias = self.problem.bias_model_class(**self.problem.bias_parameters)
-            bias.train(self.scale_coordinates(np.array(extension_coordinates).transpose()), np.concatenate(residuals_list)*self.scale_residuals)
+            bias.train(
+                self.scale_coordinates(np.array(extension_coordinates).transpose()),
+                np.concatenate(residuals_list) * self.scale_residuals,
+            )
 
             ############# BLOCK FOR DEBUGGING #############
             # prediction, covariance = bias.predict(self.scale_coordinates(np.array(extension_coordinates).transpose())[126:168], return_cov=True)
@@ -270,7 +289,7 @@ class OGPSolver(KOHSolver):
             # TODO: This should be more flexible in the future
 
             return float(bias.gp.log_marginal_likelihood())
-        
+
         # Formulation for standard problem
         else:
             # compute the contribution to the log-likelihood function for each likelihood
@@ -282,18 +301,17 @@ class OGPSolver(KOHSolver):
                     theta, likelihood_model.forward_model, likelihood_model.experiment_name
                 )
                 # get the parameter values for the likelihood model's parameters
-                prms_likelihood = self.problem.get_parameters(
-                    theta, likelihood_model.prms_def
-                )
+                prms_likelihood = self.problem.get_parameters(theta, likelihood_model.prms_def)
                 # evaluate the loglike-contribution for the likelihood model
                 ll += likelihood_model.loglike(response, residuals, prms_likelihood)
             return ll
-        
+
     def generate_derivative(self, derivative, number_likelihood_models):
         def derivative_wrapper(evaluation_point):
             derivative_list = []
             for i in range(number_likelihood_models):
                 derivative_list.append(derivative(evaluation_point))
-                #FIXME: This does not work if the derivatives are more than 1D
-            return np.array(derivative_list).flatten()*self.scale_residuals
+                # FIXME: This does not work if the derivatives are more than 1D
+            return np.array(derivative_list).flatten() * self.scale_residuals
+
         return derivative_wrapper

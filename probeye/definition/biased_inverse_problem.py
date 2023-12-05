@@ -54,4 +54,3 @@ class BiasedInverseProblem(InverseProblem):
         self.bias_model_class = bias_model_class
         self.bias_parameters = bias_parameters
         # self.bias_model = bias_model_class(**bias_parameters)
-

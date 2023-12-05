@@ -54,8 +54,7 @@ class KOHUncorrelatedModelError(UncorrelatedModelError):
             ll = -0.5 * (n * np.log(2 * np.pi) + np.sum(np.log(variance)))
             ll -= 0.5 * np.sum(np.square(residual_vector) / variance)
 
-        #TODO Implement new base forward model that includes bias compulsory
-        # return float(self.forward_model.bias.gp.log_marginal_likelihood()) - ll
+        # TODO Implement new base forward model that includes bias compulsory
         return float(self.forward_model.bias.gp.log_marginal_likelihood())
 
 
@@ -82,16 +81,6 @@ def translate_likelihood_model(lm_def: GaussianLikelihoodModel) -> ScipyLikeliho
     if not lm_def.considers_correlation:
         l_class = f"{prefix}_KOH_Uncorrelated"
     else:
-        # if lm_def.n_correlation_variables == 1:
-        #     if lm_def.has_S23D_correlation_variable:
-        #         l_class = f"{prefix}_Correlated_S23D"
-        #     else:
-        #         l_class = f"{prefix}_Correlated_1D"
-        # else:
-        #     if lm_def.has_S23D_correlation_variable:
-        #         l_class = f"{prefix}_Correlated_1DS23D"
-        #     else:
-        #         l_class = f"{prefix}_Correlated_1D1D"
         raise NotImplementedError
 
     # this dict allows to map an assigned string from the if-cases above to a specific
