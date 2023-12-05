@@ -81,7 +81,6 @@ class ScipySolver(Solver):
         """
         logger.debug("Translate the problem's forward models")
         for fwd_name, fwd_obj in self.problem.forward_models.items():
-
             # create a full forward model from its hull where the sensors are not yet
             # connected to the experimental data
             forward_model_hull = self.problem.forward_models[fwd_name]
@@ -115,7 +114,6 @@ class ScipySolver(Solver):
 
         logger.debug("Translate the problem's likelihood models")
         for like_name in self.problem.likelihood_models:
-
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
@@ -165,6 +163,12 @@ class ScipySolver(Solver):
 
         # compute the residuals by comparing to the experimental response
         exp_response_dict = forward_model.output_from_experiments[experiment_name]
+        # Reorder exmperiment response dict to match model response dict
+        if not list(model_response_dict.keys()) == list(exp_response_dict.keys()):
+            exp_response_dict = {
+                key: exp_response_dict[key] for key in model_response_dict.keys()
+            }
+            forward_model.output_from_experiments[experiment_name] = exp_response_dict
         exp_response_vector = vectorize_numpy_dict(exp_response_dict)
         residuals_vector = exp_response_vector - model_response_vector
 
