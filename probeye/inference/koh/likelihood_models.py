@@ -7,7 +7,10 @@ import numpy as np
 # local imports
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
-from probeye.inference.scipy.likelihood_models import ScipyLikelihoodBase, UncorrelatedModelError
+from probeye.inference.scipy.likelihood_models import (
+    ScipyLikelihoodBase,
+    UncorrelatedModelError,
+)
 
 # ==================================================================================== #
 #                              Additive likelihood models                              #
