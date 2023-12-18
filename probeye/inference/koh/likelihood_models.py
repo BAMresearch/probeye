@@ -42,23 +42,31 @@ class KOHUncorrelatedModelError(UncorrelatedModelError):
         Computes the log-likelihood of this model. For more information, check out the
         doc-string of the parent class (SolverLikelihoodBase).
         """
-        # compute the variance vector (the diagonal of the covariance matrix) or scalar
-        std_model, std_meas, stds_are_scalar = self.std_values(prms)
-        variance = np.power(std_model, 2)
-        n = len(residual_vector)
-        if std_meas is not None:
-            variance += np.power(std_meas, 2)
-        if stds_are_scalar:
-            # in this case, 'variance' is a scalar
-            ll = -n / 2 * np.log(2 * np.pi * variance)
-            ll -= 0.5 / variance * np.sum(np.square(residual_vector))
-        else:
-            # in this case, 'variance' is a  (non-constant) vector
-            ll = -0.5 * (n * np.log(2 * np.pi) + np.sum(np.log(variance)))
-            ll -= 0.5 * np.sum(np.square(residual_vector) / variance)
 
         # TODO Implement new base forward model that includes bias compulsory
         return float(self.forward_model.bias.gp.log_marginal_likelihood())
+
+class MomentMatchingModelError(UncorrelatedModelError):
+    def __init__(self, uncorrelated_model_error: UncorrelatedModelError):
+        super().__init__(uncorrelated_model_error)
+        self.tolerance = uncorrelated_model_error.tolerance
+        self.gamma = uncorrelated_model_error.gamma
+
+    def loglike(
+        self,
+        response_vector: np.ndarray,
+        residual_vector: np.ndarray,
+        prms: dict,
+    ) -> float:
+        """
+        Computes the log-likelihood of this model. For more information, check out the
+        doc-string of the parent class (SolverLikelihoodBase).
+        """
+        # in this case, 'variance' is a scalar
+        ll = -1 / 2 * np.log(2 * np.pi * self.tolerance**2)
+        ll -= 0.5 / self.tolerance**2 * np.sum(np.square(residual_vector)+np.square(response_vector[1]-self.gamma*np.abs(residual_vector)))
+
+        return ll
 
 
 def translate_likelihood_model(lm_def: GaussianLikelihoodModel) -> ScipyLikelihoodBase:
@@ -92,6 +100,7 @@ def translate_likelihood_model(lm_def: GaussianLikelihoodModel) -> ScipyLikeliho
     # different types (which leads to issues during type-checking)
     class_dict = {
         "Add_KOH_Uncorrelated": KOHUncorrelatedModelError,
+        "Mul_KOH_Uncorrelated": MomentMatchingModelError
     }
 
     # this is where the translation happens
