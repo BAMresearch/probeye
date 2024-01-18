@@ -63,6 +63,7 @@ class MomentMatchingModelError(UncorrelatedModelError):
         doc-string of the parent class (SolverLikelihoodBase).
         """
         # in this case, 'variance' is a scalar
+        # Uses Sargsyan2019 Eq. 15 as ABC likelihood function
         ll = -1 / 2 * np.log(2 * np.pi * self.tolerance**2)
         ll -= 0.5 / self.tolerance**2 * np.sum(np.square(residual_vector)+np.square(response_vector[1]-self.gamma*np.abs(residual_vector)))
 
