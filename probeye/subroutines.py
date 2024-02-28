@@ -1139,8 +1139,12 @@ def vectorize_tuple_pce_dict(pce_dict: dict) -> list[tuple]:
     pce_list
         Contains the list of PCE descriptions of each variable.
     """
+    if "dist" in pce_dict:
+        dist = pce_dict.pop("dist")
+    else:
+        dist = None
     
-    return [pce_tuple for pce_tuple in pce_dict.values()]
+    return ([pce_tuple for pce_tuple in pce_dict.values()], dist)
 
 
 def assemble_covariance_matrix(

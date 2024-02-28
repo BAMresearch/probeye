@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Optional, Union, Callable, Tuple
 # third party imports
 import numpy as np
 from loguru import logger
-import chaospy
+import chaospy #FIXME: This should not be always imported
 
 # local imports
 from probeye.subroutines import check_for_uninformative_priors
@@ -485,12 +485,13 @@ class EmbeddedPCESolver(EmceeSolver):
         prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
         exp_inp = forward_model.input_from_experiments[experiment_name]
         inp = {**exp_inp, **prms_model}  # adds the two dictionaries
-
+        inp["experiment_name"] = experiment_name # Required for surrogate selection
+        
         # evaluate the forward model and translate the result to a single vector
         model_response_dict = forward_model(inp)
-        model_response_vector = vectorize_tuple_pce_dict(model_response_dict)
-        mean_response_vector = [chaospy.E(*response) for response in model_response_vector]
-        var_response_vector = [chaospy.Var(*response) for response in model_response_vector]
+        model_response_vector, dist = vectorize_tuple_pce_dict(model_response_dict)
+        mean_response_vector = np.array([chaospy.E(response, dist) for response in model_response_vector]).flatten()
+        var_response_vector = np.array([chaospy.Var(response, dist) for response in model_response_vector]).flatten()
         model_response_vector = np.array([mean_response_vector, var_response_vector])
 
         # compute the residuals by comparing to the experimental response
