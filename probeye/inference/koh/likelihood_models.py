@@ -103,6 +103,7 @@ def translate_likelihood_model(lm_def: GaussianLikelihoodModel) -> ScipyLikeliho
         "Add_KOH_Uncorrelated": KOHUncorrelatedModelError,
         "Mul_KOH_Uncorrelated": MomentMatchingModelError
     }
+    #FIXME: This is a temporary fix to avoid the error
 
     # this is where the translation happens
     likelihood_computer = class_dict[l_class](lm_def)
