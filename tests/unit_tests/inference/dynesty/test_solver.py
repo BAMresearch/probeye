@@ -86,7 +86,7 @@ class TestProblem(unittest.TestCase):
         for prm_name in ["a", "b", "sigma"]:
             v1 = inference_data_1a["posterior"][prm_name].values.flatten()
             v2 = inference_data_2["posterior"][prm_name].values.flatten()
-            if np.alltrue(v1 != v2):
+            if np.all(v1 != v2):
                 same_results = False
                 break
         self.assertTrue(not same_results)
@@ -96,7 +96,7 @@ class TestProblem(unittest.TestCase):
         for prm_name in ["a", "b", "sigma"]:
             v1 = inference_data_1a["posterior"][prm_name].values.flatten()
             v2 = inference_data_1b["posterior"][prm_name].values.flatten()
-            if np.alltrue(v1 != v2):
+            if np.all(v1 != v2):
                 same_results = False
                 break
         self.assertTrue(same_results)
