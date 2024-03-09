@@ -86,7 +86,8 @@ class TestProblem(unittest.TestCase):
         for prm_name in ["a", "b", "sigma"]:
             v1 = inference_data_1a["posterior"][prm_name].values.flatten()
             v2 = inference_data_2["posterior"][prm_name].values.flatten()
-            if np.all(v1 != v2):
+            min_dim = np.min([len(v1), len(v2)])
+            if np.all(v1[:min_dim] != v2[:min_dim]):
                 same_results = False
                 break
         self.assertTrue(not same_results)
