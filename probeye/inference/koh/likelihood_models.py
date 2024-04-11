@@ -64,9 +64,23 @@ class MomentMatchingModelError(UncorrelatedModelError):
         """
         # in this case, 'variance' is a scalar
         # Uses Sargsyan2019 Eq. 15 as ABC likelihood function
-        ll = -1 / 2 * np.log(2 * np.pi * self.tolerance**2)
-        ll -= 0.5 / self.tolerance**2 * np.sum(np.square(residual_vector)+np.square(response_vector[1]-self.gamma*np.abs(residual_vector)))
-
+        # FIXME: modified to incorporate the noise model, now through the tolerance
+        std_model, std_meas, stds_are_scalar = self.std_values(prms)
+        variance = np.power(std_model, 2)
+        n = len(residual_vector)
+        ll = 0
+        # ll -= 0.5 / self.tolerance**2 * np.sum(np.square(residual_vector)+np.square(response_vector[1]-self.gamma*np.abs(residual_vector)))
+        if std_meas is not None:
+            variance += np.power(std_meas, 2)
+        if stds_are_scalar:
+            std_vector = np.full_like(residual_vector, np.sqrt(variance))
+            ll = -1 / 2 * np.log(2 * np.pi * self.tolerance**2)
+            ll -= 0.5 / self.tolerance**2 * np.sum(np.square(residual_vector)+np.square(response_vector[1]+std_vector-self.gamma*np.abs(residual_vector)))
+            ll -= -n / 2 * np.log(2 * np.pi * variance)
+            ll -= 0.5 / variance * np.sum(np.square(residual_vector))
+        else:
+            ll -= -0.5 * (n * np.log(2 * np.pi) + np.sum(np.log(variance)))
+            ll -= 0.5 * np.sum(np.square(residual_vector) / variance)
         return ll
 
 
