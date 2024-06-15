@@ -3,7 +3,9 @@
 name: CI
 
 on:
-  [push, workflow_dispatch]:
+  workflow_dispatch:
+  
+  push:
   schedule:
     - cron: '0 1 * * 6'  # weekly run at 01:00 UTC on Saturday, dependency check
 
