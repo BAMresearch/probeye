@@ -4,6 +4,11 @@ from typing import TYPE_CHECKING, Optional, Union, Callable, Tuple
 # third party imports
 import numpy as np
 from loguru import logger
+import emcee
+import arviz as az
+import time
+import random
+import contextlib
 import chaospy #FIXME: This should not be always imported
 
 # local imports
@@ -11,6 +16,11 @@ from probeye.subroutines import check_for_uninformative_priors
 from probeye.inference.emcee.solver import EmceeSolver
 from probeye.inference.koh.likelihood_models import translate_likelihood_model
 from probeye.subroutines import vectorize_nd_numpy_dict, vectorize_numpy_dict, vectorize_tuple_pce_dict
+from probeye.subroutines import pretty_time_delta
+from probeye.subroutines import check_for_uninformative_priors
+from probeye.subroutines import stream_to_logger
+from probeye.subroutines import print_dict_in_rows
+
 
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
@@ -506,3 +516,136 @@ class EmbeddedPCESolver(EmceeSolver):
         residuals_vector = exp_response_vector - mean_response_vector
 
         return model_response_vector, residuals_vector
+    
+    def run(
+        self,
+        n_walkers: int = 20,
+        n_steps: int = 1000,
+        n_initial_steps: int = 100,
+        true_values: Optional[dict] = None,
+        **kwargs,
+    ) -> az.data.inference_data.InferenceData:
+        """
+        Runs the emcee-sampler for the InverseProblem the EmceeSolver was initialized
+        with and returns the results as an arviz InferenceData obj.
+
+        Parameters
+        ----------
+        n_walkers
+            Number of walkers used by the estimator.
+        n_steps
+            Number of steps to run.
+        n_initial_steps
+            Number of steps for initial (burn-in) sampling.
+        true_values
+            True parameter values, if known.
+        kwargs
+            Additional key-word arguments channeled to emcee.EnsembleSampler.
+
+        Returns
+        -------
+        inference_data
+            Contains the results of the sampling procedure.
+        """
+
+        # log which solver is used
+        logger.info(
+            f"Solving problem using emcee sampler with {n_initial_steps} + {n_steps} "
+            f"samples and {n_walkers} walkers"
+        )
+        if kwargs:
+            logger.info("Additional options:")
+            print_dict_in_rows(kwargs, printer=logger.info)
+        else:
+            logger.info("No additional options specified")
+
+        # draw initial samples from the parameter's priors
+        logger.debug("Drawing initial samples")
+        if self.seed is not None:
+            np.random.seed(self.seed)
+        sampling_initial_positions = np.zeros(
+            (n_walkers, self.problem.n_latent_prms_dim)
+        )
+        theta_names = self.problem.get_theta_names(tex=False, components=False)
+        for parameter_name in theta_names:
+            idx = self.problem.parameters[parameter_name].index
+            idx_end = self.problem.parameters[parameter_name].index_end
+            samples = self.sample_from_prior(parameter_name, n_walkers)
+            if (idx_end - idx) == 1:
+                sampling_initial_positions[:, idx] = samples
+            else:
+                sampling_initial_positions[:, idx:idx_end] = samples
+
+        # The following code is based on taralli and merely adjusted to the variables
+        # in the probeye setup; see https://gitlab.com/tno-bim/taralli
+
+        # ............................................................................ #
+        #                                 Pre-process                                  #
+        # ............................................................................ #
+
+        def logprob(x):
+            # Skip loglikelihood evaluation if logprior is equal
+            # to negative infinity
+            logprior = self.logprior(x)
+            if logprior == -np.inf:
+                return logprior
+
+            # Otherwise return logprior + loglikelihood
+            return logprior + self.loglike(x)
+
+        logger.debug("Setting up EnsembleSampler")
+        self.sampler = emcee.EnsembleSampler(
+            nwalkers=n_walkers,
+            ndim=self.problem.n_latent_prms_dim,
+            log_prob_fn=logprob,
+            **kwargs,
+        )
+
+        if self.seed is not None:
+            random.seed(self.seed)
+            self.sampler.random_state = np.random.mtrand.RandomState(self.seed)
+
+        # ............................................................................ #
+        #        Initial sampling, burn-in: used to avoid a poor starting point        #
+        # ............................................................................ #
+
+        logger.debug("Starting sampling (initial + main)")
+        start = time.time()
+        state = self.sampler.run_mcmc(
+            initial_state=sampling_initial_positions,
+            nsteps=n_initial_steps,
+            progress=self.show_progress,
+        )
+        self.sampler.reset()
+
+        # ............................................................................ #
+        #                          Sampling of the posterior                           #
+        # ............................................................................ #
+        self.sampler.run_mcmc(
+            initial_state=state, nsteps=n_steps, progress=self.show_progress
+        )
+        end = time.time()
+        runtime_str = pretty_time_delta(end - start)
+        logger.info(
+            f"Sampling of the posterior distribution completed: {n_steps} steps and "
+            f"{n_walkers} walkers."
+        )
+        logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
+        logger.info("")
+        logger.info("Summary of sampling results (emcee)")
+        posterior_samples = self.sampler.get_chain(flat=True)
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.summary = self.emcee_summary(
+                posterior_samples, true_values=true_values
+            )
+        logger.info("")  # empty line for visual buffer
+        self.raw_results = self.sampler
+
+        # translate the results to a common data structure and return it
+        self.var_names = self.problem.get_theta_names(tex=True, components=True)
+        inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
+        return inference_data
+
+    def restart_run(self, state, n_steps):
+        self.sampler.run_mcmc(
+            initial_state=state, nsteps=n_steps, progress=False)
