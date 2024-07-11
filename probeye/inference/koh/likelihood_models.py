@@ -151,7 +151,7 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             # ll -= 0.5 * n / variance * np.square(mean_residual)
             ll -= 0.5 * n * sample_variance / population_variance
             ll -= (n-1) / 2 * np.log(2) 
-            ll -= np.log(math.gamma((n-1)/2))
+            ll -= math.lgamma((n-1)/2)
             ll += ((n-1)/2-1) * np.log(n*sample_variance/population_variance)
         return ll
     
@@ -195,7 +195,7 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             # ll -= 0.5 * n / variance * np.square(mean_residual)
             ll -= 0.5 * n * sample_variance / population_variance
             ll -= (n-1) / 2 * np.log(2) 
-            ll -= np.log(math.gamma((n-1)/2))
+            ll -= math.lgamma((n-1)/2)
             ll += ((n-1)/2-1) * np.log(n*sample_variance/population_variance)
         return ll
     
