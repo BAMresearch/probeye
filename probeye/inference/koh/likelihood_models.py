@@ -84,6 +84,10 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         # in this case, 'variance' is a scalar
         # Uses Sargsyan2019 Eq. 15 as ABC likelihood function
         # FIXME: modified to incorporate the noise model, now through the tolerance
+
+        if np.isnan(response_vector).any():
+            return -np.inf
+
         if not hasattr(self, "weight_mean"):
             self.weight_mean = 1
         if not hasattr(self, "weight_std"):
@@ -132,6 +136,8 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         Computes the log-likelihood of this model. For more information, check out the
         doc-string of the parent class (SolverLikelihoodBase).
         """
+        if np.isnan(response_vector).any():
+            return -np.inf
 
         std_model, std_meas, stds_are_scalar = self.std_values(prms)
         variance = np.power(std_model, 2)
@@ -172,10 +178,14 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         doc-string of the parent class (SolverLikelihoodBase).
         """
 
+        if np.isnan(response_vector).any():
+            return -np.inf
+        
         std_model, std_meas, stds_are_scalar = self.std_values(prms)
         variance = np.power(std_model, 2)
         n = len(residual_vector)
-        sigma_model_population = np.sqrt(self.gamma**2 * np.square(residual_vector))
+        
+        sigma_model_population = np.sqrt(self.gamma**2 * np.square(residual_vector)+variance)
         sigma_model_sample = np.sqrt(np.square(response_vector[1])+variance)
         population_variance = (np.var(np.divide(residual_vector, sigma_model_population)) + 1)
                             #    std_model**2*np.var(np.reciprocal(sigma_model_population)) +
@@ -214,6 +224,9 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
         Computes the log-likelihood of this model. For more information, check out the
         doc-string of the parent class (SolverLikelihoodBase).
         """
+
+        if np.isnan(response_vector).any():
+            return -np.inf
 
         std_model, std_meas, stds_are_scalar = self.std_values(prms)
         variance = np.power(std_model, 2)
