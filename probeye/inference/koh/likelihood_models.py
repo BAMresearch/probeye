@@ -95,8 +95,11 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         std_model, std_meas, stds_are_scalar = self.std_values(prms)
         variance = np.power(std_model, 2)
         n = len(residual_vector)
-        ll = 0
+        #   Original likelihood
+        # ll = -1 / 2 * np.log(2 * np.pi * self.tolerance**2)
         # ll -= 0.5 / self.tolerance**2 * np.sum(np.square(residual_vector)+np.square(response_vector[1]-self.gamma*np.abs(residual_vector)))
+        
+        # Noise-corrected likelihood
         if std_meas is not None:
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
@@ -152,7 +155,7 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
             # ll -=0.5 * np.log(2 * np.pi / n * variance)
-            ll -=0.5 * np.log(2 * np.pi / n * population_variance)
+            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
             ll -= 0.5 * n / population_variance * np.square(mean_residual)
             # ll -= 0.5 * n / variance * np.square(mean_residual)
             ll -= 0.5 * n * sample_variance / population_variance
@@ -237,9 +240,10 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
         if std_meas is not None:
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
-            ll -=0.5 * n * np.log(2 * np.pi )
-            ll -= np.sum(np.log(sigma_model_sample))
-            ll -= np.sum(np.square(residual_vector)/(2*np.square(sigma_model_sample)))
+            # ll -=0.5 * n * np.log(2 * np.pi )
+            # ll -= np.sum(np.log(sigma_model_sample))
+            # ll -= np.sum(np.square(residual_vector)/(2*np.square(sigma_model_sample)))
+            ll-= 0.5 * np.sum(np.square(np.divide(residual_vector , sigma_model_sample)) + np.log(2 * np.pi * np.square(sigma_model_sample )))
         return ll
 
 

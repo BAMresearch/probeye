@@ -501,8 +501,8 @@ class EmbeddedPCESolver(EmceeSolver):
         model_response_dict = forward_model(inp)
         model_response_vector, dist = vectorize_tuple_pce_dict(model_response_dict)
         mean_response_vector = np.array([chaospy.E(response, dist) for response in model_response_vector]).flatten()
-        var_response_vector = np.array([chaospy.Var(response, dist) for response in model_response_vector]).flatten()
-        model_response_vector = np.array([mean_response_vector, var_response_vector])
+        std_response_vector = np.array([chaospy.Std(response, dist) for response in model_response_vector]).flatten()
+        model_response_vector = np.array([mean_response_vector, std_response_vector])
 
         # compute the residuals by comparing to the experimental response
         exp_response_dict = forward_model.output_from_experiments[experiment_name]
