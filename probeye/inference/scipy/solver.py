@@ -267,8 +267,6 @@ class ScipySolver(Solver):
             )
             # evaluate the loglike-contribution for the likelihood model
             ll_i = likelihood_model.loglike(response, residuals, prms_likelihood)
-            self.problem.likelihood_values.append(ll_i)
-            self.problem.parameters_values.append(theta)
             ll += ll_i
 
         # return ll, response, residuals
