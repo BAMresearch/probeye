@@ -3,6 +3,8 @@
 name: CI
 
 on:
+  workflow_dispatch:
+  
   push:
   schedule:
     - cron: '0 1 * * 6'  # weekly run at 01:00 UTC on Saturday, dependency check
@@ -16,10 +18,10 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v2
-      - name: Set up Python 3.9
+      - name: Set up Python "3.10"
         uses: actions/setup-python@v2
         with:
-          python-version: 3.9
+          python-version: "3.10"
       - name: Install dependencies
         run: |
           pip install pre-commit
@@ -34,7 +36,7 @@ jobs:
     needs: [ lint_and_type_check ]
     strategy:
       matrix:
-        python-version: [ "3.7", "3.8", "3.9", "3.10" ]
+        python-version: [ "3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v2
@@ -76,7 +78,7 @@ jobs:
           echo "COVERAGE_COL=$(echo $COVERAGE_COL)" >> $GITHUB_ENV
           echo "BRANCH_NAME=$(echo $BRANCH_NAME)" >> $GITHUB_ENV
       # Upload the coverage value to gist only once
-      - if: ${{ matrix.python-version == '3.9' }}
+      - if: ${{ matrix.python-version == '3.12' }}
         name: Upload coverage to gist
         uses: schneegans/dynamic-badges-action@v1.1.0
         with:
@@ -102,7 +104,7 @@ jobs:
       needs: [ lint_and_type_check ]
       strategy:
         matrix:
-          python-version: [ "3.7", "3.8", "3.9", "3.10" ]
+          python-version: ["3.10", "3.11", "3.12"]
 
       steps:
         - uses: actions/checkout@v2
