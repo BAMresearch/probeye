@@ -10,8 +10,10 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.distribution import Normal, LogNormal
 from probeye.definition.sensor import Sensor
 from probeye.definition.inverse_problem import InverseProblem
-from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.inference.bias.likelihood_models import IndependentNormalModelError
+from probeye.inference.bias.likelihood_models import (
+    IndependentNormalModelError,
+    EmbeddedLikelihoodBaseModel,
+)
 from probeye.inference.bias.solver import EmbeddedPCESolver
 
 
@@ -73,8 +75,8 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
 
         # add the likelihood model
-        dummy_lmodel = GaussianLikelihoodModel(
-            experiment_name="Tests", model_error="additive"
+        dummy_lmodel = EmbeddedLikelihoodBaseModel(
+            experiment_name="Tests", l_model="independent_normal"
         )
         likelihood_model = IndependentNormalModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)

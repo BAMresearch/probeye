@@ -167,7 +167,9 @@ problem.add_experiment(
 
 problem.add_forward_model(LinearModel("LinearModel"), experiments="TestSeries_1")
 
-dummy_lmodel = EmbeddedLikelihoodBaseModel(experiment_name="TestSeries_1")
+dummy_lmodel = EmbeddedLikelihoodBaseModel(
+    experiment_name="TestSeries_1", l_model="independent_normal"
+)
 likelihood_model = IndependentNormalModelError(dummy_lmodel)
 problem.add_likelihood_model(likelihood_model)
 

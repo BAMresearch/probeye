@@ -1,4 +1,5 @@
 # standard library
+import math
 import unittest
 
 # third party imports
@@ -10,8 +11,8 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.distribution import Normal, LogNormal
 from probeye.definition.sensor import Sensor
 from probeye.definition.inverse_problem import InverseProblem
-from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.bias.likelihood_models import (
+    EmbeddedLikelihoodBaseModel,
     IndependentNormalModelError,
     GlobalMomentMatchingModelError,
     RelativeGlobalMomentMatchingModelError,
@@ -78,45 +79,60 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
 
         # add the likelihood model
-        dummy_lmodel = GaussianLikelihoodModel(
-            experiment_name="Tests", model_error="additive"
+        dummy_lmodel = EmbeddedLikelihoodBaseModel(
+            experiment_name="Tests", l_model="independent_normal"
         )
         likelihood_model = IndependentNormalModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
 
         # run the emcee solver with different seeds (the 'vectorize=False' does not do
         # anything and is just for code coverage)
-        n_walkers, n_steps = 10, 100
+        n_walkers, n_steps, n_initial_steps = 10, 100, 20
 
         in_solver = EmbeddedPCESolver(problem, seed=123)
         inference_data_in = in_solver.run(
-            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            vectorize=False,
         )
 
         problem.likelihood_models.pop("Tests")
         dummy_lmodel.gamma = 1.0
+        dummy_lmodel.l_model = "global_moment_matching"
         likelihood_model = GlobalMomentMatchingModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
         gmm_solver = EmbeddedPCESolver(problem, seed=42)
         inference_data_gmm = gmm_solver.run(
-            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            vectorize=False,
         )
 
         problem.likelihood_models.pop("Tests")
+        dummy_lmodel.l_model = "relative_global_moment_matching"
         likelihood_model = RelativeGlobalMomentMatchingModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
         rgmm_solver = EmbeddedPCESolver(problem, seed=42)
         inference_data_rgmm = rgmm_solver.run(
-            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            vectorize=False,
         )
-
         problem.likelihood_models.pop("Tests")
         dummy_lmodel.tolerance = 1e-6
-        likelihood_model = GlobalMomentMatchingModelError(dummy_lmodel)
+        dummy_lmodel.gamma = np.sqrt(math.pi / 2)
+        dummy_lmodel.l_model = "moment_matching"
+        likelihood_model = MomentMatchingModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
         mm_solver = EmbeddedPCESolver(problem, seed=42)
         inference_data_mm = mm_solver.run(
-            n_walkers=n_walkers, n_steps=n_steps, vectorize=False
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            vectorize=False,
         )
 
         # Check that the sampled results make sense
@@ -124,10 +140,10 @@ class TestProblem(unittest.TestCase):
         for prm_name, mean_true in true_values.items():
             mean_in = in_solver.summary["mean"][prm_name]
             self.assertAlmostEqual(mean_in, mean_true, delta=0.05)
-            mean_gmm = gmm_solver.summary["mean"][prm_name]
-            self.assertAlmostEqual(mean_gmm, mean_true, delta=0.05)
             mean_rgmm = rgmm_solver.summary["mean"][prm_name]
             self.assertAlmostEqual(mean_rgmm, mean_true, delta=0.05)
+            mean_gmm = gmm_solver.summary["mean"][prm_name]
+            self.assertAlmostEqual(mean_gmm, mean_true, delta=0.05)
             mean_mm = mm_solver.summary["mean"][prm_name]
             self.assertAlmostEqual(mean_mm, mean_true, delta=0.05)
 
