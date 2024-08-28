@@ -1,5 +1,10 @@
 # probeye changelog
 
+## 4.0.0 (2024-Aug-28)
+### Added
+- New embedded bias solver and likelihoods were added.
+- New example and test cases with embedded bias were added.
+
 ## 3.0.4 (2022-Aug-14)
 ### Changed
 - Small fix of a wrong type-specification in forward_model.py
