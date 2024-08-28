@@ -65,7 +65,6 @@ class TestProblem(unittest.TestCase):
             "dynamic", nlive_init=nlive_init, nlive_batch=nlive_batch, maxbatch=maxbatch
         )
 
-        
         dynesty_solver_2 = DynestySolver(problem, seed=42)
         inference_data_2 = dynesty_solver_2.run(
             "dynamic", nlive_init=nlive_init, nlive_batch=nlive_batch, maxbatch=maxbatch
