@@ -88,15 +88,11 @@ class TestProblem(unittest.TestCase):
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False
         )
 
-        problem.forward_models.pop("LinRe")
-        problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
         solver_2 = EmbeddedPCESolver(problem, seed=42)
         inference_data_2 = solver_2.run(
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False
         )
 
-        problem.forward_models.pop("LinRe")
-        problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
         solver_1b = EmbeddedPCESolver(problem, seed=123)
         inference_data_1b = solver_1b.run(
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False

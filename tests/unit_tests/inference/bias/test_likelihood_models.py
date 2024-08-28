@@ -21,7 +21,7 @@ from probeye.inference.bias.solver import EmbeddedPCESolver
 
 
 class TestProblem(unittest.TestCase):
-    def test_embedded_pce_solver(self):
+    def test_embedded_likelihood_models(self):
 
         # define the forward model
         class LinRe(ForwardModelBase):
@@ -93,8 +93,6 @@ class TestProblem(unittest.TestCase):
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False
         )
 
-        problem.forward_models.pop("LinRe")
-        problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
         problem.likelihood_models.pop("Tests")
         dummy_lmodel.gamma = 1.0
         likelihood_model = GlobalMomentMatchingModelError(dummy_lmodel)
@@ -104,8 +102,6 @@ class TestProblem(unittest.TestCase):
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False
         )
 
-        problem.forward_models.pop("LinRe")
-        problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
         problem.likelihood_models.pop("Tests")
         likelihood_model = RelativeGlobalMomentMatchingModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
@@ -114,8 +110,6 @@ class TestProblem(unittest.TestCase):
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False
         )
 
-        problem.forward_models.pop("LinRe")
-        problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
         problem.likelihood_models.pop("Tests")
         dummy_lmodel.tolerance = 1e-6
         likelihood_model = GlobalMomentMatchingModelError(dummy_lmodel)
