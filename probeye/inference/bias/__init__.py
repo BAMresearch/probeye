@@ -1,2 +1,2 @@
 # module imports
-from probeye.inference.bias import solver
+from probeye.inference.bias import solver, likelihood_models
