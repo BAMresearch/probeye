@@ -549,7 +549,7 @@ class ParameterProperties:
         self,
         index: Optional[int] = None,
         dim: Optional[int] = None,
-        domain: Union[tuple, List[tuple]] = None,
+        domain: Union[tuple, List[tuple], None] = None,
         type: Optional[str] = None,
         prior: Union[list, tuple, None] = None,
         value: Union[int, float, np.ndarray, None] = None,

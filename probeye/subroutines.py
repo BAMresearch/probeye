@@ -1126,7 +1126,7 @@ def vectorize_nd_numpy_dict(numpy_dict: dict) -> np.ndarray:
     return vector
 
 
-def vectorize_tuple_pce_dict(pce_dict: dict) -> list[tuple]:
+def vectorize_tuple_pce_dict(pce_dict: dict) -> tuple[list, ...]:
     """
     Unpacks the tuple for the PCE expansion of each variable in a dict.
 
