@@ -1095,6 +1095,7 @@ def vectorize_numpy_dict(numpy_dict: dict) -> np.ndarray:
         idx_start = idx_end
     return vector
 
+
 def vectorize_nd_numpy_dict(numpy_dict: dict) -> np.ndarray:
     """
     Concatenates all vectors from a dict to a single vector and returns it. For example
@@ -1124,6 +1125,7 @@ def vectorize_nd_numpy_dict(numpy_dict: dict) -> np.ndarray:
         idx_start = idx_end
     return vector
 
+
 def vectorize_tuple_pce_dict(pce_dict: dict) -> list[tuple]:
     """
     Unpacks the tuple for the PCE expansion of each variable in a dict.
@@ -1143,7 +1145,7 @@ def vectorize_tuple_pce_dict(pce_dict: dict) -> list[tuple]:
         dist = pce_dict.pop("dist")
     else:
         dist = None
-    
+
     return ([pce_tuple for pce_tuple in pce_dict.values()], dist)
 
 
