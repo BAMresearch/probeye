@@ -12,6 +12,7 @@ import contextlib
 import chaospy  # FIXME: This should not be always imported
 
 # local imports
+from probeye.definition.forward_model import ForwardModelBase
 from probeye.inference.emcee.solver import EmceeSolver
 from probeye.inference.bias.likelihood_models import translate_likelihood_model
 from probeye.subroutines import (
@@ -49,7 +50,10 @@ class EmbeddedMCISolver(EmceeSolver):
             )
 
     def evaluate_model_response(
-        self, theta: np.ndarray, forward_model: "ForwardModelBase", experiment_name: str
+        self,
+        theta: np.ndarray,
+        forward_model: ForwardModelBase,
+        experiment_name: str,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Evaluates the model response for each forward model for the given parameter
@@ -125,7 +129,10 @@ class EmbeddedPCESolver(EmceeSolver):
             )
 
     def evaluate_model_response(
-        self, theta: np.ndarray, forward_model: "ForwardModelBase", experiment_name: str
+        self,
+        theta: np.ndarray,
+        forward_model: ForwardModelBase,
+        experiment_name: str,
     ) -> Tuple[np.ndarray, np.ndarray]:
         """
         Evaluates the model response for each forward model for the given parameter

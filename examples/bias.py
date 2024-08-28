@@ -22,9 +22,8 @@ from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.distribution import Normal, Uniform, LogNormal
 from probeye.definition.sensor import Sensor
-
+from probeye.definition.likelihood_model import GaussianLikelihoodModel
 from probeye.inference.bias.likelihood_models import (
-    EmbeddedLikelihoodBaseModel,
     MomentMatchingModelError,
     GlobalMomentMatchingModelError,
     RelativeGlobalMomentMatchingModelError,
@@ -167,7 +166,9 @@ problem.add_experiment(
 
 problem.add_forward_model(LinearModel("LinearModel"), experiments="TestSeries_1")
 
-dummy_lmodel = EmbeddedLikelihoodBaseModel(experiment_name="TestSeries_1")
+dummy_lmodel = GaussianLikelihoodModel(
+    experiment_name="TestSeries_1", model_error="additive"
+)
 likelihood_model = IndependentNormalModelError(dummy_lmodel)
 problem.add_likelihood_model(likelihood_model)
 

@@ -14,14 +14,55 @@ from probeye.inference.scipy.likelihood_models import (
 )
 
 
+class EmbeddedLikelihoodBaseModel(ScipyLikelihoodBase):
+    """
+    This class implements the embedded likelihood model base class.
+
+    Parameters
+    ----------
+    l_model
+        The likelihood model used in this class. This is set to "moment_matching". Works as a flag to
+        distinguish between the different likelihood models.
+    tolerance
+        The tolerance value used in the moment matching likelihood model.
+    gamma
+        The gamma value used in the moment matching likelihood model.
+    experiment_name
+        The name of the experiment the likelihood model refers to. Note that each
+
+    Attributes
+    ----------
+    bias_model
+        The bias model used in this class. This is set to "embedded". Works as a flag to
+        distinguish between the different bias models.
+    """
+
+    def __init__(
+        self,
+        l_model: str = "moment_matching",
+        tolerance: float = 1e-6,
+        gamma: float = 1.0,
+        experiment_name: str = "default",
+    ):
+        super().__init__(
+            GaussianLikelihoodModel(
+                experiment_name=experiment_name, model_error="additive"
+            )
+        )
+        self.l_model = l_model
+        self.tolerance = tolerance
+        self.gamma = gamma
+        self.bias_model = "embedded"
+
+
 class EmbeddedUncorrelatedModelError(UncorrelatedModelError):
     """
     This class implements the embedded likelihood model base class.
 
     Parameters
     ----------
-    uncorrelated_model_error
-        An instance of UncorrelatedModelError which contains general information on the
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
         likelihood model but no computing-methods.
 
     Attributes
@@ -31,8 +72,8 @@ class EmbeddedUncorrelatedModelError(UncorrelatedModelError):
         distinguish between the different bias models.
     """
 
-    def __init__(self, uncorrelated_model_error: UncorrelatedModelError):
-        super().__init__(uncorrelated_model_error)
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
         self.bias_model = "embedded"
 
     def loglike(
@@ -54,8 +95,8 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
 
     Parameters
     ----------
-    uncorrelated_model_error
-        An instance of UncorrelatedModelError which contains general information on the
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
         likelihood model but no computing-methods.
 
     Attributes
@@ -68,10 +109,10 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "moment_matching".
     """
 
-    def __init__(self, uncorrelated_model_error: UncorrelatedModelError):
-        super().__init__(uncorrelated_model_error)
-        self.tolerance = uncorrelated_model_error.tolerance
-        self.gamma = uncorrelated_model_error.gamma
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
+        self.tolerance = likelihood_model_base.tolerance
+        self.gamma = likelihood_model_base.gamma
         self.l_model = "moment_matching"
 
     def loglike(
@@ -128,7 +169,7 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
 
         # Heteroscedastic noise (not implemented)
         else:
-            ll -= -0.5 * (n * np.log(2 * np.pi) + np.sum(np.log(variance)))
+            ll = -0.5 * (n * np.log(2 * np.pi) + np.sum(np.log(variance)))
             ll -= 0.5 * np.sum(np.square(residual_vector) / variance)
 
         # Store the mean and std of the moment residuals if requested
@@ -149,8 +190,8 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
 
     Parameters
     ----------
-    uncorrelated_model_error
-        An instance of UncorrelatedModelError which contains general information on the
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
         likelihood model but no computing-methods.
 
     Attributes
@@ -161,9 +202,9 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "global_moment_matching".
     """
 
-    def __init__(self, uncorrelated_model_error: UncorrelatedModelError):
-        super().__init__(uncorrelated_model_error)
-        self.gamma = uncorrelated_model_error.gamma
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
+        self.gamma = likelihood_model_base.gamma
         self.l_model = "global_moment_matching"
 
     def loglike(
@@ -196,7 +237,7 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         )
 
         # Calculate the log-likelihood
-        ll = 0
+        ll = 0.0
         if std_meas is not None:
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
@@ -215,8 +256,8 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
 
     Parameters
     ----------
-    uncorrelated_model_error
-        An instance of UncorrelatedModelError which contains general information on the
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
         likelihood model but no computing-methods.
 
     Attributes
@@ -227,9 +268,9 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "relative_global_moment_matching".
     """
 
-    def __init__(self, uncorrelated_model_error: UncorrelatedModelError):
-        super().__init__(uncorrelated_model_error)
-        self.gamma = uncorrelated_model_error.gamma
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
+        self.gamma = likelihood_model_base.gamma
         self.l_model = "relative_global_moment_matching"
 
     def loglike(
@@ -263,7 +304,7 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
 
         # Calculate the log-likelihood
-        ll = 0
+        ll = 0.0
         if std_meas is not None:
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
@@ -282,8 +323,8 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
 
     Parameters
     ----------
-    uncorrelated_model_error
-        An instance of UncorrelatedModelError which contains general information on the
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
         likelihood model but no computing-methods.
 
     Attributes
@@ -292,8 +333,8 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "independent_normal".
     """
 
-    def __init__(self, uncorrelated_model_error: UncorrelatedModelError):
-        super().__init__(uncorrelated_model_error)
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
         self.l_model = "independent_normal"
 
     def loglike(
@@ -326,16 +367,18 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
         return ll
 
 
-def translate_likelihood_model(lm_def: GaussianLikelihoodModel) -> ScipyLikelihoodBase:
+def translate_likelihood_model(
+    lm_def: EmbeddedLikelihoodBaseModel,
+) -> EmbeddedUncorrelatedModelError:
     """
-    Translates a given instance of GaussianLikelihoodModel (which is essentially just a
+    Translates a given instance of EmbeddedLikelihoodBaseModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
     likelihood model object which does contain SciPy-based computing-methods.
 
     Parameters
     ----------
     lm_def
-        An instance of GaussianLikelihoodModel which contains general information on the
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
         likelihood model but no computing-methods.
     Returns
     -------
