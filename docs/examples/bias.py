@@ -23,7 +23,12 @@ from probeye.definition.forward_model import ForwardModelBase
 from probeye.definition.distribution import Normal, Uniform, LogNormal
 from probeye.definition.sensor import Sensor
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.inference.bias.likelihood_models import MomentMatchingModelError, GlobalMomentMatchingModelError, RelativeGlobalMomentMatchingModelError, IndependentNormalModelError
+from probeye.inference.bias.likelihood_models import (
+    MomentMatchingModelError,
+    GlobalMomentMatchingModelError,
+    RelativeGlobalMomentMatchingModelError,
+    IndependentNormalModelError,
+)
 
 # local imports (problem solving)
 from probeye.inference.scipy.solver import MaxLikelihoodSolver
@@ -38,9 +43,9 @@ from probeye.postprocessing.sampling_plots import create_trace_plot
 
 # %%
 # We start by generating a synthetic data set from a known linear model to which we will
-# add some noise in the slope parameter. Afterwards, we will pretend to have forgotten 
-# the parameters of this ground-truth model and will instead try to recover them just 
-# from the data. The slope (a), the parameter bias scale (b) and the noise scale of the 
+# add some noise in the slope parameter. Afterwards, we will pretend to have forgotten
+# the parameters of this ground-truth model and will instead try to recover them just
+# from the data. The slope (a), the parameter bias scale (b) and the noise scale of the
 # ground truth model are set to be:
 
 # ground truth
@@ -55,7 +60,7 @@ noise_std = 0.01
 n_tests = 50
 seed = 1
 mean_noise = 0.0
-std_noise = np.linspace(0.2*b_true, b_true, n_tests)
+std_noise = np.linspace(0.2 * b_true, b_true, n_tests)
 std_noise += np.random.normal(loc=0.0, scale=noise_std, size=n_tests)
 
 # generate the data
@@ -84,6 +89,7 @@ plt.show()
 # is modeled as a normal distribution with zero mean and standard deviation `b`. The
 # model response is calculated using PCEs with pseudo-spectral decomposition.
 
+
 class LinearModel(ForwardModelBase):
     def interface(self):
         self.parameters = ["a", "b"]
@@ -105,19 +111,20 @@ class LinearModel(ForwardModelBase):
         # generate quadrature nodes and weights
         sparse_quads = chaospy.generate_quadrature(pce_order, b_dist, rule="Gaussian")
         # evaluate the model at the quadrature nodes
-        sparse_evals = np.array([
-            np.array((m+node) * x)
-            for node  in sparse_quads[0][0]
-        ])
+        sparse_evals = np.array(
+            [np.array((m + node) * x) for node in sparse_quads[0][0]]
+        )
         # generate the polynomial chaos expansion
         expansion = chaospy.generate_expansion(pce_order, b_dist)
         # fit the polynomial chaos expansion
-        fitted_sparse = chaospy.fit_quadrature(expansion, sparse_quads[0], sparse_quads[1], sparse_evals)
-        return {"y": fitted_sparse, 
-                "dist": b_dist}
+        fitted_sparse = chaospy.fit_quadrature(
+            expansion, sparse_quads[0], sparse_quads[1], sparse_evals
+        )
+        return {"y": fitted_sparse, "dist": b_dist}
+
 
 # %%
-# We initialize the inverse problem by providing a name and some additional information 
+# We initialize the inverse problem by providing a name and some additional information
 # in the same way as for the other examples. The bias parameter is defined as any other
 # parameter. In this case, noise is prescribed.
 problem = InverseProblem("Linear regression with embedding", print_header=False)
@@ -159,7 +166,9 @@ problem.add_experiment(
 
 problem.add_forward_model(LinearModel("LinearModel"), experiments="TestSeries_1")
 
-dummy_lmodel = GaussianLikelihoodModel(experiment_name="TestSeries_1", model_error="additive")
+dummy_lmodel = GaussianLikelihoodModel(
+    experiment_name="TestSeries_1", model_error="additive"
+)
 likelihood_model = IndependentNormalModelError(dummy_lmodel)
 problem.add_likelihood_model(likelihood_model)
 
@@ -226,10 +235,15 @@ figure_1 = plt.figure()
 ax_1 = figure_1.add_subplot(111)
 plt.plot(x_test, y_test, "ko", label="Generated data points")
 plt.plot(x_test, output_mean, "g", label="Fitted model")
-plt.plot(x_test, output_mean-noise_std, "r--", label=r"Fitted model $\pm \sigma_N$")
-plt.plot(x_test, output_mean+noise_std, "r--")
-plt.plot(x_test, output_mean-np.sqrt(output_std**2+noise_std**2), "b--", label=r"Fitted model $\pm \sqrt{\sigma^2+\sigma_N^2}$")
-plt.plot(x_test, output_mean+np.sqrt(output_std**2+noise_std**2), "b--")
+plt.plot(x_test, output_mean - noise_std, "r--", label=r"Fitted model $\pm \sigma_N$")
+plt.plot(x_test, output_mean + noise_std, "r--")
+plt.plot(
+    x_test,
+    output_mean - np.sqrt(output_std**2 + noise_std**2),
+    "b--",
+    label=r"Fitted model $\pm \sqrt{\sigma^2+\sigma_N^2}$",
+)
+plt.plot(x_test, output_mean + np.sqrt(output_std**2 + noise_std**2), "b--")
 plt.title("Fitted model predictions")
 plt.xlabel("x")
 plt.ylabel("y")

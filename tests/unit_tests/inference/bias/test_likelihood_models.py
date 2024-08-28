@@ -11,7 +11,12 @@ from probeye.definition.distribution import Normal, LogNormal
 from probeye.definition.sensor import Sensor
 from probeye.definition.inverse_problem import InverseProblem
 from probeye.definition.likelihood_model import GaussianLikelihoodModel
-from probeye.inference.bias.likelihood_models import IndependentNormalModelError, GlobalMomentMatchingModelError, RelativeGlobalMomentMatchingModelError, MomentMatchingModelError
+from probeye.inference.bias.likelihood_models import (
+    IndependentNormalModelError,
+    GlobalMomentMatchingModelError,
+    RelativeGlobalMomentMatchingModelError,
+    MomentMatchingModelError,
+)
 from probeye.inference.bias.solver import EmbeddedPCESolver
 
 
@@ -38,18 +43,20 @@ class TestProblem(unittest.TestCase):
                 # define the distribution for the bias term
                 b_dist = chaospy.Normal(0.0, b)
                 # generate quadrature nodes and weights
-                sparse_quads = chaospy.generate_quadrature(pce_order, b_dist, rule="Gaussian")
+                sparse_quads = chaospy.generate_quadrature(
+                    pce_order, b_dist, rule="Gaussian"
+                )
                 # evaluate the model at the quadrature nodes
-                sparse_evals = np.array([
-                    np.array((m+node) * x)
-                    for node  in sparse_quads[0][0]
-                ])
+                sparse_evals = np.array(
+                    [np.array((m + node) * x) for node in sparse_quads[0][0]]
+                )
                 # generate the polynomial chaos expansion
                 expansion = chaospy.generate_expansion(pce_order, b_dist)
                 # fit the polynomial chaos expansion
-                fitted_sparse = chaospy.fit_quadrature(expansion, sparse_quads[0], sparse_quads[1], sparse_evals)
-                return {"y": fitted_sparse, 
-                        "dist": b_dist}
+                fitted_sparse = chaospy.fit_quadrature(
+                    expansion, sparse_quads[0], sparse_quads[1], sparse_evals
+                )
+                return {"y": fitted_sparse, "dist": b_dist}
 
         # set up the problem
         problem = InverseProblem("Linear regression")
@@ -60,7 +67,7 @@ class TestProblem(unittest.TestCase):
         # generate and add some simple test data
         n_tests, a_true, b_true, sigma_true, seed = 5000, 4.0, 1.0, 0.01, 6174
         np.random.seed(seed)
-        std_noise = np.linspace(0.2*b_true, b_true, n_tests)
+        std_noise = np.linspace(0.2 * b_true, b_true, n_tests)
         std_noise += np.random.normal(loc=0.0, scale=sigma_true, size=n_tests)
         x_test = np.linspace(0.2, 1.0, n_tests)
         y_true = a_true * x_test
@@ -71,7 +78,9 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
 
         # add the likelihood model
-        dummy_lmodel = GaussianLikelihoodModel(experiment_name="Tests", model_error="additive")
+        dummy_lmodel = GaussianLikelihoodModel(
+            experiment_name="Tests", model_error="additive"
+        )
         likelihood_model = IndependentNormalModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
 
@@ -104,11 +113,11 @@ class TestProblem(unittest.TestCase):
         inference_data_rgmm = rgmm_solver.run(
             n_walkers=n_walkers, n_steps=n_steps, vectorize=False
         )
-        
+
         problem.forward_models.pop("LinRe")
         problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
         problem.likelihood_models.pop("Tests")
-        dummy_lmodel.tolerance = 1E-6
+        dummy_lmodel.tolerance = 1e-6
         likelihood_model = GlobalMomentMatchingModelError(dummy_lmodel)
         problem.add_likelihood_model(likelihood_model)
         mm_solver = EmbeddedPCESolver(problem, seed=42)
@@ -127,6 +136,7 @@ class TestProblem(unittest.TestCase):
             self.assertAlmostEqual(mean_rgmm, mean_true, delta=0.05)
             mean_mm = mm_solver.summary["mean"][prm_name]
             self.assertAlmostEqual(mean_mm, mean_true, delta=0.05)
+
 
 if __name__ == "__main__":
     unittest.main()

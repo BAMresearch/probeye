@@ -9,19 +9,24 @@ import arviz as az
 import time
 import random
 import contextlib
-import chaospy #FIXME: This should not be always imported
+import chaospy  # FIXME: This should not be always imported
 
 # local imports
 from probeye.inference.emcee.solver import EmceeSolver
 from probeye.inference.bias.likelihood_models import translate_likelihood_model
-from probeye.subroutines import vectorize_nd_numpy_dict, vectorize_numpy_dict, vectorize_tuple_pce_dict
+from probeye.subroutines import (
+    vectorize_nd_numpy_dict,
+    vectorize_numpy_dict,
+    vectorize_tuple_pce_dict,
+)
 from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import stream_to_logger
 from probeye.subroutines import print_dict_in_rows
 
+
 class EmbeddedMCISolver(EmceeSolver):
     """
-        Solver for the embedded method with Monte-Carlo Integration.
+    Solver for the embedded method with Monte-Carlo Integration.
     """
 
     def _translate_likelihood_models(self):
@@ -93,10 +98,11 @@ class EmbeddedMCISolver(EmceeSolver):
         residuals_vector = exp_response_vector - mean_response_vector
 
         return model_response_vector, residuals_vector
-    
+
+
 class EmbeddedPCESolver(EmceeSolver):
     """
-        Solver for the embedded method with Polynomial Chaos Expansion.
+    Solver for the embedded method with Polynomial Chaos Expansion.
     """
 
     def _translate_likelihood_models(self):
@@ -148,13 +154,17 @@ class EmbeddedPCESolver(EmceeSolver):
         prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
         exp_inp = forward_model.input_from_experiments[experiment_name]
         inp = {**exp_inp, **prms_model}  # adds the two dictionaries
-        inp["experiment_name"] = experiment_name # Required for surrogate selection
-        
+        inp["experiment_name"] = experiment_name  # Required for surrogate selection
+
         # evaluate the forward model and translate the result to a single vector
         model_response_dict = forward_model(inp)
         model_response_vector, dist = vectorize_tuple_pce_dict(model_response_dict)
-        mean_response_vector = np.array([chaospy.E(response, dist) for response in model_response_vector]).flatten()
-        std_response_vector = np.array([chaospy.Std(response, dist) for response in model_response_vector]).flatten()
+        mean_response_vector = np.array(
+            [chaospy.E(response, dist) for response in model_response_vector]
+        ).flatten()
+        std_response_vector = np.array(
+            [chaospy.Std(response, dist) for response in model_response_vector]
+        ).flatten()
         model_response_vector = np.array([mean_response_vector, std_response_vector])
 
         # compute the residuals by comparing to the experimental response
@@ -169,7 +179,7 @@ class EmbeddedPCESolver(EmceeSolver):
         residuals_vector = exp_response_vector - mean_response_vector
 
         return model_response_vector, residuals_vector
-    
+
     def run(
         self,
         n_walkers: int = 20,
@@ -312,5 +322,4 @@ class EmbeddedPCESolver(EmceeSolver):
             Number of steps to run.
         """
 
-        self.sampler.run_mcmc(
-            initial_state=state, nsteps=n_steps, progress=False)
+        self.sampler.run_mcmc(initial_state=state, nsteps=n_steps, progress=False)
