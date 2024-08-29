@@ -26,13 +26,19 @@ class TestProblem(unittest.TestCase):
 
         # define the forward model
         class LinRe(ForwardModelBase):
+            def __init__(self, name):
+                super().__init__(name)
+
+                self.pce_order = 1
+                self.b_dist = chaospy.Normal(0.0, 1.0)
+                self.expansion = chaospy.generate_expansion(self.pce_order, self.b_dist)
+
             def interface(self):
                 self.parameters = ["a", "b"]
                 self.input_sensors = Sensor("x")
                 self.output_sensors = Sensor("y", std_model="sigma")
 
             def response(self, inp: dict) -> dict:
-                pce_order = 1
                 x = inp["x"]
                 m = inp["a"]
                 b = inp["b"]
@@ -45,17 +51,15 @@ class TestProblem(unittest.TestCase):
                 b_dist = chaospy.Normal(0.0, b)
                 # generate quadrature nodes and weights
                 sparse_quads = chaospy.generate_quadrature(
-                    pce_order, b_dist, rule="Gaussian"
+                    self.pce_order, b_dist, rule="Gaussian"
                 )
                 # evaluate the model at the quadrature nodes
                 sparse_evals = np.array(
                     [np.array((m + node) * x) for node in sparse_quads[0][0]]
                 )
-                # generate the polynomial chaos expansion
-                expansion = chaospy.generate_expansion(pce_order, b_dist)
                 # fit the polynomial chaos expansion
                 fitted_sparse = chaospy.fit_quadrature(
-                    expansion, sparse_quads[0], sparse_quads[1], sparse_evals
+                    self.expansion, sparse_quads[0], sparse_quads[1], sparse_evals
                 )
                 return {"y": fitted_sparse, "dist": b_dist}
 

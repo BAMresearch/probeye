@@ -12,7 +12,7 @@ as well as via sampling using emcee.
 # First, let's import the required functions and classes for this example.
 
 # third party imports
-import math
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import chaospy
@@ -92,13 +92,20 @@ plt.show()
 
 
 class LinearModel(ForwardModelBase):
+    def __init__(self, name):
+        super().__init__(name)
+        self.pce_order = 1
+        self.bias_dist = chaospy.Normal(0.0, 1.0)
+
+        # generate the polynomial chaos expansion
+        self.expansion = chaospy.generate_expansion(self.pce_order, self.bias_dist)
+
     def interface(self):
         self.parameters = ["a", "b"]
         self.input_sensors = Sensor("x")
         self.output_sensors = Sensor("y", std_model="sigma")
 
     def response(self, inp: dict) -> dict:
-        pce_order = 1
         x = inp["x"]
         m = inp["a"]
         b = inp["b"]
@@ -110,16 +117,17 @@ class LinearModel(ForwardModelBase):
         # define the distribution for the bias term
         b_dist = chaospy.Normal(0.0, b)
         # generate quadrature nodes and weights
-        sparse_quads = chaospy.generate_quadrature(pce_order, b_dist, rule="Gaussian")
+        sparse_quads = chaospy.generate_quadrature(
+            self.pce_order, b_dist, rule="Gaussian"
+        )
         # evaluate the model at the quadrature nodes
         sparse_evals = np.array(
             [np.array((m + node) * x) for node in sparse_quads[0][0]]
         )
-        # generate the polynomial chaos expansion
-        expansion = chaospy.generate_expansion(pce_order, b_dist)
+
         # fit the polynomial chaos expansion
         fitted_sparse = chaospy.fit_quadrature(
-            expansion, sparse_quads[0], sparse_quads[1], sparse_evals
+            self.expansion, sparse_quads[0], sparse_quads[1], sparse_evals
         )
         return {"y": fitted_sparse, "dist": b_dist}
 
@@ -183,7 +191,10 @@ problem.info(print_header=True)
 # To solve the problem, we use the specialized solver for embedded models using PCEs.
 
 solver = EmbeddedPCESolver(problem, show_progress=False)
+start_time = time.time()
 inference_data = solver.run(n_steps=200, n_initial_steps=20)
+end_time = time.time()
+print(f"Elapsed time: {end_time - start_time:.2f} seconds")
 
 # %%
 # Finally, we want to plot the results we obtained.
