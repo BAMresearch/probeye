@@ -329,7 +329,9 @@ class EmbeddedPCESolver(EmceeSolver):
             Number of steps to run.
         """
 
-        self.sampler.run_mcmc(initial_state=state, nsteps=n_steps, progress=self.show_progress)
+        self.sampler.run_mcmc(
+            initial_state=state, nsteps=n_steps, progress=self.show_progress
+        )
         self.var_names = self.problem.get_theta_names(tex=True, components=True)
         inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
         return inference_data
