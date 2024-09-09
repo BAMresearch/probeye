@@ -316,6 +316,134 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
         return ll
 
+class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+    """
+    This class implements the global moment matching likelihood model.
+
+    Parameters
+    ----------
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
+        likelihood model but no computing-methods.
+
+    Attributes
+    ----------
+    gamma
+        The gamma value used in the moment matching likelihood model.
+    l_model
+        The likelihood model used in this class. This is set to "global_moment_matching".
+    """
+
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
+        self.gamma = likelihood_model_base.gamma
+        self.l_model = "sampled_global_moment_matching"
+
+    def loglike(
+        self,
+        response_vector: np.ndarray,
+        residual_vector: np.ndarray,
+        prms: dict,
+    ) -> float:
+        """
+        Computes the log-likelihood of this model. For more information, check out the
+        doc-string of the parent class (SolverLikelihoodBase).
+        """
+        if np.isnan(response_vector).any():
+            return -np.inf
+
+        observations = residual_vector + response_vector[0] # This is the observed data
+    
+        # Load the standard deviations and noise values
+        std_model, std_meas, stds_are_scalar = self.std_values(prms)
+        variance = np.power(std_model, 2)
+        n = len(residual_vector)
+
+        # Calculate the intermediate statistics
+        mean_response = np.mean(response_vector[0])
+        variance_response = np.var(response_vector[0])
+        mean_var = np.mean(np.square(response_vector[1]))
+        population_variance = mean_var + variance_response + variance
+        sample_variance = np.var(observations)
+        sample_mean = np.mean(observations)
+
+        # Calculate the log-likelihood
+        ll = 0.0
+        if std_meas is not None:
+            variance += np.power(std_meas, 2)
+        if stds_are_scalar:
+            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
+            ll -= 0.5 * n / population_variance * np.square(sample_mean-mean_response)
+            ll -= 0.5 * n * sample_variance / population_variance
+            ll -= (n - 1) / 2 * np.log(2)
+            ll -= math.lgamma((n - 1) / 2)
+            ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        return ll
+
+
+class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+    """
+    This class implements the relative global moment matching likelihood model.
+
+    Parameters
+    ----------
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
+        likelihood model but no computing-methods.
+
+    Attributes
+    ----------
+    gamma
+        The gamma value used in the moment matching likelihood model.
+    l_model
+        The likelihood model used in this class. This is set to "relative_global_moment_matching".
+    """
+
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
+        self.gamma = likelihood_model_base.gamma
+        self.l_model = "sampled_relative_global_moment_matching"
+
+    def loglike(
+        self,
+        response_vector: np.ndarray,
+        residual_vector: np.ndarray,
+        prms: dict,
+    ) -> float:
+        """
+        Computes the log-likelihood of this model. For more information, check out the
+        doc-string of the parent class (SolverLikelihoodBase).
+        """
+
+        if np.isnan(response_vector).any():
+            return -np.inf
+
+         
+
+        # Load the standard deviations and noise values
+        std_model, std_meas, stds_are_scalar = self.std_values(prms)
+        variance = np.power(std_model, 2)
+        n = len(residual_vector)
+
+        # Calculate the intermediate statistics
+        sigma_model_population = np.sqrt(np.square(response_vector[1]) + variance)
+        relative_errors = residual_vector / sigma_model_population
+        population_variance = 1.0
+        sample_variance = np.var(relative_errors)
+        mean_residual = np.mean(relative_errors)
+
+        # Calculate the log-likelihood
+        ll = 0.0
+        if std_meas is not None:
+            variance += np.power(std_meas, 2)
+        if stds_are_scalar:
+            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
+            ll -= 0.5 * n / population_variance * np.square(mean_residual)
+            ll -= 0.5 * n * sample_variance / population_variance
+            ll -= (n - 1) / 2 * np.log(2)
+            ll -= math.lgamma((n - 1) / 2)
+            ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        return ll
 
 class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
     """
@@ -402,6 +530,8 @@ def translate_likelihood_model(
         "Embedded_global_moment_matching_Uncorrelated": GlobalMomentMatchingModelError,
         "Embedded_relative_global_moment_matching_Uncorrelated": RelativeGlobalMomentMatchingModelError,
         "Embedded_independent_normal_Uncorrelated": IndependentNormalModelError,
+        "Embedded_sampled_global_moment_matching_Uncorrelated": SampledGlobalMomentMatchingModelError,
+        "Embedded_sampled_relative_global_moment_matching_Uncorrelated": SampledRelativeGlobalMomentMatchingModelError,
     }
 
     # this is where the translation happens
