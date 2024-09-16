@@ -95,11 +95,7 @@ class LinearModel(ForwardModelBase):
     def __init__(self, name):
         super().__init__(name)
         self.pce_order = 1
-        self.bias_dist = chaospy.Normal(0.0, 1.0)
-
-        # generate the polynomial chaos expansion
-        self.expansion = chaospy.generate_expansion(self.pce_order, self.bias_dist)
-
+        
     def interface(self):
         self.parameters = ["a", "b"]
         self.input_sensors = Sensor("x")
@@ -116,6 +112,10 @@ class LinearModel(ForwardModelBase):
 
         # define the distribution for the bias term
         b_dist = chaospy.Normal(0.0, b)
+
+        # generate the polynomial chaos expansion
+        expansion = chaospy.generate_expansion(self.pce_order, bias_dist)
+
         # generate quadrature nodes and weights
         sparse_quads = chaospy.generate_quadrature(
             self.pce_order, b_dist, rule="Gaussian"
@@ -127,7 +127,7 @@ class LinearModel(ForwardModelBase):
 
         # fit the polynomial chaos expansion
         fitted_sparse = chaospy.fit_quadrature(
-            self.expansion, sparse_quads[0], sparse_quads[1], sparse_evals
+            expansion, sparse_quads[0], sparse_quads[1], sparse_evals
         )
         return {"y": fitted_sparse, "dist": b_dist}
 

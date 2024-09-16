@@ -30,8 +30,6 @@ class TestProblem(unittest.TestCase):
                 super().__init__(name)
 
                 self.pce_order = 1
-                self.b_dist = chaospy.Normal(0.0, 1.0)
-                self.expansion = chaospy.generate_expansion(self.pce_order, self.b_dist)
 
             def interface(self):
                 self.parameters = ["a", "b"]
@@ -49,6 +47,8 @@ class TestProblem(unittest.TestCase):
 
                 # define the distribution for the bias term
                 b_dist = chaospy.Normal(0.0, b)
+                expansion = chaospy.generate_expansion(self.pce_order, b_dist)
+
                 # generate quadrature nodes and weights
                 sparse_quads = chaospy.generate_quadrature(
                     self.pce_order, b_dist, rule="Gaussian"
@@ -59,7 +59,7 @@ class TestProblem(unittest.TestCase):
                 )
                 # fit the polynomial chaos expansion
                 fitted_sparse = chaospy.fit_quadrature(
-                    self.expansion, sparse_quads[0], sparse_quads[1], sparse_evals
+                    expansion, sparse_quads[0], sparse_quads[1], sparse_evals
                 )
                 return {"y": fitted_sparse, "dist": b_dist}
 
