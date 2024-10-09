@@ -156,14 +156,14 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll = -0.5 * n * np.log(2 * np.pi * self.tolerance**2 * variance)
             ll -= (
                 0.5
-                / variance
+                
                 * np.sum(
-                    np.square(self.weight_mean * residual_vector)
+                    np.square(self.weight_mean * residual_vector)/ variance
                     + np.square(
                         self.weight_std
                         * np.sqrt(np.square(response_vector[1]) + np.square(std_vector))
                         - self.gamma * np.abs(residual_vector)
-                    )
+                    )/ self.tolerance**2
                 )
             )
 
@@ -438,7 +438,7 @@ class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErr
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
             ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= 0.5 * n / population_variance * np.square(mean_residual)
+            ll -= 0.5 * n / population_variance * np.square(mean_residual) # This is making it noise-sensitive
             ll -= 0.5 * n * sample_variance / population_variance
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
