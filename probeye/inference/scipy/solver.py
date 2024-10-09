@@ -156,7 +156,7 @@ class ScipySolver(Solver):
         prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
         exp_inp = forward_model.input_from_experiments[experiment_name]
         inp = {**exp_inp, **prms_model}  # adds the two dictionaries
-
+        inp["experiment_name"] = experiment_name  # add the experiment name to the input
         # evaluate the forward model and translate the result to a single vector
         model_response_dict = forward_model(inp)
         model_response_vector = vectorize_numpy_dict(model_response_dict)
@@ -267,6 +267,7 @@ class ScipySolver(Solver):
             )
             # evaluate the loglike-contribution for the likelihood model
             ll += likelihood_model.loglike(response, residuals, prms_likelihood)
+
         return ll
 
     def get_start_values(
