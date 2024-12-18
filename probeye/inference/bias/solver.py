@@ -200,7 +200,7 @@ class EmbeddedPCESolver(EmceeSolver):
         n_steps: int = 1000,
         n_initial_steps: int = 100,
         true_values: Optional[dict] = None,
-        n_processes: int = Pool()._processes,
+        n_processes: int = 4,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
