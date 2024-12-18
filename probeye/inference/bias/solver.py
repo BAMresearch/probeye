@@ -30,6 +30,7 @@ from multiprocessing import Pool  # pickling problem
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
+logprob = None
 
 
 class EmbeddedMCISolver(EmceeSolver):
