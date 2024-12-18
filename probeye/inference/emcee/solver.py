@@ -25,7 +25,7 @@ from multiprocessing import Pool  # pickling problem
 import os
 
 os.environ["OMP_NUM_THREADS"] = "1"
-logprob =  None
+logprob = None
 
 
 # imports only needed for type hints
