@@ -220,6 +220,7 @@ class EmceeSolver(ScipySolver):
             return logprior + self.loglike(x)
 
         logger.debug("Setting up EnsembleSampler")
+
         sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms_dim,
@@ -251,6 +252,7 @@ class EmceeSolver(ScipySolver):
             initial_state=state, nsteps=n_steps, progress=self.show_progress
         )
         end = time.time()
+
         runtime_str = pretty_time_delta(end - start)
         logger.info(
             f"Sampling of the posterior distribution completed: {n_steps} steps and "
@@ -270,4 +272,5 @@ class EmceeSolver(ScipySolver):
         # translate the results to a common data structure and return it
         var_names = self.problem.get_theta_names(tex=True, components=True)
         inference_data = az.from_emcee(sampler, var_names=var_names)
+
         return inference_data

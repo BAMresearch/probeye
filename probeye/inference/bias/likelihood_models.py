@@ -154,17 +154,14 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         if stds_are_scalar:
             std_vector = np.full_like(residual_vector, np.sqrt(variance))
             ll = -0.5 * n * np.log(2 * np.pi * self.tolerance**2 * variance)
-            ll -= (
-                0.5
-                
-                * np.sum(
-                    np.square(self.weight_mean * residual_vector)/ variance
-                    + np.square(
-                        self.weight_std
-                        * np.sqrt(np.square(response_vector[1]) + np.square(std_vector))
-                        - self.gamma * np.abs(residual_vector)
-                    )/ self.tolerance**2
+            ll -= 0.5 * np.sum(
+                np.square(self.weight_mean * residual_vector) / variance
+                + np.square(
+                    self.weight_std
+                    * np.sqrt(np.square(response_vector[1]) + np.square(std_vector))
+                    - self.gamma * np.abs(residual_vector)
                 )
+                / self.tolerance**2
             )
 
         # Heteroscedastic noise (not implemented)
@@ -363,7 +360,8 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
 
         # Calculate the intermediate statistics
         sigma_model_population = np.sqrt(
-            self.gamma**2 * np.square(residual_vector) 
+            self.gamma**2
+            * np.square(residual_vector)
             # + variance
         )
         sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
@@ -385,6 +383,7 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
         return ll
+
 
 class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
     """
@@ -422,8 +421,8 @@ class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         if np.isnan(response_vector).any():
             return -np.inf
 
-        observations = residual_vector + response_vector[0] # This is the observed data
-    
+        observations = residual_vector + response_vector[0]  # This is the observed data
+
         # Load the standard deviations and noise values
         std_model, std_meas, stds_are_scalar = self.std_values(prms)
         variance = np.power(std_model, 2)
@@ -443,7 +442,7 @@ class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
             ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= 0.5 * n / population_variance * np.square(sample_mean-mean_response)
+            ll -= 0.5 * n / population_variance * np.square(sample_mean - mean_response)
             ll -= 0.5 * n * sample_variance / population_variance
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
@@ -488,8 +487,6 @@ class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErr
         if np.isnan(response_vector).any():
             return -np.inf
 
-         
-
         # Load the standard deviations and noise values
         std_model, std_meas, stds_are_scalar = self.std_values(prms)
         variance = np.power(std_model, 2)
@@ -508,12 +505,15 @@ class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErr
             variance += np.power(std_meas, 2)
         if stds_are_scalar:
             ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= 0.5 * n / population_variance * np.square(mean_residual) # This is making it noise-sensitive
+            ll -= (
+                0.5 * n / population_variance * np.square(mean_residual)
+            )  # This is making it noise-sensitive
             ll -= 0.5 * n * sample_variance / population_variance
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
         return ll
+
 
 class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
     """

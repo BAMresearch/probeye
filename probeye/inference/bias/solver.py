@@ -24,6 +24,10 @@ from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import stream_to_logger
 from probeye.subroutines import print_dict_in_rows
 
+# imports only needed for type hints
+if TYPE_CHECKING:  # pragma: no cover
+    from probeye.definition.inverse_problem import InverseProblem
+
 
 class EmbeddedMCISolver(EmceeSolver):
     """
@@ -264,6 +268,7 @@ class EmbeddedPCESolver(EmceeSolver):
             return logprior + self.loglike(x)
 
         logger.debug("Setting up EnsembleSampler")
+
         self.sampler = emcee.EnsembleSampler(
             nwalkers=n_walkers,
             ndim=self.problem.n_latent_prms_dim,
@@ -314,6 +319,7 @@ class EmbeddedPCESolver(EmceeSolver):
         # translate the results to a common data structure and return it
         self.var_names = self.problem.get_theta_names(tex=True, components=True)
         inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
+
         return inference_data
 
     def restart_run(self, state, n_steps):

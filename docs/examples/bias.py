@@ -95,7 +95,7 @@ class LinearModel(ForwardModelBase):
     def __init__(self, name):
         super().__init__(name)
         self.pce_order = 1
-        
+
     def interface(self):
         self.parameters = ["a", "b"]
         self.input_sensors = Sensor("x")
