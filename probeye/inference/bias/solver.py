@@ -55,11 +55,6 @@ class EmbeddedMCISolver(EmceeSolver):
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
 
-            # translate the likelihood model
-            self.problem.likelihood_models[like_name] = translate_likelihood_model(
-                self.problem.likelihood_models[like_name]
-            )
-
     def evaluate_model_response(
         self,
         theta: np.ndarray,
@@ -133,11 +128,6 @@ class EmbeddedPCESolver(EmceeSolver):
             fwd_model = self.problem.forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
-
-            # translate the likelihood model
-            self.problem.likelihood_models[like_name] = translate_likelihood_model(
-                self.problem.likelihood_models[like_name]
-            )
 
     def evaluate_model_response(
         self,
