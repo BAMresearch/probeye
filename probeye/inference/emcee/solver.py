@@ -158,6 +158,7 @@ class EmceeSolver(ScipySolver):
         n_steps: int = 1000,
         n_initial_steps: int = 100,
         true_values: Optional[dict] = None,
+        parallel: bool = False,
         n_processes: int = 4,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
@@ -231,12 +232,24 @@ class EmceeSolver(ScipySolver):
 
         logger.debug("Setting up EnsembleSampler")
 
-        sampler = emcee.EnsembleSampler(
-            nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=logprob,
-            **kwargs,
-        )
+        if parallel:
+            with Pool(processes=n_processes) as pool:
+                logger.info(f"parallel sampling using multiprocessing with {pool}")
+                sampler = emcee.EnsembleSampler(
+                    nwalkers=n_walkers,
+                    ndim=self.problem.n_latent_prms_dim,
+                    log_prob_fn=logprob,
+                    pool=pool,
+                    **kwargs,
+                )
+        else:
+            logger.info("serial sampling")
+            sampler = emcee.EnsembleSampler(
+                nwalkers=n_walkers,
+                ndim=self.problem.n_latent_prms_dim,
+                log_prob_fn=logprob,
+                **kwargs,
+            )
 
         if self.seed is not None:
             random.seed(self.seed)
