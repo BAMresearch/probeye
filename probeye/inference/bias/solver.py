@@ -204,6 +204,7 @@ class EmbeddedPCESolver(EmceeSolver):
         n_steps: int = 1000,
         n_initial_steps: int = 100,
         true_values: Optional[dict] = None,
+        parallel: bool = False,
         n_processes: int = 4,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
@@ -221,6 +222,10 @@ class EmbeddedPCESolver(EmceeSolver):
             Number of steps for initial (burn-in) sampling.
         true_values
             True parameter values, if known.
+        parallel
+            If True, the sampling is done in parallel using multiprocessing.
+        n_processes
+            Number of processes to use for parallel sampling.
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
@@ -277,12 +282,24 @@ class EmbeddedPCESolver(EmceeSolver):
 
         logger.debug("Setting up EnsembleSampler")
 
-        self.sampler = emcee.EnsembleSampler(
-            nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=logprob,
-            **kwargs,
-        )
+        if parallel:
+            with Pool(processes=n_processes) as pool:
+                logger.info(f"parallel sampling using multiprocessing with {pool}")
+                self.sampler = emcee.EnsembleSampler(
+                    nwalkers=n_walkers,
+                    ndim=self.problem.n_latent_prms_dim,
+                    log_prob_fn=logprob,
+                    pool=pool,
+                    **kwargs,
+                )
+        else:
+            logger.info("serial sampling")
+            self.sampler = emcee.EnsembleSampler(
+                nwalkers=n_walkers,
+                ndim=self.problem.n_latent_prms_dim,
+                log_prob_fn=logprob,
+                **kwargs,
+            )
 
         if self.seed is not None:
             random.seed(self.seed)

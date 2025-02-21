@@ -176,6 +176,10 @@ class EmceeSolver(ScipySolver):
             Number of steps for initial (burn-in) sampling.
         true_values
             True parameter values, if known.
+            parallel
+            If True, the sampling is done in parallel using multiprocessing.
+        n_processes
+            Number of processes to use for parallel sampling.
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
