@@ -10,7 +10,6 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 from probeye.inference.scipy.likelihood_models import (
     ScipyLikelihoodBase,
-    UncorrelatedModelError,
 )
 
 
@@ -54,28 +53,6 @@ class EmbeddedLikelihoodBaseModel(ScipyLikelihoodBase):
         self.gamma = gamma
         self.bias_model = "embedded"
 
-
-class EmbeddedUncorrelatedModelError(UncorrelatedModelError):
-    """
-    This class implements the embedded likelihood model base class.
-
-    Parameters
-    ----------
-    likelihood_model_base
-        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
-        likelihood model but no computing-methods.
-
-    Attributes
-    ----------
-    bias_model
-        The bias model used in this class. This is set to "embedded". Works as a flag to
-        distinguish between the different bias models.
-    """
-
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.bias_model = "embedded"
-
     def loglike(
         self,
         response_vector: np.ndarray,
@@ -89,7 +66,8 @@ class EmbeddedUncorrelatedModelError(UncorrelatedModelError):
         raise NotImplementedError
 
 
-class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
+
+class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the moment matching (ABC) likelihood model from Sargsyan.
 
@@ -109,11 +87,13 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.tolerance = likelihood_model_base.tolerance
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "moment_matching"
+    def __init__(self, tolerance: float, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model = "moment_matching",
+            tolerance = tolerance,
+            gamma = gamma,
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -166,8 +146,8 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
 
         # Heteroscedastic noise (not implemented)
         else:
-            ll = -0.5 * (n * np.log(2 * np.pi) + np.sum(np.log(variance)))
-            ll -= 0.5 * np.sum(np.square(residual_vector) / variance)
+            raise NotImplementedError("Heteroscedastic noise not implemented")
+
 
         # Store the mean and std of the moment residuals if requested
         if hasattr(self, "moment_residuals"):
@@ -181,7 +161,7 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         return ll
 
 
-class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+class GlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the global moment matching likelihood model.
 
@@ -199,10 +179,12 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "global_moment_matching"
+    def __init__(self, float, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model = "global_moment_matching",
+            gamma = gamma,
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -244,10 +226,13 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        else:
+            raise NotImplementedError("Heteroscedastic noise not implemented")
+        
         return ll
 
 
-class RelativeScaledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+class RelativeScaledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the relative global moment matching likelihood model.
 
@@ -265,10 +250,12 @@ class RelativeScaledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErro
         The likelihood model used in this class. This is set to "relative_scaled_global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "relative_scaled_global_moment_matching"
+    def __init__(self, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model = "relative_scaled_global_moment_matching",
+            gamma = gamma,
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -314,9 +301,11 @@ class RelativeScaledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErro
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        else:
+            raise NotImplementedError("Heteroscedastic noise not implemented")
         return ll
     
-class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the relative error global moment matching likelihood model.
 
@@ -334,10 +323,12 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "relative_global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "relative_global_moment_matching"
+    def __init__(self, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model = "relative_global_moment_matching",
+            gamma = gamma,
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -382,10 +373,13 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        else:
+            raise NotImplementedError("Heteroscedastic noise not implemented")
+        
         return ll
 
 
-class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+class SampledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the global moment matching likelihood model.
 
@@ -403,10 +397,12 @@ class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "sampled_global_moment_matching"
+    def __init__(self, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model = "sampled_global_moment_matching",
+            gamma = gamma,
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -447,10 +443,13 @@ class SampledGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        else:
+            raise NotImplementedError("Heteroscedastic noise not implemented")
+        
         return ll
 
 
-class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+class SampledRelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the relative global moment matching likelihood model.
 
@@ -468,10 +467,12 @@ class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErr
         The likelihood model used in this class. This is set to "relative_global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "sampled_relative_global_moment_matching"
+    def __init__(self, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model = "relative_sampled_global_moment_matching",
+            gamma = gamma,
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -512,10 +513,13 @@ class SampledRelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelErr
             ll -= (n - 1) / 2 * np.log(2)
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        else:
+            raise NotImplementedError("Heteroscedastic noise not implemented")
+        
         return ll
 
 
-class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
+class IndependentNormalModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the independent normal likelihood model.
 
@@ -531,9 +535,11 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "independent_normal".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.l_model = "independent_normal"
+    def __init__(self, experiment_name: str):
+        super().__init__(
+            l_model = "independent_normal",
+            experiment_name = experiment_name,
+        )
 
     def loglike(
         self,
@@ -562,12 +568,15 @@ class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
                 np.square(np.divide(residual_vector, sigma_model_sample))
                 + np.log(2 * np.pi * np.square(sigma_model_sample))
             )
+        else:
+            raise NotImplementedError("Heteroscedastic noise not implemented")
+        
         return ll
 
 
 def translate_likelihood_model(
     lm_def: EmbeddedLikelihoodBaseModel,
-) -> EmbeddedUncorrelatedModelError:
+) -> EmbeddedLikelihoodBaseModel:
     """
     Translates a given instance of EmbeddedLikelihoodBaseModel (which is essentially just a
     description of the likelihood model without any computing-methods) to a specific
