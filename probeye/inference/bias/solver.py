@@ -24,9 +24,16 @@ from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import stream_to_logger
 from probeye.subroutines import print_dict_in_rows
 
-# imports only needed for type hints
+from multiprocessing import Pool  # pickling problem
+
+# from multiprocessing.pool import ThreadPool as Pool # no pickling needed but no time effect
+import os
+
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inverse_problem import InverseProblem
+
+os.environ["OMP_NUM_THREADS"] = "1"
+logprob = None
 
 
 class EmbeddedMCISolver(EmceeSolver):
@@ -197,6 +204,7 @@ class EmbeddedPCESolver(EmceeSolver):
         n_steps: int = 1000,
         n_initial_steps: int = 100,
         true_values: Optional[dict] = None,
+        n_processes: int = 4,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
