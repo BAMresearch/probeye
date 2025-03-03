@@ -19,6 +19,15 @@ from probeye.subroutines import stream_to_logger
 from probeye.subroutines import print_dict_in_rows
 from probeye.subroutines import extract_true_values
 
+from multiprocessing import Pool  # pickling problem
+
+# from multiprocessing.pool import ThreadPool as Pool # no pickling needed but no time effect
+import os
+
+os.environ["OMP_NUM_THREADS"] = "1"
+logprob = None
+
+
 # imports only needed for type hints
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inverse_problem import InverseProblem
@@ -149,6 +158,8 @@ class EmceeSolver(ScipySolver):
         n_steps: int = 1000,
         n_initial_steps: int = 100,
         true_values: Optional[dict] = None,
+        parallel: bool = False,
+        n_processes: int = 4,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
@@ -165,6 +176,10 @@ class EmceeSolver(ScipySolver):
             Number of steps for initial (burn-in) sampling.
         true_values
             True parameter values, if known.
+            parallel
+            If True, the sampling is done in parallel using multiprocessing.
+        n_processes
+            Number of processes to use for parallel sampling.
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
@@ -221,12 +236,24 @@ class EmceeSolver(ScipySolver):
 
         logger.debug("Setting up EnsembleSampler")
 
-        sampler = emcee.EnsembleSampler(
-            nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=logprob,
-            **kwargs,
-        )
+        if parallel:
+            with Pool(processes=n_processes) as pool:
+                logger.info(f"parallel sampling using multiprocessing with {pool}")
+                sampler = emcee.EnsembleSampler(
+                    nwalkers=n_walkers,
+                    ndim=self.problem.n_latent_prms_dim,
+                    log_prob_fn=logprob,
+                    pool=pool,
+                    **kwargs,
+                )
+        else:
+            logger.info("serial sampling")
+            sampler = emcee.EnsembleSampler(
+                nwalkers=n_walkers,
+                ndim=self.problem.n_latent_prms_dim,
+                log_prob_fn=logprob,
+                **kwargs,
+            )
 
         if self.seed is not None:
             random.seed(self.seed)

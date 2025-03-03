@@ -14,7 +14,6 @@ import chaospy  # FIXME: This should not be always imported
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.inference.emcee.solver import EmceeSolver
-from probeye.inference.bias.likelihood_models import translate_likelihood_model
 from probeye.subroutines import (
     vectorize_nd_numpy_dict,
     vectorize_numpy_dict,
@@ -24,9 +23,16 @@ from probeye.subroutines import pretty_time_delta
 from probeye.subroutines import stream_to_logger
 from probeye.subroutines import print_dict_in_rows
 
-# imports only needed for type hints
+from multiprocessing import Pool  # pickling problem
+
+# from multiprocessing.pool import ThreadPool as Pool # no pickling needed but no time effect
+import os
+
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inverse_problem import InverseProblem
+
+os.environ["OMP_NUM_THREADS"] = "1"
+logprob = None
 
 
 class EmbeddedMCISolver(EmceeSolver):
@@ -44,14 +50,9 @@ class EmbeddedMCISolver(EmceeSolver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
-
-            # translate the likelihood model
-            self.problem.likelihood_models[like_name] = translate_likelihood_model(
-                self.problem.likelihood_models[like_name]
-            )
 
     def evaluate_model_response(
         self,
@@ -123,14 +124,9 @@ class EmbeddedPCESolver(EmceeSolver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
-
-            # translate the likelihood model
-            self.problem.likelihood_models[like_name] = translate_likelihood_model(
-                self.problem.likelihood_models[like_name]
-            )
 
     def evaluate_model_response(
         self,
@@ -180,7 +176,7 @@ class EmbeddedPCESolver(EmceeSolver):
 
         # compute the residuals by comparing to the experimental response
         exp_response_dict = forward_model.output_from_experiments[experiment_name]
-        # Reorder exmperiment response dict to match model response dict
+        # Reorder experiment response dict to match model response dict
         if not list(model_response_dict.keys()) == list(exp_response_dict.keys()):
             exp_response_dict = {
                 key: exp_response_dict[key] for key in model_response_dict.keys()
@@ -197,6 +193,8 @@ class EmbeddedPCESolver(EmceeSolver):
         n_steps: int = 1000,
         n_initial_steps: int = 100,
         true_values: Optional[dict] = None,
+        parallel: bool = False,
+        n_processes: int = 4,
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
@@ -213,6 +211,10 @@ class EmbeddedPCESolver(EmceeSolver):
             Number of steps for initial (burn-in) sampling.
         true_values
             True parameter values, if known.
+        parallel
+            If True, the sampling is done in parallel using multiprocessing.
+        n_processes
+            Number of processes to use for parallel sampling.
         kwargs
             Additional key-word arguments channeled to emcee.EnsembleSampler.
 
@@ -269,12 +271,24 @@ class EmbeddedPCESolver(EmceeSolver):
 
         logger.debug("Setting up EnsembleSampler")
 
-        self.sampler = emcee.EnsembleSampler(
-            nwalkers=n_walkers,
-            ndim=self.problem.n_latent_prms_dim,
-            log_prob_fn=logprob,
-            **kwargs,
-        )
+        if parallel:
+            with Pool(processes=n_processes) as pool:
+                logger.info(f"parallel sampling using multiprocessing with {pool}")
+                self.sampler = emcee.EnsembleSampler(
+                    nwalkers=n_walkers,
+                    ndim=self.problem.n_latent_prms_dim,
+                    log_prob_fn=logprob,
+                    pool=pool,
+                    **kwargs,
+                )
+        else:
+            logger.info("serial sampling")
+            self.sampler = emcee.EnsembleSampler(
+                nwalkers=n_walkers,
+                ndim=self.problem.n_latent_prms_dim,
+                log_prob_fn=logprob,
+                **kwargs,
+            )
 
         if self.seed is not None:
             random.seed(self.seed)
