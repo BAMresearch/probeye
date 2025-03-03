@@ -1,6 +1,3 @@
-# standard library
-from typing import Union, Tuple
-
 # third party imports
 import numpy as np
 import math
@@ -66,7 +63,6 @@ class EmbeddedLikelihoodBaseModel(ScipyLikelihoodBase):
         raise NotImplementedError
 
 
-
 class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the moment matching (ABC) likelihood model from Sargsyan.
@@ -89,10 +85,10 @@ class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
 
     def __init__(self, tolerance: float, gamma: float, experiment_name: str):
         super().__init__(
-            l_model = "moment_matching",
-            tolerance = tolerance,
-            gamma = gamma,
-            experiment_name = experiment_name,
+            l_model="moment_matching",
+            tolerance=tolerance,
+            gamma=gamma,
+            experiment_name=experiment_name,
         )
 
     def loglike(
@@ -148,7 +144,6 @@ class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
         else:
             raise NotImplementedError("Heteroscedastic noise not implemented")
 
-
         # Store the mean and std of the moment residuals if requested
         if hasattr(self, "moment_residuals"):
             self.moment_residuals["mean"].append(np.sum(residual_vector))
@@ -179,11 +174,11 @@ class GlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
         The likelihood model used in this class. This is set to "global_moment_matching".
     """
 
-    def __init__(self, float, gamma: float, experiment_name: str):
+    def __init__(self, gamma: float, experiment_name: str):
         super().__init__(
-            l_model = "global_moment_matching",
-            gamma = gamma,
-            experiment_name = experiment_name,
+            l_model="global_moment_matching",
+            gamma=gamma,
+            experiment_name=experiment_name,
         )
 
     def loglike(
@@ -228,7 +223,7 @@ class GlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
         else:
             raise NotImplementedError("Heteroscedastic noise not implemented")
-        
+
         return ll
 
 
@@ -252,9 +247,9 @@ class RelativeScaledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
 
     def __init__(self, gamma: float, experiment_name: str):
         super().__init__(
-            l_model = "relative_scaled_global_moment_matching",
-            gamma = gamma,
-            experiment_name = experiment_name,
+            l_model="relative_scaled_global_moment_matching",
+            gamma=gamma,
+            experiment_name=experiment_name,
         )
 
     def loglike(
@@ -270,7 +265,7 @@ class RelativeScaledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
 
         if np.isnan(response_vector).any():
             return -np.inf
-        
+
         data = response_vector[0] + residual_vector
 
         # Load the standard deviations and noise values
@@ -280,15 +275,16 @@ class RelativeScaledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
 
         # Calculate the intermediate statistics
         sigma_model_population = np.sqrt(
-            self.gamma**2 * np.square(residual_vector) 
+            self.gamma**2
+            * np.square(residual_vector)
             # + variance
         )
         sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
-        population_variance = (
-            np.var(np.divide(data, sigma_model_population)) + 1
-        )
+        population_variance = np.var(np.divide(data, sigma_model_population)) + 1
         sample_variance = np.var(np.divide(response_vector[0], sigma_model_sample)) + 1
-        mean_residual = np.mean(np.divide(data, sigma_model_population))-np.mean(np.divide(response_vector[0], sigma_model_sample))
+        mean_residual = np.mean(np.divide(data, sigma_model_population)) - np.mean(
+            np.divide(response_vector[0], sigma_model_sample)
+        )
 
         # Calculate the log-likelihood
         ll = 0.0
@@ -304,7 +300,8 @@ class RelativeScaledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
         else:
             raise NotImplementedError("Heteroscedastic noise not implemented")
         return ll
-    
+
+
 class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the relative error global moment matching likelihood model.
@@ -325,9 +322,9 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
 
     def __init__(self, gamma: float, experiment_name: str):
         super().__init__(
-            l_model = "relative_global_moment_matching",
-            gamma = gamma,
-            experiment_name = experiment_name,
+            l_model="relative_global_moment_matching",
+            gamma=gamma,
+            experiment_name=experiment_name,
         )
 
     def loglike(
@@ -375,147 +372,7 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
         else:
             raise NotImplementedError("Heteroscedastic noise not implemented")
-        
-        return ll
 
-
-class SampledGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
-    """
-    This class implements the global moment matching likelihood model.
-
-    Parameters
-    ----------
-    likelihood_model_base
-        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
-        likelihood model but no computing-methods.
-
-    Attributes
-    ----------
-    gamma
-        The gamma value used in the moment matching likelihood model.
-    l_model
-        The likelihood model used in this class. This is set to "global_moment_matching".
-    """
-
-    def __init__(self, gamma: float, experiment_name: str):
-        super().__init__(
-            l_model = "sampled_global_moment_matching",
-            gamma = gamma,
-            experiment_name = experiment_name,
-        )
-
-    def loglike(
-        self,
-        response_vector: np.ndarray,
-        residual_vector: np.ndarray,
-        prms: dict,
-    ) -> float:
-        """
-        Computes the log-likelihood of this model. For more information, check out the
-        doc-string of the parent class (SolverLikelihoodBase).
-        """
-        if np.isnan(response_vector).any():
-            return -np.inf
-
-        observations = residual_vector + response_vector[0]  # This is the observed data
-
-        # Load the standard deviations and noise values
-        std_model, std_meas, stds_are_scalar = self.std_values(prms)
-        variance = np.power(std_model, 2)
-        n = len(residual_vector)
-
-        # Calculate the intermediate statistics
-        mean_response = np.mean(response_vector[0])
-        variance_response = np.var(response_vector[0])
-        mean_var = np.mean(np.square(response_vector[1]))
-        population_variance = mean_var + variance_response + variance
-        sample_variance = np.var(observations)
-        sample_mean = np.mean(observations)
-
-        # Calculate the log-likelihood
-        ll = 0.0
-        if std_meas is not None:
-            variance += np.power(std_meas, 2)
-        if stds_are_scalar:
-            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= 0.5 * n / population_variance * np.square(sample_mean - mean_response)
-            ll -= 0.5 * n * sample_variance / population_variance
-            ll -= (n - 1) / 2 * np.log(2)
-            ll -= math.lgamma((n - 1) / 2)
-            ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
-        else:
-            raise NotImplementedError("Heteroscedastic noise not implemented")
-        
-        return ll
-
-
-class SampledRelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
-    """
-    This class implements the relative global moment matching likelihood model.
-
-    Parameters
-    ----------
-    likelihood_model_base
-        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
-        likelihood model but no computing-methods.
-
-    Attributes
-    ----------
-    gamma
-        The gamma value used in the moment matching likelihood model.
-    l_model
-        The likelihood model used in this class. This is set to "relative_global_moment_matching".
-    """
-
-    def __init__(self, gamma: float, experiment_name: str):
-        super().__init__(
-            l_model = "relative_sampled_global_moment_matching",
-            gamma = gamma,
-            experiment_name = experiment_name,
-        )
-
-    def loglike(
-        self,
-        response_vector: np.ndarray,
-        residual_vector: np.ndarray,
-        prms: dict,
-    ) -> float:
-        """
-        Computes the log-likelihood of this model. For more information, check out the
-        doc-string of the parent class (SolverLikelihoodBase).
-        """
-
-        if np.isnan(response_vector).any():
-            return -np.inf
-
-        # Load the standard deviations and noise values
-        std_model, std_meas, stds_are_scalar = self.std_values(prms)
-        variance = np.power(std_model, 2)
-        n = len(residual_vector)
-
-        # Calculate the intermediate statistics
-        sigma_model_population = np.sqrt(np.square(response_vector[1]) + variance)
-        relative_errors = residual_vector / sigma_model_population
-        population_variance = 1.0
-        sample_variance = np.var(relative_errors)
-        mean_residual = np.mean(relative_errors)
-
-        # Calculate the log-likelihood
-        ll = 0.0
-        if std_meas is not None:
-            variance += np.power(std_meas, 2)
-        if stds_are_scalar:
-            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= (
-                0.5 * n / population_variance * np.square(mean_residual)
-            )  # This is making it noise-sensitive
-            ll -= 0.5 * n * sample_variance / population_variance
-            ll -= (n - 1) / 2 * np.log(2)
-            ll -= math.lgamma((n - 1) / 2)
-            ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
-        else:
-            raise NotImplementedError("Heteroscedastic noise not implemented")
-        
         return ll
 
 
@@ -537,8 +394,8 @@ class IndependentNormalModelError(EmbeddedLikelihoodBaseModel):
 
     def __init__(self, experiment_name: str):
         super().__init__(
-            l_model = "independent_normal",
-            experiment_name = experiment_name,
+            l_model="independent_normal",
+            experiment_name=experiment_name,
         )
 
     def loglike(
@@ -570,50 +427,5 @@ class IndependentNormalModelError(EmbeddedLikelihoodBaseModel):
             )
         else:
             raise NotImplementedError("Heteroscedastic noise not implemented")
-        
+
         return ll
-
-
-def translate_likelihood_model(
-    lm_def: EmbeddedLikelihoodBaseModel,
-) -> EmbeddedLikelihoodBaseModel:
-    """
-    Translates a given instance of EmbeddedLikelihoodBaseModel (which is essentially just a
-    description of the likelihood model without any computing-methods) to a specific
-    likelihood model object which does contain SciPy-based computing-methods.
-
-    Parameters
-    ----------
-    lm_def
-        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
-        likelihood model but no computing-methods.
-    Returns
-    -------
-    likelihood_computer
-        An instance of a specific likelihood model class with computing capabilities.
-        Examples for such classes are given above in this file.
-    """
-
-    # likelihood model selection based on the flags given in the likelihood definition
-    if not lm_def.considers_correlation:
-        l_class = f"Embedded_{lm_def.l_model}_Uncorrelated"
-    else:
-        raise NotImplementedError
-
-    # this dict allows to map an assigned string from the if-cases above to a specific
-    # likelihood model defined in this file; the class is not assigned directly to the
-    # variable l_class from the if-clauses above to avoid that l_class can have multiple
-    # different types (which leads to issues during type-checking)
-    class_dict = {
-        "Embedded_moment_matching_Uncorrelated": MomentMatchingModelError,
-        "Embedded_global_moment_matching_Uncorrelated": GlobalMomentMatchingModelError,
-        "Embedded_relative_global_moment_matching_Uncorrelated": RelativeGlobalMomentMatchingModelError,
-        "Embedded_independent_normal_Uncorrelated": IndependentNormalModelError,
-        "Embedded_sampled_global_moment_matching_Uncorrelated": SampledGlobalMomentMatchingModelError,
-        "Embedded_sampled_relative_global_moment_matching_Uncorrelated": SampledRelativeGlobalMomentMatchingModelError,
-    }
-
-    # this is where the translation happens
-    likelihood_computer = class_dict[l_class](lm_def)
-
-    return likelihood_computer

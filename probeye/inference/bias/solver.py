@@ -14,7 +14,6 @@ import chaospy  # FIXME: This should not be always imported
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.inference.emcee.solver import EmceeSolver
-from probeye.inference.bias.likelihood_models import translate_likelihood_model
 from probeye.subroutines import (
     vectorize_nd_numpy_dict,
     vectorize_numpy_dict,
@@ -51,7 +50,7 @@ class EmbeddedMCISolver(EmceeSolver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
 
@@ -125,7 +124,7 @@ class EmbeddedPCESolver(EmceeSolver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
 

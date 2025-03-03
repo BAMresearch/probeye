@@ -125,7 +125,7 @@ class TestProblem(unittest.TestCase):
         # perform a check for all experiments
         a0_value, a1_value, a2_value = 1, 2, 3
         theta = np.array([a0_value, a1_value, a2_value])
-        fwd_model = scipy_solver.problem.forward_models["FwdModel"]
+        fwd_model = scipy_solver.problem.internal_forward_models["FwdModel"]
 
         comp_result, _ = scipy_solver.evaluate_model_response(theta, fwd_model, "Exp1")
         self.assertEqual(comp_result, np.array(6.0))

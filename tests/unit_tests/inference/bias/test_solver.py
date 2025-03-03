@@ -79,10 +79,7 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
 
         # add the likelihood model
-        dummy_lmodel = EmbeddedLikelihoodBaseModel(
-            experiment_name="Tests", l_model="independent_normal"
-        )
-        likelihood_model = IndependentNormalModelError(dummy_lmodel)
+        likelihood_model = IndependentNormalModelError(experiment_name="Tests")
         problem.add_likelihood_model(likelihood_model)
 
         # run the emcee solver with different seeds (the 'vectorize=False' does not do
