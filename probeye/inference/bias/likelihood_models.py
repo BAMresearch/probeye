@@ -354,9 +354,9 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
         )
         sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
         population_variance = (
-            np.var(np.divide(residual_vector, sigma_model_population)) + 1
+            np.var(np.divide(residual_vector, sigma_model_population)) + np.mean(1 - np.divide(variance, np.square(sigma_model_population)+variance))
         )
-        sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + 1
+        sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + np.mean(1 - np.divide(variance, np.square(sigma_model_sample)+variance))
         mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
 
         # Calculate the log-likelihood
