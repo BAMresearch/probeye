@@ -224,6 +224,8 @@ class EmceeSolver(ScipySolver):
         #                                 Pre-process                                  #
         # ............................................................................ #
 
+        global logprob
+
         def logprob(x):
             # Skip loglikelihood evaluation if logprior is equal
             # to negative infinity
