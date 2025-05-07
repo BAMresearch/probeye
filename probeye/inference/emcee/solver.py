@@ -1,28 +1,31 @@
 # standard library imports
-from typing import TYPE_CHECKING, Optional
-import time
-import random
 import contextlib
-
-# third party imports
-import numpy as np
-import emcee
-import arviz as az
-from loguru import logger
-from tabulate import tabulate
-
-# local imports
-from probeye.subroutines import pretty_time_delta
-from probeye.subroutines import check_for_uninformative_priors
-from probeye.inference.scipy.solver import ScipySolver
-from probeye.subroutines import stream_to_logger
-from probeye.subroutines import print_dict_in_rows
-from probeye.subroutines import extract_true_values
-
-from multiprocessing import Pool  # pickling problem
 
 # from multiprocessing.pool import ThreadPool as Pool # no pickling needed but no time effect
 import os
+import random
+import time
+from multiprocessing import Pool  # pickling problem
+from typing import TYPE_CHECKING, Optional
+
+import arviz as az
+import emcee
+
+# third party imports
+import numpy as np
+from loguru import logger
+from tabulate import tabulate
+
+from probeye.inference.scipy.solver import ScipySolver
+
+# local imports
+from probeye.subroutines import (
+    check_for_uninformative_priors,
+    extract_true_values,
+    pretty_time_delta,
+    print_dict_in_rows,
+    stream_to_logger,
+)
 
 os.environ["OMP_NUM_THREADS"] = "1"
 logprob = None

@@ -152,6 +152,8 @@ def create_pair_plot(
             kwargs["reference_values"] = reference_values
             if "reference_values_kwargs" not in kwargs:
                 kwargs["reference_values_kwargs"] = {"marker": "o", "color": "red"}
+        
+        
 
         # call the main plotting routine from arviz
         axs = az.plot_pair(

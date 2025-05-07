@@ -284,6 +284,8 @@ class EmbeddedPCESolver(EmceeSolver):
                 ndim=self.problem.n_latent_prms_dim,
                 log_prob_fn=logprob,
                 pool=pool,
+                # moves=[(emcee.moves.StretchMove(), 0.1),(emcee.moves.DESnookerMove(),0.9)],
+                moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)],
                 **kwargs,
             )
 
