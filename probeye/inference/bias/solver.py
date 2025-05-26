@@ -14,7 +14,6 @@ import chaospy  # FIXME: This should not be always imported
 # local imports
 from probeye.definition.forward_model import ForwardModelBase
 from probeye.inference.emcee.solver import EmceeSolver
-from probeye.inference.bias.likelihood_models import translate_likelihood_model
 from probeye.subroutines import (
     vectorize_nd_numpy_dict,
     vectorize_numpy_dict,
@@ -51,14 +50,9 @@ class EmbeddedMCISolver(EmceeSolver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
-
-            # translate the likelihood model
-            self.problem.likelihood_models[like_name] = translate_likelihood_model(
-                self.problem.likelihood_models[like_name]
-            )
 
     def evaluate_model_response(
         self,
@@ -130,14 +124,9 @@ class EmbeddedPCESolver(EmceeSolver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
-
-            # translate the likelihood model
-            self.problem.likelihood_models[like_name] = translate_likelihood_model(
-                self.problem.likelihood_models[like_name]
-            )
 
     def evaluate_model_response(
         self,
@@ -187,7 +176,7 @@ class EmbeddedPCESolver(EmceeSolver):
 
         # compute the residuals by comparing to the experimental response
         exp_response_dict = forward_model.output_from_experiments[experiment_name]
-        # Reorder exmperiment response dict to match model response dict
+        # Reorder experiment response dict to match model response dict
         if not list(model_response_dict.keys()) == list(exp_response_dict.keys()):
             exp_response_dict = {
                 key: exp_response_dict[key] for key in model_response_dict.keys()
@@ -270,6 +259,8 @@ class EmbeddedPCESolver(EmceeSolver):
         #                                 Pre-process                                  #
         # ............................................................................ #
 
+        global logprob
+        
         def logprob(x):
             # Skip loglikelihood evaluation if logprior is equal
             # to negative infinity
@@ -292,6 +283,50 @@ class EmbeddedPCESolver(EmceeSolver):
                     pool=pool,
                     **kwargs,
                 )
+
+                if self.seed is not None:
+                    random.seed(self.seed)
+                    self.sampler.random_state = np.random.mtrand.RandomState(self.seed)
+
+                # ............................................................................ #
+                #        Initial sampling, burn-in: used to avoid a poor starting point        #
+                # ............................................................................ #
+
+                logger.debug("Starting sampling (initial + main)")
+                start = time.time()
+                state = self.sampler.run_mcmc(
+                    initial_state=sampling_initial_positions,
+                    nsteps=n_initial_steps,
+                    progress=self.show_progress,
+                )
+                self.sampler.reset()
+
+                # ............................................................................ #
+                #                          Sampling of the posterior                           #
+                # ............................................................................ #
+                self.sampler.run_mcmc(
+                    initial_state=state, nsteps=n_steps, progress=self.show_progress
+                )
+                end = time.time()
+                runtime_str = pretty_time_delta(end - start)
+                logger.info(
+                    f"Sampling of the posterior distribution completed: {n_steps} steps and "
+                    f"{n_walkers} walkers."
+                )
+                logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
+                logger.info("")
+                logger.info("Summary of sampling results (emcee)")
+                posterior_samples = self.sampler.get_chain(flat=True)
+                with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+                    self.summary = self.emcee_summary(
+                        posterior_samples, true_values=true_values
+                    )
+                logger.info("")  # empty line for visual buffer
+                self.raw_results = self.sampler
+
+                # translate the results to a common data structure and return it
+                self.var_names = self.problem.get_theta_names(tex=True, components=True)
+                inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
         else:
             logger.info("serial sampling")
             self.sampler = emcee.EnsembleSampler(
@@ -301,49 +336,49 @@ class EmbeddedPCESolver(EmceeSolver):
                 **kwargs,
             )
 
-        if self.seed is not None:
-            random.seed(self.seed)
-            self.sampler.random_state = np.random.mtrand.RandomState(self.seed)
+            if self.seed is not None:
+                random.seed(self.seed)
+                self.sampler.random_state = np.random.mtrand.RandomState(self.seed)
 
-        # ............................................................................ #
-        #        Initial sampling, burn-in: used to avoid a poor starting point        #
-        # ............................................................................ #
+            # ............................................................................ #
+            #        Initial sampling, burn-in: used to avoid a poor starting point        #
+            # ............................................................................ #
 
-        logger.debug("Starting sampling (initial + main)")
-        start = time.time()
-        state = self.sampler.run_mcmc(
-            initial_state=sampling_initial_positions,
-            nsteps=n_initial_steps,
-            progress=self.show_progress,
-        )
-        self.sampler.reset()
-
-        # ............................................................................ #
-        #                          Sampling of the posterior                           #
-        # ............................................................................ #
-        self.sampler.run_mcmc(
-            initial_state=state, nsteps=n_steps, progress=self.show_progress
-        )
-        end = time.time()
-        runtime_str = pretty_time_delta(end - start)
-        logger.info(
-            f"Sampling of the posterior distribution completed: {n_steps} steps and "
-            f"{n_walkers} walkers."
-        )
-        logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
-        logger.info("")
-        logger.info("Summary of sampling results (emcee)")
-        posterior_samples = self.sampler.get_chain(flat=True)
-        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-            self.summary = self.emcee_summary(
-                posterior_samples, true_values=true_values
+            logger.debug("Starting sampling (initial + main)")
+            start = time.time()
+            state = self.sampler.run_mcmc(
+                initial_state=sampling_initial_positions,
+                nsteps=n_initial_steps,
+                progress=self.show_progress,
             )
-        logger.info("")  # empty line for visual buffer
-        self.raw_results = self.sampler
+            self.sampler.reset()
 
-        # translate the results to a common data structure and return it
-        self.var_names = self.problem.get_theta_names(tex=True, components=True)
-        inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
+            # ............................................................................ #
+            #                          Sampling of the posterior                           #
+            # ............................................................................ #
+            self.sampler.run_mcmc(
+                initial_state=state, nsteps=n_steps, progress=self.show_progress
+            )
+            end = time.time()
+            runtime_str = pretty_time_delta(end - start)
+            logger.info(
+                f"Sampling of the posterior distribution completed: {n_steps} steps and "
+                f"{n_walkers} walkers."
+            )
+            logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
+            logger.info("")
+            logger.info("Summary of sampling results (emcee)")
+            posterior_samples = self.sampler.get_chain(flat=True)
+            with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+                self.summary = self.emcee_summary(
+                    posterior_samples, true_values=true_values
+                )
+            logger.info("")  # empty line for visual buffer
+            self.raw_results = self.sampler
+
+            # translate the results to a common data structure and return it
+            self.var_names = self.problem.get_theta_names(tex=True, components=True)
+            inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
 
         return inference_data
 

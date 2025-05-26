@@ -8,7 +8,6 @@ from probeye.definition.likelihood_model import GaussianLikelihoodModel
 
 from probeye.inference.scipy.likelihood_models import (
     ScipyLikelihoodBase,
-    UncorrelatedModelError,
 )
 
 
@@ -52,28 +51,6 @@ class EmbeddedLikelihoodBaseModel(ScipyLikelihoodBase):
         self.gamma = gamma
         self.bias_model = "embedded"
 
-
-class EmbeddedUncorrelatedModelError(UncorrelatedModelError):
-    """
-    This class implements the embedded likelihood model base class.
-
-    Parameters
-    ----------
-    likelihood_model_base
-        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
-        likelihood model but no computing-methods.
-
-    Attributes
-    ----------
-    bias_model
-        The bias model used in this class. This is set to "embedded". Works as a flag to
-        distinguish between the different bias models.
-    """
-
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.bias_model = "embedded"
-
     def loglike(
         self,
         response_vector: np.ndarray,
@@ -87,7 +64,7 @@ class EmbeddedUncorrelatedModelError(UncorrelatedModelError):
         raise NotImplementedError
 
 
-class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
+class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the moment matching (ABC) likelihood model from Sargsyan.
 
@@ -107,11 +84,13 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.tolerance = likelihood_model_base.tolerance
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "moment_matching"
+    def __init__(self, tolerance: float, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model="moment_matching",
+            tolerance=tolerance,
+            gamma=gamma,
+            experiment_name=experiment_name,
+        )
 
     def loglike(
         self,
@@ -246,10 +225,12 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "global_moment_matching"
+    def __init__(self, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model="global_moment_matching",
+            gamma=gamma,
+            experiment_name=experiment_name,
+        )
 
     def loglike(
         self,
@@ -287,8 +268,9 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         ll -= 0.5 * n_y * variance_samples_u / variance_population_f
         ll += ((n_y - 1) / 2 - 1) * np.log(n_y * variance_samples_u / variance_population_f)
         return ll
-    
-class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
+
+
+class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the relative error global moment matching likelihood model.
 
@@ -306,10 +288,12 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         The likelihood model used in this class. This is set to "relative_global_moment_matching".
     """
 
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.gamma = likelihood_model_base.gamma
-        self.l_model = "relative_global_moment_matching"
+    def __init__(self, gamma: float, experiment_name: str):
+        super().__init__(
+            l_model="relative_global_moment_matching",
+            gamma=gamma,
+            experiment_name=experiment_name,
+        )
 
     def loglike(
         self,

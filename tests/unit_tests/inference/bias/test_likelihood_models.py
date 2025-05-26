@@ -83,10 +83,7 @@ class TestProblem(unittest.TestCase):
         problem.add_forward_model(LinRe("LinRe"), experiments="Tests")
 
         # add the likelihood model
-        dummy_lmodel = EmbeddedLikelihoodBaseModel(
-            experiment_name="Tests", l_model="independent_normal"
-        )
-        likelihood_model = IndependentNormalModelError(dummy_lmodel)
+        likelihood_model = IndependentNormalModelError(experiment_name="Tests")
         problem.add_likelihood_model(likelihood_model)
 
         # run the emcee solver with different seeds (the 'vectorize=False' does not do
@@ -102,9 +99,9 @@ class TestProblem(unittest.TestCase):
         )
 
         problem.likelihood_models.pop("Tests")
-        dummy_lmodel.gamma = 1.0
-        dummy_lmodel.l_model = "global_moment_matching"
-        likelihood_model = GlobalMomentMatchingModelError(dummy_lmodel)
+        likelihood_model = GlobalMomentMatchingModelError(
+            experiment_name="Tests", gamma=1.0
+        )
         problem.add_likelihood_model(likelihood_model)
         gmm_solver = EmbeddedPCESolver(problem, seed=42)
         inference_data_gmm = gmm_solver.run(
@@ -115,8 +112,9 @@ class TestProblem(unittest.TestCase):
         )
 
         problem.likelihood_models.pop("Tests")
-        dummy_lmodel.l_model = "relative_global_moment_matching"
-        likelihood_model = RelativeGlobalMomentMatchingModelError(dummy_lmodel)
+        likelihood_model = RelativeGlobalMomentMatchingModelError(
+            experiment_name="Tests", gamma=1.0
+        )
         problem.add_likelihood_model(likelihood_model)
         rgmm_solver = EmbeddedPCESolver(problem, seed=42)
         inference_data_rgmm = rgmm_solver.run(
@@ -126,10 +124,9 @@ class TestProblem(unittest.TestCase):
             vectorize=False,
         )
         problem.likelihood_models.pop("Tests")
-        dummy_lmodel.tolerance = 1e-6
-        dummy_lmodel.gamma = np.sqrt(math.pi / 2)
-        dummy_lmodel.l_model = "moment_matching"
-        likelihood_model = MomentMatchingModelError(dummy_lmodel)
+        likelihood_model = MomentMatchingModelError(
+            experiment_name="Tests", gamma=np.sqrt(math.pi / 2), tolerance=1e-6
+        )
         problem.add_likelihood_model(likelihood_model)
         mm_solver = EmbeddedPCESolver(problem, seed=42)
         inference_data_mm = mm_solver.run(

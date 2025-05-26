@@ -105,7 +105,7 @@ class ScipySolver(Solver):
             forward_model.prepare_experimental_inputs_and_outputs()
 
             # finally, add the forward model to the problem
-            self.problem.forward_models[fwd_name] = forward_model
+            self.problem.internal_forward_models[fwd_name] = forward_model
 
     def _translate_likelihood_models(self):
         """
@@ -117,7 +117,7 @@ class ScipySolver(Solver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
 
