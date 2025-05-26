@@ -285,7 +285,7 @@ class EmbeddedPCESolver(EmceeSolver):
                 log_prob_fn=logprob,
                 pool=pool,
                 # moves=[(emcee.moves.StretchMove(), 0.1),(emcee.moves.DESnookerMove(),0.9)],
-                moves=[(emcee.moves.DEMove(), 0.8), (emcee.moves.DESnookerMove(), 0.2)],
+                moves=[(emcee.moves.DEMove(), 0.6), (emcee.moves.DESnookerMove(), 0.4)],
                 **kwargs,
             )
 
