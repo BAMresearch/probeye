@@ -223,16 +223,24 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
         n = len(residual_vector)
 
         # Calculate the intermediate statistics
+        # mean_residual = np.mean(residual_vector)
+        # variance_residual = np.var(residual_vector)
+        # mean_var = np.mean(np.square(response_vector[1]))
+        # sample_variance = mean_var + variance_residual + variance
+        # population_variance = (
+        #     self.gamma**2 * np.mean(np.square(residual_vector))
+        #     + variance_residual
+        #     # + variance
+        # )
+        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
+        # population_variance = (
+        #     np.var(np.divide(residual_vector, sigma_model_population)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_population)+variance))
+        # )
+        population_variance = np.mean(sigma_model_sample)
+        # sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_sample)+variance))
+        sample_variance = np.var(residual_vector)
+        # mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
         mean_residual = np.mean(residual_vector)
-        variance_residual = np.var(residual_vector)
-        mean_var = np.mean(np.square(response_vector[1]))
-        sample_variance = mean_var + variance_residual + variance
-        population_variance = (
-            self.gamma**2 * np.mean(np.square(residual_vector))
-            + variance_residual
-            # + variance
-        )
-
         # Calculate the log-likelihood
         ll = 0.0
         if std_meas is not None:
@@ -364,13 +372,22 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             * np.square(residual_vector)
             # + variance
         )
-        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
-        population_variance = (
-            np.var(np.divide(residual_vector, sigma_model_population)) + 1
-        )
-        sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + 1
-        mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
+        # sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
+        # population_variance = (
+        #     np.var(np.divide(residual_vector, sigma_model_population)) + np.mean(1 - np.divide(variance, np.square(sigma_model_population)+variance))
+        # )
+        # sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + np.mean(1 - np.divide(variance, np.square(sigma_model_sample)+variance))
+        # mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
 
+        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
+        # population_variance = (
+        #     np.var(np.divide(residual_vector, sigma_model_population)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_population)+variance))
+        # )
+        population_variance = 1.0
+        # sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_sample)+variance))
+        sample_variance = np.var(np.divide(residual_vector,sigma_model_sample))
+        # mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
+        mean_residual = np.mean(np.divide(residual_vector,sigma_model_sample))
         # Calculate the log-likelihood
         ll = 0.0
         if std_meas is not None:
