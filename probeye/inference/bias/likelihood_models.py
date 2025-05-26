@@ -321,12 +321,12 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             std_model = np.full_like(residual_vector, std_model)
         variance_noise = np.power(std_model, 2)
         n_y = len(residual_vector)
-        relative_residual_vector = np.divide(residual_vector,np.sqrt(np.square(response_vector[1]) + variance_noise))
+        relative_residual_vector = np.divide(residual_vector,np.sqrt(np.square(response_vector[1]) + variance_noise)) # Eq. 45
 
         # Calculate the intermediate statistics
-        variance_population_f_r = 1.0 # Eq. 31
-        mean_samples_u_r = np.mean(relative_residual_vector) # Eq. 35
-        variance_samples_u_r = np.var(relative_residual_vector, ddof=1) #  Eq. 36, ddof=1 for sample variance
+        variance_population_f_r = 1.0 
+        mean_samples_u_r = np.mean(relative_residual_vector) # Eq. 36
+        variance_samples_u_r = np.var(relative_residual_vector, ddof=1) #  Eq. 47, ddof=1 for sample variance
 
         # Calculate the log-likelihood
         ll = 0.0
