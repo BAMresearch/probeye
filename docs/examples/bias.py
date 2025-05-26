@@ -103,12 +103,12 @@ class LinearModel(ForwardModelBase):
 
     def response(self, inp: dict) -> dict:
         x = inp["x"]
-        m = inp["a"]
+        a = inp["a"]
         b = inp["b"]
 
-        m = np.repeat(m, len(x))
+        a = np.repeat(a, len(x))
         x = x.reshape(-1, 1)
-        m = m.reshape(-1, 1)
+        a = a.reshape(-1, 1)
 
         # define the distribution for the bias term
         b_dist = chaospy.Normal(0.0, b)
@@ -122,7 +122,7 @@ class LinearModel(ForwardModelBase):
         )
         # evaluate the model at the quadrature nodes
         sparse_evals = np.array(
-            [np.array((m + node) * x) for node in sparse_quads[0][0]]
+            [np.array((a + node) * x) for node in sparse_quads[0][0]]
         )
 
         # fit the polynomial chaos expansion
