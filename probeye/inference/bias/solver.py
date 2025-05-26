@@ -260,7 +260,7 @@ class EmbeddedPCESolver(EmceeSolver):
         # ............................................................................ #
 
         global logprob
-        
+
         def logprob(x):
             # Skip loglikelihood evaluation if logprior is equal
             # to negative infinity
@@ -313,7 +313,9 @@ class EmbeddedPCESolver(EmceeSolver):
                     f"Sampling of the posterior distribution completed: {n_steps} steps and "
                     f"{n_walkers} walkers."
                 )
-                logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
+                logger.info(
+                    f"Total run-time (including initial sampling): {runtime_str}."
+                )
                 logger.info("")
                 logger.info("Summary of sampling results (emcee)")
                 posterior_samples = self.sampler.get_chain(flat=True)

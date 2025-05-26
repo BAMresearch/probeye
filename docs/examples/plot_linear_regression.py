@@ -169,8 +169,8 @@ problem.info(print_header=True)
 # the emcee solver, which is a MCMC-sampling solver. Let's begin with the scipy-solver:
 
 # this is for using the scipy-solver (maximum likelihood estimation)
-#scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
-#max_like_data = scipy_solver.run()
+# scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
+# max_like_data = scipy_solver.run()
 
 # %%
 # All solver have in common that they are first initialized, and then execute a

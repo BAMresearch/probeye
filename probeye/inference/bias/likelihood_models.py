@@ -9,6 +9,7 @@ from probeye.inference.scipy.likelihood_models import (
     ScipyLikelihoodBase,
 )
 
+
 class EmbeddedLikelihoodBaseModel(ScipyLikelihoodBase):
     """
     This class implements the embedded likelihood model base class.
@@ -159,6 +160,7 @@ class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             )
         return ll
 
+
 class IndependentNormalModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the independent normal likelihood model.
@@ -213,6 +215,7 @@ class IndependentNormalModelError(EmbeddedLikelihoodBaseModel):
 
         return ll
 
+
 class GlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
     """
     This class implements the global moment matching likelihood model.
@@ -259,20 +262,26 @@ class GlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
         n_y = len(residual_vector)
 
         # Calculate the intermediate statistics
-        variance_population_f = np.mean(np.square(response_vector[1]) + variance_noise) # Eq. 31
-        mean_samples_u = np.mean(residual_vector) # Eq. 35
-        variance_samples_u = np.var(residual_vector, ddof=1) #  Eq. 36, ddof=1 for sample variance
+        variance_population_f = np.mean(
+            np.square(response_vector[1]) + variance_noise
+        )  # Eq. 31
+        mean_samples_u = np.mean(residual_vector)  # Eq. 35
+        variance_samples_u = np.var(
+            residual_vector, ddof=1
+        )  #  Eq. 36, ddof=1 for sample variance
 
         # Calculate the log-likelihood
         ll = 0.0
         # Mean matching (L_1)
         ll -= 0.5 * np.log(2 * np.pi / n_y * variance_population_f)
-        ll -= 0.5 * n_y * np.square(mean_samples_u) / variance_population_f 
+        ll -= 0.5 * n_y * np.square(mean_samples_u) / variance_population_f
         # Variance matching (L_2)
         ll -= (n_y - 1) * 0.5 * np.log(2)
         ll -= math.lgamma((n_y - 1) / 2)
         ll -= 0.5 * n_y * variance_samples_u / variance_population_f
-        ll += ((n_y - 1) / 2 - 1) * np.log(n_y * variance_samples_u / variance_population_f)
+        ll += ((n_y - 1) / 2 - 1) * np.log(
+            n_y * variance_samples_u / variance_population_f
+        )
         return ll
 
 
@@ -321,21 +330,27 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             std_model = np.full_like(residual_vector, std_model)
         variance_noise = np.power(std_model, 2)
         n_y = len(residual_vector)
-        relative_residual_vector = np.divide(residual_vector,np.sqrt(np.square(response_vector[1]) + variance_noise)) # Eq. 45
+        relative_residual_vector = np.divide(
+            residual_vector, np.sqrt(np.square(response_vector[1]) + variance_noise)
+        )  # Eq. 45
 
         # Calculate the intermediate statistics
-        variance_population_f_r = 1.0 
-        mean_samples_u_r = np.mean(relative_residual_vector) # Eq. 36
-        variance_samples_u_r = np.var(relative_residual_vector, ddof=1) #  Eq. 47, ddof=1 for sample variance
+        variance_population_f_r = 1.0
+        mean_samples_u_r = np.mean(relative_residual_vector)  # Eq. 36
+        variance_samples_u_r = np.var(
+            relative_residual_vector, ddof=1
+        )  #  Eq. 47, ddof=1 for sample variance
 
         # Calculate the log-likelihood
         ll = 0.0
         # Mean matching (L_1)
         ll -= 0.5 * np.log(2 * np.pi / n_y * variance_population_f_r)
-        ll -= 0.5 * n_y * np.square(mean_samples_u_r) / variance_population_f_r 
+        ll -= 0.5 * n_y * np.square(mean_samples_u_r) / variance_population_f_r
         # Variance matching (L_2)
         ll -= (n_y - 1) * 0.5 * np.log(2)
         ll -= math.lgamma((n_y - 1) / 2)
         ll -= 0.5 * n_y * variance_samples_u_r / variance_population_f_r
-        ll += ((n_y - 1) / 2 - 1) * np.log(n_y * variance_samples_u_r / variance_population_f_r)
+        ll += ((n_y - 1) / 2 - 1) * np.log(
+            n_y * variance_samples_u_r / variance_population_f_r
+        )
         return ll
