@@ -107,6 +107,8 @@ class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             return -np.inf
 
         # Adjustable weights for the mean and std of the moment residuals
+        # This should be set in the likelihood definition
+        # Functionality is implemented but not used in the current implementation
         if not hasattr(self, "weight_mean"):
             self.weight_mean = 1.0
         if not hasattr(self, "weight_std"):
@@ -146,6 +148,7 @@ class MomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             )
 
         # Store the mean and std of the moment residuals if requested
+        # This is used for debugging and analysis purposes
         if hasattr(self, "moment_residuals"):
             self.moment_residuals["mean"].append(np.sum(residual_vector))
             self.moment_residuals["std"].append(
@@ -313,41 +316,26 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
             return -np.inf
 
         # Load the standard deviations and noise values
-        std_model, std_meas, stds_are_scalar = self.std_values(prms)
-        variance = np.power(std_model, 2)
-        n = len(residual_vector)
+        std_model, _, stds_are_scalar = self.std_values(prms)
+        if stds_are_scalar:
+            std_model = np.full_like(residual_vector, std_model)
+        variance_noise = np.power(std_model, 2)
+        n_y = len(residual_vector)
+        relative_residual_vector = np.divide(residual_vector,np.sqrt(np.square(response_vector[1]) + variance_noise))
 
         # Calculate the intermediate statistics
-        sigma_model_population = np.sqrt(
-            self.gamma**2
-            * np.square(residual_vector)
-            # + variance
-        )
-        # sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
-        # population_variance = (
-        #     np.var(np.divide(residual_vector, sigma_model_population)) + np.mean(1 - np.divide(variance, np.square(sigma_model_population)+variance))
-        # )
-        # sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + np.mean(1 - np.divide(variance, np.square(sigma_model_sample)+variance))
-        # mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
+        variance_population_f_r = 1.0 # Eq. 31
+        mean_samples_u_r = np.mean(relative_residual_vector) # Eq. 35
+        variance_samples_u_r = np.var(relative_residual_vector, ddof=1) #  Eq. 36, ddof=1 for sample variance
 
-        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
-        # population_variance = (
-        #     np.var(np.divide(residual_vector, sigma_model_population)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_population)+variance))
-        # )
-        population_variance = 1.0
-        # sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_sample)+variance))
-        sample_variance = np.var(np.divide(residual_vector,sigma_model_sample))
-        # mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
-        mean_residual = np.mean(np.divide(residual_vector,sigma_model_sample))
         # Calculate the log-likelihood
         ll = 0.0
-        if std_meas is not None:
-            variance += np.power(std_meas, 2)
-        if stds_are_scalar:
-            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= 0.5 * n / population_variance * np.square(mean_residual)
-            ll -= 0.5 * n * sample_variance / population_variance
-            ll -= (n - 1) / 2 * np.log(2)
-            ll -= math.lgamma((n - 1) / 2)
-            ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        # Mean matching (L_1)
+        ll -= 0.5 * np.log(2 * np.pi / n_y * variance_population_f_r)
+        ll -= 0.5 * n_y * np.square(mean_samples_u_r) / variance_population_f_r 
+        # Variance matching (L_2)
+        ll -= (n_y - 1) * 0.5 * np.log(2)
+        ll -= math.lgamma((n_y - 1) / 2)
+        ll -= 0.5 * n_y * variance_samples_u_r / variance_population_f_r
+        ll += ((n_y - 1) / 2 - 1) * np.log(n_y * variance_samples_u_r / variance_population_f_r)
         return ll
