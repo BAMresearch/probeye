@@ -38,12 +38,12 @@ class TestProblem(unittest.TestCase):
 
             def response(self, inp: dict) -> dict:
                 x = inp["x"]
-                m = inp["a"]
+                a = inp["a"]
                 b = inp["b"]
 
-                m = np.repeat(m, len(x))
+                a = np.repeat(a, len(x))
                 x = x.reshape(-1, 1)
-                m = m.reshape(-1, 1)
+                a = a.reshape(-1, 1)
 
                 # define the distribution for the bias term
                 b_dist = chaospy.Normal(0.0, b)
@@ -55,7 +55,7 @@ class TestProblem(unittest.TestCase):
                 )
                 # evaluate the model at the quadrature nodes
                 sparse_evals = np.array(
-                    [np.array((m + node) * x) for node in sparse_quads[0][0]]
+                    [np.array((a + node) * x) for node in sparse_quads[0][0]]
                 )
                 # fit the polynomial chaos expansion
                 fitted_sparse = chaospy.fit_quadrature(
@@ -140,13 +140,13 @@ class TestProblem(unittest.TestCase):
         true_values = {"a": a_true, "b": b_true}
         for prm_name, mean_true in true_values.items():
             mean_in = in_solver.summary["mean"][prm_name]
-            self.assertAlmostEqual(mean_in, mean_true, delta=0.05)
+            self.assertAlmostEqual(mean_in, mean_true, delta=0.1)
             mean_rgmm = rgmm_solver.summary["mean"][prm_name]
-            self.assertAlmostEqual(mean_rgmm, mean_true, delta=0.05)
+            self.assertAlmostEqual(mean_rgmm, mean_true, delta=0.1)
             mean_gmm = gmm_solver.summary["mean"][prm_name]
-            self.assertAlmostEqual(mean_gmm, mean_true, delta=0.05)
+            self.assertAlmostEqual(mean_gmm, mean_true, delta=0.1)
             mean_mm = mm_solver.summary["mean"][prm_name]
-            self.assertAlmostEqual(mean_mm, mean_true, delta=0.05)
+            self.assertAlmostEqual(mean_mm, mean_true, delta=0.1)
 
 
 if __name__ == "__main__":

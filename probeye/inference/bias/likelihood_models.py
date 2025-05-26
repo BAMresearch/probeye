@@ -259,7 +259,7 @@ class GlobalMomentMatchingModelError(EmbeddedLikelihoodBaseModel):
         n_y = len(residual_vector)
 
         # Calculate the intermediate statistics
-        variance_population_f = np.mean(np.square(response_vector[1])) + variance_noise # Eq. 31
+        variance_population_f = np.mean(np.square(response_vector[1]) + variance_noise) # Eq. 31
         mean_samples_u = np.mean(residual_vector) # Eq. 35
         variance_samples_u = np.var(residual_vector, ddof=1) #  Eq. 36, ddof=1 for sample variance
 
