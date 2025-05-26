@@ -179,6 +179,54 @@ class MomentMatchingModelError(EmbeddedUncorrelatedModelError):
             )
         return ll
 
+class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
+    """
+    This class implements the independent normal likelihood model.
+
+    Parameters
+    ----------
+    likelihood_model_base
+        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
+        likelihood model but no computing-methods.
+
+    Attributes
+    ----------
+    l_model
+        The likelihood model used in this class. This is set to "independent_normal".
+    """
+
+    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
+        super().__init__(likelihood_model_base)
+        self.l_model = "independent_normal"
+
+    def loglike(
+        self,
+        response_vector: np.ndarray,
+        residual_vector: np.ndarray,
+        prms: dict,
+    ) -> float:
+        """
+        Computes the log-likelihood of this model. For more information, check out the
+        doc-string of the parent class (SolverLikelihoodBase).
+        """
+
+        if np.isnan(response_vector).any():
+            return -np.inf
+
+        # Load the standard deviations and noise values
+        std_model, std_meas, stds_are_scalar = self.std_values(prms)
+        variance = np.power(std_model, 2)
+        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
+
+        ll = 0
+        if std_meas is not None:
+            variance += np.power(std_meas, 2)
+        if stds_are_scalar:
+            ll -= 0.5 * np.sum(
+                np.square(np.divide(residual_vector, sigma_model_sample))
+                + np.log(2 * np.pi * np.square(sigma_model_sample))
+            )
+        return ll
 
 class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
     """
@@ -316,54 +364,6 @@ class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             ll -= math.lgamma((n - 1) / 2)
             ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
         return ll
-class IndependentNormalModelError(EmbeddedUncorrelatedModelError):
-    """
-    This class implements the independent normal likelihood model.
-
-    Parameters
-    ----------
-    likelihood_model_base
-        An instance of EmbeddedLikelihoodBaseModel which contains general information on the
-        likelihood model but no computing-methods.
-
-    Attributes
-    ----------
-    l_model
-        The likelihood model used in this class. This is set to "independent_normal".
-    """
-
-    def __init__(self, likelihood_model_base: EmbeddedLikelihoodBaseModel):
-        super().__init__(likelihood_model_base)
-        self.l_model = "independent_normal"
-
-    def loglike(
-        self,
-        response_vector: np.ndarray,
-        residual_vector: np.ndarray,
-        prms: dict,
-    ) -> float:
-        """
-        Computes the log-likelihood of this model. For more information, check out the
-        doc-string of the parent class (SolverLikelihoodBase).
-        """
-
-        if np.isnan(response_vector).any():
-            return -np.inf
-
-        # Load the standard deviations and noise values
-        std_model, std_meas, stds_are_scalar = self.std_values(prms)
-        variance = np.power(std_model, 2)
-        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
-
-        ll = 0
-        if std_meas is not None:
-            variance += np.power(std_meas, 2)
-        if stds_are_scalar:
-            ll -= 0.5 * np.sum(
-                np.square(np.divide(residual_vector, sigma_model_sample))
-                + np.log(2 * np.pi * np.square(sigma_model_sample))
-            )
-        return ll
 
 
 def translate_likelihood_model(
@@ -398,11 +398,9 @@ def translate_likelihood_model(
     # different types (which leads to issues during type-checking)
     class_dict = {
         "Embedded_moment_matching_Uncorrelated": MomentMatchingModelError,
-        "Embedded_global_moment_matching_Uncorrelated": GlobalMomentMatchingModelError,
-        "Embedded_relative_global_moment_matching_Uncorrelated": RelativeGlobalMomentMatchingModelError,
         "Embedded_independent_normal_Uncorrelated": IndependentNormalModelError,
-        "Embedded_sampled_global_moment_matching_Uncorrelated": SampledGlobalMomentMatchingModelError,
-        "Embedded_sampled_relative_global_moment_matching_Uncorrelated": SampledRelativeGlobalMomentMatchingModelError,
+        "Embedded_global_moment_matching_Uncorrelated": GlobalMomentMatchingModelError,
+        "Embedded_relative_global_moment_matching_Uncorrelated": RelativeGlobalMomentMatchingModelError
     }
 
     # this is where the translation happens
