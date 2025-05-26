@@ -217,40 +217,27 @@ class GlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
             return -np.inf
 
         # Load the standard deviations and noise values
-        std_model, std_meas, stds_are_scalar = self.std_values(prms)
-        variance = np.power(std_model, 2)
-        n = len(residual_vector)
+        std_model, _, stds_are_scalar = self.std_values(prms)
+        if stds_are_scalar:
+            std_model = np.full_like(residual_vector, std_model)
+        variance_noise = np.power(std_model, 2)
+        n_y = len(residual_vector)
 
         # Calculate the intermediate statistics
-        # mean_residual = np.mean(residual_vector)
-        # variance_residual = np.var(residual_vector)
-        # mean_var = np.mean(np.square(response_vector[1]))
-        # sample_variance = mean_var + variance_residual + variance
-        # population_variance = (
-        #     self.gamma**2 * np.mean(np.square(residual_vector))
-        #     + variance_residual
-        #     # + variance
-        # )
-        sigma_model_sample = np.sqrt(np.square(response_vector[1]) + variance)
-        # population_variance = (
-        #     np.var(np.divide(residual_vector, sigma_model_population)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_population)+variance))
-        # )
-        population_variance = np.mean(sigma_model_sample)
-        # sample_variance = np.var(np.divide(residual_vector, sigma_model_sample)) + 1 - np.mean(np.divide(variance, np.square(sigma_model_sample)+variance))
-        sample_variance = np.var(residual_vector)
-        # mean_residual = np.mean(np.divide(residual_vector, sigma_model_sample))
-        mean_residual = np.mean(residual_vector)
+        variance_population_f = np.mean(np.square(response_vector[1])) + variance_noise # Eq. 31
+        mean_samples_u = np.mean(residual_vector) # Eq. 35
+        variance_samples_u = np.var(residual_vector, ddof=1) #  Eq. 36, ddof=1 for sample variance
+
         # Calculate the log-likelihood
         ll = 0.0
-        if std_meas is not None:
-            variance += np.power(std_meas, 2)
-        if stds_are_scalar:
-            ll -= 0.5 * np.log(2 * np.pi / n * population_variance)
-            ll -= 0.5 * n / population_variance * np.square(mean_residual)
-            ll -= 0.5 * n * sample_variance / population_variance
-            ll -= (n - 1) / 2 * np.log(2)
-            ll -= math.lgamma((n - 1) / 2)
-            ll += ((n - 1) / 2 - 1) * np.log(n * sample_variance / population_variance)
+        # Mean matching (L_1)
+        ll -= 0.5 * np.log(2 * np.pi / n_y * variance_population_f)
+        ll -= 0.5 * n_y * np.square(mean_samples_u) / variance_population_f 
+        # Variance matching (L_2)
+        ll -= (n_y - 1) * 0.5 * np.log(2)
+        ll -= math.lgamma((n_y - 1) / 2)
+        ll -= 0.5 * n_y * variance_samples_u / variance_population_f
+        ll += ((n_y - 1) / 2 - 1) * np.log(n_y * variance_samples_u / variance_population_f)
         return ll
     
 class RelativeGlobalMomentMatchingModelError(EmbeddedUncorrelatedModelError):
