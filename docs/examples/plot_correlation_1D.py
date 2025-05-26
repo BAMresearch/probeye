@@ -103,9 +103,9 @@ class LinearModel(ForwardModelBase):
 
     def response(self, inp: dict) -> dict:
         x = inp["x"]
-        m = inp["a"]
+        a = inp["a"]
         b = inp["b"]
-        return {"y": m * x + b}
+        return {"y": a * x + b}
 
 
 # %%
@@ -206,8 +206,6 @@ problem.info(print_header=True)
 # run-method, which returns its result data in the format of an arviz inference-data
 # object (except for the scipy-solver). Let's now take a look at the emcee-solver.
 
-problem.forward_models.pop("LinearModel")
-problem.add_forward_model(LinearModel("LinearModel"), experiments=[*data_dict.keys()])
 emcee_solver = EmceeSolver(problem, show_progress=False)
 inference_data = emcee_solver.run(n_steps=2000, n_initial_steps=200)
 
