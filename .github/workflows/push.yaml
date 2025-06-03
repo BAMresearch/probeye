@@ -48,7 +48,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install package with dependencies
         run: |
-          pip install .[tests]
+          python -m pip install --upgrade pip setuptools wheel
+          pip install .[tests] 
       - name: Test with pytest
         run: |
           # grab the coverage output and also print it to the sreen
@@ -117,6 +118,7 @@ jobs:
         - name: Install package with latest dependencies
           run: |
             python probeye/_setup_cfg.py
+            python -m pip install --upgrade pip setuptools wheel
             pip install .[tests]
         - name: Test with pytest
           run: |
