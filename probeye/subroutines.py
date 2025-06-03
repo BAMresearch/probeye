@@ -1096,6 +1096,59 @@ def vectorize_numpy_dict(numpy_dict: dict) -> np.ndarray:
     return vector
 
 
+def vectorize_nd_numpy_dict(numpy_dict: dict) -> np.ndarray:
+    """
+    Concatenates all vectors from a dict to a single vector and returns it. For example
+    when given the dict {'y1': np.array([[1, 2, 3],[4, 5, 6]]), 'y2': np.array([[1, 2, 3],[4, 5, 6]])} it will
+    be returned np.array([[1, 2, 3, 1, 2, 3],[4, 5, 6, 4, 5, 6]]).
+
+    Parameters
+    ----------
+    numpy_dict
+        The keys are usually strings stating some sensor name, while the values are 1D
+        numpy-arrays, either from a forward model response or experimental data.
+
+    Returns
+    -------
+    vector
+        Contains the numeric data contained in numpy-dict in a single vector.
+    """
+    n_list = []
+    for numpy_vector in numpy_dict.values():
+        n_list.append(np.shape(numpy_vector))
+    n = tuple(sum(x) for x in zip(*n_list))
+    vector = np.zeros(n)
+    idx_start = 0
+    for numpy_vector, n_i in zip(numpy_dict.values(), n_list):
+        idx_end = idx_start + n_i[0]
+        vector[idx_start:idx_end] = numpy_vector
+        idx_start = idx_end
+    return vector
+
+
+def vectorize_tuple_pce_dict(pce_dict: dict) -> tuple[list, ...]:
+    """
+    Unpacks the tuple for the PCE expansion of each variable in a dict.
+
+    Parameters
+    ----------
+    pce_dict
+        The keys are usually strings stating some sensor name, while the values are 2-tuples,
+        from a PCE expansion (fitted_expansion, joint_distribution).
+
+    Returns
+    -------
+    pce_list
+        Contains the list of PCE descriptions of each variable.
+    """
+    if "dist" in pce_dict:
+        dist = pce_dict.pop("dist")
+    else:
+        dist = None
+
+    return ([pce_tuple for pce_tuple in pce_dict.values()], dist)
+
+
 def assemble_covariance_matrix(
     coords_array: np.ndarray,
     std_model: Union[int, float, np.ndarray],
@@ -1292,7 +1345,7 @@ def synchronize_objects(
         if attr_is_valid:
             if hasattr(new_obj, attribute):
                 try:
-                    setattr(new_obj, attribute, deepcopy(getattr(ref_obj, attribute)))
+                    setattr(new_obj, attribute, copy(getattr(ref_obj, attribute)))
                 except AttributeError:  # pragma: no cover
                     raise AttributeError(
                         f"can't set attribute '{attribute}'"

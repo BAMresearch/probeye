@@ -30,6 +30,7 @@ def create_pair_plot(
     title_size: Union[int, float] = 14,
     title: Optional[str] = None,
     true_values: Optional[dict] = None,
+    var_names: Optional[list] = None,
     show_legends: bool = True,
     show: bool = True,
     **kwargs,

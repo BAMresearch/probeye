@@ -31,7 +31,7 @@ class Solver:
     ):
 
         # attributes from arguments
-        self.problem = cp.deepcopy(problem)
+        self.problem = cp.copy(problem)
         self.show_progress = show_progress
         self.seed = seed
 

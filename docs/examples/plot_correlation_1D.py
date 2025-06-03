@@ -103,9 +103,9 @@ class LinearModel(ForwardModelBase):
 
     def response(self, inp: dict) -> dict:
         x = inp["x"]
-        m = inp["a"]
+        a = inp["a"]
         b = inp["b"]
-        return {"y": m * x + b}
+        return {"y": a * x + b}
 
 
 # %%
@@ -198,8 +198,8 @@ problem.info(print_header=True)
 # the emcee solver, which is a MCMC-sampling solver. Let's begin with the scipy-solver:
 
 # this is for using the scipy-solver (maximum likelihood estimation)
-scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
-max_like_data = scipy_solver.run()
+# scipy_solver = MaxLikelihoodSolver(problem, show_progress=False)
+# max_like_data = scipy_solver.run()
 
 # %%
 # All solver have in common that they are first initialized, and then execute a
@@ -244,3 +244,5 @@ trace_plot_array = create_trace_plot(
     emcee_solver.problem,
     title="Sampling results from emcee-Solver (trace plot)",
 )
+
+# %%

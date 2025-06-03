@@ -105,7 +105,7 @@ class ScipySolver(Solver):
             forward_model.prepare_experimental_inputs_and_outputs()
 
             # finally, add the forward model to the problem
-            self.problem.forward_models[fwd_name] = forward_model
+            self.problem.internal_forward_models[fwd_name] = forward_model
 
     def _translate_likelihood_models(self):
         """
@@ -117,7 +117,7 @@ class ScipySolver(Solver):
             # the likelihood model's forward model is still referencing the old (i.e.,
             # not-translated) forward model and needs to be reset to the updated one
             fwd_name = self.problem.likelihood_models[like_name].forward_model.name
-            fwd_model = self.problem.forward_models[fwd_name]
+            fwd_model = self.problem.internal_forward_models[fwd_name]
             self.problem.likelihood_models[like_name].forward_model = fwd_model
             self.problem.likelihood_models[like_name].determine_output_lengths()
 
@@ -156,7 +156,7 @@ class ScipySolver(Solver):
         prms_model = self.problem.get_parameters(theta, forward_model.prms_def)
         exp_inp = forward_model.input_from_experiments[experiment_name]
         inp = {**exp_inp, **prms_model}  # adds the two dictionaries
-
+        inp["experiment_name"] = experiment_name  # add the experiment name to the input
         # evaluate the forward model and translate the result to a single vector
         model_response_dict = forward_model(inp)
         model_response_vector = vectorize_numpy_dict(model_response_dict)
@@ -267,6 +267,7 @@ class ScipySolver(Solver):
             )
             # evaluate the loglike-contribution for the likelihood model
             ll += likelihood_model.loglike(response, residuals, prms_likelihood)
+
         return ll
 
     def get_start_values(

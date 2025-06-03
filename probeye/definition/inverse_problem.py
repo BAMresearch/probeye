@@ -92,11 +92,14 @@ class InverseProblem:
         # this dict is intended for storing the problem's experimentally measured data
         self.experiments = {}  # type: dict
 
-        # the following dict contains the problem's forward models; note that a single
+        # the following dicts contains the problem's forward models; note that a single
         # problem can have multiple forward models; the keys in this dict are the
         # forward model names, while the values are the forward model objects (check out
         # the script forward_model.py)
+        # the internal forward models list enables reusing the same problem in different
+        # solvers
         self.forward_models = {}  # type: dict
+        self.internal_forward_models = {}  # type: dict
 
         # this dictionary contains the problem's likelihood models; as the other private
         # attributes above, it is managed internally and should not be modified directly
