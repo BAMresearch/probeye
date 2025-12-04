@@ -176,7 +176,7 @@ class EmceeSolver(ScipySolver):
             Number of steps for initial (burn-in) sampling.
         true_values
             True parameter values, if known.
-            parallel
+        parallel
             If True, the sampling is done in parallel using multiprocessing.
         n_processes
             Number of processes to use for parallel sampling.
@@ -241,16 +241,17 @@ class EmceeSolver(ScipySolver):
         if parallel:
             with Pool(processes=n_processes) as pool:
                 logger.info(f"parallel sampling using multiprocessing with {pool}")
-                sampler = emcee.EnsembleSampler(
+                self.sampler = emcee.EnsembleSampler(
                     nwalkers=n_walkers,
                     ndim=self.problem.n_latent_prms_dim,
                     log_prob_fn=logprob,
                     pool=pool,
                     **kwargs,
                 )
+
                 if self.seed is not None:
                     random.seed(self.seed)
-                    sampler.random_state = np.random.mtrand.RandomState(self.seed)
+                    self.sampler.random_state = np.random.mtrand.RandomState(self.seed)
 
                 # ............................................................................ #
                 #        Initial sampling, burn-in: used to avoid a poor starting point        #
@@ -258,21 +259,20 @@ class EmceeSolver(ScipySolver):
 
                 logger.debug("Starting sampling (initial + main)")
                 start = time.time()
-                state = sampler.run_mcmc(
+                state = self.sampler.run_mcmc(
                     initial_state=sampling_initial_positions,
                     nsteps=n_initial_steps,
                     progress=self.show_progress,
                 )
-                sampler.reset()
+                self.sampler.reset()
 
                 # ............................................................................ #
                 #                          Sampling of the posterior                           #
                 # ............................................................................ #
-                sampler.run_mcmc(
+                self.sampler.run_mcmc(
                     initial_state=state, nsteps=n_steps, progress=self.show_progress
                 )
                 end = time.time()
-
                 runtime_str = pretty_time_delta(end - start)
                 logger.info(
                     f"Sampling of the posterior distribution completed: {n_steps} steps and "
@@ -283,20 +283,20 @@ class EmceeSolver(ScipySolver):
                 )
                 logger.info("")
                 logger.info("Summary of sampling results (emcee)")
-                posterior_samples = sampler.get_chain(flat=True)
+                posterior_samples = self.sampler.get_chain(flat=True)
                 with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
                     self.summary = self.emcee_summary(
                         posterior_samples, true_values=true_values
                     )
                 logger.info("")  # empty line for visual buffer
-                self.raw_results = sampler
+                self.raw_results = self.sampler
 
                 # translate the results to a common data structure and return it
-                var_names = self.problem.get_theta_names(tex=True, components=True)
-                inference_data = az.from_emcee(sampler, var_names=var_names)
+                self.var_names = self.problem.get_theta_names(tex=True, components=True)
+                inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
         else:
             logger.info("serial sampling")
-            sampler = emcee.EnsembleSampler(
+            self.sampler = emcee.EnsembleSampler(
                 nwalkers=n_walkers,
                 ndim=self.problem.n_latent_prms_dim,
                 log_prob_fn=logprob,
@@ -305,7 +305,7 @@ class EmceeSolver(ScipySolver):
 
             if self.seed is not None:
                 random.seed(self.seed)
-                sampler.random_state = np.random.mtrand.RandomState(self.seed)
+                self.sampler.random_state = np.random.mtrand.RandomState(self.seed)
 
             # ............................................................................ #
             #        Initial sampling, burn-in: used to avoid a poor starting point        #
@@ -313,21 +313,20 @@ class EmceeSolver(ScipySolver):
 
             logger.debug("Starting sampling (initial + main)")
             start = time.time()
-            state = sampler.run_mcmc(
+            state = self.sampler.run_mcmc(
                 initial_state=sampling_initial_positions,
                 nsteps=n_initial_steps,
                 progress=self.show_progress,
             )
-            sampler.reset()
+            self.sampler.reset()
 
             # ............................................................................ #
             #                          Sampling of the posterior                           #
             # ............................................................................ #
-            sampler.run_mcmc(
+            self.sampler.run_mcmc(
                 initial_state=state, nsteps=n_steps, progress=self.show_progress
             )
             end = time.time()
-
             runtime_str = pretty_time_delta(end - start)
             logger.info(
                 f"Sampling of the posterior distribution completed: {n_steps} steps and "
@@ -336,16 +335,36 @@ class EmceeSolver(ScipySolver):
             logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
             logger.info("")
             logger.info("Summary of sampling results (emcee)")
-            posterior_samples = sampler.get_chain(flat=True)
+            posterior_samples = self.sampler.get_chain(flat=True)
             with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
                 self.summary = self.emcee_summary(
                     posterior_samples, true_values=true_values
                 )
             logger.info("")  # empty line for visual buffer
-            self.raw_results = sampler
+            self.raw_results = self.sampler
 
             # translate the results to a common data structure and return it
-            var_names = self.problem.get_theta_names(tex=True, components=True)
-            inference_data = az.from_emcee(sampler, var_names=var_names)
+            self.var_names = self.problem.get_theta_names(tex=True, components=True)
+            inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
 
+        return inference_data
+
+    def restart_run(self, state, n_steps):
+        """
+        Restart the emcee-sampler for the InverseProblem the EmceeSolver was initialized
+        with and returns the results as an arviz InferenceData obj.
+
+        Parameters
+        ----------
+        state
+            The state of the sampler to restart from.
+        n_steps
+            Number of steps to run.
+        """
+
+        self.sampler.run_mcmc(
+            initial_state=state, nsteps=n_steps, progress=self.show_progress
+        )
+        self.var_names = self.problem.get_theta_names(tex=True, components=True)
+        inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
         return inference_data
