@@ -10,6 +10,7 @@ import emcee
 import arviz as az
 from loguru import logger
 from tabulate import tabulate
+from abc import ABC, abstractmethod
 
 # local imports
 from probeye.subroutines import pretty_time_delta
@@ -152,6 +153,22 @@ class EmceeSolver(ScipySolver):
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
 
+    def _build_logprob(self):
+
+        global logprob
+
+        def logprob(x):
+            # Skip loglikelihood evaluation if logprior is equal
+            # to negative infinity
+            logprior = self.logprior(x)
+            if logprior == -np.inf:
+                return logprior
+
+            # Otherwise return logprior + loglikelihood
+            return logprior + self.loglike(x)
+
+        return logprob
+
     def run(
         self,
         n_walkers: int = 20,
@@ -160,6 +177,7 @@ class EmceeSolver(ScipySolver):
         true_values: Optional[dict] = None,
         parallel: bool = False,
         n_processes: int = 4,
+        cluster_mode: str = "classic",
         **kwargs,
     ) -> az.data.inference_data.InferenceData:
         """
@@ -176,7 +194,7 @@ class EmceeSolver(ScipySolver):
             Number of steps for initial (burn-in) sampling.
         true_values
             True parameter values, if known.
-            parallel
+        parallel
             If True, the sampling is done in parallel using multiprocessing.
         n_processes
             Number of processes to use for parallel sampling.
@@ -224,128 +242,493 @@ class EmceeSolver(ScipySolver):
         #                                 Pre-process                                  #
         # ............................................................................ #
 
-        global logprob
-
-        def logprob(x):
-            # Skip loglikelihood evaluation if logprior is equal
-            # to negative infinity
-            logprior = self.logprior(x)
-            if logprior == -np.inf:
-                return logprior
-
-            # Otherwise return logprior + loglikelihood
-            return logprior + self.loglike(x)
-
         logger.debug("Setting up EnsembleSampler")
+        self.runner = RunnerFactory.create(
+            mode=cluster_mode,
+            solver=self,
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            parallel=parallel,
+            n_processes=n_processes,
+            **kwargs,
+        )
 
-        if parallel:
-            with Pool(processes=n_processes) as pool:
-                logger.info(f"parallel sampling using multiprocessing with {pool}")
-                sampler = emcee.EnsembleSampler(
-                    nwalkers=n_walkers,
-                    ndim=self.problem.n_latent_prms_dim,
-                    log_prob_fn=logprob,
-                    pool=pool,
-                    **kwargs,
-                )
-                if self.seed is not None:
-                    random.seed(self.seed)
-                    sampler.random_state = np.random.mtrand.RandomState(self.seed)
+        self.runner.run(
+            initial_state=sampling_initial_positions, true_values=true_values
+        )
 
-                # ............................................................................ #
-                #        Initial sampling, burn-in: used to avoid a poor starting point        #
-                # ............................................................................ #
-
-                logger.debug("Starting sampling (initial + main)")
-                start = time.time()
-                state = sampler.run_mcmc(
-                    initial_state=sampling_initial_positions,
-                    nsteps=n_initial_steps,
-                    progress=self.show_progress,
-                )
-                sampler.reset()
-
-                # ............................................................................ #
-                #                          Sampling of the posterior                           #
-                # ............................................................................ #
-                sampler.run_mcmc(
-                    initial_state=state, nsteps=n_steps, progress=self.show_progress
-                )
-                end = time.time()
-
-                runtime_str = pretty_time_delta(end - start)
-                logger.info(
-                    f"Sampling of the posterior distribution completed: {n_steps} steps and "
-                    f"{n_walkers} walkers."
-                )
-                logger.info(
-                    f"Total run-time (including initial sampling): {runtime_str}."
-                )
-                logger.info("")
-                logger.info("Summary of sampling results (emcee)")
-                posterior_samples = sampler.get_chain(flat=True)
-                with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-                    self.summary = self.emcee_summary(
-                        posterior_samples, true_values=true_values
-                    )
-                logger.info("")  # empty line for visual buffer
-                self.raw_results = sampler
-
-                # translate the results to a common data structure and return it
-                var_names = self.problem.get_theta_names(tex=True, components=True)
-                inference_data = az.from_emcee(sampler, var_names=var_names)
-        else:
-            logger.info("serial sampling")
-            sampler = emcee.EnsembleSampler(
-                nwalkers=n_walkers,
-                ndim=self.problem.n_latent_prms_dim,
-                log_prob_fn=logprob,
-                **kwargs,
-            )
-
-            if self.seed is not None:
-                random.seed(self.seed)
-                sampler.random_state = np.random.mtrand.RandomState(self.seed)
-
-            # ............................................................................ #
-            #        Initial sampling, burn-in: used to avoid a poor starting point        #
-            # ............................................................................ #
-
-            logger.debug("Starting sampling (initial + main)")
-            start = time.time()
-            state = sampler.run_mcmc(
-                initial_state=sampling_initial_positions,
-                nsteps=n_initial_steps,
-                progress=self.show_progress,
-            )
-            sampler.reset()
-
-            # ............................................................................ #
-            #                          Sampling of the posterior                           #
-            # ............................................................................ #
-            sampler.run_mcmc(
-                initial_state=state, nsteps=n_steps, progress=self.show_progress
-            )
-            end = time.time()
-
-            runtime_str = pretty_time_delta(end - start)
-            logger.info(
-                f"Sampling of the posterior distribution completed: {n_steps} steps and "
-                f"{n_walkers} walkers."
-            )
-            logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
-            logger.info("")
-            logger.info("Summary of sampling results (emcee)")
-            posterior_samples = sampler.get_chain(flat=True)
-            with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-                self.summary = self.emcee_summary(
-                    posterior_samples, true_values=true_values
-                )
-            logger.info("")  # empty line for visual buffer
-            self.raw_results = sampler
-
-            # translate the results to a common data structure and return it
-            var_names = self.problem.get_theta_names(tex=True, components=True)
-            inference_data = az.from_emcee(sampler, var_names=var_names)
-
+        # translate the results to a common data structure and return it
+        self.var_names = self.problem.get_theta_names(tex=True, components=True)
+        inference_data = az.from_emcee(self.runner.sampler, var_names=self.var_names)
         return inference_data
+
+    def restart_run(self, state, n_steps):
+        """
+        Restart the emcee-sampler for the InverseProblem the EmceeSolver was initialized
+        with and returns the results as an arviz InferenceData obj.
+
+        Parameters
+        ----------
+        state
+            The state of the sampler to restart from.
+        n_steps
+            Number of steps to run.
+        """
+
+        self.runner.sampler.run_mcmc(
+            initial_state=state, nsteps=n_steps, progress=self.show_progress
+        )
+        self.var_names = self.problem.get_theta_names(tex=True, components=True)
+        inference_data = az.from_emcee(self.runner.sampler, var_names=self.var_names)
+        return inference_data
+
+
+class RunnerFactory:
+    """
+    Factory for selecting the appropriate Runner based on user-specified mode.
+    Ensures modularity and backward compatibility.
+
+    Available modes:
+        - "basic"          : no clustering, no pruning
+        - "cluster-prune"  : perform clustering + pruning
+    """
+
+    RUNNER_MAP = {
+        "classic": "ClassicRunnerBackend",
+        "cluster-prune": "ClusterPruningRunnerBackend",
+    }
+
+    @staticmethod
+    def create(
+        mode: str,
+        solver,
+        n_walkers: int,
+        n_steps: int,
+        n_initial_steps: int,
+        parallel: bool,
+        n_processes: int = 4,
+        **kwargs,
+    ):
+        """
+        Create a Runner instance based on mode.
+
+        Parameters
+        ----------
+        mode : str
+            One of: "classic", "cluster-prune".
+            Defaults to "classic" if None or empty.
+        solver : EmceeSolver
+            The solver object that owns the logprob, priors, likelihood, etc.
+        n_walkers : int
+        n_steps : int
+        n_initial_steps : int
+        parallel : bool
+        kwargs : dict
+            Additional options forwarded to the runner.
+
+        Returns
+        -------
+        BaseRunner
+            A concrete runner instance.
+        """
+        if mode is None or mode == "":
+            mode = "classic"
+
+        mode = mode.lower().strip()
+
+        if mode not in RunnerFactory.RUNNER_MAP:
+            raise ValueError(
+                f"Unknown emcee run mode '{mode}'. Valid modes: "
+                f"{list(RunnerFactory.RUNNER_MAP.keys())}"
+            )
+
+        runner_class_name = RunnerFactory.RUNNER_MAP[mode]
+
+        # Retrieve the class object from globals() (or import if needed)
+        if runner_class_name not in globals():
+            raise RuntimeError(
+                f"Runner class '{runner_class_name}' not found. "
+                f"Ensure it is defined before calling RunnerFactory."
+            )
+
+        runner_cls = globals()[runner_class_name]
+
+        return runner_cls(
+            solver=solver,
+            n_walkers=n_walkers,
+            n_steps=n_steps,
+            n_initial_steps=n_initial_steps,
+            parallel=parallel,
+            n_processes=n_processes,
+            **kwargs,
+        )
+
+
+class BaseRunnerBackend(ABC):
+    def __init__(
+        self,
+        solver,
+        n_walkers,
+        n_steps,
+        n_initial_steps,
+        parallel=False,
+        n_processes=4,
+        **kwargs,
+    ):
+
+        self.solver = solver
+        self.n_walkers = n_walkers
+        self.n_steps = n_steps
+        self.n_initial_steps = n_initial_steps
+        self.parallel = parallel
+        self.n_processes = n_processes
+
+        self.sampler_kwargs = kwargs  # passed into emcee.EnsembleSampler
+
+    # ------------------------------------------------------------------
+    # CENTRALIZED: Parallel or serial sampler creation
+    # ------------------------------------------------------------------
+    def _create_sampler(self, logprob):
+        """
+        Creates an emcee EnsembleSampler, with or without multiprocessing.
+        All runners share this.
+        """
+
+        if self.parallel:
+            self.pool = Pool(processes=self.n_processes)
+            return emcee.EnsembleSampler(
+                nwalkers=self.n_walkers,
+                ndim=self.solver.problem.n_latent_prms_dim,
+                log_prob_fn=logprob,
+                pool=self.pool,
+                **self.sampler_kwargs,
+            )
+        else:
+            self.pool = None
+            return emcee.EnsembleSampler(
+                nwalkers=self.n_walkers,
+                ndim=self.solver.problem.n_latent_prms_dim,
+                log_prob_fn=logprob,
+                **self.sampler_kwargs,
+            )
+
+    # ------------------------------------------------------------------
+    def close_pool(self):
+        """Close pool if used."""
+        if self.pool is not None:
+            self.pool.close()
+            self.pool.join()
+
+    @abstractmethod
+    def run(self, initial_state=None):
+        """Run the sampling procedure."""
+        pass
+
+
+class ClassicRunnerBackend(BaseRunnerBackend):
+    """
+    Classic runner backend that runs initial burn-in and main sampling in one go.
+    """
+
+    def run(self, initial_state=None, true_values=None):
+        logprob = self.solver._build_logprob()
+
+        self.sampler = self._create_sampler(logprob)
+
+        state_burn_in = self.run_burn_in(initial_state)
+        state_postproc_burn_in = self.postproc_burn_in(
+            state_burn_in, true_values=true_values
+        )
+        state_main = self.run_main_sampling(state_postproc_burn_in)
+        state_postproc_main = self.postprocess_main_sampling(
+            state_main, true_values=true_values
+        )
+
+        self.close_pool()  # clean up if parallel
+        return self.sampler, state_postproc_main
+
+    def run_burn_in(self, initial_state=None):
+        """Run burn-in phase."""
+        state = self.sampler.run_mcmc(
+            initial_state, self.n_initial_steps, progress=self.solver.show_progress
+        )
+        return state
+
+    def postproc_burn_in(self, state, true_values=None):
+        """Postprocess burn-in phase (no-op in classic)."""
+        logger.info("")
+        logger.info("Summary of sampling results during burn-in (emcee)")
+        posterior_samples = self.sampler.get_chain(flat=True)
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.solver.summary = self.solver.emcee_summary(
+                posterior_samples, true_values=true_values
+            )
+        logger.info("")
+        self.sampler.reset()
+        return state
+
+    def run_main_sampling(self, state):
+        """Run main sampling phase."""
+        start = time.time()
+        self.sampler.run_mcmc(state, self.n_steps, progress=self.solver.show_progress)
+        end = time.time()
+        runtime_str = pretty_time_delta(end - start)
+        logger.info(
+            f"Sampling of the posterior distribution completed: {self.n_steps} steps and "
+            f"{self.n_walkers} walkers."
+        )
+        logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
+        logger.info("")
+        self.raw_results = self.sampler
+        return state
+
+    def postprocess_main_sampling(self, state, true_values=None):
+        """Postprocess main sampling phase (no-op in classic)."""
+        logger.info("Summary of sampling results during main sampling (emcee)")
+        posterior_samples = self.sampler.get_chain(flat=True)
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.solver.summary = self.solver.emcee_summary(
+                posterior_samples, true_values=true_values
+            )
+        logger.info("")
+        return state
+
+
+class WalkerClusteringMixin:
+    """
+    Optional clustering/postprocessing for walker pruning.
+
+    Drop-in mixin module that can be attached to EmceeSolver
+    without modifying original logic unless called explicitly.
+    """
+
+    def prune_walkers_by_logp_jump(
+        self, jump_factor=5.0, chain_percent=0.2, return_mask=False
+    ):
+        """
+        Improved pruning based on logp jumps:
+        - Detect jumps in sorted logp.
+        - These jumps split the walkers into clusters.
+        - Identify the *largest* cluster (not the best logp cluster).
+        - Keep all walkers with logp >= min(logp of that largest cluster).
+        - Prune walkers below that cluster.
+
+        Parameters
+        ----------
+        jump_factor : float
+            A jump is declared if diff > jump_factor * median_diff.
+        chain_percent : float
+            Percentage of the chain to consider for logp (from the end).
+        return_mask : bool
+            Whether to return a boolean mask.
+
+        Returns
+        -------
+        kept_idxs : list[int]
+        pruned_idxs : list[int]
+        stats : dict
+        (mask) : optional boolean array of length nwalkers
+        """
+
+        n_last_steps = int(self.sampler.chain.shape[1] * chain_percent)
+        final_logp = self.sampler.lnprobability[:, -n_last_steps:].mean(axis=1)
+        nwalkers = len(final_logp)
+
+        # sort walkers by logp (ascending)
+        sorted_idx = np.argsort(final_logp)
+        sorted_logp = np.nan_to_num(final_logp[sorted_idx])
+
+        # differences
+        diffs = np.diff(sorted_logp)
+        median_diff = np.median(diffs)
+        jump_thresh = jump_factor * median_diff
+
+        # indices where a jump occurs
+        jump_positions = np.where(diffs > jump_thresh)[0]
+
+        if len(jump_positions) == 0:
+            # no detected jumps → one cluster → keep all
+            kept = sorted_idx.tolist()
+            pruned = []
+            cluster_bounds = [(0, nwalkers - 1)]
+            chosen_cluster = 0
+            threshold_logp = sorted_logp[0]  # irrelevant
+        else:
+            # define cluster boundaries using jumps
+            # Example: N walkers, jumps at [2,7] → clusters: [0–2], [3–7], [8–N-1]
+            jump_positions = jump_positions.tolist()
+            cluster_starts = [0] + [j + 1 for j in jump_positions]
+            cluster_ends = jump_positions + [nwalkers - 1]
+
+            cluster_bounds = list(zip(cluster_starts, cluster_ends))
+
+            # compute cluster sizes
+            cluster_sizes = [end - start + 1 for (start, end) in cluster_bounds]
+
+            # choose largest cluster
+            chosen_cluster = int(np.argmax(cluster_sizes))
+            start_c, end_c = cluster_bounds[chosen_cluster]
+
+            # threshold = minimum logp of largest cluster
+            threshold_logp = sorted_logp[start_c]
+
+            # walkers with logp >= threshold_logp are kept
+            kept_mask = final_logp >= threshold_logp
+            kept = np.where(kept_mask)[0].tolist()
+            pruned = np.where(~kept_mask)[0].tolist()
+
+        # Build statistics
+        stats = {
+            "sorted_logp": sorted_logp,
+            "diffs": diffs,
+            "median_diff": median_diff,
+            "jump_threshold_value": jump_thresh,
+            "jump_positions": jump_positions,
+            "cluster_bounds": cluster_bounds,  # list of (start,end)
+            "cluster_sizes": [b[1] - b[0] + 1 for b in cluster_bounds],
+            "largest_cluster_index": chosen_cluster,
+            "largest_cluster_bounds": cluster_bounds[chosen_cluster],
+            "threshold_logp": threshold_logp,
+            "n_kept": len(kept),
+            "n_pruned": len(pruned),
+        }
+
+        if return_mask:
+            mask = final_logp >= threshold_logp
+            return kept, pruned, stats, mask
+        else:
+            return kept, pruned, stats
+
+    def log_cluster_stats(self, stats, kept, pruned):
+        """Unified logging block."""
+        logger.info("")
+        logger.info("=" * 70)
+        logger.info("Walker Clustering Diagnostics")
+        logger.info("=" * 70)
+
+        # Overall statistics
+        total = stats["n_kept"] + stats["n_pruned"]
+        logger.info(f"Total walkers       : {total}")
+        logger.info(
+            f"Walkers kept        : {stats['n_kept']} ({100*stats['n_kept']/total:.1f}%)"
+        )
+        logger.info(
+            f"Walkers pruned      : {stats['n_pruned']} ({100*stats['n_pruned']/total:.1f}%)"
+        )
+        logger.info("")
+
+        # Jump detection statistics
+        logger.info("Jump Detection:")
+        logger.info(f"  Median diff       : {stats['median_diff']:.6e}")
+        logger.info(f"  Jump threshold    : {stats['jump_threshold_value']:.6e}")
+        logger.info(f"  Jumps detected    : {len(stats['jump_positions'])}")
+        if len(stats["jump_positions"]) > 0:
+            logger.info(f"  Jump positions    : {stats['jump_positions']}")
+        logger.info("")
+
+        # Cluster information
+        logger.info(f"Clusters identified : {len(stats['cluster_bounds'])}")
+        for i, (start, end) in enumerate(stats["cluster_bounds"]):
+            marker = " <- LARGEST" if i == stats["largest_cluster_index"] else ""
+            logger.info(f"  Cluster {i+1}: size={stats['cluster_sizes'][i]}{marker}")
+        logger.info("")
+
+        # Selection details
+        logger.info(
+            f"Largest cluster     : Cluster {stats['largest_cluster_index'] + 1}"
+        )
+        logger.info(f"Selection threshold : logp >= {stats['threshold_logp']:.3f}")
+        logger.info("=" * 70)
+
+        kept_posterior_samples = self.sampler.get_chain(flat=False)[:, kept, :].reshape(
+            -1, self.solver.problem.n_latent_prms
+        )
+        logger.info("")
+        logger.info("Summary of sampling results after pruning (emcee)")
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.solver.summary = self.solver.emcee_summary(
+                kept_posterior_samples, true_values=None
+            )
+
+
+class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
+    """
+    Runner backend that performs clustering and pruning after burn-in phase.
+    """
+
+    def __init__(
+        self,
+        solver,
+        n_walkers,
+        n_steps,
+        n_initial_steps,
+        parallel=False,
+        n_processes=4,
+        **kwargs,
+    ):
+        super().__init__(
+            solver, n_walkers, n_steps, n_initial_steps, parallel, n_processes, **kwargs
+        )
+        self.jump_factor = kwargs.get("clustering_jump_factor", 5.0)
+        self.chain_percent = kwargs.get("clustering_chain_percent", 0.2)
+
+    def postproc_burn_in(self, state, true_values=None):
+        """Perform clustering and pruning after burn-in."""
+        logger.info("")
+        logger.info("Summary of sampling results during burn-in (emcee)")
+        posterior_samples = self.sampler.get_chain(flat=True)
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.solver.summary = self.solver.emcee_summary(
+                posterior_samples, true_values=true_values
+            )
+        logger.info("")  # empty line for visual buffer
+        kept, pruned, stats, mask = self.prune_walkers_by_logp_jump(
+            jump_factor=self.jump_factor,
+            chain_percent=self.chain_percent,
+            return_mask=True,
+        )
+        self.log_cluster_stats(stats, kept, pruned)
+
+        if stats["n_kept"] < 2:
+            raise RuntimeError(
+                "Too many walkers pruned; cannot continue MCMC. "
+                "Reduce `clustering_jump_factor` or turn off clustering."
+            )
+
+        # rebuild initial state for the second run
+        chain = self.sampler.get_chain(flat=False)
+        last_state_kept = chain[-1, kept, :]
+
+        full_state = np.zeros_like(state.coords)
+        full_state[mask] = last_state_kept
+
+        # resample pruned walkers
+        rng = np.random.default_rng()
+        kept_states = full_state[mask]
+        for w in np.where(~mask)[0]:
+            a, b = rng.choice(len(kept_states), 2, replace=False)
+            wgt = rng.random()
+            full_state[w] = wgt * kept_states[a] + (1 - wgt) * kept_states[b]
+
+        self.sampler.reset()
+
+        return full_state
+
+    def postprocess_main_sampling(self, state, true_values=None):
+        logger.info("")
+        logger.info("Summary of sampling results during burn-in (emcee)")
+        posterior_samples = self.sampler.get_chain(flat=True)
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            self.solver.summary = self.solver.emcee_summary(
+                posterior_samples, true_values=true_values
+            )
+        logger.info("")  # empty line for visual buffer
+        kept, pruned, stats, mask = self.prune_walkers_by_logp_jump(
+            jump_factor=self.jump_factor,
+            chain_percent=self.chain_percent,
+            return_mask=True,
+        )
+        self.log_cluster_stats(stats, kept, pruned)
+
+        return state[mask]
