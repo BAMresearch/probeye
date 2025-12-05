@@ -254,7 +254,9 @@ class EmceeSolver(ScipySolver):
             **kwargs,
         )
 
-        self.runner.run(initial_state=sampling_initial_positions, true_values=true_values)
+        self.runner.run(
+            initial_state=sampling_initial_positions, true_values=true_values
+        )
 
         # translate the results to a common data structure and return it
         self.var_names = self.problem.get_theta_names(tex=True, components=True)
@@ -294,7 +296,7 @@ class RunnerFactory:
 
     RUNNER_MAP = {
         "classic": "ClassicRunnerBackend",
-        "cluster-prune": "ClusterPruningRunner",
+        "cluster-prune": "ClusterPruningRunnerBackend",
     }
 
     @staticmethod
@@ -501,92 +503,143 @@ class WalkerClusteringMixin:
     without modifying original logic unless called explicitly.
     """
 
-    def prune_walkers_by_logp_jump(self, sampler, jump_factor=5.0, return_mask=False):
+    def prune_walkers_by_logp_jump(
+        self, jump_factor=5.0, chain_percent=0.2, return_mask=False
+    ):
         """
-        Detect a likelihood jump in sorted log-probabilities and remove walkers
-        below the jump (cluster pruning).
+        Improved pruning based on logp jumps:
+        - Detect jumps in sorted logp.
+        - These jumps split the walkers into clusters.
+        - Identify the *largest* cluster (not the best logp cluster).
+        - Keep all walkers with logp >= min(logp of that largest cluster).
+        - Prune walkers below that cluster.
 
         Parameters
         ----------
-        sampler : emcee.EnsembleSampler
-            The sampler object.
         jump_factor : float
-            Jump threshold multiplier relative to median diff.
+            A jump is declared if diff > jump_factor * median_diff.
+        chain_percent : float
+            Percentage of the chain to consider for logp (from the end).
         return_mask : bool
-            Whether to return a boolean mask for retained walkers.
+            Whether to return a boolean mask.
 
         Returns
         -------
-        kept : list[int]
-        pruned : list[int]
+        kept_idxs : list[int]
+        pruned_idxs : list[int]
         stats : dict
-        mask : optional boolean array
+        (mask) : optional boolean array of length nwalkers
         """
-        final_logp = sampler.lnprobability[:, -1]
+
+        n_last_steps = int(self.sampler.chain.shape[1] * chain_percent)
+        final_logp = self.sampler.lnprobability[:, -n_last_steps:].mean(axis=1)
         nwalkers = len(final_logp)
 
+        # sort walkers by logp (ascending)
         sorted_idx = np.argsort(final_logp)
         sorted_logp = np.nan_to_num(final_logp[sorted_idx])
+
+        # differences
         diffs = np.diff(sorted_logp)
-
         median_diff = np.median(diffs)
-        jump_threshold = jump_factor * median_diff
+        jump_thresh = jump_factor * median_diff
 
-        jumps = np.where(diffs > jump_threshold)[0]
+        # indices where a jump occurs
+        jump_positions = np.where(diffs > jump_thresh)[0]
 
-        if len(jumps) == 0:
-            kept = list(range(nwalkers))
+        if len(jump_positions) == 0:
+            # no detected jumps → one cluster → keep all
+            kept = sorted_idx.tolist()
             pruned = []
-            stats = dict(
-                logp_sorted=sorted_logp,
-                diffs=diffs,
-                jump_index=None,
-                threshold_logp=None,
-                n_kept=nwalkers,
-                n_pruned=0,
-            )
-            return (
-                (kept, pruned, stats, np.ones(nwalkers, dtype=bool))
-                if return_mask
-                else (kept, pruned, stats)
-            )
+            cluster_bounds = [(0, nwalkers - 1)]
+            chosen_cluster = 0
+            threshold_logp = sorted_logp[0]  # irrelevant
+        else:
+            # define cluster boundaries using jumps
+            # Example: N walkers, jumps at [2,7] → clusters: [0–2], [3–7], [8–N-1]
+            jump_positions = jump_positions.tolist()
+            cluster_starts = [0] + [j + 1 for j in jump_positions]
+            cluster_ends = jump_positions + [nwalkers - 1]
 
-        # take the largest jump
-        j = jumps[-1]
-        threshold = sorted_logp[j]
+            cluster_bounds = list(zip(cluster_starts, cluster_ends))
 
-        mask = final_logp > threshold
-        kept = np.where(mask)[0].tolist()
-        pruned = np.where(~mask)[0].tolist()
+            # compute cluster sizes
+            cluster_sizes = [end - start + 1 for (start, end) in cluster_bounds]
 
-        stats = dict(
-            logp_sorted=sorted_logp,
-            diffs=diffs,
-            jump_index=j,
-            threshold_logp=threshold,
-            n_kept=len(kept),
-            n_pruned=len(pruned),
-        )
+            # choose largest cluster
+            chosen_cluster = int(np.argmax(cluster_sizes))
+            start_c, end_c = cluster_bounds[chosen_cluster]
+
+            # threshold = minimum logp of largest cluster
+            threshold_logp = sorted_logp[start_c]
+
+            # walkers with logp >= threshold_logp are kept
+            kept_mask = final_logp >= threshold_logp
+            kept = np.where(kept_mask)[0].tolist()
+            pruned = np.where(~kept_mask)[0].tolist()
+
+        # Build statistics
+        stats = {
+            "sorted_logp": sorted_logp,
+            "diffs": diffs,
+            "median_diff": median_diff,
+            "jump_threshold_value": jump_thresh,
+            "jump_positions": jump_positions,
+            "cluster_bounds": cluster_bounds,  # list of (start,end)
+            "cluster_sizes": [b[1] - b[0] + 1 for b in cluster_bounds],
+            "largest_cluster_index": chosen_cluster,
+            "largest_cluster_bounds": cluster_bounds[chosen_cluster],
+            "threshold_logp": threshold_logp,
+            "n_kept": len(kept),
+            "n_pruned": len(pruned),
+        }
 
         if return_mask:
+            mask = final_logp >= threshold_logp
             return kept, pruned, stats, mask
-
-        return kept, pruned, stats
+        else:
+            return kept, pruned, stats
 
     def log_cluster_stats(self, stats, kept, pruned):
         """Unified logging block."""
         logger.info("")
-        logger.info("=== Walker Clustering Diagnostics ===")
+        logger.info("=" * 70)
+        logger.info("Walker Clustering Diagnostics")
+        logger.info("=" * 70)
 
-        logger.info(f"Kept   : {stats['n_kept']}")
-        logger.info(f"Pruned : {stats['n_pruned']}")
+        # Overall statistics
+        total = stats["n_kept"] + stats["n_pruned"]
+        logger.info(f"Total walkers       : {total}")
+        logger.info(
+            f"Walkers kept        : {stats['n_kept']} ({100*stats['n_kept']/total:.1f}%)"
+        )
+        logger.info(
+            f"Walkers pruned      : {stats['n_pruned']} ({100*stats['n_pruned']/total:.1f}%)"
+        )
+        logger.info("")
 
-        if stats["threshold_logp"] is not None:
-            logger.info(f"Threshold logp at jump: {stats['threshold_logp']:.3f}")
-            j = stats["jump_index"]
-            logger.info(f"Jump detected between sorted idx {j} and {j+1}")
+        # Jump detection statistics
+        logger.info("Jump Detection:")
+        logger.info(f"  Median diff       : {stats['median_diff']:.6e}")
+        logger.info(f"  Jump threshold    : {stats['jump_threshold_value']:.6e}")
+        logger.info(f"  Jumps detected    : {len(stats['jump_positions'])}")
+        if len(stats["jump_positions"]) > 0:
+            logger.info(f"  Jump positions    : {stats['jump_positions']}")
+        logger.info("")
 
-        logger.info("====================================")
+        # Cluster information
+        logger.info(f"Clusters identified : {len(stats['cluster_bounds'])}")
+        for i, (start, end) in enumerate(stats["cluster_bounds"]):
+            marker = " <- LARGEST" if i == stats["largest_cluster_index"] else ""
+            logger.info(f"  Cluster {i+1}: size={stats['cluster_sizes'][i]}{marker}")
+        logger.info("")
+
+        # Selection details
+        logger.info(
+            f"Largest cluster     : Cluster {stats['largest_cluster_index'] + 1}"
+        )
+        logger.info(f"Selection threshold : logp >= {stats['threshold_logp']:.3f}")
+        logger.info("=" * 70)
 
         kept_posterior_samples = self.sampler.get_chain(flat=False)[:, kept, :].reshape(
             -1, self.solver.problem.n_latent_prms
@@ -594,7 +647,7 @@ class WalkerClusteringMixin:
         logger.info("")
         logger.info("Summary of sampling results after pruning (emcee)")
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
-            summary = self.solver.emcee_summary(
+            self.solver.summary = self.solver.emcee_summary(
                 kept_posterior_samples, true_values=None
             )
 
@@ -604,20 +657,38 @@ class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
     Runner backend that performs clustering and pruning after burn-in phase.
     """
 
-    def postproc_burn_in(self, state):
+    def __init__(
+        self,
+        solver,
+        n_walkers,
+        n_steps,
+        n_initial_steps,
+        parallel=False,
+        n_processes=4,
+        **kwargs,
+    ):
+        super().__init__(
+            solver, n_walkers, n_steps, n_initial_steps, parallel, n_processes, **kwargs
+        )
+        self.jump_factor = kwargs.get("clustering_jump_factor", 5.0)
+        self.chain_percent = kwargs.get("clustering_chain_percent", 0.2)
+
+    def postproc_burn_in(self, state, true_values=None):
         """Perform clustering and pruning after burn-in."""
         logger.info("")
         logger.info("Summary of sampling results during burn-in (emcee)")
         posterior_samples = self.sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             self.solver.summary = self.solver.emcee_summary(
-                posterior_samples, true_values=None
+                posterior_samples, true_values=true_values
             )
         logger.info("")  # empty line for visual buffer
         kept, pruned, stats, mask = self.prune_walkers_by_logp_jump(
-            sampler=self.sampler, jump_factor=5.0, return_mask=True
+            jump_factor=self.jump_factor,
+            chain_percent=self.chain_percent,
+            return_mask=True,
         )
-        self.solver.log_cluster_stats(stats, kept, pruned)
+        self.log_cluster_stats(stats, kept, pruned)
 
         if stats["n_kept"] < 2:
             raise RuntimeError(
@@ -626,8 +697,11 @@ class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
             )
 
         # rebuild initial state for the second run
+        chain = self.sampler.get_chain(flat=False)
+        last_state_kept = chain[-1, kept, :]
+
         full_state = np.zeros_like(state.coords)
-        full_state[mask] = state[mask]
+        full_state[mask] = last_state_kept
 
         # resample pruned walkers
         rng = np.random.default_rng()
@@ -637,20 +711,24 @@ class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
             wgt = rng.random()
             full_state[w] = wgt * kept_states[a] + (1 - wgt) * kept_states[b]
 
+        self.sampler.reset()
+
         return full_state
 
-    def postprocess_main_sampling(self, state):
+    def postprocess_main_sampling(self, state, true_values=None):
         logger.info("")
         logger.info("Summary of sampling results during burn-in (emcee)")
         posterior_samples = self.sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
             self.solver.summary = self.solver.emcee_summary(
-                posterior_samples, true_values=None
+                posterior_samples, true_values=true_values
             )
         logger.info("")  # empty line for visual buffer
         kept, pruned, stats, mask = self.prune_walkers_by_logp_jump(
-            sampler=self.sampler, jump_factor=5.0, return_mask=True
+            jump_factor=self.jump_factor,
+            chain_percent=self.chain_percent,
+            return_mask=True,
         )
-        self.solver.log_cluster_stats(stats, kept, pruned)
+        self.log_cluster_stats(stats, kept, pruned)
 
         return state[mask]
