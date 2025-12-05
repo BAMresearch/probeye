@@ -33,6 +33,7 @@ logprob = None
 if TYPE_CHECKING:  # pragma: no cover
     from probeye.definition.inverse_problem import InverseProblem
 
+
 class EmceeSolver(ScipySolver):
     """
     Provides emcee-sampler which is a pure-Python implementation of Goodman & Weare’s
@@ -151,9 +152,9 @@ class EmceeSolver(ScipySolver):
                 "q05": {name: val for name, val in zip(row_names, quantile_05)},
                 "q95": {name: val for name, val in zip(row_names, quantile_95)},
             }
-        
+
     def _build_logprob(self):
-        
+
         global logprob
 
         def logprob(x):
@@ -165,7 +166,7 @@ class EmceeSolver(ScipySolver):
 
             # Otherwise return logprior + loglikelihood
             return logprior + self.loglike(x)
-    
+
         return logprob
 
     def run(
@@ -241,10 +242,8 @@ class EmceeSolver(ScipySolver):
         #                                 Pre-process                                  #
         # ............................................................................ #
 
-        
-
         logger.debug("Setting up EnsembleSampler")
-        runner = RunnerFactory.create(
+        self.runner = RunnerFactory.create(
             mode=cluster_mode,
             solver=self,
             n_walkers=n_walkers,
@@ -252,15 +251,14 @@ class EmceeSolver(ScipySolver):
             n_initial_steps=n_initial_steps,
             parallel=parallel,
             n_processes=n_processes,
-            **kwargs
+            **kwargs,
         )
 
-        runner.run(initial_state=sampling_initial_positions, true_values=true_values)
+        self.runner.run(initial_state=sampling_initial_positions, true_values=true_values)
 
         # translate the results to a common data structure and return it
         self.var_names = self.problem.get_theta_names(tex=True, components=True)
-        inference_data = az.from_emcee(runner.sampler, var_names=self.var_names)
-
+        inference_data = az.from_emcee(self.runner.sampler, var_names=self.var_names)
         return inference_data
 
     def restart_run(self, state, n_steps):
@@ -276,12 +274,13 @@ class EmceeSolver(ScipySolver):
             Number of steps to run.
         """
 
-        self.sampler.run_mcmc(
+        self.runner.sampler.run_mcmc(
             initial_state=state, nsteps=n_steps, progress=self.show_progress
         )
         self.var_names = self.problem.get_theta_names(tex=True, components=True)
-        inference_data = az.from_emcee(self.sampler, var_names=self.var_names)
+        inference_data = az.from_emcee(self.runner.sampler, var_names=self.var_names)
         return inference_data
+
 
 class RunnerFactory:
     """
@@ -299,14 +298,16 @@ class RunnerFactory:
     }
 
     @staticmethod
-    def create(mode: str,
-               solver,
-               n_walkers: int,
-               n_steps: int,
-               n_initial_steps: int,
-               parallel: bool,
-                n_processes: int = 4,
-               **kwargs):
+    def create(
+        mode: str,
+        solver,
+        n_walkers: int,
+        n_steps: int,
+        n_initial_steps: int,
+        parallel: bool,
+        n_processes: int = 4,
+        **kwargs,
+    ):
         """
         Create a Runner instance based on mode.
 
@@ -361,15 +362,18 @@ class RunnerFactory:
             **kwargs,
         )
 
+
 class BaseRunnerBackend(ABC):
-    def __init__(self,
-                 solver,
-                 n_walkers,
-                 n_steps,
-                 n_initial_steps,
-                 parallel=False,
-                 n_processes=4,
-                 **kwargs):
+    def __init__(
+        self,
+        solver,
+        n_walkers,
+        n_steps,
+        n_initial_steps,
+        parallel=False,
+        n_processes=4,
+        **kwargs,
+    ):
 
         self.solver = solver
         self.n_walkers = n_walkers
@@ -396,7 +400,7 @@ class BaseRunnerBackend(ABC):
                 ndim=self.solver.problem.n_latent_prms_dim,
                 log_prob_fn=logprob,
                 pool=self.pool,
-                **self.sampler_kwargs
+                **self.sampler_kwargs,
             )
         else:
             self.pool = None
@@ -404,7 +408,7 @@ class BaseRunnerBackend(ABC):
                 nwalkers=self.n_walkers,
                 ndim=self.solver.problem.n_latent_prms_dim,
                 log_prob_fn=logprob,
-                **self.sampler_kwargs
+                **self.sampler_kwargs,
             )
 
     # ------------------------------------------------------------------
@@ -419,6 +423,7 @@ class BaseRunnerBackend(ABC):
         """Run the sampling procedure."""
         pass
 
+
 class ClassicRunnerBackend(BaseRunnerBackend):
     """
     Classic runner backend that runs initial burn-in and main sampling in one go.
@@ -430,23 +435,24 @@ class ClassicRunnerBackend(BaseRunnerBackend):
         self.sampler = self._create_sampler(logprob)
 
         state_burn_in = self.run_burn_in(initial_state)
-        state_postproc_burn_in = self.postproc_burn_in(state_burn_in, true_values=true_values)
+        state_postproc_burn_in = self.postproc_burn_in(
+            state_burn_in, true_values=true_values
+        )
         state_main = self.run_main_sampling(state_postproc_burn_in)
-        state_postproc_main = self.postprocess_main_sampling(state_main, true_values=true_values)
+        state_postproc_main = self.postprocess_main_sampling(
+            state_main, true_values=true_values
+        )
 
         self.close_pool()  # clean up if parallel
         return self.sampler, state_postproc_main
-    
+
     def run_burn_in(self, initial_state=None):
         """Run burn-in phase."""
         state = self.sampler.run_mcmc(
-            initial_state,
-            self.n_initial_steps,
-            progress=self.solver.show_progress
+            initial_state, self.n_initial_steps, progress=self.solver.show_progress
         )
-        self.sampler.reset()
         return state
-    
+
     def postproc_burn_in(self, state, true_values=None):
         """Postprocess burn-in phase (no-op in classic)."""
         logger.info("")
@@ -457,32 +463,26 @@ class ClassicRunnerBackend(BaseRunnerBackend):
                 posterior_samples, true_values=true_values
             )
         logger.info("")
+        self.sampler.reset()
         return state
-    
+
     def run_main_sampling(self, state):
         """Run main sampling phase."""
         start = time.time()
-        self.sampler.run_mcmc(
-            state,
-            self.n_steps,
-            progress=self.solver.show_progress
-        )
+        self.sampler.run_mcmc(state, self.n_steps, progress=self.solver.show_progress)
         end = time.time()
         runtime_str = pretty_time_delta(end - start)
         logger.info(
             f"Sampling of the posterior distribution completed: {self.n_steps} steps and "
             f"{self.n_walkers} walkers."
         )
-        logger.info(
-            f"Total run-time (including initial sampling): {runtime_str}."
-        )
+        logger.info(f"Total run-time (including initial sampling): {runtime_str}.")
         logger.info("")
         self.raw_results = self.sampler
         return state
-    
+
     def postprocess_main_sampling(self, state, true_values=None):
         """Postprocess main sampling phase (no-op in classic)."""
-        
         logger.info("Summary of sampling results during main sampling (emcee)")
         posterior_samples = self.sampler.get_chain(flat=True)
         with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
@@ -491,6 +491,8 @@ class ClassicRunnerBackend(BaseRunnerBackend):
             )
         logger.info("")
         return state
+
+
 class WalkerClusteringMixin:
     """
     Optional clustering/postprocessing for walker pruning.
@@ -499,9 +501,7 @@ class WalkerClusteringMixin:
     without modifying original logic unless called explicitly.
     """
 
-    def prune_walkers_by_logp_jump(
-        self, sampler, jump_factor=5.0, return_mask=False
-    ):
+    def prune_walkers_by_logp_jump(self, sampler, jump_factor=5.0, return_mask=False):
         """
         Detect a likelihood jump in sorted log-probabilities and remove walkers
         below the jump (cluster pruning).
@@ -545,8 +545,11 @@ class WalkerClusteringMixin:
                 n_kept=nwalkers,
                 n_pruned=0,
             )
-            return (kept, pruned, stats, np.ones(nwalkers, dtype=bool)) if return_mask \
-                   else (kept, pruned, stats)
+            return (
+                (kept, pruned, stats, np.ones(nwalkers, dtype=bool))
+                if return_mask
+                else (kept, pruned, stats)
+            )
 
         # take the largest jump
         j = jumps[-1]
@@ -562,14 +565,13 @@ class WalkerClusteringMixin:
             jump_index=j,
             threshold_logp=threshold,
             n_kept=len(kept),
-            n_pruned=len(pruned)
+            n_pruned=len(pruned),
         )
 
         if return_mask:
             return kept, pruned, stats, mask
 
         return kept, pruned, stats
-
 
     def log_cluster_stats(self, stats, kept, pruned):
         """Unified logging block."""
@@ -579,19 +581,24 @@ class WalkerClusteringMixin:
         logger.info(f"Kept   : {stats['n_kept']}")
         logger.info(f"Pruned : {stats['n_pruned']}")
 
-        if stats['threshold_logp'] is not None:
+        if stats["threshold_logp"] is not None:
             logger.info(f"Threshold logp at jump: {stats['threshold_logp']:.3f}")
-            j = stats['jump_index']
+            j = stats["jump_index"]
             logger.info(f"Jump detected between sorted idx {j} and {j+1}")
 
         logger.info("====================================")
 
-        kept_posterior_samples = self.sampler.get_chain(flat=False)[:,kept,:].reshape(-1, self.solver.problem.n_latent_prms)
+        kept_posterior_samples = self.sampler.get_chain(flat=False)[:, kept, :].reshape(
+            -1, self.solver.problem.n_latent_prms
+        )
         logger.info("")
         logger.info("Summary of sampling results after pruning (emcee)")
-        with contextlib.redirect_stdout(stream_to_logger("INFO")): # type: ignore
-            summary = self.solver.emcee_summary(kept_posterior_samples, true_values=None)
-            
+        with contextlib.redirect_stdout(stream_to_logger("INFO")):  # type: ignore
+            summary = self.solver.emcee_summary(
+                kept_posterior_samples, true_values=None
+            )
+
+
 class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
     """
     Runner backend that performs clustering and pruning after burn-in phase.
@@ -608,9 +615,7 @@ class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
             )
         logger.info("")  # empty line for visual buffer
         kept, pruned, stats, mask = self.prune_walkers_by_logp_jump(
-            sampler=self.sampler,
-            jump_factor=5.0,
-            return_mask=True
+            sampler=self.sampler, jump_factor=5.0, return_mask=True
         )
         self.solver.log_cluster_stats(stats, kept, pruned)
 
@@ -633,7 +638,7 @@ class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
             full_state[w] = wgt * kept_states[a] + (1 - wgt) * kept_states[b]
 
         return full_state
-    
+
     def postprocess_main_sampling(self, state):
         logger.info("")
         logger.info("Summary of sampling results during burn-in (emcee)")
@@ -644,9 +649,7 @@ class ClusterPruningRunnerBackend(ClassicRunnerBackend, WalkerClusteringMixin):
             )
         logger.info("")  # empty line for visual buffer
         kept, pruned, stats, mask = self.prune_walkers_by_logp_jump(
-            sampler=self.sampler,
-            jump_factor=5.0,
-            return_mask=True
+            sampler=self.sampler, jump_factor=5.0, return_mask=True
         )
         self.solver.log_cluster_stats(stats, kept, pruned)
 
